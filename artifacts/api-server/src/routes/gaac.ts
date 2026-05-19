@@ -351,6 +351,34 @@ const API_NAMES_BY_APP: Record<string, string[]> = {
   ],
 };
 
+// Mocked month-to-date revenue per app, split by channel. Designed to mirror what
+// real integrations would return (Stripe BalanceTransactions, App Store Connect
+// Sales/Trends, Google Play earnings reports). ops-portal is internal -> $0.
+const REVENUE_BY_APP: Record<string, { stripe: number; appStore: number; playStore: number }> = {
+  grailbabe: { stripe: 28430.18, appStore: 9120.55, playStore: 4892.40 },
+  "kinisis-id": { stripe: 18764.22, appStore: 0, playStore: 0 },
+  "ops-portal": { stripe: 0, appStore: 0, playStore: 0 },
+  "ledger-api": { stripe: 22518.96, appStore: 0, playStore: 0 },
+  "atlas-cms": { stripe: 2104.50, appStore: 0, playStore: 0 },
+};
+
+const REVENUE_SOURCE_LABELS = {
+  stripe: "Stripe",
+  app_store: "Apple App Store",
+  play_store: "Google Play Store",
+} as const;
+
+function revenueForApp(appId: string) {
+  const r = REVENUE_BY_APP[appId] ?? { stripe: 0, appStore: 0, playStore: 0 };
+  const bySource = [
+    { source: "stripe" as const, label: REVENUE_SOURCE_LABELS.stripe, amount: Number(r.stripe.toFixed(2)) },
+    { source: "app_store" as const, label: REVENUE_SOURCE_LABELS.app_store, amount: Number(r.appStore.toFixed(2)) },
+    { source: "play_store" as const, label: REVENUE_SOURCE_LABELS.play_store, amount: Number(r.playStore.toFixed(2)) },
+  ];
+  const total = Number((r.stripe + r.appStore + r.playStore).toFixed(2));
+  return { currency: "USD", total, bySource };
+}
+
 function splitInts(total: number, weights: number[]): number[] {
   const sum = weights.reduce((s, w) => s + w, 0);
   const out = weights.map((w) => Math.floor((total * w) / sum));
@@ -418,6 +446,7 @@ router.get("/apps/:appId/cost", (req, res) => {
     daily: makeDaily(app.id, 30, mtd / 18),
     byService: buildByServiceForApp(app, apiUsage),
     apiUsage,
+    revenue: revenueForApp(app.id),
   });
   res.json(data);
 });
@@ -588,6 +617,38 @@ router.get("/global/cost-summary", (_req, res) => {
   const apiCalls = APPS.reduce((s, a) => s + (apiByApp.get(a.id)?.totalCalls ?? 0), 0);
   const mtd = APPS.reduce((s, a) => s + a.monthToDateCost, 0) + apiCost;
 
+  const revenueByApp = APPS.map((a) => {
+    const r = REVENUE_BY_APP[a.id] ?? { stripe: 0, appStore: 0, playStore: 0 };
+    const total = Number((r.stripe + r.appStore + r.playStore).toFixed(2));
+    const cost = Number((a.monthToDateCost + (apiByApp.get(a.id)?.cost ?? 0)).toFixed(2));
+    const net = Number((total - cost).toFixed(2));
+    return {
+      appId: a.id,
+      appName: a.name,
+      total,
+      stripe: Number(r.stripe.toFixed(2)),
+      appStore: Number(r.appStore.toFixed(2)),
+      playStore: Number(r.playStore.toFixed(2)),
+      cost,
+      net,
+      marginPercent: total > 0 ? Number(((net / total) * 100).toFixed(1)) : null,
+    };
+  }).sort((a, b) => b.total - a.total);
+
+  const totalStripe = revenueByApp.reduce((s, r) => s + r.stripe, 0);
+  const totalAppStore = revenueByApp.reduce((s, r) => s + r.appStore, 0);
+  const totalPlayStore = revenueByApp.reduce((s, r) => s + r.playStore, 0);
+  const totalRevenue = Number((totalStripe + totalAppStore + totalPlayStore).toFixed(2));
+  const revenue = {
+    currency: "USD",
+    total: totalRevenue,
+    bySource: [
+      { source: "stripe" as const, label: REVENUE_SOURCE_LABELS.stripe, amount: Number(totalStripe.toFixed(2)) },
+      { source: "app_store" as const, label: REVENUE_SOURCE_LABELS.app_store, amount: Number(totalAppStore.toFixed(2)) },
+      { source: "play_store" as const, label: REVENUE_SOURCE_LABELS.play_store, amount: Number(totalPlayStore.toFixed(2)) },
+    ],
+  };
+
   // Aggregate byService across all apps, preserving insertion order.
   const byResourceMap = new Map<string, number>();
   for (const a of APPS) {
@@ -633,6 +694,8 @@ router.get("/global/cost-summary", (_req, res) => {
         cost: row.cost,
       }));
     }).sort((a, b) => b.cost - a.cost),
+    revenue,
+    revenueByApp,
   });
   res.json(data);
 });

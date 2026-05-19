@@ -9,6 +9,8 @@ import type { CostByService } from './costByService';
 import type { GlobalCostSummaryApiByAppItem } from './globalCostSummaryApiByAppItem';
 import type { GlobalCostSummaryApiByNameItem } from './globalCostSummaryApiByNameItem';
 import type { GlobalCostSummaryByAppItem } from './globalCostSummaryByAppItem';
+import type { GlobalCostSummaryRevenueByAppItem } from './globalCostSummaryRevenueByAppItem';
+import type { Revenue } from './revenue';
 
 export interface GlobalCostSummary {
   currency: string;
@@ -26,4 +28,7 @@ export interface GlobalCostSummary {
   apiByApp: GlobalCostSummaryApiByAppItem[];
   /** Flat breakdown of cost by API name per app, sorted by cost desc. */
   apiByName: GlobalCostSummaryApiByNameItem[];
+  revenue: Revenue;
+  /** Per-app revenue with cost and margin for cost-vs-revenue comparison. */
+  revenueByApp: GlobalCostSummaryRevenueByAppItem[];
 }

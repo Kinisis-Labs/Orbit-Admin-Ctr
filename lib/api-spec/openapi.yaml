@@ -285,7 +285,7 @@ components:
           items: { $ref: "#/components/schemas/ApiByName" }
     CostReport:
       type: object
-      required: [currency, monthToDate, forecast, budget, daily, byService, apiUsage]
+      required: [currency, monthToDate, forecast, budget, daily, byService, apiUsage, revenue]
       properties:
         currency: { type: string }
         monthToDate: { type: number }
@@ -298,6 +298,26 @@ components:
           type: array
           items: { $ref: "#/components/schemas/CostByService" }
         apiUsage: { $ref: "#/components/schemas/ApiUsage" }
+        revenue: { $ref: "#/components/schemas/Revenue" }
+    RevenueSource:
+      type: string
+      enum: [stripe, app_store, play_store]
+    RevenueBySource:
+      type: object
+      required: [source, label, amount]
+      properties:
+        source: { $ref: "#/components/schemas/RevenueSource" }
+        label: { type: string, description: Human-readable source label }
+        amount: { type: number }
+    Revenue:
+      type: object
+      required: [currency, total, bySource]
+      properties:
+        currency: { type: string }
+        total: { type: number, description: Month-to-date revenue across all configured sources }
+        bySource:
+          type: array
+          items: { $ref: "#/components/schemas/RevenueBySource" }
     TelemetryReport:
       type: object
       required: [requestsPerMin, p95LatencyMs, errorRatePercent, availabilityPercent, series, topErrors]
@@ -345,7 +365,7 @@ components:
         currency: { type: string }
     GlobalCostSummary:
       type: object
-      required: [currency, monthToDate, forecast, budget, apiCalls, apiCost, byApp, byResource, apiByApp, apiByName]
+      required: [currency, monthToDate, forecast, budget, apiCalls, apiCost, byApp, byResource, apiByApp, apiByName, revenue, revenueByApp]
       properties:
         currency: { type: string }
         monthToDate: { type: number }
@@ -390,3 +410,23 @@ components:
               apiName: { type: string }
               totalCalls: { type: integer }
               cost: { type: number }
+        revenue: { $ref: "#/components/schemas/Revenue" }
+        revenueByApp:
+          description: Per-app revenue with cost and margin for cost-vs-revenue comparison.
+          type: array
+          items:
+            type: object
+            required: [appId, appName, total, stripe, appStore, playStore, cost, net]
+            properties:
+              appId: { type: string }
+              appName: { type: string }
+              total: { type: number, description: Total month-to-date revenue across all sources }
+              stripe: { type: number }
+              appStore: { type: number }
+              playStore: { type: number }
+              cost: { type: number, description: Month-to-date Azure cost for the app (infra + API) }
+              net: { type: number, description: total - cost }
+              marginPercent:
+                type: number
+                nullable: true
+                description: (net / total) * 100. Null when revenue is zero.

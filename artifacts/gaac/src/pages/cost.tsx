@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "wouter";
-import { Download, PieChart, RefreshCw } from "lucide-react";
+import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect, useScope } from "@/lib/scope";
 
@@ -48,6 +48,9 @@ function GlobalCost() {
     query: { queryKey: getGetGlobalCostSummaryQueryKey() },
   });
   const budgetPercent = cost ? (cost.monthToDate / cost.budget) * 100 : 0;
+  const netClass = cost && cost.revenue.total - cost.monthToDate >= 0 ? "text-emerald-500" : "text-destructive";
+  const net = cost ? cost.revenue.total - cost.monthToDate : 0;
+  const marginPct = cost && cost.revenue.total > 0 ? (net / cost.revenue.total) * 100 : null;
 
   return (
     <>
@@ -80,6 +83,102 @@ function GlobalCost() {
           )}
         </div>
       </div>
+
+      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+        <span className="inline-flex items-center px-1.5 py-0.5 border border-border bg-muted/40 text-foreground font-semibold tracking-wide uppercase text-[10px]">Mock</span>
+        Revenue figures below are sample data. Real values would come from Stripe, App Store Connect, and Google Play.
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Revenue (MTD)</div>
+          {isLoading || !cost ? <Skeleton className="h-7 w-20 mt-1" /> : (
+            <>
+              <div className="text-xl font-semibold text-foreground mt-1 tabular-nums">
+                {fmt(cost.revenue.total, cost.revenue.currency)}
+              </div>
+              <div className="text-[11px] text-muted-foreground tabular-nums mt-0.5 truncate">
+                Stripe + App Store + Play Store
+              </div>
+            </>
+          )}
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Net (Revenue − Cost)</div>
+          {isLoading || !cost ? <Skeleton className="h-7 w-20 mt-1" /> : (
+            <div className={`text-xl font-semibold mt-1 tabular-nums flex items-center gap-1.5 ${netClass}`}>
+              {net >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+              {fmt(net, cost.currency)}
+            </div>
+          )}
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Gross margin</div>
+          {isLoading || !cost ? <Skeleton className="h-7 w-20 mt-1" /> : (
+            <div className={`text-xl font-semibold mt-1 tabular-nums ${netClass}`}>
+              {marginPct === null ? "—" : `${marginPct.toFixed(1)}%`}
+            </div>
+          )}
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Revenue by source</div>
+          {isLoading || !cost ? <Skeleton className="h-7 w-full mt-1" /> : (
+            <div className="space-y-0.5 mt-1 text-[11px] tabular-nums">
+              {cost.revenue.bySource.map((s) => (
+                <div key={s.source} className="flex justify-between">
+                  <span className="text-muted-foreground truncate pr-2">{s.label}</span>
+                  <span className="font-mono text-foreground">{fmt(s.amount, cost.revenue.currency)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Panel
+        title="Cost vs Revenue by Application"
+        rightHeader={<span className="text-[11px] text-muted-foreground pr-2">Mocked sources: Stripe, Apple App Store, Google Play</span>}
+        bodyClassName="overflow-x-auto"
+      >
+        <Table className="text-[13px]">
+          <THead>
+            <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
+            <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Cost</TableHead>
+            <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Stripe</TableHead>
+            <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">App Store</TableHead>
+            <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Play Store</TableHead>
+            <TableHead className="h-8 font-semibold text-foreground text-right w-[120px]">Revenue</TableHead>
+            <TableHead className="h-8 font-semibold text-foreground text-right w-[120px]">Net</TableHead>
+            <TableHead className="h-8 font-semibold text-foreground text-right w-[90px]">Margin</TableHead>
+          </THead>
+          <TableBody>
+            {isLoading || !cost ? (
+              <SkeletonRows cols={8} rows={5} />
+            ) : (
+              cost.revenueByApp.map((row) => {
+                const positive = row.net >= 0;
+                const rowClass = positive ? "text-emerald-500" : "text-destructive";
+                return (
+                  <TableRow key={row.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                    <TableCell className="py-1 font-medium">
+                      <Link href={`/apps/${row.appId}`} className="hover:underline text-primary">{row.appName}</Link>
+                    </TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">{fmt(row.cost, cost.currency)}</TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">{row.stripe > 0 ? fmt(row.stripe, cost.currency) : "—"}</TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">{row.appStore > 0 ? fmt(row.appStore, cost.currency) : "—"}</TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">{row.playStore > 0 ? fmt(row.playStore, cost.currency) : "—"}</TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums font-semibold">{fmt(row.total, cost.currency)}</TableCell>
+                    <TableCell className={`py-1 text-right font-mono text-[12px] tabular-nums font-semibold ${rowClass}`}>{fmt(row.net, cost.currency)}</TableCell>
+                    <TableCell className={`py-1 text-right font-mono text-[12px] tabular-nums ${rowClass}`}>
+                      {row.marginPercent === null || row.marginPercent === undefined ? "—" : `${row.marginPercent.toFixed(1)}%`}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </Panel>
 
       <Panel
         title="Cost by Application"
@@ -225,6 +324,9 @@ function AppCost() {
     query: { queryKey: getGetCostQueryKey(scope) },
   });
   const budgetPercent = data ? (data.monthToDate / data.budget) * 100 : 0;
+  const net = data ? data.revenue.total - data.monthToDate : 0;
+  const marginPct = data && data.revenue.total > 0 ? (net / data.revenue.total) * 100 : null;
+  const netClass = net >= 0 ? "text-emerald-500" : "text-destructive";
 
   return (
     <>
@@ -249,6 +351,47 @@ function AppCost() {
                 <span className="text-muted-foreground tabular-nums">{fmt(data.budget, data.currency)}</span>
               </div>
               <Progress value={budgetPercent} className="h-1.5 rounded-none bg-muted" />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+        <span className="inline-flex items-center px-1.5 py-0.5 border border-border bg-muted/40 text-foreground font-semibold tracking-wide uppercase text-[10px]">Mock</span>
+        Revenue figures below are sample data. Real values would come from Stripe, App Store Connect, and Google Play.
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+        <Tile title="Revenue (MTD)" value={isLoading || !data ? null : fmt(data.revenue.total, data.revenue.currency)} />
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Net (Revenue − Cost)</div>
+          {isLoading || !data ? <Skeleton className="h-7 w-20 mt-1" /> : (
+            <div className={`text-xl font-semibold mt-1 tabular-nums flex items-center gap-1.5 ${netClass}`}>
+              {net >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+              {fmt(net, data.currency)}
+            </div>
+          )}
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Gross margin</div>
+          {isLoading || !data ? <Skeleton className="h-7 w-20 mt-1" /> : (
+            <div className={`text-xl font-semibold mt-1 tabular-nums ${netClass}`}>
+              {marginPct === null ? "—" : `${marginPct.toFixed(1)}%`}
+            </div>
+          )}
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Revenue by source</div>
+          {isLoading || !data ? <Skeleton className="h-7 w-full mt-1" /> : data.revenue.total === 0 ? (
+            <div className="text-[11px] text-muted-foreground mt-2">No revenue sources configured (internal app).</div>
+          ) : (
+            <div className="space-y-0.5 mt-1 text-[11px] tabular-nums">
+              {data.revenue.bySource.map((s) => (
+                <div key={s.source} className="flex justify-between">
+                  <span className="text-muted-foreground truncate pr-2">{s.label}</span>
+                  <span className="font-mono text-foreground">{fmt(s.amount, data.revenue.currency)}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>

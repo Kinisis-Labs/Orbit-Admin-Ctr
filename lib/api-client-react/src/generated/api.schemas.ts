@@ -123,6 +123,29 @@ export interface ApiUsage {
   byApi: ApiByName[];
 }
 
+export type RevenueSource = typeof RevenueSource[keyof typeof RevenueSource];
+
+
+export const RevenueSource = {
+  stripe: 'stripe',
+  app_store: 'app_store',
+  play_store: 'play_store',
+} as const;
+
+export interface RevenueBySource {
+  source: RevenueSource;
+  /** Human-readable source label */
+  label: string;
+  amount: number;
+}
+
+export interface Revenue {
+  currency: string;
+  /** Month-to-date revenue across all configured sources */
+  total: number;
+  bySource: RevenueBySource[];
+}
+
 export interface CostReport {
   currency: string;
   monthToDate: number;
@@ -131,6 +154,7 @@ export interface CostReport {
   daily: MetricPoint[];
   byService: CostByService[];
   apiUsage: ApiUsage;
+  revenue: Revenue;
 }
 
 export interface TopError {
@@ -213,6 +237,22 @@ export type GlobalCostSummaryApiByNameItem = {
   cost: number;
 };
 
+export type GlobalCostSummaryRevenueByAppItem = {
+  appId: string;
+  appName: string;
+  /** Total month-to-date revenue across all sources */
+  total: number;
+  stripe: number;
+  appStore: number;
+  playStore: number;
+  /** Month-to-date Azure cost for the app (infra + API) */
+  cost: number;
+  /** total - cost */
+  net: number;
+  /** (net / total) * 100. Null when revenue is zero. */
+  marginPercent?: number | null;
+};
+
 export interface GlobalCostSummary {
   currency: string;
   monthToDate: number;
@@ -229,5 +269,8 @@ export interface GlobalCostSummary {
   apiByApp: GlobalCostSummaryApiByAppItem[];
   /** Flat breakdown of cost by API name per app, sorted by cost desc. */
   apiByName: GlobalCostSummaryApiByNameItem[];
+  revenue: Revenue;
+  /** Per-app revenue with cost and margin for cost-vs-revenue comparison. */
+  revenueByApp: GlobalCostSummaryRevenueByAppItem[];
 }
 

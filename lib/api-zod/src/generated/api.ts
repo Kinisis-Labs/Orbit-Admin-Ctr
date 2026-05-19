@@ -127,7 +127,16 @@ export const GetCostResponse = zod.object({
   "totalCalls": zod.number(),
   "cost": zod.number()
 })).describe('Cost breakdown by individual API name (operation \/ endpoint).')
-}).describe('API consumption (API Management + gateway egress) included in monthToDate.')
+}).describe('API consumption (API Management + gateway egress) included in monthToDate.'),
+  "revenue": zod.object({
+  "currency": zod.string(),
+  "total": zod.number().describe('Month-to-date revenue across all configured sources'),
+  "bySource": zod.array(zod.object({
+  "source": zod.enum(['stripe', 'app_store', 'play_store']),
+  "label": zod.string().describe('Human-readable source label'),
+  "amount": zod.number()
+}))
+})
 })
 
 
@@ -237,7 +246,27 @@ export const GetGlobalCostSummaryResponse = zod.object({
   "apiName": zod.string(),
   "totalCalls": zod.number(),
   "cost": zod.number()
-})).describe('Flat breakdown of cost by API name per app, sorted by cost desc.')
+})).describe('Flat breakdown of cost by API name per app, sorted by cost desc.'),
+  "revenue": zod.object({
+  "currency": zod.string(),
+  "total": zod.number().describe('Month-to-date revenue across all configured sources'),
+  "bySource": zod.array(zod.object({
+  "source": zod.enum(['stripe', 'app_store', 'play_store']),
+  "label": zod.string().describe('Human-readable source label'),
+  "amount": zod.number()
+}))
+}),
+  "revenueByApp": zod.array(zod.object({
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "total": zod.number().describe('Total month-to-date revenue across all sources'),
+  "stripe": zod.number(),
+  "appStore": zod.number(),
+  "playStore": zod.number(),
+  "cost": zod.number().describe('Month-to-date Azure cost for the app (infra + API)'),
+  "net": zod.number().describe('total - cost'),
+  "marginPercent": zod.number().nullish().describe('(net \/ total) \* 100. Null when revenue is zero.')
+})).describe('Per-app revenue with cost and margin for cost-vs-revenue comparison.')
 })
 
 

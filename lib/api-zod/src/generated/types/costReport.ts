@@ -8,6 +8,7 @@
 import type { ApiUsage } from './apiUsage';
 import type { CostByService } from './costByService';
 import type { MetricPoint } from './metricPoint';
+import type { Revenue } from './revenue';
 
 export interface CostReport {
   currency: string;
@@ -17,4 +18,5 @@ export interface CostReport {
   daily: MetricPoint[];
   byService: CostByService[];
   apiUsage: ApiUsage;
+  revenue: Revenue;
 }
