@@ -17,6 +17,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { data: apps } = useListApps();
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  const [navCollapsed, setNavCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("gaac-nav-collapsed") === "1";
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem("gaac-nav-collapsed", navCollapsed ? "1" : "0");
+  }, [navCollapsed]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -35,7 +43,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Top Header */}
       <header className="h-12 bg-[#001429] text-white flex items-center px-4 shrink-0 justify-between select-none">
         <div className="flex items-center gap-4">
-          <Menu className="h-5 w-5 text-gray-300 hover:text-white cursor-pointer" />
+          <button
+            type="button"
+            onClick={() => setNavCollapsed((c) => !c)}
+            aria-label={navCollapsed ? "Expand navigation" : "Collapse navigation"}
+            title={navCollapsed ? "Expand navigation" : "Collapse navigation"}
+            className="p-1 rounded-sm hover:bg-white/10"
+          >
+            <Menu className="h-5 w-5 text-gray-300 hover:text-white" />
+          </button>
           <Link href="/" className="flex items-center gap-2">
             <span className="font-semibold text-[14px] tracking-wide">Microsoft Azure</span>
           </Link>
@@ -76,20 +92,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Nav Rail */}
-        <aside className="w-[48px] lg:w-[220px] border-r border-border bg-sidebar shrink-0 flex flex-col items-center lg:items-stretch py-2 hover:w-[220px] group transition-all duration-100 z-10 overflow-hidden">
+        <aside
+          data-collapsed={navCollapsed}
+          className={`${navCollapsed ? "w-[48px]" : "w-[220px]"} border-r border-border bg-sidebar shrink-0 flex flex-col py-2 transition-all duration-150 z-10 overflow-hidden group`}
+        >
           <nav className="flex flex-col gap-0.5 w-full px-1">
-            <NavItem href="/" icon={<Home className="h-[18px] w-[18px]" />} label="Home" active={location === "/"} />
-            <NavItem href="/alerts" icon={<Bell className="h-[18px] w-[18px]" />} label="Alerts" active={location === "/alerts"} />
-            <NavItem href="/cost" icon={<DollarSign className="h-[18px] w-[18px]" />} label="Cost Management" active={location === "/cost"} />
-            
+            <NavItem href="/" icon={<Home className="h-[18px] w-[18px]" />} label="Home" active={location === "/"} collapsed={navCollapsed} />
+            <NavItem href="/alerts" icon={<Bell className="h-[18px] w-[18px]" />} label="Alerts" active={location === "/alerts"} collapsed={navCollapsed} />
+            <NavItem href="/cost" icon={<DollarSign className="h-[18px] w-[18px]" />} label="Cost Management" active={location === "/cost"} collapsed={navCollapsed} />
+
             <div className="my-2 border-t border-border mx-2" />
-            
-            <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1 hidden lg:block group-hover:block">
-              Resources
-            </div>
-            
-            <NavItem href="/" icon={<LayoutDashboard className="h-[18px] w-[18px]" />} label="All resources" active={false} />
-            <NavItem href="/" icon={<Cloud className="h-[18px] w-[18px]" />} label="App Services" active={location.startsWith("/apps/")} />
+
+            {!navCollapsed && (
+              <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1">
+                Resources
+              </div>
+            )}
+
+            <NavItem href="/" icon={<LayoutDashboard className="h-[18px] w-[18px]" />} label="All resources" active={false} collapsed={navCollapsed} />
+            <NavItem href="/" icon={<Cloud className="h-[18px] w-[18px]" />} label="App Services" active={location.startsWith("/apps/")} collapsed={navCollapsed} />
           </nav>
         </aside>
 
@@ -128,17 +149,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function NavItem({ href, icon, label, active }: { href: string; icon: React.ReactNode; label: string; active: boolean }) {
+function NavItem({ href, icon, label, active, collapsed }: { href: string; icon: React.ReactNode; label: string; active: boolean; collapsed: boolean }) {
   return (
     <Link href={href}>
-      <div className={`flex items-center gap-3 px-2.5 py-2 rounded-sm cursor-pointer whitespace-nowrap transition-colors
-        ${active 
-          ? "bg-primary/10 text-primary border-l-2 border-primary" 
+      <div
+        title={collapsed ? label : undefined}
+        className={`flex items-center gap-3 px-2.5 py-2 rounded-sm cursor-pointer whitespace-nowrap transition-colors
+        ${active
+          ? "bg-primary/10 text-primary border-l-2 border-primary"
           : "text-foreground hover:bg-muted border-l-2 border-transparent"
         }
       `}>
         <div className="shrink-0">{icon}</div>
-        <span className="text-[13px] hidden lg:block group-hover:block w-full overflow-hidden text-ellipsis">{label}</span>
+        {!collapsed && (
+          <span className="text-[13px] w-full overflow-hidden text-ellipsis">{label}</span>
+        )}
       </div>
     </Link>
   );
