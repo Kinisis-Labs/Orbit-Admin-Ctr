@@ -147,7 +147,7 @@ export default function Cost() {
                     </TableRow>
                   ))
                 ) : (
-                  cost?.byResource.map((item) => (
+                  cost?.byResource?.map((item) => (
                     <TableRow key={item.service} className="h-8 border-b border-border/50 hover:bg-muted/40">
                       <TableCell className="py-1 font-medium">{item.service}</TableCell>
                       <TableCell className="py-1 text-right font-mono text-[12px]">
@@ -193,7 +193,7 @@ export default function Cost() {
                     </TableRow>
                   ))
                 ) : (
-                  cost?.apiByApp.map((row) => (
+                  cost?.apiByApp?.map((row) => (
                     <TableRow key={row.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
                       <TableCell className="py-1 font-medium">
                         <Link href={`/apps/${row.appId}`} className="hover:underline text-primary">
