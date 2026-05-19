@@ -22,7 +22,11 @@ The Kinisis admin center — an Azure operations dashboard giving operators a un
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `docs/architecture-spec.md` — Architecture spec v2 (Kinisis Orbit). Source of truth for objectives, Azure deployment topology, RBAC groups, and the FinOps cost boundary.
+- `lib/api-spec/` — OpenAPI contract. Run `pnpm --filter @workspace/api-spec run codegen` after changes.
+- `artifacts/api-server/src/routes/gaac.ts` — All mock data (apps, telemetry, cost, alerts, revenue).
+- `artifacts/gaac/src/lib/auth.tsx` — Mock Entra auth + `COST_READER_GROUP` definition.
+- `artifacts/gaac/src/lib/scope.tsx` — Scope selector (Global vs per-app).
 
 ## Architecture decisions
 

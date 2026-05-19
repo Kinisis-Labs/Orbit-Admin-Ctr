@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "ouSG1DKI9Mdsi0pc6lHbn"
+uri = "file://docs/architecture-spec.md"
+type = "text"
+title = "Kinisis Orbit — Architecture Spec v2"
