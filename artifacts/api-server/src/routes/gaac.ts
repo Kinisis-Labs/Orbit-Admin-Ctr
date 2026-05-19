@@ -317,6 +317,23 @@ function apiUsageForApp(app: AppRecord) {
   return { totalCalls, costPerMillion: API_COST_PER_MILLION, cost };
 }
 
+function buildByServiceForApp(
+  app: AppRecord,
+  apiUsage: { cost: number },
+): { service: string; amount: number }[] {
+  const infraBudget = app.monthToDateCost;
+  return [
+    { service: "App Service", amount: Number((infraBudget * 0.32).toFixed(2)) },
+    { service: "Azure SQL", amount: Number((infraBudget * 0.24).toFixed(2)) },
+    { service: "API Management", amount: apiUsage.cost },
+    { service: "Storage", amount: Number((infraBudget * 0.08).toFixed(2)) },
+    { service: "Application Insights", amount: Number((infraBudget * 0.11).toFixed(2)) },
+    { service: "Front Door", amount: Number((infraBudget * 0.14).toFixed(2)) },
+    { service: "Redis Cache", amount: Number((infraBudget * 0.07).toFixed(2)) },
+    { service: "Other", amount: Number((infraBudget * 0.04).toFixed(2)) },
+  ];
+}
+
 router.get("/apps/:appId/cost", (req, res) => {
   const app = findApp(req.params.appId);
   if (!app) {
@@ -325,23 +342,13 @@ router.get("/apps/:appId/cost", (req, res) => {
   }
   const apiUsage = apiUsageForApp(app);
   const mtd = Number((app.monthToDateCost + apiUsage.cost).toFixed(2));
-  const infraBudget = app.monthToDateCost;
   const data = GetCostResponse.parse({
     currency: "USD",
     monthToDate: mtd,
     forecast: Number((mtd * 1.7).toFixed(2)),
     budget: Number((mtd * 2.0).toFixed(2)),
     daily: makeDaily(app.id, 30, mtd / 18),
-    byService: [
-      { service: "App Service", amount: Number((infraBudget * 0.32).toFixed(2)) },
-      { service: "Azure SQL", amount: Number((infraBudget * 0.24).toFixed(2)) },
-      { service: "API Management", amount: apiUsage.cost },
-      { service: "Storage", amount: Number((infraBudget * 0.08).toFixed(2)) },
-      { service: "Application Insights", amount: Number((infraBudget * 0.11).toFixed(2)) },
-      { service: "Front Door", amount: Number((infraBudget * 0.14).toFixed(2)) },
-      { service: "Redis Cache", amount: Number((infraBudget * 0.07).toFixed(2)) },
-      { service: "Other", amount: Number((infraBudget * 0.04).toFixed(2)) },
-    ],
+    byService: buildByServiceForApp(app, apiUsage),
     apiUsage,
   });
   res.json(data);
@@ -512,6 +519,19 @@ router.get("/global/cost-summary", (_req, res) => {
   const apiCost = APPS.reduce((s, a) => s + (apiByApp.get(a.id)?.cost ?? 0), 0);
   const apiCalls = APPS.reduce((s, a) => s + (apiByApp.get(a.id)?.totalCalls ?? 0), 0);
   const mtd = APPS.reduce((s, a) => s + a.monthToDateCost, 0) + apiCost;
+
+  // Aggregate byService across all apps, preserving insertion order.
+  const byResourceMap = new Map<string, number>();
+  for (const a of APPS) {
+    const usage = apiByApp.get(a.id)!;
+    for (const line of buildByServiceForApp(a, usage)) {
+      byResourceMap.set(line.service, (byResourceMap.get(line.service) ?? 0) + line.amount);
+    }
+  }
+  const byResource = Array.from(byResourceMap.entries())
+    .map(([service, amount]) => ({ service, amount: Number(amount.toFixed(2)) }))
+    .sort((a, b) => b.amount - a.amount);
+
   const data = GetGlobalCostSummaryResponse.parse({
     currency: "USD",
     monthToDate: Number(mtd.toFixed(2)),
@@ -524,6 +544,17 @@ router.get("/global/cost-summary", (_req, res) => {
       appName: a.name,
       amount: Number((a.monthToDateCost + (apiByApp.get(a.id)?.cost ?? 0)).toFixed(2)),
     })),
+    byResource,
+    apiByApp: APPS.map((a) => {
+      const u = apiByApp.get(a.id)!;
+      return {
+        appId: a.id,
+        appName: a.name,
+        totalCalls: u.totalCalls,
+        costPerMillion: u.costPerMillion,
+        cost: u.cost,
+      };
+    }).sort((a, b) => b.cost - a.cost),
   });
   res.json(data);
 });

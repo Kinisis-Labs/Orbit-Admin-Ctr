@@ -214,7 +214,18 @@ export const GetGlobalCostSummaryResponse = zod.object({
   "appId": zod.string(),
   "appName": zod.string(),
   "amount": zod.number()
-}))
+})),
+  "byResource": zod.array(zod.object({
+  "service": zod.string(),
+  "amount": zod.number()
+})).describe('Cost breakdown by Azure resource type, aggregated across all apps.'),
+  "apiByApp": zod.array(zod.object({
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "totalCalls": zod.number(),
+  "costPerMillion": zod.number(),
+  "cost": zod.number()
+})).describe('Per-app API usage with call counts and cost.')
 })
 
 

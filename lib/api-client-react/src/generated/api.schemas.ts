@@ -188,6 +188,14 @@ export type GlobalCostSummaryByAppItem = {
   amount: number;
 };
 
+export type GlobalCostSummaryApiByAppItem = {
+  appId: string;
+  appName: string;
+  totalCalls: number;
+  costPerMillion: number;
+  cost: number;
+};
+
 export interface GlobalCostSummary {
   currency: string;
   monthToDate: number;
@@ -198,5 +206,9 @@ export interface GlobalCostSummary {
   /** Portion of monthToDate attributable to API usage */
   apiCost: number;
   byApp: GlobalCostSummaryByAppItem[];
+  /** Cost breakdown by Azure resource type, aggregated across all apps. */
+  byResource: CostByService[];
+  /** Per-app API usage with call counts and cost. */
+  apiByApp: GlobalCostSummaryApiByAppItem[];
 }
 

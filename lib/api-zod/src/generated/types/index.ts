@@ -17,6 +17,7 @@ export * from './appSummaryEnvironment';
 export * from './costByService';
 export * from './costReport';
 export * from './globalCostSummary';
+export * from './globalCostSummaryApiByAppItem';
 export * from './globalCostSummaryByAppItem';
 export * from './globalHealth';
 export * from './healthStatus';

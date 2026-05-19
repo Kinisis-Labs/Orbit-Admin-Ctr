@@ -5,6 +5,8 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { CostByService } from './costByService';
+import type { GlobalCostSummaryApiByAppItem } from './globalCostSummaryApiByAppItem';
 import type { GlobalCostSummaryByAppItem } from './globalCostSummaryByAppItem';
 
 export interface GlobalCostSummary {
@@ -17,4 +19,8 @@ export interface GlobalCostSummary {
   /** Portion of monthToDate attributable to API usage */
   apiCost: number;
   byApp: GlobalCostSummaryByAppItem[];
+  /** Cost breakdown by Azure resource type, aggregated across all apps. */
+  byResource: CostByService[];
+  /** Per-app API usage with call counts and cost. */
+  apiByApp: GlobalCostSummaryApiByAppItem[];
 }

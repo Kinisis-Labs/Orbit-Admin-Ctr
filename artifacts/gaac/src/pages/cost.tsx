@@ -60,7 +60,7 @@ export default function Cost() {
       <div className="bg-card border border-border shadow-sm flex flex-col">
         {/* Action Toolbar */}
         <div className="flex items-center justify-between p-2 border-b border-border bg-card">
-          <h2 className="text-sm font-semibold px-2">Cost by Resource</h2>
+          <h2 className="text-sm font-semibold px-2">Cost by Application</h2>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
               <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
@@ -118,6 +118,103 @@ export default function Cost() {
               )}
             </TableBody>
           </Table>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Cost by Resource (aggregated across apps) */}
+        <div className="bg-card border border-border shadow-sm flex flex-col">
+          <div className="flex items-center justify-between p-2 border-b border-border bg-card">
+            <h2 className="text-sm font-semibold px-2">Cost by Resource</h2>
+            <span className="text-[11px] text-muted-foreground pr-2">Aggregated across all apps</span>
+          </div>
+          <div className="overflow-x-auto">
+            <Table className="text-[13px]">
+              <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-8 font-semibold text-foreground">Resource Type</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground text-right w-[130px]">Cost (MTD)</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground w-[160px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <TableRow key={i} className="h-8 border-b border-border/50">
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                      <TableCell><Skeleton className="h-2 w-full" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  cost?.byResource.map((item) => (
+                    <TableRow key={item.service} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                      <TableCell className="py-1 font-medium">{item.service}</TableCell>
+                      <TableCell className="py-1 text-right font-mono text-[12px]">
+                        {formatCurrency(item.amount, cost.currency)}
+                      </TableCell>
+                      <TableCell className="py-1">
+                        <Progress value={(item.amount / (cost?.monthToDate || 1)) * 100} className="h-1.5 rounded-none bg-muted" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        {/* API usage by App */}
+        <div className="bg-card border border-border shadow-sm flex flex-col">
+          <div className="flex items-center justify-between p-2 border-b border-border bg-card">
+            <h2 className="text-sm font-semibold px-2">API Usage by Application</h2>
+            <span className="text-[11px] text-muted-foreground pr-2">
+              {cost ? `${formatCurrency(cost.apiCost, cost.currency)} of ${formatCurrency(cost.monthToDate, cost.currency)} MTD` : ""}
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <Table className="text-[13px]">
+              <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground text-right w-[140px]">Calls (MTD)</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Unit ($/M)</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i} className="h-8 border-b border-border/50">
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  cost?.apiByApp.map((row) => (
+                    <TableRow key={row.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                      <TableCell className="py-1 font-medium">
+                        <Link href={`/apps/${row.appId}`} className="hover:underline text-primary">
+                          {row.appName}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">
+                        {new Intl.NumberFormat("en-US").format(row.totalCalls)}
+                      </TableCell>
+                      <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
+                        {formatCurrency(row.costPerMillion, cost.currency)}
+                      </TableCell>
+                      <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">
+                        {formatCurrency(row.cost, cost.currency)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
     </div>

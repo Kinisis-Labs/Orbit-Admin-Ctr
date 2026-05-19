@@ -334,7 +334,7 @@ components:
         currency: { type: string }
     GlobalCostSummary:
       type: object
-      required: [currency, monthToDate, forecast, budget, apiCalls, apiCost, byApp]
+      required: [currency, monthToDate, forecast, budget, apiCalls, apiCost, byApp, byResource, apiByApp]
       properties:
         currency: { type: string }
         monthToDate: { type: number }
@@ -351,3 +351,19 @@ components:
               appId: { type: string }
               appName: { type: string }
               amount: { type: number }
+        byResource:
+          description: Cost breakdown by Azure resource type, aggregated across all apps.
+          type: array
+          items: { $ref: "#/components/schemas/CostByService" }
+        apiByApp:
+          description: Per-app API usage with call counts and cost.
+          type: array
+          items:
+            type: object
+            required: [appId, appName, totalCalls, costPerMillion, cost]
+            properties:
+              appId: { type: string }
+              appName: { type: string }
+              totalCalls: { type: integer }
+              costPerMillion: { type: number }
+              cost: { type: number }
