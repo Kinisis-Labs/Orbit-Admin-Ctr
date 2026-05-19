@@ -1,18 +1,31 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useListApps } from "@workspace/api-client-react";
-import { Cloud, Search, Settings, Home, Bell, DollarSign, LayoutDashboard, ChevronRight, Menu } from "lucide-react";
+import { Cloud, Search, Settings, Home, Bell, DollarSign, LayoutDashboard, ChevronRight, Menu, Sun, Moon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+
+type Theme = "dark" | "light";
+
+function getInitialTheme(): Theme {
+  if (typeof window === "undefined") return "dark";
+  const stored = window.localStorage.getItem("gaac-theme");
+  return stored === "light" ? "light" : "dark";
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { data: apps } = useListApps();
-  
-  // Set light mode as default for Azure look (remove dark class)
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+
   useEffect(() => {
-    document.documentElement.classList.remove("dark");
-  }, []);
+    const root = document.documentElement;
+    if (theme === "dark") root.classList.add("dark");
+    else root.classList.remove("dark");
+    window.localStorage.setItem("gaac-theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   const currentAppId = location.startsWith("/apps/") ? location.split("/")[2] : null;
   const currentApp = apps?.find(a => a.id === currentAppId);
@@ -38,6 +51,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            className="h-8 w-8 text-gray-300 hover:text-white hover:bg-white/10 rounded-sm"
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-300 hover:text-white hover:bg-white/10 rounded-sm">
             <Bell className="h-4 w-4" />
           </Button>
@@ -94,7 +117,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <main className="flex-1 overflow-auto bg-[#F2F2F2]">
+          <main className="flex-1 overflow-auto bg-background">
             <div className="p-4 max-w-full">
               {children}
             </div>
