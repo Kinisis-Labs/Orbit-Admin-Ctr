@@ -1,6 +1,6 @@
-# [Project name]
+# Kinisis Orbit
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+The Kinisis admin center — an Azure operations dashboard giving operators a unified view of every Kinisis application's health, alerts, telemetry, and cost.
 
 ## Run & Operate
 
