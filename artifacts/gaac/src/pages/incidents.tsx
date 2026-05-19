@@ -7,7 +7,7 @@ export default function Incidents() {
     <div className="space-y-4">
       <PageHeader
         title="Incidents"
-        subtitle="Incident management is owned by ServiceNow. Kinisis Orbit will surface live tickets once the integration is enabled."
+        subtitle="Incident management is owned by ServiceNow. Orbit Command Center will surface live tickets once the integration is enabled."
         right={
           <Button variant="default" size="sm" className="h-8 rounded-sm" disabled>
             <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
@@ -28,7 +28,7 @@ export default function Incidents() {
             </div>
             <p className="text-[13px] text-muted-foreground leading-relaxed">
               Incidents for Kinisis applications are managed in ServiceNow. To bring live incident
-              data into Kinisis Orbit, the platform team needs to provision a ServiceNow application
+              data into Orbit Command Center, the platform team needs to provision a ServiceNow application
               registration with read access to the <code className="text-foreground bg-muted px-1 py-0.5 rounded-sm text-[12px]">incident</code> and{" "}
               <code className="text-foreground bg-muted px-1 py-0.5 rounded-sm text-[12px]">cmdb_ci_service</code> tables, then store the
               credentials in <code className="text-foreground bg-muted px-1 py-0.5 rounded-sm text-[12px]">kv-gaac-prod</code> as{" "}

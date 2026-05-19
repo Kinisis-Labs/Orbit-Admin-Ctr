@@ -24,7 +24,7 @@ export default function ServiceHealth() {
     <div className="space-y-4">
       <PageHeader
         title="Azure service health"
-        subtitle="Active incidents, advisories, and planned maintenance affecting Azure services Kinisis Orbit depends on"
+        subtitle="Active incidents, advisories, and planned maintenance affecting Azure services Orbit Command Center depends on"
       />
 
       <div className={`border shadow-sm p-4 flex items-start gap-3 ${active.length === 0 ? "bg-emerald-500/5 border-emerald-500/30" : "bg-destructive/5 border-destructive/30"}`}>
@@ -33,7 +33,7 @@ export default function ServiceHealth() {
             <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
             <div>
               <div className="text-[14px] font-semibold text-foreground">All Azure services nominal</div>
-              <div className="text-[12px] text-muted-foreground mt-0.5">No active incidents affecting Kinisis Orbit's dependencies.</div>
+              <div className="text-[12px] text-muted-foreground mt-0.5">No active incidents affecting Orbit Command Center's dependencies.</div>
             </div>
           </>
         ) : (

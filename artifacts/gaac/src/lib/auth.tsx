@@ -26,7 +26,7 @@ export type EntraUser = {
 export const COST_READER_GROUP: EntraGroup = {
   id: "b7e3-aad-cost-readers",
   displayName: "GAAC-Cost-Readers",
-  description: "Allowed to view cost, billing, and revenue data in Kinisis Orbit.",
+  description: "Allowed to view cost, billing, and revenue data in Orbit Command Center.",
 };
 
 const STORAGE_KEY = "gaac-mock-groups";
