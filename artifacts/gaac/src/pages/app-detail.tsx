@@ -395,7 +395,7 @@ function CostTab({ appId }: { appId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Accumulated Cost (MTD)</div>
           <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.monthToDate)}</div>
@@ -403,6 +403,15 @@ function CostTab({ appId }: { appId: string }) {
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Forecast</div>
           <div className="text-xl font-semibold tabular-nums text-muted-foreground">{formatCurrency(data.forecast)}</div>
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">API usage (MTD)</div>
+          <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.apiUsage.cost)}</div>
+          <div className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
+            {new Intl.NumberFormat("en-US").format(data.apiUsage.totalCalls)} calls
+            <span className="mx-1">·</span>
+            {formatCurrency(data.apiUsage.costPerMillion)}/M
+          </div>
         </div>
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Budget Tracking</div>

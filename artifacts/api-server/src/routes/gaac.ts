@@ -304,13 +304,28 @@ router.get("/apps/:appId/network", (req, res) => {
 });
 
 // --- cost ---
+const API_COST_PER_MILLION = 3.5; // blended APIM + gateway egress unit price
+function apiUsageForApp(app: AppRecord) {
+  const rand = seededRand(app.id + "api");
+  const baseCalls = 8_000_000 + Math.floor(rand() * 42_000_000);
+  const tierMultiplier =
+    app.tags.tier === "tier-0" ? 3.2 :
+    app.tags.tier === "tier-1" ? 2.0 :
+    app.tags.tier === "tier-2" ? 1.0 : 0.4;
+  const totalCalls = Math.floor(baseCalls * tierMultiplier);
+  const cost = Number(((totalCalls / 1_000_000) * API_COST_PER_MILLION).toFixed(2));
+  return { totalCalls, costPerMillion: API_COST_PER_MILLION, cost };
+}
+
 router.get("/apps/:appId/cost", (req, res) => {
   const app = findApp(req.params.appId);
   if (!app) {
     res.status(404).json({ error: "App not found" });
     return;
   }
-  const mtd = app.monthToDateCost;
+  const apiUsage = apiUsageForApp(app);
+  const mtd = Number((app.monthToDateCost + apiUsage.cost).toFixed(2));
+  const infraBudget = app.monthToDateCost;
   const data = GetCostResponse.parse({
     currency: "USD",
     monthToDate: mtd,
@@ -318,14 +333,16 @@ router.get("/apps/:appId/cost", (req, res) => {
     budget: Number((mtd * 2.0).toFixed(2)),
     daily: makeDaily(app.id, 30, mtd / 18),
     byService: [
-      { service: "App Service", amount: Number((mtd * 0.32).toFixed(2)) },
-      { service: "Azure SQL", amount: Number((mtd * 0.24).toFixed(2)) },
-      { service: "Storage", amount: Number((mtd * 0.08).toFixed(2)) },
-      { service: "Application Insights", amount: Number((mtd * 0.11).toFixed(2)) },
-      { service: "Front Door", amount: Number((mtd * 0.14).toFixed(2)) },
-      { service: "Redis Cache", amount: Number((mtd * 0.07).toFixed(2)) },
-      { service: "Other", amount: Number((mtd * 0.04).toFixed(2)) },
+      { service: "App Service", amount: Number((infraBudget * 0.32).toFixed(2)) },
+      { service: "Azure SQL", amount: Number((infraBudget * 0.24).toFixed(2)) },
+      { service: "API Management", amount: apiUsage.cost },
+      { service: "Storage", amount: Number((infraBudget * 0.08).toFixed(2)) },
+      { service: "Application Insights", amount: Number((infraBudget * 0.11).toFixed(2)) },
+      { service: "Front Door", amount: Number((infraBudget * 0.14).toFixed(2)) },
+      { service: "Redis Cache", amount: Number((infraBudget * 0.07).toFixed(2)) },
+      { service: "Other", amount: Number((infraBudget * 0.04).toFixed(2)) },
     ],
+    apiUsage,
   });
   res.json(data);
 });
@@ -491,16 +508,21 @@ router.get("/global/alerts", (_req, res) => {
 });
 
 router.get("/global/cost-summary", (_req, res) => {
-  const mtd = APPS.reduce((s, a) => s + a.monthToDateCost, 0);
+  const apiByApp = new Map(APPS.map((a) => [a.id, apiUsageForApp(a)] as const));
+  const apiCost = APPS.reduce((s, a) => s + (apiByApp.get(a.id)?.cost ?? 0), 0);
+  const apiCalls = APPS.reduce((s, a) => s + (apiByApp.get(a.id)?.totalCalls ?? 0), 0);
+  const mtd = APPS.reduce((s, a) => s + a.monthToDateCost, 0) + apiCost;
   const data = GetGlobalCostSummaryResponse.parse({
     currency: "USD",
     monthToDate: Number(mtd.toFixed(2)),
     forecast: Number((mtd * 1.65).toFixed(2)),
     budget: Number((mtd * 2.0).toFixed(2)),
+    apiCalls,
+    apiCost: Number(apiCost.toFixed(2)),
     byApp: APPS.map((a) => ({
       appId: a.id,
       appName: a.name,
-      amount: a.monthToDateCost,
+      amount: Number((a.monthToDateCost + (apiByApp.get(a.id)?.cost ?? 0)).toFixed(2)),
     })),
   });
   res.json(data);

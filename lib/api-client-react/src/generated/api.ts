@@ -706,7 +706,7 @@ export const getListGlobalAlertsUrl = () => {
 }
 
 /**
- * @summary All active alerts across all apps
+ * @summary All alerts across all apps (any status)
  */
 export const listGlobalAlerts = async ( options?: RequestInit): Promise<Alert[]> => {
 
@@ -753,7 +753,7 @@ export type ListGlobalAlertsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary All active alerts across all apps
+ * @summary All alerts across all apps (any status)
  */
 
 export function useListGlobalAlerts<TData = Awaited<ReturnType<typeof listGlobalAlerts>>, TError = ErrorType<unknown>>(

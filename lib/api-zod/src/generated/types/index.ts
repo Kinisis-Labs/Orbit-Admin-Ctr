@@ -9,6 +9,7 @@
 export * from './alert';
 export * from './alertSource';
 export * from './alertStatus';
+export * from './apiUsage';
 export * from './appDetail';
 export * from './appDetailTags';
 export * from './appSummary';

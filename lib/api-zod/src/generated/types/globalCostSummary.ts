@@ -12,5 +12,9 @@ export interface GlobalCostSummary {
   monthToDate: number;
   forecast: number;
   budget: number;
+  /** Total month-to-date API calls across all apps */
+  apiCalls: number;
+  /** Portion of monthToDate attributable to API usage */
+  apiCost: number;
   byApp: GlobalCostSummaryByAppItem[];
 }

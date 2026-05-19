@@ -5,6 +5,7 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { ApiUsage } from './apiUsage';
 import type { CostByService } from './costByService';
 import type { MetricPoint } from './metricPoint';
 
@@ -15,4 +16,5 @@ export interface CostReport {
   budget: number;
   daily: MetricPoint[];
   byService: CostByService[];
+  apiUsage: ApiUsage;
 }

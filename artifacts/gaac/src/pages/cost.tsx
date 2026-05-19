@@ -19,16 +19,30 @@ export default function Cost() {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold text-foreground tracking-tight">Cost Management & Billing</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <Tile 
-          title="Actual cost (MTD)" 
-          value={isLoading ? null : (cost ? formatCurrency(cost.monthToDate, cost.currency) : "$0.00")} 
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+        <Tile
+          title="Actual cost (MTD)"
+          value={isLoading ? null : (cost ? formatCurrency(cost.monthToDate, cost.currency) : "$0.00")}
         />
-        <Tile 
-          title="Forecasted cost" 
-          value={isLoading ? null : (cost ? formatCurrency(cost.forecast, cost.currency) : "$0.00")} 
+        <Tile
+          title="Forecasted cost"
+          value={isLoading ? null : (cost ? formatCurrency(cost.forecast, cost.currency) : "$0.00")}
         />
-        
+
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">API usage (MTD)</div>
+          {isLoading ? <Skeleton className="h-7 w-20 mt-1" /> : (
+            <>
+              <div className="text-xl font-semibold text-foreground mt-1 tabular-nums">
+                {formatCurrency(cost?.apiCost || 0, cost?.currency || "USD")}
+              </div>
+              <div className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
+                {new Intl.NumberFormat("en-US").format(cost?.apiCalls || 0)} calls across all apps
+              </div>
+            </>
+          )}
+        </div>
+
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Budget utilization</div>
           {isLoading ? <Skeleton className="h-7 w-full mt-1" /> : (

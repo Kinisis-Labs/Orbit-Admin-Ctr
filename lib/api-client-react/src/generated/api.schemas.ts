@@ -102,6 +102,18 @@ export interface CostByService {
   amount: number;
 }
 
+/**
+ * API consumption (API Management + gateway egress) included in monthToDate.
+ */
+export interface ApiUsage {
+  /** Month-to-date API call count */
+  totalCalls: number;
+  /** Blended unit price per million calls */
+  costPerMillion: number;
+  /** Month-to-date API usage cost */
+  cost: number;
+}
+
 export interface CostReport {
   currency: string;
   monthToDate: number;
@@ -109,6 +121,7 @@ export interface CostReport {
   budget: number;
   daily: MetricPoint[];
   byService: CostByService[];
+  apiUsage: ApiUsage;
 }
 
 export interface TopError {
@@ -180,6 +193,10 @@ export interface GlobalCostSummary {
   monthToDate: number;
   forecast: number;
   budget: number;
+  /** Total month-to-date API calls across all apps */
+  apiCalls: number;
+  /** Portion of monthToDate attributable to API usage */
+  apiCost: number;
   byApp: GlobalCostSummaryByAppItem[];
 }
 

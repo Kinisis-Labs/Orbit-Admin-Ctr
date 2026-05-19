@@ -117,7 +117,12 @@ export const GetCostResponse = zod.object({
   "byService": zod.array(zod.object({
   "service": zod.string(),
   "amount": zod.number()
-}))
+})),
+  "apiUsage": zod.object({
+  "totalCalls": zod.number().describe('Month-to-date API call count'),
+  "costPerMillion": zod.number().describe('Blended unit price per million calls'),
+  "cost": zod.number().describe('Month-to-date API usage cost')
+}).describe('API consumption (API Management + gateway egress) included in monthToDate.')
 })
 
 
@@ -179,7 +184,7 @@ export const GetGlobalHealthResponse = zod.object({
 
 
 /**
- * @summary All active alerts across all apps
+ * @summary All alerts across all apps (any status)
  */
 export const ListGlobalAlertsResponseItem = zod.object({
   "id": zod.string(),
@@ -203,6 +208,8 @@ export const GetGlobalCostSummaryResponse = zod.object({
   "monthToDate": zod.number(),
   "forecast": zod.number(),
   "budget": zod.number(),
+  "apiCalls": zod.number().describe('Total month-to-date API calls across all apps'),
+  "apiCost": zod.number().describe('Portion of monthToDate attributable to API usage'),
   "byApp": zod.array(zod.object({
   "appId": zod.string(),
   "appName": zod.string(),

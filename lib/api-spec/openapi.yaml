@@ -264,9 +264,17 @@ components:
       properties:
         service: { type: string }
         amount: { type: number }
+    ApiUsage:
+      type: object
+      required: [totalCalls, costPerMillion, cost]
+      description: API consumption (API Management + gateway egress) included in monthToDate.
+      properties:
+        totalCalls: { type: integer, description: Month-to-date API call count }
+        costPerMillion: { type: number, description: Blended unit price per million calls }
+        cost: { type: number, description: Month-to-date API usage cost }
     CostReport:
       type: object
-      required: [currency, monthToDate, forecast, budget, daily, byService]
+      required: [currency, monthToDate, forecast, budget, daily, byService, apiUsage]
       properties:
         currency: { type: string }
         monthToDate: { type: number }
@@ -278,6 +286,7 @@ components:
         byService:
           type: array
           items: { $ref: "#/components/schemas/CostByService" }
+        apiUsage: { $ref: "#/components/schemas/ApiUsage" }
     TelemetryReport:
       type: object
       required: [requestsPerMin, p95LatencyMs, errorRatePercent, availabilityPercent, series, topErrors]
@@ -325,12 +334,14 @@ components:
         currency: { type: string }
     GlobalCostSummary:
       type: object
-      required: [currency, monthToDate, forecast, budget, byApp]
+      required: [currency, monthToDate, forecast, budget, apiCalls, apiCost, byApp]
       properties:
         currency: { type: string }
         monthToDate: { type: number }
         forecast: { type: number }
         budget: { type: number }
+        apiCalls: { type: integer, description: Total month-to-date API calls across all apps }
+        apiCost: { type: number, description: Portion of monthToDate attributable to API usage }
         byApp:
           type: array
           items:
