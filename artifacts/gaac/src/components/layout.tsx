@@ -4,7 +4,7 @@ import { useListApps } from "@workspace/api-client-react";
 import {
   Cloud, Search, Settings as SettingsIcon, Home, Bell, DollarSign, LayoutDashboard,
   ChevronRight, Menu, Sun, Moon, Lock, Rocket, AlertOctagon, Activity,
-  HeartPulse, Network, FileText, ShieldAlert, Users, Layers, Tags, SlidersHorizontal,
+  HeartPulse, Network, FileText, ShieldAlert, Users, Layers, Tags, SlidersHorizontal, UserCheck,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/network": "Network",
   "/logs": "Log search",
   "/service-health": "Service health",
+  "/users": "Users & activity",
   "/cost": "Cost Management",
   "/cost/budgets": "Budgets",
   "/cost/forecasts": "Forecasts",
@@ -134,6 +135,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <NavItem href="/network" icon={<Network className="h-[18px] w-[18px]" />} label="Network" active={location === "/network"} collapsed={navCollapsed} />
             <NavItem href="/logs" icon={<FileText className="h-[18px] w-[18px]" />} label="Log search" active={location === "/logs"} collapsed={navCollapsed} />
             <NavItem href="/service-health" icon={<ShieldAlert className="h-[18px] w-[18px]" />} label="Service health" active={location === "/service-health"} collapsed={navCollapsed} />
+            <NavItem href="/users" icon={<UserCheck className="h-[18px] w-[18px]" />} label="Users & activity" active={location === "/users"} collapsed={navCollapsed} />
 
             <NavGroup label="Cost" collapsed={navCollapsed} />
             <NavItem

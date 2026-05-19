@@ -24,6 +24,7 @@ import ServiceHealth from "@/pages/service-health";
 import Subscriptions from "@/pages/subscriptions";
 import Tags from "@/pages/tags";
 import Access from "@/pages/access";
+import Users from "@/pages/users";
 import Preferences from "@/pages/preferences";
 import NotFound from "@/pages/not-found";
 
@@ -52,6 +53,7 @@ function Router() {
         <Route path="/network" component={NetworkPage} />
         <Route path="/logs" component={Logs} />
         <Route path="/service-health" component={ServiceHealth} />
+        <Route path="/users" component={Users} />
         <Route path="/cost"><Gated><Cost /></Gated></Route>
         <Route path="/cost/budgets"><Gated><Budgets /></Gated></Route>
         <Route path="/cost/forecasts"><Gated><Forecasts /></Gated></Route>
