@@ -14,18 +14,14 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { RefreshCw, Filter, Download } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-
-const GLOBAL = "__global__";
+import { ScopeSelect, useScope } from "@/lib/scope";
 
 export default function Home() {
-  const [scope, setScope] = useState<string>(GLOBAL);
-  const isGlobal = scope === GLOBAL;
+  const { scope, setScope, isGlobal } = useScope();
 
   const { data: apps, isLoading: appsLoading } = useListApps();
   const { data: health, isLoading: healthLoading } = useGetGlobalHealth({
@@ -52,7 +48,6 @@ export default function Home() {
 
   return (
     <div className="space-y-4">
-      {/* Title + scope picker */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold text-foreground tracking-tight">Dashboard</h1>
@@ -62,56 +57,21 @@ export default function Home() {
               : `Scoped to ${selectedApp?.name ?? "application"}`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="scope-select" className="text-[12px] text-muted-foreground font-medium">Scope</label>
-          <Select value={scope} onValueChange={setScope}>
-            <SelectTrigger
-              id="scope-select"
-              aria-label="Dashboard scope"
-              className="h-8 w-[260px] rounded-sm border-border bg-card text-[13px]"
-              data-testid="scope-select"
-            >
-              <SelectValue placeholder="Select scope" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={GLOBAL}>Global — All Azure Costs</SelectItem>
-              {apps?.map((a) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <ScopeSelect />
       </div>
 
-      {/* KPI Tiles */}
       {isGlobal ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <Tile
-            title="Total Applications"
-            value={healthLoading ? null : health?.totalApps ?? 0}
-            sub="Active resources"
-          />
+          <Tile title="Total Applications" value={healthLoading ? null : health?.totalApps ?? 0} sub="Active resources" />
           <Tile
             title="Global Health"
             value={healthLoading ? null : health?.healthy ?? 0}
             sub={`${health?.degraded ?? 0} degraded, ${health?.unhealthy ?? 0} unhealthy`}
           />
-          <Tile
-            title="Active Alerts"
-            value={alertsLoading ? null : alerts?.length ?? 0}
-            sub="Requiring attention"
-          />
+          <Tile title="Active Alerts" value={alertsLoading ? null : alerts?.length ?? 0} sub="Requiring attention" />
           <Tile
             title="MTD Azure Spend"
-            value={
-              globalCostLoading
-                ? null
-                : globalCost
-                  ? formatCurrency(globalCost.monthToDate, globalCost.currency)
-                  : "$0.00"
-            }
+            value={globalCostLoading ? null : globalCost ? formatCurrency(globalCost.monthToDate, globalCost.currency) : "$0.00"}
             sub="Month to date"
           />
         </div>
@@ -119,40 +79,18 @@ export default function Home() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <Tile
             title="Status"
-            value={
-              appDetailLoading ? null : appDetail ? (
-                <StatusBadge status={appDetail.status} />
-              ) : (
-                "—"
-              )
-            }
+            value={appDetailLoading ? null : appDetail ? <StatusBadge status={appDetail.status} /> : "—"}
             sub={selectedApp ? `${selectedApp.environment} · ${selectedApp.region}` : ""}
           />
-          <Tile
-            title="Active Alerts"
-            value={appDetailLoading ? null : appDetail?.activeAlerts ?? 0}
-            sub="Open on this application"
-          />
+          <Tile title="Active Alerts" value={appDetailLoading ? null : appDetail?.activeAlerts ?? 0} sub="Open on this application" />
           <Tile
             title="MTD Spend"
-            value={
-              appCostLoading
-                ? null
-                : appCost
-                  ? formatCurrency(appCost.monthToDate, appCost.currency)
-                  : "$0.00"
-            }
+            value={appCostLoading ? null : appCost ? formatCurrency(appCost.monthToDate, appCost.currency) : "$0.00"}
             sub={appCost ? `Forecast ${formatCurrency(appCost.forecast, appCost.currency)}` : ""}
           />
           <Tile
             title="API Calls (MTD)"
-            value={
-              appCostLoading
-                ? null
-                : appCost
-                  ? new Intl.NumberFormat("en-US").format(appCost.apiUsage.totalCalls)
-                  : 0
-            }
+            value={appCostLoading ? null : appCost ? new Intl.NumberFormat("en-US").format(appCost.apiUsage.totalCalls) : 0}
             sub={
               appCost
                 ? `${formatCurrency(appCost.apiUsage.cost, appCost.currency)} @ ${formatCurrency(appCost.apiUsage.costPerMillion, appCost.currency)}/M`
@@ -162,7 +100,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Main panel */}
       {isGlobal ? (
         <div className="bg-card border border-border shadow-sm flex flex-col">
           <div className="flex items-center justify-between p-2 border-b border-border bg-card">
@@ -236,13 +173,8 @@ export default function Home() {
       ) : (
         <div className="bg-card border border-border shadow-sm flex flex-col">
           <div className="flex items-center justify-between p-2 border-b border-border bg-card">
-            <h2 className="text-sm font-semibold px-2">
-              Cost by API Name — {selectedApp?.name ?? ""}
-            </h2>
-            <Link
-              href={`/apps/${scope}`}
-              className="text-[12px] text-primary hover:underline pr-2"
-            >
+            <h2 className="text-sm font-semibold px-2">Cost by API Name — {selectedApp?.name ?? ""}</h2>
+            <Link href={`/apps/${scope}`} className="text-[12px] text-primary hover:underline pr-2">
               Open application →
             </Link>
           </div>
