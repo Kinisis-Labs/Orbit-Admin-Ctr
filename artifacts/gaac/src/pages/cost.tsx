@@ -1,9 +1,10 @@
 import { useGetGlobalCostSummary } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "wouter";
+import { Download, PieChart, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Cost() {
   const { data: cost, isLoading } = useGetGlobalCostSummary();
@@ -15,67 +16,66 @@ export default function Cost() {
   const budgetPercent = cost ? (cost.monthToDate / cost.budget) * 100 : 0;
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Global Cost</h1>
+    <div className="space-y-4">
+      <h1 className="text-xl font-semibold text-foreground tracking-tight">Cost Management & Billing</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Month-to-Date Spend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-24" /> : (
-              <div className="text-3xl font-bold">{cost ? formatCurrency(cost.monthToDate, cost.currency) : "$0.00"}</div>
-            )}
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+        <Tile 
+          title="Actual cost (MTD)" 
+          value={isLoading ? null : (cost ? formatCurrency(cost.monthToDate, cost.currency) : "$0.00")} 
+        />
+        <Tile 
+          title="Forecasted cost" 
+          value={isLoading ? null : (cost ? formatCurrency(cost.forecast, cost.currency) : "$0.00")} 
+        />
         
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Forecast (EOM)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-24" /> : (
-              <div className="text-3xl font-bold">{cost ? formatCurrency(cost.forecast, cost.currency) : "$0.00"}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Budget Tracking</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-full mt-2" /> : (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>{formatCurrency(cost?.monthToDate || 0, cost?.currency || "USD")}</span>
-                  <span className="text-muted-foreground">{formatCurrency(cost?.budget || 0, cost?.currency || "USD")}</span>
-                </div>
-                <Progress value={budgetPercent} className="h-2" />
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Budget utilization</div>
+          {isLoading ? <Skeleton className="h-7 w-full mt-1" /> : (
+            <div className="space-y-1 mt-1">
+              <div className="flex justify-between text-[11px]">
+                <span className="font-semibold text-foreground tabular-nums">{formatCurrency(cost?.monthToDate || 0, cost?.currency || "USD")}</span>
+                <span className="text-muted-foreground tabular-nums">{formatCurrency(cost?.budget || 0, cost?.currency || "USD")}</span>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <Progress value={budgetPercent} className="h-1.5 rounded-none bg-muted" />
+            </div>
+          )}
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Cost by Application</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Application</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="w-[30%]">Share of Total</TableHead>
+      <div className="bg-card border border-border shadow-sm flex flex-col">
+        {/* Action Toolbar */}
+        <div className="flex items-center justify-between p-2 border-b border-border bg-card">
+          <h2 className="text-sm font-semibold px-2">Cost by Resource</h2>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              Refresh
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
+              <PieChart className="h-3.5 w-3.5 mr-1.5" />
+              View Chart
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Download CSV
+            </Button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <Table className="text-[13px]">
+            <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-8 font-semibold text-foreground">Resource Name</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right w-[150px]">Cost</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground w-[200px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}>
+                  <TableRow key={i} className="h-8 border-b border-border/50">
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
                     <TableCell><Skeleton className="h-2 w-full" /></TableCell>
@@ -83,29 +83,42 @@ export default function Cost() {
                 ))
               ) : cost?.byApp.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">No cost data available</TableCell>
+                  <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">No cost data available</TableCell>
                 </TableRow>
               ) : (
                 cost?.byApp.map((item) => (
-                  <TableRow key={item.appId}>
-                    <TableCell className="font-medium">
+                  <TableRow key={item.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                    <TableCell className="py-1 font-medium">
                       <Link href={`/apps/${item.appId}`} className="hover:underline text-primary">
                         {item.appName}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
+                    <TableCell className="py-1 text-right font-mono text-[12px]">
                       {formatCurrency(item.amount, cost.currency)}
                     </TableCell>
-                    <TableCell>
-                      <Progress value={(item.amount / cost.monthToDate) * 100} className="h-1.5" />
+                    <TableCell className="py-1">
+                      <Progress value={(item.amount / cost.monthToDate) * 100} className="h-1.5 rounded-none bg-muted" />
                     </TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Tile({ title, value }: { title: string; value: React.ReactNode }) {
+  return (
+    <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+      <div className="text-[12px] text-muted-foreground font-medium mb-1 truncate">{title}</div>
+      {value === null ? (
+        <Skeleton className="h-7 w-20 mt-1" />
+      ) : (
+        <div className="text-xl font-semibold text-foreground mt-1 tabular-nums">{value}</div>
+      )}
     </div>
   );
 }

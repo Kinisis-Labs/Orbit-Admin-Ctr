@@ -1,10 +1,10 @@
 import { useGetGlobalHealth, useListApps, useListGlobalAlerts, useGetGlobalCostSummary } from "@workspace/api-client-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Activity, AlertTriangle, Box, DollarSign } from "lucide-react";
+import { RefreshCw, Filter, Download } from "lucide-react";
 import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   const { data: health, isLoading: healthLoading } = useGetGlobalHealth();
@@ -17,117 +17,93 @@ export default function Home() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Global Overview</h1>
+    <div className="space-y-4">
+      {/* Title */}
+      <h1 className="text-xl font-semibold text-foreground tracking-tight">Dashboard</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
-            <Box className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {healthLoading ? <Skeleton className="h-8 w-16" /> : (
-              <div className="text-2xl font-bold">{health?.totalApps || 0}</div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              Active resources
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Global Health</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {healthLoading ? <Skeleton className="h-8 w-24" /> : (
-              <div className="flex gap-2">
-                <div className="text-2xl font-bold text-emerald-500">{health?.healthy || 0}</div>
-                <div className="text-2xl font-bold text-amber-500">{health?.degraded || 0}</div>
-                <div className="text-2xl font-bold text-red-500">{health?.unhealthy || 0}</div>
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              Healthy / Degraded / Unhealthy
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Alerts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {alertsLoading ? <Skeleton className="h-8 w-16" /> : (
-              <div className="text-2xl font-bold">{alerts?.length || 0}</div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              Requiring attention
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">MTD Azure Spend</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {costLoading ? <Skeleton className="h-8 w-24" /> : (
-              <div className="text-2xl font-bold">{cost ? formatCurrency(cost.monthToDate, cost.currency) : "$0.00"}</div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              Month to date
-            </p>
-          </CardContent>
-        </Card>
+      {/* Dense KPI Tiles Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <Tile 
+          title="Total Applications" 
+          value={healthLoading ? null : (health?.totalApps || 0)} 
+          sub="Active resources" 
+        />
+        <Tile 
+          title="Global Health" 
+          value={healthLoading ? null : (health?.healthy || 0)} 
+          sub={`${health?.degraded || 0} degraded, ${health?.unhealthy || 0} unhealthy`} 
+        />
+        <Tile 
+          title="Active Alerts" 
+          value={alertsLoading ? null : (alerts?.length || 0)} 
+          sub="Requiring attention" 
+        />
+        <Tile 
+          title="MTD Azure Spend" 
+          value={costLoading ? null : (cost ? formatCurrency(cost.monthToDate, cost.currency) : "$0.00")} 
+          sub="Month to date" 
+        />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Applications</CardTitle>
-          <CardDescription>Monitored applications and their current status</CardDescription>
-        </CardHeader>
-        <CardContent>
+      {/* Blade / Panel Style for Table */}
+      <div className="bg-card border border-border shadow-sm flex flex-col">
+        {/* Blade Header / Toolbar */}
+        <div className="flex items-center justify-between p-2 border-b border-border bg-card">
+          <h2 className="text-sm font-semibold px-2">App Services</h2>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              Refresh
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
+              <Filter className="h-3.5 w-3.5 mr-1.5" />
+              Add filter
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Export
+            </Button>
+          </div>
+        </div>
+
+        {/* Table Content */}
+        <div className="overflow-x-auto">
           {appsLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
+            <div className="p-4 space-y-2">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Environment</TableHead>
-                  <TableHead>Region</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Active Alerts</TableHead>
+            <Table className="text-[13px]">
+              <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-8 font-semibold text-foreground w-[250px]">Name</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground">Status</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground">Environment</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground">Location</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground text-right">Alerts</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {apps?.map((app) => (
-                  <TableRow key={app.id}>
-                    <TableCell className="font-medium">
-                      <Link href={`/apps/${app.id}`} className="hover:underline text-primary">
+                  <TableRow key={app.id} className="h-8 border-b border-border/50 hover:bg-muted/40 cursor-pointer">
+                    <TableCell className="py-1">
+                      <Link href={`/apps/${app.id}`} className="text-primary hover:underline font-medium">
                         {app.name}
                       </Link>
                     </TableCell>
-                    <TableCell>{app.environment}</TableCell>
-                    <TableCell>{app.region}</TableCell>
-                    <TableCell>
+                    <TableCell className="py-1">
                       <StatusBadge status={app.status} />
                     </TableCell>
-                    <TableCell className="text-right">{app.activeAlerts || 0}</TableCell>
+                    <TableCell className="py-1 text-muted-foreground">{app.environment}</TableCell>
+                    <TableCell className="py-1 text-muted-foreground">{app.region}</TableCell>
+                    <TableCell className="py-1 text-right tabular-nums">{app.activeAlerts || 0}</TableCell>
                   </TableRow>
                 ))}
                 {apps?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                       No applications found.
                     </TableCell>
                   </TableRow>
@@ -135,8 +111,22 @@ export default function Home() {
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Tile({ title, value, sub }: { title: string; value: React.ReactNode; sub: string }) {
+  return (
+    <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+      <div className="text-[12px] text-muted-foreground font-medium mb-1 truncate">{title}</div>
+      {value === null ? (
+        <Skeleton className="h-7 w-20 mb-1" />
+      ) : (
+        <div className="text-xl font-semibold text-foreground mb-1 tabular-nums">{value}</div>
+      )}
+      <div className="text-[11px] text-muted-foreground truncate">{sub}</div>
     </div>
   );
 }

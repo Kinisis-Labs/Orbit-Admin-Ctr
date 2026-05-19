@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface StatusBadgeProps {
@@ -9,38 +8,29 @@ interface StatusBadgeProps {
 export function StatusBadge({ status, className }: StatusBadgeProps) {
   const normalized = status.toLowerCase();
   
+  let dotColorClass = "bg-muted-foreground";
+  let textClass = "text-muted-foreground";
+
   if (normalized === "healthy") {
-    return (
-      <Badge variant="outline" className={cn("bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-2 py-0.5 text-[10px] font-mono", className)}>
-        HEALTHY
-      </Badge>
-    );
+    dotColorClass = "bg-[#7FBA00]";
+    textClass = "text-foreground";
+  } else if (normalized === "degraded" || normalized === "warning") {
+    dotColorClass = "bg-[#FF8C00]";
+    textClass = "text-foreground";
+  } else if (normalized === "unhealthy" || normalized === "critical" || normalized === "error" || normalized === "failed") {
+    dotColorClass = "bg-[#E81123]";
+    textClass = "text-foreground";
+  } else if (normalized === "info" || normalized === "running") {
+    dotColorClass = "bg-[#0078D4]";
+    textClass = "text-foreground";
   }
-  if (normalized === "degraded" || normalized === "warning") {
-    return (
-      <Badge variant="outline" className={cn("bg-amber-500/10 text-amber-500 border-amber-500/20 px-2 py-0.5 text-[10px] font-mono", className)}>
-        {status.toUpperCase()}
-      </Badge>
-    );
-  }
-  if (normalized === "unhealthy" || normalized === "critical" || normalized === "error") {
-    return (
-      <Badge variant="outline" className={cn("bg-red-500/10 text-red-500 border-red-500/20 px-2 py-0.5 text-[10px] font-mono", className)}>
-        {status.toUpperCase()}
-      </Badge>
-    );
-  }
-  if (normalized === "info") {
-    return (
-      <Badge variant="outline" className={cn("bg-blue-500/10 text-blue-500 border-blue-500/20 px-2 py-0.5 text-[10px] font-mono", className)}>
-        {status.toUpperCase()}
-      </Badge>
-    );
-  }
-  
+
   return (
-    <Badge variant="outline" className={cn("bg-muted text-muted-foreground border-border px-2 py-0.5 text-[10px] font-mono", className)}>
-      {status.toUpperCase() || "UNKNOWN"}
-    </Badge>
+    <div className={cn("inline-flex items-center gap-1.5", className)}>
+      <span className={cn("w-2 h-2 rounded-sm", dotColorClass)} aria-hidden="true" />
+      <span className={cn("text-xs capitalize tracking-tight", textClass)}>
+        {status}
+      </span>
+    </div>
   );
 }

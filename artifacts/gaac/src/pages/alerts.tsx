@@ -3,9 +3,10 @@ import { useListGlobalAlerts } from "@workspace/api-client-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Link } from "wouter";
+import { RefreshCw, Filter, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export default function Alerts() {
@@ -18,74 +19,90 @@ export default function Alerts() {
   );
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-bold tracking-tight">Global Alerts</h1>
-        <div className="w-full sm:w-72">
-          <Input 
-            placeholder="Filter alerts..." 
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
-        </div>
-      </div>
+    <div className="space-y-4">
+      <h1 className="text-xl font-semibold text-foreground tracking-tight">Global Alerts</h1>
 
-      <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Time</TableHead>
-              <TableHead>Severity</TableHead>
-              <TableHead>App</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                </TableRow>
-              ))
-            ) : filteredAlerts?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  No active alerts found.
-                </TableCell>
+      <div className="bg-card border border-border shadow-sm flex flex-col">
+        {/* Action Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2 border-b border-border bg-card gap-2">
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              Refresh
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
+              <Filter className="h-3.5 w-3.5 mr-1.5" />
+              Manage filters
+            </Button>
+          </div>
+          
+          <div className="relative w-full sm:w-64">
+            <Search className="h-3.5 w-3.5 absolute left-2 top-1.5 text-muted-foreground" />
+            <Input 
+              placeholder="Search by name..." 
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="h-7 pl-7 text-xs rounded-sm focus-visible:ring-1 focus-visible:ring-primary border-muted-foreground/30"
+            />
+          </div>
+        </div>
+
+        {/* Dense Table */}
+        <div className="overflow-x-auto">
+          <Table className="text-[13px]">
+            <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-8 font-semibold text-foreground w-[120px]">Fired At</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground w-[100px]">Severity</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">Target Resource</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground w-1/3">Alert Rule / Title</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">Signal Type</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">State</TableHead>
               </TableRow>
-            ) : (
-              filteredAlerts?.map((alert) => (
-                <TableRow key={alert.id}>
-                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                    {format(new Date(alert.firedAt), "MMM d, HH:mm:ss")}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={alert.severity} />
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    <Link href={`/apps/${alert.appId}`} className="hover:underline text-primary">
-                      {alert.appName}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{alert.title}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-[10px]">{alert.source}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-xs capitalize">{alert.status}</span>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="h-8 border-b border-border/50">
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  </TableRow>
+                ))
+              ) : filteredAlerts?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    No matching alerts found.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                filteredAlerts?.map((alert) => (
+                  <TableRow key={alert.id} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                    <TableCell className="py-1 text-xs text-muted-foreground whitespace-nowrap">
+                      {format(new Date(alert.firedAt), "MM/dd/yyyy HH:mm")}
+                    </TableCell>
+                    <TableCell className="py-1">
+                      <StatusBadge status={alert.severity} />
+                    </TableCell>
+                    <TableCell className="py-1 font-medium">
+                      <Link href={`/apps/${alert.appId}`} className="hover:underline text-primary">
+                        {alert.appName}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="py-1">{alert.title}</TableCell>
+                    <TableCell className="py-1 text-muted-foreground">{alert.source}</TableCell>
+                    <TableCell className="py-1">
+                      <span className="text-xs capitalize">{alert.status}</span>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );
