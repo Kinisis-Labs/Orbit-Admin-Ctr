@@ -48,6 +48,20 @@ const APPS: AppRecord[] = [
     owners: ["platform-eng@kinisis.io", "sre@kinisis.io"],
   },
   {
+    id: "grailbabe-dev",
+    name: "GrailBabe (dev)",
+    environment: "dev",
+    region: "eastus2",
+    resourceGroup: "rg-grailbabe-dev",
+    status: "degraded",
+    activeAlerts: 2,
+    monthToDateCost: 318.74,
+    subscriptionId: "a1f4-shared-platform",
+    description: "Development environment for the GrailBabe consumer marketplace.",
+    tags: { owner: "platform", tier: "tier-3", costCenter: "CC-1042", env: "dev" },
+    owners: ["platform-eng@kinisis.io"],
+  },
+  {
     id: "kinisis-id",
     name: "Kinisis ID",
     environment: "prod",
@@ -315,6 +329,15 @@ const API_NAMES_BY_APP: Record<string, string[]> = {
     "GET /users/me",
     "POST /cart/items",
   ],
+  "grailbabe-dev": [
+    "GET /products",
+    "GET /products/{id}",
+    "POST /orders",
+    "GET /search",
+    "POST /checkout",
+    "GET /users/me",
+    "POST /cart/items",
+  ],
   "kinisis-id": [
     "POST /oauth/token",
     "POST /sessions",
@@ -356,6 +379,7 @@ const API_NAMES_BY_APP: Record<string, string[]> = {
 // Sales/Trends, Google Play earnings reports). ops-portal is internal -> $0.
 const REVENUE_BY_APP: Record<string, { stripe: number; appStore: number; playStore: number }> = {
   grailbabe: { stripe: 28430.18, appStore: 9120.55, playStore: 4892.40 },
+  "grailbabe-dev": { stripe: 0, appStore: 0, playStore: 0 },
   "kinisis-id": { stripe: 18764.22, appStore: 0, playStore: 0 },
   "ops-portal": { stripe: 0, appStore: 0, playStore: 0 },
   "ledger-api": { stripe: 22518.96, appStore: 0, playStore: 0 },
