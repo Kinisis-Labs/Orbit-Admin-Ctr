@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useListApps } from "@workspace/api-client-react";
-import { Cloud, Search, Settings, Home, Bell, DollarSign, LayoutDashboard, ChevronRight, Menu, Sun, Moon } from "lucide-react";
+import { Cloud, Search, Settings, Home, Bell, DollarSign, LayoutDashboard, ChevronRight, Menu, Sun, Moon, Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { UserMenu } from "@/components/user-menu";
+import { useAuth, COST_READER_GROUP } from "@/lib/auth";
 
 type Theme = "dark" | "light";
 
@@ -16,6 +18,8 @@ function getInitialTheme(): Theme {
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { data: apps } = useListApps();
+  const { hasGroup } = useAuth();
+  const canSeeCost = hasGroup(COST_READER_GROUP.id);
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [navCollapsed, setNavCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -83,9 +87,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-300 hover:text-white hover:bg-white/10 rounded-sm">
             <Settings className="h-4 w-4" />
           </Button>
-          <div className="h-8 w-8 ml-2 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold border border-white/20">
-            A
-          </div>
+          <UserMenu />
         </div>
       </header>
 
@@ -99,7 +101,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <nav className="flex flex-col gap-0.5 w-full px-1">
             <NavItem href="/" icon={<Home className="h-[18px] w-[18px]" />} label="Home" active={location === "/"} collapsed={navCollapsed} />
             <NavItem href="/alerts" icon={<Bell className="h-[18px] w-[18px]" />} label="Alerts" active={location === "/alerts"} collapsed={navCollapsed} />
-            <NavItem href="/cost" icon={<DollarSign className="h-[18px] w-[18px]" />} label="Cost Management" active={location === "/cost"} collapsed={navCollapsed} />
+            <NavItem
+              href="/cost"
+              icon={<DollarSign className="h-[18px] w-[18px]" />}
+              label="Cost Management"
+              active={location === "/cost"}
+              collapsed={navCollapsed}
+              trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
+              trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}
+            />
 
             <div className="my-2 border-t border-border mx-2" />
 
@@ -149,11 +159,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function NavItem({ href, icon, label, active, collapsed }: { href: string; icon: React.ReactNode; label: string; active: boolean; collapsed: boolean }) {
+function NavItem({
+  href,
+  icon,
+  label,
+  active,
+  collapsed,
+  trailingIcon,
+  trailingTitle,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  collapsed: boolean;
+  trailingIcon?: React.ReactNode;
+  trailingTitle?: string;
+}) {
   return (
     <Link href={href}>
       <div
-        title={collapsed ? label : undefined}
+        title={collapsed ? label : trailingTitle}
         className={`flex items-center gap-3 px-2.5 py-2 rounded-sm cursor-pointer whitespace-nowrap transition-colors
         ${active
           ? "bg-primary/10 text-primary border-l-2 border-primary"
@@ -162,8 +188,9 @@ function NavItem({ href, icon, label, active, collapsed }: { href: string; icon:
       `}>
         <div className="shrink-0">{icon}</div>
         {!collapsed && (
-          <span className="text-[13px] w-full overflow-hidden text-ellipsis">{label}</span>
+          <span className="text-[13px] flex-1 overflow-hidden text-ellipsis">{label}</span>
         )}
+        {!collapsed && trailingIcon && <div className="shrink-0">{trailingIcon}</div>}
       </div>
     </Link>
   );
