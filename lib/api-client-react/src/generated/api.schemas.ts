@@ -102,6 +102,13 @@ export interface CostByService {
   amount: number;
 }
 
+export interface ApiByName {
+  /** Logical API operation or endpoint name */
+  name: string;
+  totalCalls: number;
+  cost: number;
+}
+
 /**
  * API consumption (API Management + gateway egress) included in monthToDate.
  */
@@ -112,6 +119,8 @@ export interface ApiUsage {
   costPerMillion: number;
   /** Month-to-date API usage cost */
   cost: number;
+  /** Cost breakdown by individual API name (operation / endpoint). */
+  byApi: ApiByName[];
 }
 
 export interface CostReport {
@@ -196,6 +205,14 @@ export type GlobalCostSummaryApiByAppItem = {
   cost: number;
 };
 
+export type GlobalCostSummaryApiByNameItem = {
+  appId: string;
+  appName: string;
+  apiName: string;
+  totalCalls: number;
+  cost: number;
+};
+
 export interface GlobalCostSummary {
   currency: string;
   monthToDate: number;
@@ -210,5 +227,7 @@ export interface GlobalCostSummary {
   byResource: CostByService[];
   /** Per-app API usage with call counts and cost. */
   apiByApp: GlobalCostSummaryApiByAppItem[];
+  /** Flat breakdown of cost by API name per app, sorted by cost desc. */
+  apiByName: GlobalCostSummaryApiByNameItem[];
 }
 

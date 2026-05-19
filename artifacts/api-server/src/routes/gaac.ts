@@ -305,6 +305,60 @@ router.get("/apps/:appId/network", (req, res) => {
 
 // --- cost ---
 const API_COST_PER_MILLION = 3.5; // blended APIM + gateway egress unit price
+const API_NAMES_BY_APP: Record<string, string[]> = {
+  grailbabe: [
+    "GET /products",
+    "GET /products/{id}",
+    "POST /orders",
+    "GET /search",
+    "POST /checkout",
+    "GET /users/me",
+    "POST /cart/items",
+  ],
+  "kinisis-id": [
+    "POST /oauth/token",
+    "POST /sessions",
+    "GET /users/{id}",
+    "POST /mfa/verify",
+    "POST /signup",
+    "GET /jwks",
+    "POST /password/reset",
+  ],
+  "ops-portal": [
+    "GET /incidents",
+    "POST /incidents",
+    "GET /dashboards/{id}",
+    "POST /deployments",
+    "GET /runs",
+    "POST /runbooks/execute",
+  ],
+  "ledger-api": [
+    "POST /transactions",
+    "GET /accounts/{id}/balance",
+    "GET /accounts",
+    "POST /journals",
+    "GET /transactions",
+    "POST /reconciliations",
+    "GET /reports/trial-balance",
+  ],
+  "atlas-cms": [
+    "GET /pages",
+    "POST /pages",
+    "GET /media",
+    "POST /media/upload",
+    "POST /publish",
+    "GET /drafts",
+  ],
+};
+
+function splitInts(total: number, weights: number[]): number[] {
+  const sum = weights.reduce((s, w) => s + w, 0);
+  const out = weights.map((w) => Math.floor((total * w) / sum));
+  let remainder = total - out.reduce((s, v) => s + v, 0);
+  for (let i = 0; remainder > 0; i = (i + 1) % out.length, remainder--) out[i] += 1;
+  return out;
+}
+
 function apiUsageForApp(app: AppRecord) {
   const rand = seededRand(app.id + "api");
   const baseCalls = 8_000_000 + Math.floor(rand() * 42_000_000);
@@ -314,7 +368,21 @@ function apiUsageForApp(app: AppRecord) {
     app.tags.tier === "tier-2" ? 1.0 : 0.4;
   const totalCalls = Math.floor(baseCalls * tierMultiplier);
   const cost = Number(((totalCalls / 1_000_000) * API_COST_PER_MILLION).toFixed(2));
-  return { totalCalls, costPerMillion: API_COST_PER_MILLION, cost };
+
+  const names = API_NAMES_BY_APP[app.id] ?? ["GET /", "POST /", "GET /health"];
+  const weightRand = seededRand(app.id + "apiweights");
+  const weights = names.map(() => 1 + weightRand() * 9);
+  const callsPerApi = splitInts(totalCalls, weights);
+  // Allocate cost in cents using the same call weights so sum(byApi.cost) === cost exactly.
+  const totalCents = Math.round(cost * 100);
+  const centsPerApi = splitInts(totalCents, callsPerApi.map((c) => Math.max(c, 1)));
+  const byApi = names.map((name, i) => ({
+    name,
+    totalCalls: callsPerApi[i] ?? 0,
+    cost: (centsPerApi[i] ?? 0) / 100,
+  })).sort((a, b) => b.cost - a.cost);
+
+  return { totalCalls, costPerMillion: API_COST_PER_MILLION, cost, byApi };
 }
 
 function buildByServiceForApp(
@@ -554,6 +622,16 @@ router.get("/global/cost-summary", (_req, res) => {
         costPerMillion: u.costPerMillion,
         cost: u.cost,
       };
+    }).sort((a, b) => b.cost - a.cost),
+    apiByName: APPS.flatMap((a) => {
+      const u = apiByApp.get(a.id)!;
+      return u.byApi.map((row) => ({
+        appId: a.id,
+        appName: a.name,
+        apiName: row.name,
+        totalCalls: row.totalCalls,
+        cost: row.cost,
+      }));
     }).sort((a, b) => b.cost - a.cost),
   });
   res.json(data);

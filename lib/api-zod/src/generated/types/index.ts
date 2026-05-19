@@ -9,6 +9,7 @@
 export * from './alert';
 export * from './alertSource';
 export * from './alertStatus';
+export * from './apiByName';
 export * from './apiUsage';
 export * from './appDetail';
 export * from './appDetailTags';
@@ -18,6 +19,7 @@ export * from './costByService';
 export * from './costReport';
 export * from './globalCostSummary';
 export * from './globalCostSummaryApiByAppItem';
+export * from './globalCostSummaryApiByNameItem';
 export * from './globalCostSummaryByAppItem';
 export * from './globalHealth';
 export * from './healthStatus';

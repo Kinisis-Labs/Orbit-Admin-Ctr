@@ -164,7 +164,7 @@ export default function Cost() {
           </div>
         </div>
 
-        {/* API usage by App */}
+        {/* API usage by App (totals) */}
         <div className="bg-card border border-border shadow-sm flex flex-col">
           <div className="flex items-center justify-between p-2 border-b border-border bg-card">
             <h2 className="text-sm font-semibold px-2">API Usage by Application</h2>
@@ -215,6 +215,65 @@ export default function Cost() {
               </TableBody>
             </Table>
           </div>
+        </div>
+      </div>
+
+      {/* Cost by API Name by App (flat) */}
+      <div className="bg-card border border-border shadow-sm flex flex-col">
+        <div className="flex items-center justify-between p-2 border-b border-border bg-card">
+          <h2 className="text-sm font-semibold px-2">Cost by API Name (by Application)</h2>
+          <span className="text-[11px] text-muted-foreground pr-2">
+            Top {cost?.apiByName?.length ?? 0} endpoints, sorted by cost
+          </span>
+        </div>
+        <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
+          <Table className="text-[13px]">
+            <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border sticky top-0 z-10">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-8 font-semibold text-foreground w-[180px]">Application</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">API Name</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right w-[160px]">Calls (MTD)</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right w-[120px]">Cost</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground w-[140px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i} className="h-8 border-b border-border/50">
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-2 w-full" /></TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                cost?.apiByName?.map((row, idx) => {
+                  const maxCost = cost.apiByName[0]?.cost || 1;
+                  return (
+                    <TableRow key={`${row.appId}-${row.apiName}-${idx}`} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                      <TableCell className="py-1 font-medium">
+                        <Link href={`/apps/${row.appId}`} className="hover:underline text-primary">
+                          {row.appName}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="py-1 font-mono text-[12px] text-foreground">{row.apiName}</TableCell>
+                      <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
+                        {new Intl.NumberFormat("en-US").format(row.totalCalls)}
+                      </TableCell>
+                      <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">
+                        {formatCurrency(row.cost, cost.currency)}
+                      </TableCell>
+                      <TableCell className="py-1">
+                        <Progress value={(row.cost / maxCost) * 100} className="h-1.5 rounded-none bg-muted" />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
         </div>
       </div>
     </div>

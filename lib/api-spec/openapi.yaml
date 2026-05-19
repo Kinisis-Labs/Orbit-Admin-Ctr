@@ -264,14 +264,25 @@ components:
       properties:
         service: { type: string }
         amount: { type: number }
+    ApiByName:
+      type: object
+      required: [name, totalCalls, cost]
+      properties:
+        name: { type: string, description: Logical API operation or endpoint name }
+        totalCalls: { type: integer }
+        cost: { type: number }
     ApiUsage:
       type: object
-      required: [totalCalls, costPerMillion, cost]
+      required: [totalCalls, costPerMillion, cost, byApi]
       description: API consumption (API Management + gateway egress) included in monthToDate.
       properties:
         totalCalls: { type: integer, description: Month-to-date API call count }
         costPerMillion: { type: number, description: Blended unit price per million calls }
         cost: { type: number, description: Month-to-date API usage cost }
+        byApi:
+          type: array
+          description: Cost breakdown by individual API name (operation / endpoint).
+          items: { $ref: "#/components/schemas/ApiByName" }
     CostReport:
       type: object
       required: [currency, monthToDate, forecast, budget, daily, byService, apiUsage]
@@ -334,7 +345,7 @@ components:
         currency: { type: string }
     GlobalCostSummary:
       type: object
-      required: [currency, monthToDate, forecast, budget, apiCalls, apiCost, byApp, byResource, apiByApp]
+      required: [currency, monthToDate, forecast, budget, apiCalls, apiCost, byApp, byResource, apiByApp, apiByName]
       properties:
         currency: { type: string }
         monthToDate: { type: number }
@@ -366,4 +377,16 @@ components:
               appName: { type: string }
               totalCalls: { type: integer }
               costPerMillion: { type: number }
+              cost: { type: number }
+        apiByName:
+          description: Flat breakdown of cost by API name per app, sorted by cost desc.
+          type: array
+          items:
+            type: object
+            required: [appId, appName, apiName, totalCalls, cost]
+            properties:
+              appId: { type: string }
+              appName: { type: string }
+              apiName: { type: string }
+              totalCalls: { type: integer }
               cost: { type: number }

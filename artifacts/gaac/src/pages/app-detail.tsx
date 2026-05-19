@@ -471,6 +471,49 @@ function CostTab({ appId }: { appId: string }) {
           </div>
         </div>
       </div>
+
+      {/* Cost by API Name (per-app) */}
+      <div className="bg-card border border-border shadow-sm flex flex-col">
+        <div className="flex items-center justify-between p-2 border-b border-border bg-card">
+          <h2 className="text-sm font-semibold px-2">Cost by API Name</h2>
+          <span className="text-[11px] text-muted-foreground pr-2">
+            {formatCurrency(data.apiUsage.cost)} of {formatCurrency(data.monthToDate)} MTD
+            <span className="mx-1">·</span>
+            {formatCurrency(data.apiUsage.costPerMillion)}/M calls
+          </span>
+        </div>
+        <div className="overflow-x-auto">
+          <Table className="text-[13px]">
+            <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-8 font-semibold text-foreground">API Name</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right w-[160px]">Calls (MTD)</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right w-[120px]">Cost</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground w-[160px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.apiUsage.byApi?.map((row, idx) => {
+                const maxCost = data.apiUsage.byApi[0]?.cost || 1;
+                return (
+                  <TableRow key={`${row.name}-${idx}`} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                    <TableCell className="py-1 font-mono text-[12px] font-medium">{row.name}</TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
+                      {new Intl.NumberFormat("en-US").format(row.totalCalls)}
+                    </TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">
+                      {formatCurrency(row.cost)}
+                    </TableCell>
+                    <TableCell className="py-1">
+                      <Progress value={(row.cost / maxCost) * 100} className="h-1.5 rounded-none bg-muted" />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
     </div>
   );
 }

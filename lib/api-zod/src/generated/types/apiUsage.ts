@@ -5,6 +5,7 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { ApiByName } from './apiByName';
 
 /**
  * API consumption (API Management + gateway egress) included in monthToDate.
@@ -16,4 +17,6 @@ export interface ApiUsage {
   costPerMillion: number;
   /** Month-to-date API usage cost */
   cost: number;
+  /** Cost breakdown by individual API name (operation / endpoint). */
+  byApi: ApiByName[];
 }

@@ -7,6 +7,7 @@
  */
 import type { CostByService } from './costByService';
 import type { GlobalCostSummaryApiByAppItem } from './globalCostSummaryApiByAppItem';
+import type { GlobalCostSummaryApiByNameItem } from './globalCostSummaryApiByNameItem';
 import type { GlobalCostSummaryByAppItem } from './globalCostSummaryByAppItem';
 
 export interface GlobalCostSummary {
@@ -23,4 +24,6 @@ export interface GlobalCostSummary {
   byResource: CostByService[];
   /** Per-app API usage with call counts and cost. */
   apiByApp: GlobalCostSummaryApiByAppItem[];
+  /** Flat breakdown of cost by API name per app, sorted by cost desc. */
+  apiByName: GlobalCostSummaryApiByNameItem[];
 }
