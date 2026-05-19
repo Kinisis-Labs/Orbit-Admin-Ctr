@@ -19,9 +19,12 @@ import { RefreshCw, Filter, Download } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect, useScope } from "@/lib/scope";
+import { useAuth, COST_READER_GROUP } from "@/lib/auth";
 
 export default function Home() {
   const { scope, setScope, isGlobal } = useScope();
+  const { hasGroup } = useAuth();
+  const canSeeCost = hasGroup(COST_READER_GROUP.id);
 
   const { data: apps, isLoading: appsLoading } = useListApps();
   const { data: health, isLoading: healthLoading } = useGetGlobalHealth({
@@ -31,15 +34,17 @@ export default function Home() {
     query: { enabled: isGlobal, queryKey: getListGlobalAlertsQueryKey() },
   });
   const { data: globalCost, isLoading: globalCostLoading } = useGetGlobalCostSummary({
-    query: { enabled: isGlobal, queryKey: getGetGlobalCostSummaryQueryKey() },
+    query: { enabled: isGlobal && canSeeCost, queryKey: getGetGlobalCostSummaryQueryKey() },
   });
 
   const { data: appDetail, isLoading: appDetailLoading } = useGetApp(scope, {
     query: { enabled: !isGlobal, queryKey: getGetAppQueryKey(scope) },
   });
   const { data: appCost, isLoading: appCostLoading } = useGetCost(scope, {
-    query: { enabled: !isGlobal, queryKey: getGetCostQueryKey(scope) },
+    query: { enabled: !isGlobal && canSeeCost, queryKey: getGetCostQueryKey(scope) },
   });
+
+  const activeRegions = apps ? new Set(apps.map((a) => a.region)).size : 0;
 
   const formatCurrency = (amount: number, currency = "USD") =>
     new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
@@ -69,11 +74,19 @@ export default function Home() {
             sub={`${health?.degraded ?? 0} degraded, ${health?.unhealthy ?? 0} unhealthy`}
           />
           <Tile title="Active Alerts" value={alertsLoading ? null : alerts?.length ?? 0} sub="Requiring attention" />
-          <Tile
-            title="MTD Azure Spend"
-            value={globalCostLoading ? null : globalCost ? formatCurrency(globalCost.monthToDate, globalCost.currency) : "$0.00"}
-            sub="Month to date"
-          />
+          {canSeeCost ? (
+            <Tile
+              title="MTD Azure Spend"
+              value={globalCostLoading ? null : globalCost ? formatCurrency(globalCost.monthToDate, globalCost.currency) : "$0.00"}
+              sub="Month to date"
+            />
+          ) : (
+            <Tile
+              title="Active Regions"
+              value={appsLoading ? null : activeRegions}
+              sub="Geographic deployment footprint"
+            />
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -83,20 +96,36 @@ export default function Home() {
             sub={selectedApp ? `${selectedApp.environment} · ${selectedApp.region}` : ""}
           />
           <Tile title="Active Alerts" value={appDetailLoading ? null : appDetail?.activeAlerts ?? 0} sub="Open on this application" />
-          <Tile
-            title="MTD Spend"
-            value={appCostLoading ? null : appCost ? formatCurrency(appCost.monthToDate, appCost.currency) : "$0.00"}
-            sub={appCost ? `Forecast ${formatCurrency(appCost.forecast, appCost.currency)}` : ""}
-          />
-          <Tile
-            title="API Calls (MTD)"
-            value={appCostLoading ? null : appCost ? new Intl.NumberFormat("en-US").format(appCost.apiUsage.totalCalls) : 0}
-            sub={
-              appCost
-                ? `${formatCurrency(appCost.apiUsage.cost, appCost.currency)} @ ${formatCurrency(appCost.apiUsage.costPerMillion, appCost.currency)}/M`
-                : ""
-            }
-          />
+          {canSeeCost ? (
+            <Tile
+              title="MTD Spend"
+              value={appCostLoading ? null : appCost ? formatCurrency(appCost.monthToDate, appCost.currency) : "$0.00"}
+              sub={appCost ? `Forecast ${formatCurrency(appCost.forecast, appCost.currency)}` : ""}
+            />
+          ) : (
+            <Tile
+              title="Region"
+              value={selectedApp ? selectedApp.region : "—"}
+              sub={selectedApp ? `${selectedApp.environment} environment` : ""}
+            />
+          )}
+          {canSeeCost ? (
+            <Tile
+              title="API Calls (MTD)"
+              value={appCostLoading ? null : appCost ? new Intl.NumberFormat("en-US").format(appCost.apiUsage.totalCalls) : 0}
+              sub={
+                appCost
+                  ? `${formatCurrency(appCost.apiUsage.cost, appCost.currency)} @ ${formatCurrency(appCost.apiUsage.costPerMillion, appCost.currency)}/M`
+                  : ""
+              }
+            />
+          ) : (
+            <Tile
+              title="Resource Group"
+              value={appDetailLoading ? null : appDetail?.resourceGroup ?? "—"}
+              sub={appDetail?.subscriptionId ? `Subscription ${appDetail.subscriptionId}` : ""}
+            />
+          )}
         </div>
       )}
 
