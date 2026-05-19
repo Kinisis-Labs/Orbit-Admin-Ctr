@@ -12,6 +12,7 @@ import { Link } from "wouter";
 import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect, useScope } from "@/lib/scope";
+import { CostTabs } from "@/components/cost-tabs";
 
 const fmt = (amount: number, currency = "USD") =>
   new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
@@ -37,6 +38,8 @@ export default function Cost() {
         </div>
         <ScopeSelect />
       </div>
+
+      <CostTabs />
 
       {isGlobal ? <GlobalCost /> : <AppCost />}
     </div>

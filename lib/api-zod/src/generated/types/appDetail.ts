@@ -5,12 +5,9 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
-import type { AppDetailTags } from './appDetailTags';
 import type { AppSummary } from './appSummary';
 
 export type AppDetail = AppSummary & {
-  subscriptionId: string;
   description?: string;
-  tags: AppDetailTags;
   owners: string[];
 };

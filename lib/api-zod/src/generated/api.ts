@@ -25,9 +25,11 @@ export const ListAppsResponseItem = zod.object({
   "environment": zod.enum(['prod', 'staging', 'dev']),
   "region": zod.string(),
   "resourceGroup": zod.string(),
+  "subscriptionId": zod.string(),
+  "tags": zod.record(zod.string(), zod.string()),
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
-  "activeAlerts": zod.number().optional(),
-  "monthToDateCost": zod.number().optional()
+  "activeAlerts": zod.number(),
+  "monthToDateCost": zod.number()
 })
 export const ListAppsResponse = zod.array(ListAppsResponseItem)
 
@@ -42,13 +44,13 @@ export const GetAppResponse = zod.object({
   "environment": zod.enum(['prod', 'staging', 'dev']),
   "region": zod.string(),
   "resourceGroup": zod.string(),
-  "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
-  "activeAlerts": zod.number().optional(),
-  "monthToDateCost": zod.number().optional()
-}).and(zod.object({
   "subscriptionId": zod.string(),
-  "description": zod.string().optional(),
   "tags": zod.record(zod.string(), zod.string()),
+  "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
+  "activeAlerts": zod.number(),
+  "monthToDateCost": zod.number()
+}).and(zod.object({
+  "description": zod.string().optional(),
   "owners": zod.array(zod.string())
 }))
 

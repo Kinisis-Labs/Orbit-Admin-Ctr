@@ -186,6 +186,8 @@ router.get("/apps", (_req, res) => {
       environment: app.environment,
       region: app.region,
       resourceGroup: app.resourceGroup,
+      subscriptionId: app.subscriptionId,
+      tags: app.tags,
       status: app.status,
       activeAlerts: activeAlertCount(app),
       monthToDateCost: app.monthToDateCost,

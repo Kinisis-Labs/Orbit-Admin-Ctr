@@ -38,23 +38,23 @@ export const AppSummaryEnvironment = {
   dev: 'dev',
 } as const;
 
+export type AppSummaryTags = {[key: string]: string};
+
 export interface AppSummary {
   id: string;
   name: string;
   environment: AppSummaryEnvironment;
   region: string;
   resourceGroup: string;
+  subscriptionId: string;
+  tags: AppSummaryTags;
   status: Status;
-  activeAlerts?: number;
-  monthToDateCost?: number;
+  activeAlerts: number;
+  monthToDateCost: number;
 }
 
-export type AppDetailTags = {[key: string]: string};
-
 export type AppDetail = AppSummary & {
-  subscriptionId: string;
   description?: string;
-  tags: AppDetailTags;
   owners: string[];
 };
 

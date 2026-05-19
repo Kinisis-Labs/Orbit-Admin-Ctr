@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AppSummaryEnvironment } from './appSummaryEnvironment';
+import type { AppSummaryTags } from './appSummaryTags';
 import type { Status } from './status';
 
 export interface AppSummary {
@@ -14,7 +15,9 @@ export interface AppSummary {
   environment: AppSummaryEnvironment;
   region: string;
   resourceGroup: string;
+  subscriptionId: string;
+  tags: AppSummaryTags;
   status: Status;
-  activeAlerts?: number;
-  monthToDateCost?: number;
+  activeAlerts: number;
+  monthToDateCost: number;
 }

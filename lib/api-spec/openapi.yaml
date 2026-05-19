@@ -179,13 +179,17 @@ components:
       enum: [info, warning, error, critical]
     AppSummary:
       type: object
-      required: [id, name, environment, region, status, resourceGroup]
+      required: [id, name, environment, region, status, resourceGroup, subscriptionId, tags, activeAlerts, monthToDateCost]
       properties:
         id: { type: string }
         name: { type: string }
         environment: { type: string, enum: [prod, staging, dev] }
         region: { type: string }
         resourceGroup: { type: string }
+        subscriptionId: { type: string }
+        tags:
+          type: object
+          additionalProperties: { type: string }
         status: { $ref: "#/components/schemas/Status" }
         activeAlerts: { type: integer }
         monthToDateCost: { type: number }
@@ -193,13 +197,9 @@ components:
       allOf:
         - $ref: "#/components/schemas/AppSummary"
         - type: object
-          required: [subscriptionId, tags, owners]
+          required: [owners]
           properties:
-            subscriptionId: { type: string }
             description: { type: string }
-            tags:
-              type: object
-              additionalProperties: { type: string }
             owners:
               type: array
               items: { type: string }
