@@ -81,7 +81,7 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
           <SelectValue placeholder="Select scope" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={GLOBAL_SCOPE}>Global — All Azure Costs</SelectItem>
+          <SelectItem value={GLOBAL_SCOPE}>Global — All Applications</SelectItem>
           {apps?.map((a) => (
             <SelectItem key={a.id} value={a.id}>
               {a.name}

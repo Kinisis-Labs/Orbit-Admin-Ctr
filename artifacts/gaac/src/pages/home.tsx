@@ -2,29 +2,21 @@ import {
   useGetGlobalHealth,
   useListApps,
   useListGlobalAlerts,
-  useGetGlobalCostSummary,
   useGetApp,
-  useGetCost,
   getGetAppQueryKey,
-  getGetCostQueryKey,
   getGetGlobalHealthQueryKey,
-  getGetGlobalCostSummaryQueryKey,
   getListGlobalAlertsQueryKey,
 } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
 import { RefreshCw, Filter, Download } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect, useScope } from "@/lib/scope";
-import { useAuth, COST_READER_GROUP } from "@/lib/auth";
 
 export default function Home() {
   const { scope, setScope, isGlobal } = useScope();
-  const { hasGroup } = useAuth();
-  const canSeeCost = hasGroup(COST_READER_GROUP.id);
 
   const { data: apps, isLoading: appsLoading } = useListApps();
   const { data: health, isLoading: healthLoading } = useGetGlobalHealth({
@@ -33,22 +25,12 @@ export default function Home() {
   const { data: alerts, isLoading: alertsLoading } = useListGlobalAlerts({
     query: { enabled: isGlobal, queryKey: getListGlobalAlertsQueryKey() },
   });
-  const { data: globalCost, isLoading: globalCostLoading } = useGetGlobalCostSummary({
-    query: { enabled: isGlobal && canSeeCost, queryKey: getGetGlobalCostSummaryQueryKey() },
-  });
 
   const { data: appDetail, isLoading: appDetailLoading } = useGetApp(scope, {
     query: { enabled: !isGlobal, queryKey: getGetAppQueryKey(scope) },
   });
-  const { data: appCost, isLoading: appCostLoading } = useGetCost(scope, {
-    query: { enabled: !isGlobal && canSeeCost, queryKey: getGetCostQueryKey(scope) },
-  });
 
   const activeRegions = apps ? new Set(apps.map((a) => a.region)).size : 0;
-
-  const formatCurrency = (amount: number, currency = "USD") =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
-
   const selectedApp = apps?.find((a) => a.id === scope);
 
   return (
@@ -74,19 +56,11 @@ export default function Home() {
             sub={`${health?.degraded ?? 0} degraded, ${health?.unhealthy ?? 0} unhealthy`}
           />
           <Tile title="Active Alerts" value={alertsLoading ? null : alerts?.length ?? 0} sub="Requiring attention" />
-          {canSeeCost ? (
-            <Tile
-              title="MTD Azure Spend"
-              value={globalCostLoading ? null : globalCost ? formatCurrency(globalCost.monthToDate, globalCost.currency) : "$0.00"}
-              sub="Month to date"
-            />
-          ) : (
-            <Tile
-              title="Active Regions"
-              value={appsLoading ? null : activeRegions}
-              sub="Geographic deployment footprint"
-            />
-          )}
+          <Tile
+            title="Active Regions"
+            value={appsLoading ? null : activeRegions}
+            sub="Geographic deployment footprint"
+          />
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -96,36 +70,16 @@ export default function Home() {
             sub={selectedApp ? `${selectedApp.environment} · ${selectedApp.region}` : ""}
           />
           <Tile title="Active Alerts" value={appDetailLoading ? null : appDetail?.activeAlerts ?? 0} sub="Open on this application" />
-          {canSeeCost ? (
-            <Tile
-              title="MTD Spend"
-              value={appCostLoading ? null : appCost ? formatCurrency(appCost.monthToDate, appCost.currency) : "$0.00"}
-              sub={appCost ? `Forecast ${formatCurrency(appCost.forecast, appCost.currency)}` : ""}
-            />
-          ) : (
-            <Tile
-              title="Region"
-              value={selectedApp ? selectedApp.region : "—"}
-              sub={selectedApp ? `${selectedApp.environment} environment` : ""}
-            />
-          )}
-          {canSeeCost ? (
-            <Tile
-              title="API Calls (MTD)"
-              value={appCostLoading ? null : appCost ? new Intl.NumberFormat("en-US").format(appCost.apiUsage.totalCalls) : 0}
-              sub={
-                appCost
-                  ? `${formatCurrency(appCost.apiUsage.cost, appCost.currency)} @ ${formatCurrency(appCost.apiUsage.costPerMillion, appCost.currency)}/M`
-                  : ""
-              }
-            />
-          ) : (
-            <Tile
-              title="Resource Group"
-              value={appDetailLoading ? null : appDetail?.resourceGroup ?? "—"}
-              sub={appDetail?.subscriptionId ? `Subscription ${appDetail.subscriptionId}` : ""}
-            />
-          )}
+          <Tile
+            title="Region"
+            value={selectedApp ? selectedApp.region : "—"}
+            sub={selectedApp ? `${selectedApp.environment} environment` : ""}
+          />
+          <Tile
+            title="Resource Group"
+            value={appDetailLoading ? null : appDetail?.resourceGroup ?? "—"}
+            sub={appDetail?.subscriptionId ? `Subscription ${appDetail.subscriptionId}` : ""}
+          />
         </div>
       )}
 
@@ -202,48 +156,36 @@ export default function Home() {
       ) : (
         <div className="bg-card border border-border shadow-sm flex flex-col">
           <div className="flex items-center justify-between p-2 border-b border-border bg-card">
-            <h2 className="text-sm font-semibold px-2">Cost by API Name — {selectedApp?.name ?? ""}</h2>
+            <h2 className="text-sm font-semibold px-2">Application Details — {selectedApp?.name ?? ""}</h2>
             <Link href={`/apps/${scope}`} className="text-[12px] text-primary hover:underline pr-2">
               Open application →
             </Link>
           </div>
-          <div className="overflow-x-auto">
-            {appCostLoading || !appCost ? (
-              <div className="p-4 space-y-2">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
+          <div className="p-4 text-[13px]">
+            {appDetailLoading || !appDetail ? (
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-1/3" />
+                <Skeleton className="h-5 w-1/2" />
+                <Skeleton className="h-5 w-1/4" />
               </div>
             ) : (
-              <Table className="text-[13px]">
-                <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="h-8 font-semibold text-foreground">API Name</TableHead>
-                    <TableHead className="h-8 font-semibold text-foreground text-right w-[160px]">Calls (MTD)</TableHead>
-                    <TableHead className="h-8 font-semibold text-foreground text-right w-[120px]">Cost</TableHead>
-                    <TableHead className="h-8 font-semibold text-foreground w-[180px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {appCost.apiUsage.byApi?.map((row, idx) => {
-                    const maxCost = appCost.apiUsage.byApi[0]?.cost || 1;
-                    return (
-                      <TableRow key={`${row.name}-${idx}`} className="h-8 border-b border-border/50 hover:bg-muted/40">
-                        <TableCell className="py-1 font-mono text-[12px] font-medium">{row.name}</TableCell>
-                        <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
-                          {new Intl.NumberFormat("en-US").format(row.totalCalls)}
-                        </TableCell>
-                        <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">
-                          {formatCurrency(row.cost, appCost.currency)}
-                        </TableCell>
-                        <TableCell className="py-1">
-                          <Progress value={(row.cost / maxCost) * 100} className="h-1.5 rounded-none bg-muted" />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+                <Field label="Resource group" value={appDetail.resourceGroup} mono />
+                <Field label="Subscription" value={appDetail.subscriptionId} mono />
+                <Field label="Location" value={appDetail.region} />
+                <Field label="Environment" value={appDetail.environment} />
+                <Field label="Owners" value={appDetail.owners?.join(", ") || "Unassigned"} />
+                <Field
+                  label="Tags"
+                  value={
+                    Object.entries(appDetail.tags || {}).length > 0
+                      ? Object.entries(appDetail.tags || {})
+                          .map(([k, v]) => `${k}: ${v}`)
+                          .join(" · ")
+                      : "None"
+                  }
+                />
+              </div>
             )}
           </div>
         </div>
@@ -262,6 +204,15 @@ function Tile({ title, value, sub }: { title: string; value: React.ReactNode; su
         <div className="text-xl font-semibold text-foreground mb-1 tabular-nums">{value}</div>
       )}
       <div className="text-[11px] text-muted-foreground truncate">{sub}</div>
+    </div>
+  );
+}
+
+function Field({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <div className="text-muted-foreground font-medium">{label}</div>
+      <div className={`col-span-2 ${mono ? "font-mono text-[12px]" : ""} text-foreground truncate`}>{value}</div>
     </div>
   );
 }

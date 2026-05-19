@@ -17,12 +17,16 @@ import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle } from "lucide-react";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth, COST_READER_GROUP } from "@/lib/auth";
+import { AccessDenied } from "@/components/access-denied";
 
 export default function AppDetail() {
   const params = useParams();
   const appId = params.appId!;
+  const { hasGroup } = useAuth();
+  const canSeeCost = hasGroup(COST_READER_GROUP.id);
 
   const { data: app, isLoading: appLoading } = useGetApp(appId, { query: { enabled: !!appId, queryKey: getGetAppQueryKey(appId) } });
 
@@ -81,7 +85,12 @@ export default function AppDetail() {
           <TabsTrigger value="infrastructure" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">Infrastructure</TabsTrigger>
           <TabsTrigger value="network" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">Network</TabsTrigger>
           <TabsTrigger value="telemetry" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">Telemetry</TabsTrigger>
-          <TabsTrigger value="cost" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">Cost</TabsTrigger>
+          <TabsTrigger value="cost" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">
+            <span className="inline-flex items-center gap-1.5">
+              Cost
+              {!canSeeCost && <Lock className="h-3 w-3" />}
+            </span>
+          </TabsTrigger>
           <TabsTrigger value="alerts" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">Alerts</TabsTrigger>
         </TabsList>
         
@@ -153,7 +162,11 @@ export default function AppDetail() {
           </TabsContent>
 
           <TabsContent value="cost" className="m-0 space-y-4">
-            <CostTab appId={appId} />
+            {canSeeCost ? (
+              <CostTab appId={appId} />
+            ) : (
+              <AccessDenied resource={`Cost for ${app.name}`} requiredGroup={COST_READER_GROUP} />
+            )}
           </TabsContent>
 
           <TabsContent value="alerts" className="m-0 space-y-4">
