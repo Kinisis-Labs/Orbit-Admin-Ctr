@@ -5,7 +5,10 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { MetricPoint } from './metricPoint';
 
-export interface HealthStatus {
-  status: string;
+export interface MetricSeries {
+  name: string;
+  unit: string;
+  points: MetricPoint[];
 }

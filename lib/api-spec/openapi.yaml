@@ -3,34 +3,340 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Global App Admin Center API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: apps
+    description: Monitored applications
+  - name: infrastructure
+    description: Azure infrastructure metrics
+  - name: network
+    description: Network telemetry
+  - name: cost
+    description: Azure cost management
+  - name: telemetry
+    description: Application telemetry
+  - name: alerts
+    description: Alerts and incidents
+  - name: global
+    description: Global cross-app views
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
           content:
             application/json:
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+  /apps:
+    get:
+      operationId: listApps
+      tags: [apps]
+      summary: List monitored applications
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
+                type: array
+                items: { $ref: "#/components/schemas/AppSummary" }
+  /apps/{appId}:
+    get:
+      operationId: getApp
+      tags: [apps]
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AppDetail" }
+  /apps/{appId}/infrastructure:
+    get:
+      operationId: getInfrastructure
+      tags: [infrastructure]
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InfrastructureReport" }
+  /apps/{appId}/network:
+    get:
+      operationId: getNetwork
+      tags: [network]
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NetworkReport" }
+  /apps/{appId}/cost:
+    get:
+      operationId: getCost
+      tags: [cost]
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CostReport" }
+  /apps/{appId}/telemetry:
+    get:
+      operationId: getTelemetry
+      tags: [telemetry]
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TelemetryReport" }
+  /apps/{appId}/alerts:
+    get:
+      operationId: getAppAlerts
+      tags: [alerts]
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Alert" }
+  /global/health:
+    get:
+      operationId: getGlobalHealth
+      tags: [global]
+      summary: Global health overview across all apps
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GlobalHealth" }
+  /global/alerts:
+    get:
+      operationId: listGlobalAlerts
+      tags: [global, alerts]
+      summary: All alerts across all apps (any status)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Alert" }
+  /global/cost-summary:
+    get:
+      operationId: getGlobalCostSummary
+      tags: [global, cost]
+      summary: Cost summary across all apps
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GlobalCostSummary" }
 components:
+  parameters:
+    AppId:
+      name: appId
+      in: path
+      required: true
+      schema: { type: string }
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
-          type: string
-      required:
-        - status
-
+        status: { type: string }
+    Status:
+      type: string
+      enum: [healthy, degraded, unhealthy, unknown]
+    Severity:
+      type: string
+      enum: [info, warning, error, critical]
+    AppSummary:
+      type: object
+      required: [id, name, environment, region, status, resourceGroup]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        environment: { type: string, enum: [prod, staging, dev] }
+        region: { type: string }
+        resourceGroup: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+        activeAlerts: { type: integer }
+        monthToDateCost: { type: number }
+    AppDetail:
+      allOf:
+        - $ref: "#/components/schemas/AppSummary"
+        - type: object
+          required: [subscriptionId, tags, owners]
+          properties:
+            subscriptionId: { type: string }
+            description: { type: string }
+            tags:
+              type: object
+              additionalProperties: { type: string }
+            owners:
+              type: array
+              items: { type: string }
+    MetricPoint:
+      type: object
+      required: [timestamp, value]
+      properties:
+        timestamp: { type: string, format: date-time }
+        value: { type: number }
+    MetricSeries:
+      type: object
+      required: [name, unit, points]
+      properties:
+        name: { type: string }
+        unit: { type: string }
+        points:
+          type: array
+          items: { $ref: "#/components/schemas/MetricPoint" }
+    InfrastructureResource:
+      type: object
+      required: [id, name, type, status, location]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+        location: { type: string }
+        cpuPercent: { type: number }
+        memoryPercent: { type: number }
+    InfrastructureReport:
+      type: object
+      required: [resources, series]
+      properties:
+        resources:
+          type: array
+          items: { $ref: "#/components/schemas/InfrastructureResource" }
+        series:
+          type: array
+          items: { $ref: "#/components/schemas/MetricSeries" }
+    NetworkEndpoint:
+      type: object
+      required: [name, status, latencyMs, region]
+      properties:
+        name: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+        latencyMs: { type: number }
+        packetLossPercent: { type: number }
+        region: { type: string }
+    NetworkReport:
+      type: object
+      required: [endpoints, throughput]
+      properties:
+        endpoints:
+          type: array
+          items: { $ref: "#/components/schemas/NetworkEndpoint" }
+        throughput:
+          type: array
+          items: { $ref: "#/components/schemas/MetricSeries" }
+    CostByService:
+      type: object
+      required: [service, amount]
+      properties:
+        service: { type: string }
+        amount: { type: number }
+    CostReport:
+      type: object
+      required: [currency, monthToDate, forecast, budget, daily, byService]
+      properties:
+        currency: { type: string }
+        monthToDate: { type: number }
+        forecast: { type: number }
+        budget: { type: number }
+        daily:
+          type: array
+          items: { $ref: "#/components/schemas/MetricPoint" }
+        byService:
+          type: array
+          items: { $ref: "#/components/schemas/CostByService" }
+    TelemetryReport:
+      type: object
+      required: [requestsPerMin, p95LatencyMs, errorRatePercent, availabilityPercent, series, topErrors]
+      properties:
+        requestsPerMin: { type: number }
+        p95LatencyMs: { type: number }
+        errorRatePercent: { type: number }
+        availabilityPercent: { type: number }
+        series:
+          type: array
+          items: { $ref: "#/components/schemas/MetricSeries" }
+        topErrors:
+          type: array
+          items: { $ref: "#/components/schemas/TopError" }
+    TopError:
+      type: object
+      required: [message, count, lastSeen]
+      properties:
+        message: { type: string }
+        count: { type: integer }
+        lastSeen: { type: string, format: date-time }
+    Alert:
+      type: object
+      required: [id, appId, appName, title, severity, source, firedAt, status]
+      properties:
+        id: { type: string }
+        appId: { type: string }
+        appName: { type: string }
+        title: { type: string }
+        description: { type: string }
+        severity: { $ref: "#/components/schemas/Severity" }
+        source: { type: string, enum: [AzureMonitor, LogAnalytics, NetworkWatcher, CostManagement, ApplicationInsights, WebAppTelemetry] }
+        firedAt: { type: string, format: date-time }
+        status: { type: string, enum: [active, acknowledged, resolved] }
+    GlobalHealth:
+      type: object
+      required: [totalApps, healthy, degraded, unhealthy, activeAlerts, monthToDateCost, currency]
+      properties:
+        totalApps: { type: integer }
+        healthy: { type: integer }
+        degraded: { type: integer }
+        unhealthy: { type: integer }
+        activeAlerts: { type: integer }
+        monthToDateCost: { type: number }
+        currency: { type: string }
+    GlobalCostSummary:
+      type: object
+      required: [currency, monthToDate, forecast, budget, byApp]
+      properties:
+        currency: { type: string }
+        monthToDate: { type: number }
+        forecast: { type: number }
+        budget: { type: number }
+        byApp:
+          type: array
+          items:
+            type: object
+            required: [appId, appName, amount]
+            properties:
+              appId: { type: string }
+              appName: { type: string }
+              amount: { type: number }

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Global App Admin Center"
+version = "1.0.0"
+id = "artifacts/gaac"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24762
+
+[services.development]
+run = "pnpm --filter @workspace/gaac run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/gaac", "run", "build" ]
+publicDir = "artifacts/gaac/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24762"
+BASE_PATH = "/"
