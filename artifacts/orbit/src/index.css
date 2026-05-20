@@ -176,13 +176,27 @@
 }
 
 /* Hero glow — combined radial violet-blue at the top, fading into the
-   page vertical gradient #0b0f18 → #060911. Apply to any element with
-   the `kinisis-hero` class (or wrap a section in it). */
+   page vertical gradient #0b0f18 → #060911. Used on page-level hero
+   surfaces (full strength) and, in dark mode, on every card/widget
+   background at reduced strength so the chrome feels cohesive. */
 .dark .kinisis-hero,
 .kinisis-hero {
   background:
     radial-gradient(120% 70% at 50% 0%, hsl(223 54% 22% / 0.6) 0%, transparent 60%),
     linear-gradient(180deg, hsl(222 37% 7%) 0%, hsl(224 48% 5%) 100%);
+}
+
+/* Apply a subtle version of the hero glow to every card/widget surface
+   in dark mode. Targets the .bg-card utility used throughout the app
+   (KPI tiles, panels, tables, page-header). The radial glow sits on top
+   of the existing card color so borders, shadows, and content keep
+   working unchanged. */
+.dark .bg-card {
+  background-image:
+    radial-gradient(140% 90% at 50% 0%, hsl(223 54% 22% / 0.35) 0%, transparent 65%),
+    radial-gradient(120% 80% at 50% 0%, hsl(247 100% 73% / 0.06) 0%, transparent 55%);
+  background-color: hsl(var(--card));
+  background-repeat: no-repeat;
 }
 
 @layer base {
