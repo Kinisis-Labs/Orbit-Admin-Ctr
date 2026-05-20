@@ -23,6 +23,7 @@ The Kinisis admin center — an Azure operations dashboard giving operators a un
 ## Where things live
 
 - `docs/architecture-spec.md` — Architecture spec v3 (Orbit Command Center). Source of truth for naming conventions (subscriptions, RGs, tags), Azure deployment topology, RBAC groups, the FinOps cost boundary, and the Clerk Organizations / user-activity pipeline.
+- `docs/requirements.md` — Requirements spec v1.0. Functional (FR-*) + non-functional (NFR-*) requirements, personas, acceptance criteria, release phases.
 - `lib/api-spec/` — OpenAPI contract. Run `pnpm --filter @workspace/api-spec run codegen` after changes.
 - `artifacts/api-server/src/routes/gaac.ts` — All mock data (apps, telemetry, cost, alerts, revenue).
 - `artifacts/gaac/src/lib/auth.tsx` — Mock Entra auth + `COST_READER_GROUP` definition.

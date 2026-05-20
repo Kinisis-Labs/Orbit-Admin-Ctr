@@ -6,3 +6,9 @@ id = "ouSG1DKI9Mdsi0pc6lHbn"
 uri = "file://docs/architecture-spec.md"
 type = "text"
 title = "Orbit Command Center — Architecture Specification (v3)"
+
+[[outputs]]
+id = "ltZpKBUkHemtBrzUaGr2R"
+uri = "file://docs/requirements.md"
+type = "text"
+title = "Orbit Command Center — Requirements Specification (v1.0)"
