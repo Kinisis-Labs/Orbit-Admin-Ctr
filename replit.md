@@ -1,6 +1,6 @@
 # Orbit Command Center
 
-The Kinisis admin center — an Azure operations dashboard giving operators a unified view of every Kinisis application's health, alerts, telemetry, and cost. (Previously branded "Kinisis Orbit"; internal slugs `gaac`/`GAAC-*` and the architecture spec retain the prior name.)
+The Kinisis admin center — an Azure operations dashboard giving operators a unified view of every Kinisis application's health, alerts, telemetry, and cost. (Previously branded "Kinisis Orbit" / "GAAC". A few internal workspace paths still use the `gaac` slug pending a structural rename.)
 
 ## Run & Operate
 

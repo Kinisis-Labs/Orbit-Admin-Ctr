@@ -31,7 +31,7 @@ export default function Incidents() {
               data into Orbit Command Center, the platform team needs to provision a ServiceNow application
               registration with read access to the <code className="text-foreground bg-muted px-1 py-0.5 rounded-sm text-[12px]">incident</code> and{" "}
               <code className="text-foreground bg-muted px-1 py-0.5 rounded-sm text-[12px]">cmdb_ci_service</code> tables, then store the
-              credentials in <code className="text-foreground bg-muted px-1 py-0.5 rounded-sm text-[12px]">kv-gaac-prod</code> as{" "}
+              credentials in <code className="text-foreground bg-muted px-1 py-0.5 rounded-sm text-[12px]">kv-orbit-prod</code> as{" "}
               <code className="text-foreground bg-muted px-1 py-0.5 rounded-sm text-[12px]">servicenow-api-token</code>.
             </p>
             <p className="text-[13px] text-muted-foreground leading-relaxed mt-3">

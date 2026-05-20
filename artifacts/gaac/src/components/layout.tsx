@@ -35,7 +35,7 @@ const ROUTE_LABELS: Record<string, string> = {
 
 function getInitialTheme(): Theme {
   if (typeof window === "undefined") return "dark";
-  const stored = window.localStorage.getItem("gaac-theme");
+  const stored = window.localStorage.getItem("orbit-theme");
   return stored === "light" ? "light" : "dark";
 }
 
@@ -47,18 +47,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [navCollapsed, setNavCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("gaac-nav-collapsed") === "1";
+    return window.localStorage.getItem("orbit-nav-collapsed") === "1";
   });
 
   useEffect(() => {
-    window.localStorage.setItem("gaac-nav-collapsed", navCollapsed ? "1" : "0");
+    window.localStorage.setItem("orbit-nav-collapsed", navCollapsed ? "1" : "0");
   }, [navCollapsed]);
 
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "dark") root.classList.add("dark");
     else root.classList.remove("dark");
-    window.localStorage.setItem("gaac-theme", theme);
+    window.localStorage.setItem("orbit-theme", theme);
   }, [theme]);
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 
 export const GLOBAL_SCOPE = "__global__";
-const STORAGE_KEY = "gaac-scope";
+const STORAGE_KEY = "orbit-scope";
 
 type ScopeContextValue = {
   scope: string;

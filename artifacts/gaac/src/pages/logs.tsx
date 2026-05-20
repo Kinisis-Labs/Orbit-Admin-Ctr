@@ -61,7 +61,7 @@ export default function Logs() {
       <div className="bg-card border border-border shadow-sm">
         <div className="p-2 border-b border-border flex items-center justify-between">
           <h2 className="text-sm font-semibold px-2">{rows.length} results</h2>
-          <span className="text-[11px] text-muted-foreground px-2">Workspace: <span className="font-mono">law-gaac-prod</span></span>
+          <span className="text-[11px] text-muted-foreground px-2">Workspace: <span className="font-mono">law-orbit-prod</span></span>
         </div>
         {isLoading ? (
           <div className="p-4 space-y-2"><Skeleton className="h-6" /><Skeleton className="h-6" /></div>

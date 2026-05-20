@@ -11,20 +11,20 @@ type Density = "comfortable" | "compact";
 export default function Preferences() {
   const { data: apps } = useListApps();
   const { scope, setScope } = useScope();
-  const [theme, setTheme] = useState<Theme>(() => (typeof window === "undefined" ? "dark" : (localStorage.getItem("gaac-theme") === "light" ? "light" : "dark")));
-  const [density, setDensity] = useState<Density>(() => (typeof window === "undefined" ? "comfortable" : (localStorage.getItem("gaac-density") === "compact" ? "compact" : "comfortable")));
+  const [theme, setTheme] = useState<Theme>(() => (typeof window === "undefined" ? "dark" : (localStorage.getItem("orbit-theme") === "light" ? "light" : "dark")));
+  const [density, setDensity] = useState<Density>(() => (typeof window === "undefined" ? "comfortable" : (localStorage.getItem("orbit-density") === "compact" ? "compact" : "comfortable")));
 
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "dark") root.classList.add("dark"); else root.classList.remove("dark");
-    localStorage.setItem("gaac-theme", theme);
+    localStorage.setItem("orbit-theme", theme);
   }, [theme]);
 
-  useEffect(() => { localStorage.setItem("gaac-density", density); }, [density]);
+  useEffect(() => { localStorage.setItem("orbit-density", density); }, [density]);
 
   const reset = () => {
     setTheme("dark"); setDensity("comfortable"); setScope(GLOBAL_SCOPE);
-    localStorage.removeItem("gaac-nav-collapsed");
+    localStorage.removeItem("orbit-nav-collapsed");
   };
 
   return (

@@ -43,12 +43,12 @@ Orbit Command Center ("Orbit") is the single internal admin centre for every Kin
 
 | Persona            | Primary group              | Goals                                                                                                  |
 | ------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **Operator (SRE)** | `GAAC-Engineers`           | Spot degradations fast, drill into per-app health, acknowledge alerts, see deployments and incidents.  |
-| **App Engineer**   | `GAAC-Authorized-Users`    | Check the status of their own app, find the failing component, jump to logs.                           |
-| **FinOps / Finance** | `GAAC-Cost-Readers`, `GAAC-FinOps` | Track MTD spend, forecasts, and budget burn per app and per environment. Set / monitor budgets. |
-| **Platform Admin** | `GAAC-Admins`              | Manage feature flags, simulate group membership, review the audit log, onboard new apps/envs.          |
-| **Product / Growth** | `GAAC-Authorized-Users`  | Read DAU/WAU/MAU and stickiness per app to inform product decisions.                                   |
-| **Security / Compliance** | `GAAC-Admins`         | Verify the FinOps boundary holds, audit privileged actions, confirm PII handling.                      |
+| **Operator (SRE)** | `Orbit-Engineers`           | Spot degradations fast, drill into per-app health, acknowledge alerts, see deployments and incidents.  |
+| **App Engineer**   | `Orbit-Authorized-Users`    | Check the status of their own app, find the failing component, jump to logs.                           |
+| **FinOps / Finance** | `Orbit-Cost-Readers`, `Orbit-FinOps` | Track MTD spend, forecasts, and budget burn per app and per environment. Set / monitor budgets. |
+| **Platform Admin** | `Orbit-Admins`              | Manage feature flags, simulate group membership, review the audit log, onboard new apps/envs.          |
+| **Product / Growth** | `Orbit-Authorized-Users`  | Read DAU/WAU/MAU and stickiness per app to inform product decisions.                                   |
+| **Security / Compliance** | `Orbit-Admins`         | Verify the FinOps boundary holds, audit privileged actions, confirm PII handling.                      |
 
 ---
 
@@ -59,7 +59,7 @@ Orbit Command Center ("Orbit") is the single internal admin centre for every Kin
 | **Scope**       | An `{app, environment}` pair (e.g. `grailbabe-prod`, `grailbabe-dev`). The unit of isolation throughout the product. |
 | **Global view**  | The default scope; aggregates across every tracked `{app, environment}` pair.                                        |
 | **Tracked app**  | A `{app, environment}` row in the inventory (see §6 in `architecture-spec.md`).                                      |
-| **FinOps boundary** | The runtime + UI rules that prevent cost data from appearing anywhere outside `GAAC-Cost-Readers`.                 |
+| **FinOps boundary** | The runtime + UI rules that prevent cost data from appearing anywhere outside `Orbit-Cost-Readers`.                 |
 | **Clerk Organization** | One Clerk org per `{app, environment}`, named `<app>-<env>`. The source of truth for engagement.              |
 | **Aggregate, never store** | Orbit's foundational rule: data is queried live from authoritative sources at request time and is not persisted (the only exception is the user-activity rollup; see §6.10). |
 
@@ -92,12 +92,12 @@ Orbit Command Center ("Orbit") is the single internal admin centre for every Kin
 | C10 | Log search                 | KQL search UI bound to per-app Log Analytics workspaces.                                                          |
 | C11 | Service health             | Azure Service Health advisories filtered to services Orbit + tracked apps depend on.                              |
 | C12 | Users & activity           | DAU/WAU/MAU/stickiness per app from Clerk; recent users roster; state Active/Idle/Inactive.                       |
-| C13 | Cost Management            | MTD spend, forecasts, daily spend chart, per-API allocation, revenue by channel. Gated by `GAAC-Cost-Readers`.   |
-| C14 | Budgets                    | Per-RG budgets, thresholds, burn %. Gated by `GAAC-Cost-Readers`.                                                |
-| C15 | Forecasts                  | 30/60/90 day cost forecasts. Gated by `GAAC-Cost-Readers`.                                                       |
+| C13 | Cost Management            | MTD spend, forecasts, daily spend chart, per-API allocation, revenue by channel. Gated by `Orbit-Cost-Readers`.   |
+| C14 | Budgets                    | Per-RG budgets, thresholds, burn %. Gated by `Orbit-Cost-Readers`.                                                |
+| C15 | Forecasts                  | 30/60/90 day cost forecasts. Gated by `Orbit-Cost-Readers`.                                                       |
 | C16 | Subscriptions              | Read-only listing of Azure subscriptions Orbit aggregates from.                                                  |
 | C17 | Tags                       | Tag inventory across tracked apps; surfaces tag-policy compliance.                                               |
-| C18 | Identity & access          | Display of Entra groups governing Orbit; simulator for toggling `GAAC-Cost-Readers` in dev.                       |
+| C18 | Identity & access          | Display of Entra groups governing Orbit; simulator for toggling `Orbit-Cost-Readers` in dev.                       |
 | C19 | All resources              | Resource Graph–backed inventory of every Azure resource in tracked RGs.                                          |
 | C20 | Preferences                | Per-user UI preferences (theme, scope default, density) persisted in the browser.                                |
 
@@ -111,11 +111,11 @@ Each requirement is identified `FR-<area>-<n>` and is **MUST** unless flagged ot
 
 - **FR-AUTH-1** Orbit MUST authenticate every user via Microsoft Entra ID OIDC with PKCE.
 - **FR-AUTH-2** MFA MUST be enforced via Conditional Access; Orbit MUST NOT offer a local-account fallback.
-- **FR-AUTH-3** Membership of `GAAC-Authorized-Users` MUST be confirmed before any page renders. Users without it MUST see an Azure-styled access-denied screen.
+- **FR-AUTH-3** Membership of `Orbit-Authorized-Users` MUST be confirmed before any page renders. Users without it MUST see an Azure-styled access-denied screen.
 - **FR-AUTH-4** Group memberships MUST be cached in Postgres for ≤5 minutes and refreshed on cache miss.
 - **FR-AUTH-5** Sessions MUST be HttpOnly, Secure, SameSite=Lax, signed with `SESSION_SECRET`, and idle-timeout after 60 minutes.
 - **FR-AUTH-6** Sign-out MUST revoke the session server-side and redirect to the Entra logout endpoint.
-- **FR-AUTH-7 (dev only)** An identity simulator MUST allow Platform Admins to toggle in/out of `GAAC-Cost-Readers` for testing the FinOps boundary without an Entra round-trip. The simulator MUST be disabled in production builds.
+- **FR-AUTH-7 (dev only)** An identity simulator MUST allow Platform Admins to toggle in/out of `Orbit-Cost-Readers` for testing the FinOps boundary without an Entra round-trip. The simulator MUST be disabled in production builds.
 
 ### 6.2 Scope Selector
 
@@ -138,7 +138,7 @@ Each requirement is identified `FR-<area>-<n>` and is **MUST** unless flagged ot
 - **FR-APP-2** The command bar MUST expose Start / Restart / Stop / Configuration actions; the actions MAY be stubbed in v3 but MUST be wired to the audit log.
 - **FR-APP-3** Overview MUST show: status pill, environment, location, subscription, resource group, tags, active alert count, last deployment, last incident.
 - **FR-APP-4** Infrastructure MUST list the Azure resources in the app's RG via Resource Graph.
-- **FR-APP-5** Cost tab MUST be gated by `GAAC-Cost-Readers`; non-members MUST see a lock icon on the tab and an access-denied panel if they navigate to it directly.
+- **FR-APP-5** Cost tab MUST be gated by `Orbit-Cost-Readers`; non-members MUST see a lock icon on the tab and an access-denied panel if they navigate to it directly.
 
 ### 6.5 Alerts
 
@@ -160,8 +160,8 @@ Each of these surfaces SHARES the following requirements:
 
 ### 6.7 Cost Management (FinOps-gated)
 
-- **FR-COST-1** Every cost surface (Cost Management, Budgets, Forecasts, per-app Cost tab) MUST be gated by `GAAC-Cost-Readers`.
-- **FR-COST-2** When the caller is not in `GAAC-Cost-Readers`, the API MUST short-circuit cost endpoints with HTTP 403 and an `access-denied` payload before any data is fetched from Azure.
+- **FR-COST-1** Every cost surface (Cost Management, Budgets, Forecasts, per-app Cost tab) MUST be gated by `Orbit-Cost-Readers`.
+- **FR-COST-2** When the caller is not in `Orbit-Cost-Readers`, the API MUST short-circuit cost endpoints with HTTP 403 and an `access-denied` payload before any data is fetched from Azure.
 - **FR-COST-3** Cost data MUST be allocated per `{workload, environment}` tag pair, so `grailbabe` and `grailbabe-dev` show independent figures.
 - **FR-COST-4** Cost Management MUST display: MTD spend, projected month-end, daily spend chart (last 30d), per-API allocation, revenue by channel (Stripe / App Store / Play Store).
 - **FR-COST-5** Budgets MUST display: per-RG budget, MTD actuals, burn %, threshold status (Healthy / Warning / Breach).
@@ -172,7 +172,7 @@ Each of these surfaces SHARES the following requirements:
 
 - **FR-GOV-1** Subscriptions MUST list the seven subscriptions in `architecture-spec.md` §5.2 with name, purpose, owner, status.
 - **FR-GOV-2** Tags MUST list the mandatory tags from architecture spec §5.1 and the compliance % per tracked app.
-- **FR-GOV-3** Identity & access MUST list the five `GAAC-*` groups, their purpose, and the simulated user's membership (with toggles in dev).
+- **FR-GOV-3** Identity & access MUST list the five `Orbit-*` groups, their purpose, and the simulated user's membership (with toggles in dev).
 
 ### 6.9 All Resources
 
@@ -182,7 +182,7 @@ Each of these surfaces SHARES the following requirements:
 
 ### 6.10 Users & Activity (new in v3)
 
-- **FR-USERS-1** The Users & activity page MUST be visible to all `GAAC-Authorized-Users` (NOT behind the FinOps boundary).
+- **FR-USERS-1** The Users & activity page MUST be visible to all `Orbit-Authorized-Users` (NOT behind the FinOps boundary).
 - **FR-USERS-2** Top tiles MUST show, for the current scope: Total members, DAU, WAU, MAU, DAU/MAU stickiness %.
 - **FR-USERS-3** Engagement-by-application table MUST list: app, environment, members, DAU, WAU, MAU, inactive-30d, new-in-last-7d, DAU trend %.
 - **FR-USERS-4** Recent users roster MUST list: name + email, app, state (Active / Idle / Inactive), last active, last sign-in, member-since.
@@ -322,7 +322,7 @@ Telemetry, alerts, deployment history, log entries, cost line items, resource in
 
 - **CMP-1** Orbit's privileged-action audit log (§6.12) MUST be exportable to the SIEM in CEF format.
 - **CMP-2** RBAC denials and FinOps boundary violations MUST be logged at WARN level for security review.
-- **CMP-3** Annual access review MUST be supported by exporting current `GAAC-*` group membership snapshots.
+- **CMP-3** Annual access review MUST be supported by exporting current `Orbit-*` group membership snapshots.
 
 ---
 
@@ -334,7 +334,7 @@ Orbit Command Center v3 is accepted when:
 2. All NFR-* targets are demonstrated against synthetic load in non-prod.
 3. The §13 checklist in `architecture-spec.md` is fully complete.
 4. A walkthrough by each persona in §2 confirms their primary goals can be completed without leaving Orbit.
-5. The FinOps boundary is verified: a user removed from `GAAC-Cost-Readers` cannot retrieve a single byte of cost data via any UI surface or any direct API request.
+5. The FinOps boundary is verified: a user removed from `Orbit-Cost-Readers` cannot retrieve a single byte of cost data via any UI surface or any direct API request.
 6. The Users & activity page reflects real Clerk activity for at least one tracked app for ≥7 days.
 
 ---

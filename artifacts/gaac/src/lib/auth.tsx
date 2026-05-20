@@ -25,11 +25,11 @@ export type EntraUser = {
 // Required group for the Cost Management dashboard.
 export const COST_READER_GROUP: EntraGroup = {
   id: "b7e3-aad-cost-readers",
-  displayName: "GAAC-Cost-Readers",
+  displayName: "Orbit-Cost-Readers",
   description: "Allowed to view cost, billing, and revenue data in Orbit Command Center.",
 };
 
-const STORAGE_KEY = "gaac-mock-groups";
+const STORAGE_KEY = "orbit-mock-groups";
 
 const MOCK_USER: EntraUser = {
   id: "user-arielle-mendez",

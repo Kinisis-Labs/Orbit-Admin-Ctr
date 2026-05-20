@@ -4,7 +4,7 @@
 **Status:** Draft — supersedes _Kinisis Orbit Architecture Specification v2_
 **Owner:** Platform Engineering
 
-> **Rebrand note.** The product previously codenamed **Global App Admin Center (GAAC)** and then **Kinisis Orbit** is now **Orbit Command Center** (or "Orbit" for short). Internal identifiers (workspace slug `gaac`, Entra group prefix `GAAC-*`) are intentionally retained to minimise churn in deployment pipelines and existing RBAC bindings. **New Azure resources provisioned for v3 use the `orbit` prefix** (see §5). Only user-facing surfaces and net-new infrastructure carry the rebrand.
+> **Rebrand note.** The product previously codenamed **Global App Admin Center (GAAC)** and then **Kinisis Orbit** is now **Orbit Command Center** (or "Orbit" for short). All user-facing copy, Azure resource names, and Entra security groups have been renamed to the `orbit` / `Orbit-*` convention as part of v3 (see §5 and §7). A small number of internal workspace filenames (e.g. `artifacts/gaac/`, `routes/gaac.ts`) remain pending a structural rename in a follow-up.
 
 ---
 
@@ -143,7 +143,7 @@ These are items v2 did not call out and must be added before deployment:
 1. **Subscription topology and tag policy.**
    §5.2 subscriptions created (or existing ones renamed) and §5.1 tag-enforcement Azure Policy assigned at every subscription scope.
 2. **Resource-group rename pass.**
-   Every existing RG in §4 renamed to the `rg-<workload>-<env>-<region>` pattern; all Orbit `-gaac-` resources re-provisioned (or aliased) under the new `-orbit-` names as part of v3 cutover.
+   Every existing RG in §4 renamed to the `rg-<workload>-<env>-<region>` pattern; any legacy `-gaac-` named Azure resources re-provisioned (or aliased) under the new `-orbit-` names as part of v3 cutover.
 3. **Clerk Backend API integration.**
    Orbit calls Clerk's Backend API for org rosters, user lookups, and active-session counts. Key + webhook signing secret stored in Key Vault.
 4. **Clerk webhook receiver** on the Orbit API.
@@ -198,11 +198,11 @@ The repository is a pnpm monorepo with the following deployable artifacts:
 
 | Group                    | Purpose                                                              |
 | ------------------------ | -------------------------------------------------------------------- |
-| `GAAC-Authorized-Users`  | Baseline access — required to load Orbit at all                      |
-| `GAAC-Admins`            | Platform administration, group simulation, feature flags             |
-| `GAAC-Engineers`         | Operational actions (acknowledge alerts, trigger refresh)            |
-| `GAAC-Cost-Readers`      | Required to view any cost surface (see §8)                           |
-| `GAAC-FinOps`            | Cost Management write actions (budgets, allocations) — future use    |
+| `Orbit-Authorized-Users`  | Baseline access — required to load Orbit at all                      |
+| `Orbit-Admins`            | Platform administration, group simulation, feature flags             |
+| `Orbit-Engineers`         | Operational actions (acknowledge alerts, trigger refresh)            |
+| `Orbit-Cost-Readers`      | Required to view any cost surface (see §8)                           |
+| `Orbit-FinOps`            | Cost Management write actions (budgets, allocations) — future use    |
 
 ---
 
@@ -211,8 +211,8 @@ The repository is a pnpm monorepo with the following deployable artifacts:
 v1 surfaced cost data alongside operational telemetry on every page. v2 established the FinOps boundary; v3 reinforces it by pinning cost allocation to the `workload` + `environment` tag pair from §5.1.
 
 - **Cost Management is the only surface that displays cost data.** The Home dashboard and the app-detail Overview / Infrastructure / Network / Telemetry / Alerts / Users tabs show no monetary information of any kind, regardless of caller identity.
-- The dedicated **Cost Management** page (Overview / Budgets / Forecasts) and the per-app **Cost** tab are both gated by membership in `GAAC-Cost-Readers`. Users without that group see an Azure-styled access-denied panel and a lock icon on the navigation entry / tab.
-- Cost queries are short-circuited at the API layer when the caller is not in `GAAC-Cost-Readers`, so cost data never crosses the wire to unauthorised browsers.
+- The dedicated **Cost Management** page (Overview / Budgets / Forecasts) and the per-app **Cost** tab are both gated by membership in `Orbit-Cost-Readers`. Users without that group see an Azure-styled access-denied panel and a lock icon on the navigation entry / tab.
+- Cost queries are short-circuited at the API layer when the caller is not in `Orbit-Cost-Readers`, so cost data never crosses the wire to unauthorised browsers.
 - Cost is allocated per `{workload, environment}` tag pair, so `grailbabe` (prod) and `grailbabe-dev` show independent MTD spend, forecast, and budget burn.
 
 ---
@@ -236,7 +236,7 @@ GET /api/users/activity, GET /api/users  ← Orbit UI
 ```
 
 - Orbit does **not** store user PII beyond what's required to render the recent-users table (display name, email, last-active timestamp). The full user record always lives in Clerk; Orbit reads it on demand via the Backend API.
-- The Users & activity page is visible to all `GAAC-Authorized-Users`. It is **not** behind the FinOps boundary, because engagement metrics are operational data, not financial data.
+- The Users & activity page is visible to all `Orbit-Authorized-Users`. It is **not** behind the FinOps boundary, because engagement metrics are operational data, not financial data.
 - The Recent Users roster respects the global / per-app scope selector, identical to every other Orbit surface.
 
 ---
@@ -247,12 +247,12 @@ GET /api/users/activity, GET /api/users  ← Orbit UI
 - **Home (status-only):** Total Applications, Global Health (healthy/degraded/unhealthy), Active Alerts, Active Regions; App Services table with status, environment, location, alert count.
 - **Per-app blade (Azure-portal styled):** Overview / Infrastructure / Network / Telemetry / Cost / Alerts tabs, with Azure-style command bar (Start / Restart / Stop / Configuration).
 - **Monitoring group:** Alerts, Deployments, Incidents (ServiceNow stub), Activity log, Health & SLOs, Network, Log search, Service health, **Users & activity (new in v3)**.
-- **Cost group:** Cost Management — Overview / Budgets / Forecasts; all gated by `GAAC-Cost-Readers`.
+- **Cost group:** Cost Management — Overview / Budgets / Forecasts; all gated by `Orbit-Cost-Readers`.
 - **Governance group:** Subscriptions, Tags, Identity & access.
 - **Resources group:** All resources.
 - **Settings group:** Preferences.
 - **Theme:** Azure Portal dark/light, persisted per user.
-- **Identity simulator (dev only):** the avatar menu lets engineers toggle in/out of `GAAC-Cost-Readers` to exercise the gated surfaces without an Entra round-trip.
+- **Identity simulator (dev only):** the avatar menu lets engineers toggle in/out of `Orbit-Cost-Readers` to exercise the gated surfaces without an Entra round-trip.
 
 ---
 
@@ -277,7 +277,7 @@ All alerts are read live; Orbit does not own alert rules or incident state — t
 ```
 Operator opens Orbit Command Center
         ↓
-Entra ID SSO + MFA + group check (GAAC-Authorized-Users)
+Entra ID SSO + MFA + group check (Orbit-Authorized-Users)
         ↓
 Selects scope (Global or a specific {app, environment})
         ↓
@@ -304,7 +304,7 @@ Before promoting v3 to production, the following must be in place (in this order
 - [ ] Azure Container Registry (`acrkinisis01`) created; CI/CD publishing API images.
 - [ ] User-assigned managed identities created and assigned the §5.5 RBAC roles across **all subscriptions** that host tracked apps.
 - [ ] Front Door created with `/api/*` routing rule + WAF policy.
-- [ ] Entra group `GAAC-Cost-Readers` created and populated with FinOps & engineering leads.
+- [ ] Entra group `Orbit-Cost-Readers` created and populated with FinOps & engineering leads.
 - [ ] Microsoft Graph `GroupMember.Read.All` consented for the Orbit app registration.
 - [ ] **Clerk Organizations** created for every tracked `{app, environment}` (`<app>-<env>`); each Kinisis app reconfigured to enrol users into its org.
 - [ ] **Clerk webhook endpoint** registered (`/api/webhooks/clerk`) with signing secret stored in `kv-orbit-<env>`.

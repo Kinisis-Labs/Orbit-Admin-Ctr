@@ -12,20 +12,20 @@ type GroupDef = {
 
 const ORBIT_GROUPS: GroupDef[] = [
   {
-    id: "gaac-authorized-users",
-    displayName: "GAAC-Authorized-Users",
+    id: "orbit-authorized-users",
+    displayName: "Orbit-Authorized-Users",
     description: "Baseline access — required to load Orbit Command Center at all.",
     grants: ["Sign in to Orbit Command Center", "View Home, Alerts, Health, Network"],
   },
   {
-    id: "gaac-admins",
-    displayName: "GAAC-Admins",
+    id: "orbit-admins",
+    displayName: "Orbit-Admins",
     description: "Platform administration: feature flags, group management, preferences for all users.",
     grants: ["Edit feature flags", "Manage Entra group simulation", "View audit log"],
   },
   {
-    id: "gaac-engineers",
-    displayName: "GAAC-Engineers",
+    id: "orbit-engineers",
+    displayName: "Orbit-Engineers",
     description: "Operational actions on Kinisis applications.",
     grants: ["Acknowledge alerts", "Trigger refresh / start / restart actions"],
   },
@@ -36,8 +36,8 @@ const ORBIT_GROUPS: GroupDef[] = [
     grants: ["View Cost Management page", "View per-app Cost tab", "View Budgets & Forecasts"],
   },
   {
-    id: "gaac-finops",
-    displayName: "GAAC-FinOps",
+    id: "orbit-finops",
+    displayName: "Orbit-FinOps",
     description: "Cost Management write actions (future).",
     grants: ["Edit budgets", "Edit cost allocations", "Approve cost exports"],
   },
