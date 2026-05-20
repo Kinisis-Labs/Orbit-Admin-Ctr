@@ -4,7 +4,7 @@
 **Status:** Draft — supersedes _Kinisis Orbit Architecture Specification v2_
 **Owner:** Platform Engineering
 
-> **Rebrand note.** The product previously codenamed **Global App Admin Center (GAAC)** and then **Kinisis Orbit** is now **Orbit Command Center** (or "Orbit" for short). All user-facing copy, Azure resource names, and Entra security groups have been renamed to the `orbit` / `Orbit-*` convention as part of v3 (see §5 and §7). A small number of internal workspace filenames (e.g. `artifacts/gaac/`, `routes/gaac.ts`) remain pending a structural rename in a follow-up.
+> **Rebrand note.** The product previously codenamed **Global App Admin Center (GAAC)** and then **Kinisis Orbit** is now **Orbit Command Center** (or "Orbit" for short). All user-facing copy, Azure resource names, Entra security groups, and internal workspace identifiers have been renamed to the `orbit` / `Orbit-*` convention as part of v3 (see §5 and §7).
 
 ---
 
@@ -172,7 +172,7 @@ The repository is a pnpm monorepo with the following deployable artifacts:
 
 | Path                          | Artifact         | Stack                                                  |
 | ----------------------------- | ---------------- | ------------------------------------------------------ |
-| `artifacts/gaac/`             | Orbit web        | React 19, Vite, wouter, TanStack Query, Recharts, Tailwind |
+| `artifacts/orbit/`             | Orbit web        | React 19, Vite, wouter, TanStack Query, Recharts, Tailwind |
 | `artifacts/api-server/`       | Orbit API        | Express 5, Node 24, Zod, Drizzle ORM, Pino             |
 | `lib/api-spec/`               | OpenAPI contract | OpenAPI 3 source-of-truth, Orval codegen               |
 | `lib/api-zod/`                | Zod schemas      | Generated from OpenAPI                                 |
@@ -181,7 +181,7 @@ The repository is a pnpm monorepo with the following deployable artifacts:
 
 **Contract-first.** All HTTP surfaces are defined in `lib/api-spec`, with Zod validators and React Query hooks generated from it. The API server validates every request and response against the same Zod schemas.
 
-**Mocked data layer (current).** All app, telemetry, network, alert, cost, and user-activity data is currently produced by deterministic seed functions in `artifacts/api-server/src/routes/gaac.ts` and `artifacts/gaac/src/lib/mock-data.ts`. The intent is for those handlers to be replaced one-by-one by live Azure + Clerk calls without changing the OpenAPI contract.
+**Mocked data layer (current).** All app, telemetry, network, alert, cost, and user-activity data is currently produced by deterministic seed functions in `artifacts/api-server/src/routes/orbit.ts` and `artifacts/orbit/src/lib/mock-data.ts`. The intent is for those handlers to be replaced one-by-one by live Azure + Clerk calls without changing the OpenAPI contract.
 
 ---
 

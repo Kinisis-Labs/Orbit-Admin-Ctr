@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "Kinisis Orbit"
+title = "Orbit Command Center"
 version = "1.0.0"
 id = "artifacts/gaac"
 router = "path"
@@ -15,11 +15,11 @@ paths = [ "/" ]
 localPort = 24762
 
 [services.development]
-run = "pnpm --filter @workspace/gaac run dev"
+run = "pnpm --filter @workspace/orbit run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/gaac", "run", "build" ]
-publicDir = "artifacts/gaac/dist/public"
+build = [ "pnpm", "--filter", "@workspace/orbit", "run", "build" ]
+publicDir = "artifacts/orbit/dist/public"
 serve = "static"
 
 [[services.production.rewrites]]

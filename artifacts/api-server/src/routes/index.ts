@@ -1,10 +1,10 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
-import gaacRouter from "./gaac";
+import orbitRouter from "./orbit";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
-router.use(gaacRouter);
+router.use(orbitRouter);
 
 export default router;
