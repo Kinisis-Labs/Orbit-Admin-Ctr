@@ -31,7 +31,9 @@ The Kinisis admin center — an Azure operations dashboard giving operators a un
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **Audience: internal staff only.** Hosted at `orbit.kinisislabs.com` (subdomain of the primary public domain). No public sign-up, no SEO surface — all routes assume an authenticated Kinisis staff member. Auth gating is via Entra/Clerk org membership; the `Orbit-Cost-Readers` group further gates FinOps surfaces.
+- **Cookie domain when real auth lands:** scope session cookies to `.kinisislabs.com` so the same session can be shared with other internal subdomains (id.kinisislabs.com, etc.). `SameSite=Lax; Secure; HttpOnly`.
+- **Deploy target:** Replit Deployment with `orbit.kinisislabs.com` added as a custom domain in the Deployments UI (CNAME at the DNS provider, TLS auto-provisioned). Optionally fronted by Cloudflare Access / Entra App Proxy for an extra network-layer gate — no code change needed.
 
 ## Product
 
