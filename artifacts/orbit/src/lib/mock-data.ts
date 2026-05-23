@@ -400,7 +400,7 @@ export type BudgetRow = {
   status: "Healthy" | "Warning" | "Breach";
 };
 
-// --- Users & activity (Entra External ID-shaped) -------------------------
+// --- Users & activity (corporate Entra-shaped) ---------------------------
 
 export type UserActivityRow = {
   appId: string;

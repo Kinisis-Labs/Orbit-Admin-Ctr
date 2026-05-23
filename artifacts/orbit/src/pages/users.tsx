@@ -52,7 +52,7 @@ export default function Users() {
     <div className="space-y-4">
       <PageHeader
         title="Users & activity"
-        subtitle="Active vs inactive users per Kinisis application. Source of truth: Entra External ID app registrations + sign-in logs."
+        subtitle="Active vs inactive employees per Kinisis application. Source of truth: corporate Entra app registrations + sign-in logs."
         right={<ScopeSelect />}
       />
 
@@ -173,9 +173,9 @@ function EntraBanner() {
     <div className="bg-card border border-border shadow-sm p-3 flex items-start gap-3">
       <div className="shrink-0 h-8 w-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center text-[11px] font-semibold">ID</div>
       <div className="flex-1 text-[12px] text-muted-foreground">
-        <span className="text-foreground font-semibold">Mock data.</span> When live, each Kinisis app maps to one Entra External ID{" "}
+        <span className="text-foreground font-semibold">Mock data.</span> When live, each Kinisis app maps to one corporate Entra{" "}
         <span className="font-mono text-foreground">app registration</span> with a backing{" "}
-        <span className="font-mono text-foreground">&lt;app&gt;-&lt;env&gt;-users</span> group. DAU / WAU / MAU come from{" "}
+        <span className="font-mono text-foreground">&lt;app&gt;-&lt;env&gt;-users</span> group. Every tracked app is employee-only. DAU / WAU / MAU come from{" "}
         <span className="font-mono text-foreground">SignInLogs</span> streamed via Event Hub; profile fields are read live from Microsoft Graph.
       </div>
       <a

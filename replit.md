@@ -22,7 +22,7 @@ The Kinisis admin center — an Azure operations dashboard giving operators a un
 
 ## Where things live
 
-- `docs/architecture-spec.md` — Architecture spec v3 (Orbit Command Center). Source of truth for naming conventions (subscriptions, RGs, tags), Azure deployment topology, RBAC groups, the FinOps cost boundary, and the Entra External ID / user-activity pipeline.
+- `docs/architecture-spec.md` — Architecture spec v3 (Orbit Command Center). Source of truth for naming conventions (subscriptions, RGs, tags), Azure deployment topology, RBAC groups, the FinOps cost boundary, and the corporate Entra sign-in / user-activity pipeline.
 - `docs/requirements.md` — Requirements spec v1.0. Functional (FR-*) + non-functional (NFR-*) requirements, personas, acceptance criteria, release phases.
 - `lib/api-spec/` — OpenAPI contract. Run `pnpm --filter @workspace/api-spec run codegen` after changes.
 - `artifacts/api-server/src/routes/orbit.ts` — All mock data (apps, telemetry, cost, alerts, revenue).
@@ -32,7 +32,7 @@ The Kinisis admin center — an Azure operations dashboard giving operators a un
 ## Architecture decisions
 
 - **Audience: internal staff only.** Hosted at `orbit.kinisislabs.com` (subdomain of the primary public domain). No public sign-up, no SEO surface — all routes assume an authenticated Kinisis staff member. Auth gating is via Microsoft Entra ID group membership (`Orbit-Authorized-Users`); the `Orbit-Cost-Readers` group further gates FinOps surfaces.
-- **One IdP, everywhere: Microsoft Entra.** Staff sign into Orbit via the corporate Entra ID tenant. End-users of the tracked Kinisis apps (GrailBabe, Kinisis ID, etc.) sign in via an **Entra External ID** (CIAM) tenant — one app registration per `{app, environment}`, with a backing security group `<app>-<env>-users` as the engagement source-of-truth. No third-party IdP (no Clerk, no Auth0). Everything Orbit reads about users is via **Microsoft Graph**.
+- **Single corporate Entra tenant, internal-only end-to-end.** Both Orbit *and* every tracked Kinisis app (GrailBabe, Kinisis ID, Ops Portal, Ledger API, Atlas CMS, etc.) are internal Kinisis employee tools — no customer-facing surfaces anywhere in the platform. Sign-in for every app goes through the same corporate Entra tenant, with one **app registration** per `{app, environment}` and a backing security group `<app>-<env>-users` as the engagement source-of-truth. No External ID / CIAM tenant, no third-party IdP (no Clerk, no Auth0). Everything Orbit reads about users is via **Microsoft Graph**.
 - **Cookie domain when real auth lands:** scope session cookies to `.kinisislabs.com` so the same session can be shared with other internal subdomains (id.kinisislabs.com, etc.). `SameSite=Lax; Secure; HttpOnly`.
 - **Deploy target:** Replit Deployment with `orbit.kinisislabs.com` added as a custom domain in the Deployments UI (CNAME at the DNS provider, TLS auto-provisioned). Optionally fronted by Cloudflare Access / Entra App Proxy for an extra network-layer gate — no code change needed.
 

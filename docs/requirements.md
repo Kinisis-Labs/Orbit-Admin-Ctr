@@ -18,7 +18,7 @@ Orbit Command Center ("Orbit") is the single internal admin centre for every Kin
 ### 1.2 In scope
 
 - Live aggregation and presentation of operational data from Azure (Resource Graph, Monitor, Log Analytics, Network Watcher, Application Insights, Cost Management).
-- Live aggregation of end-user activity from Microsoft Entra External ID (one app registration + security group per `{app, environment}`, sign-in log stream via Event Hub, profile lookups via Microsoft Graph).
+- Live aggregation of per-app employee activity from Microsoft Entra (one app registration + security group per `{app, environment}` in the corporate tenant, sign-in log stream via Event Hub, profile lookups via Microsoft Graph).
 - Internal-only access governed by Microsoft Entra ID with MFA, RBAC, and Conditional Access.
 - A FinOps boundary that segregates cost data from operational data by RBAC group.
 - Per-environment scoping: prod and non-prod of the same app are independent first-class scopes.
@@ -28,7 +28,7 @@ Orbit Command Center ("Orbit") is the single internal admin centre for every Kin
 
 - Long-term storage of telemetry, logs, customer data, or cost line items. Orbit aggregates, never warehouses.
 - Authoring Azure Monitor alert rules, ServiceNow incidents, or budgets. Orbit reads and acknowledges; the systems of record stay where they are.
-- Customer-facing surfaces. Orbit is an internal tool with no public access.
+- Customer-facing surfaces. The entire Kinisis platform — Orbit *and* every app it monitors — is internal-only. No public or anonymous access anywhere.
 - Mobile (iOS/Android) telemetry ingestion (deferred to v4).
 - Two-way ServiceNow/PagerDuty actions (deferred).
 
@@ -60,7 +60,7 @@ Orbit Command Center ("Orbit") is the single internal admin centre for every Kin
 | **Global view**  | The default scope; aggregates across every tracked `{app, environment}` pair.                                        |
 | **Tracked app**  | A `{app, environment}` row in the inventory (see §6 in `architecture-spec.md`).                                      |
 | **FinOps boundary** | The runtime + UI rules that prevent cost data from appearing anywhere outside `Orbit-Cost-Readers`.                 |
-| **App user group** | One Entra security group per `{app, environment}`, named `<app>-<env>-users` (in the External ID tenant). The source of truth for engagement. |
+| **App user group** | One Entra security group per `{app, environment}`, named `<app>-<env>-users` (in the corporate tenant). The source of truth for engagement. |
 | **Aggregate, never store** | Orbit's foundational rule: data is queried live from authoritative sources at request time and is not persisted (the only exception is the user-activity rollup; see §6.10). |
 
 ---
@@ -69,7 +69,7 @@ Orbit Command Center ("Orbit") is the single internal admin centre for every Kin
 
 1. Microsoft Entra ID is the sole identity provider. Conditional Access, MFA, and group membership are all configured before Orbit goes live.
 2. Every tracked app already forwards Activity Log, Application Insights, and Cost Management exports into a Log Analytics workspace Orbit can query.
-3. Every tracked app already authenticates its end users via its dedicated Entra External ID app registration (a precondition for the Users & activity page).
+3. Every tracked app already authenticates its users via its dedicated app registration in the corporate Entra tenant (a precondition for the Users & activity page). All tracked apps are employee-only; none are customer-facing.
 4. Cost Management exports tag every resource with `workload` + `environment` per the architecture spec §5.1.
 5. ServiceNow exposes a read API for the engineering instance the Incidents page will integrate with.
 6. The Azure subscription topology in `architecture-spec.md` §5.2 is provisioned (subscriptions, RGs, tag policy) before Orbit's API roles are bound.
@@ -189,7 +189,7 @@ Each of these surfaces SHARES the following requirements:
 - **FR-USERS-5** State definitions: Active = `last_active_at` within 1 day, Idle = within 30 days, Inactive = older.
 - **FR-USERS-6** Roster MUST support search (name, email, app) and CSV export of the filtered view.
 - **FR-USERS-7** Numbers MUST be computed from the `user_activity` rollup table fed by Entra `SignInLogs` + `NonInteractiveUserSignInLogs` streamed to Event Hub and filtered by `appId`.
-- **FR-USERS-8** A banner MUST identify Microsoft Entra External ID as the system of record and link to the relevant tenant in the Entra admin centre.
+- **FR-USERS-8** A banner MUST identify Microsoft Entra as the system of record and link to the corporate tenant in the Entra admin centre.
 - **FR-USERS-9** Orbit MUST NOT persist user PII beyond Entra `objectId`, display name, email, last-active timestamp; the full user record is read on demand from Microsoft Graph (`/users/{id}`).
 
 ### 6.11 Preferences
@@ -282,7 +282,7 @@ Telemetry, alerts, deployment history, log entries, cost line items, resource in
 | User activity events         | Internal       | Orbit Postgres                  |
 | Azure telemetry              | Internal       | Azure (read live)               |
 | Cost data                    | Confidential   | Azure (read live, FinOps-gated) |
-| End-user PII (Entra users)   | Confidential   | Entra External ID (read live on demand via Graph) |
+| Employee PII (Entra users)   | Confidential   | Corporate Entra tenant (read live on demand via Graph) |
 
 ---
 
@@ -343,7 +343,7 @@ Orbit Command Center v3 is accepted when:
 | --------------- | ------------------------------------------------------------------------------------------- | ------------------------------------- |
 | **Phase 0 — Mocked** _(current)_ | All UI surfaces backed by deterministic mock data in the API. No external integrations live. | Internal demo, design sign-off.       |
 | **Phase 1 — Azure read-only**    | Resource Graph + Monitor + Cost Management + Log Analytics wired live, replacing mocks.        | UAT in non-prod by SRE + FinOps.      |
-| **Phase 2 — Entra live**         | Entra External ID app registrations + `<app>-<env>-users` groups created, Event Hub sign-in stream consumed into `user_activity`, Users page live. | UAT by Product / Growth.              |
+| **Phase 2 — Entra live**         | Per-app app registrations + `<app>-<env>-users` groups created in the corporate tenant, Event Hub sign-in stream consumed into `user_activity`, Users page live. | UAT by Product / Growth.              |
 | **Phase 3 — Incidents live**     | ServiceNow read integration replaces the stub.                                                 | UAT by Operations.                    |
 | **Phase 4 — GA**                 | Pen test passed, custom domain bound, prod RBAC migrated off the dev simulator.                | Sign-off by Platform Eng + Security.  |
 
