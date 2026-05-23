@@ -1,4 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { AuthContext, type AuthContextValue } from "./auth-context";
+import type { EntraGroup, EntraUser } from "./auth-types";
+
+export type { EntraGroup, EntraUser } from "./auth-types";
 
 /**
  * Mocked Entra ID (Azure AD) identity + group memberships for the prototype.
@@ -7,20 +11,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
  * `groups` would be the `groups` claim (or fetched via Microsoft Graph
  * `/me/memberOf`). The required-group check below would run server-side too.
  */
-
-export type EntraGroup = {
-  id: string;
-  displayName: string;
-  description: string;
-};
-
-export type EntraUser = {
-  id: string;
-  displayName: string;
-  userPrincipalName: string;
-  jobTitle: string;
-  initial: string;
-};
 
 // Required group for the Cost Management dashboard.
 export const COST_READER_GROUP: EntraGroup = {
@@ -44,16 +34,6 @@ const MOCK_BASE_GROUPS: EntraGroup[] = [
   { id: "all-staff", displayName: "All-Staff", description: "Everyone at the company." },
   { id: "platform-engineering", displayName: "Platform-Engineering", description: "Platform engineering team." },
 ];
-
-type AuthContextValue = {
-  user: EntraUser;
-  groups: EntraGroup[];
-  hasGroup: (groupId: string) => boolean;
-  grantGroup: (group: EntraGroup) => void;
-  revokeGroup: (groupId: string) => void;
-};
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 function loadStoredGroupIds(): string[] {
   if (typeof window === "undefined") return [COST_READER_GROUP.id];
