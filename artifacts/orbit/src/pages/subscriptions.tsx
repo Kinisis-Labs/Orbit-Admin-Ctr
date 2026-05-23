@@ -18,7 +18,7 @@ export default function Subscriptions() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Subscriptions" subtitle="Azure subscriptions Orbit Command Center aggregates data from" />
+      <PageHeader title="Subscriptions" subtitle="Azure subscriptions Orbit aggregates data from" />
 
       <div className="bg-card border border-border shadow-sm">
         <div className="p-2 border-b border-border"><h2 className="text-sm font-semibold px-2">{rows.length} subscriptions</h2></div>

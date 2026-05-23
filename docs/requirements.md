@@ -1,11 +1,11 @@
-# Orbit Command Center — Requirements Specification
+# Orbit — Requirements Specification
 
 **Version:** 1.0
 **Status:** Draft
 **Owner:** Platform Engineering
 **Companion to:** `docs/architecture-spec.md` (v3)
 
-This document specifies **what** Orbit Command Center must do. The architecture spec covers **how** it is built and deployed. Where the two disagree, this document defines product intent and the architecture spec defines implementation.
+This document specifies **what** Orbit must do. The architecture spec covers **how** it is built and deployed. Where the two disagree, this document defines product intent and the architecture spec defines implementation.
 
 ---
 
@@ -13,7 +13,7 @@ This document specifies **what** Orbit Command Center must do. The architecture 
 
 ### 1.1 Purpose
 
-Orbit Command Center ("Orbit") is the single internal admin centre for every Kinisis-operated application. It gives engineering, operations, and FinOps a unified, real-time view of Azure infrastructure, application health, alerts, cost, and end-user engagement across every Kinisis app and every environment (prod / staging / dev).
+Orbit ("Orbit") is the single internal admin centre for every Kinisis-operated application. It gives engineering, operations, and FinOps a unified, real-time view of Azure infrastructure, application health, alerts, cost, and end-user engagement across every Kinisis app and every environment (prod / staging / dev).
 
 ### 1.2 In scope
 
@@ -326,7 +326,7 @@ Orbit exposes **no public webhook endpoints**. End-user activity is ingested by 
 
 ## 11. Acceptance Criteria
 
-Orbit Command Center v3 is accepted when:
+Orbit v3 is accepted when:
 
 1. All FR-* requirements pass UAT in the non-prod environment.
 2. All NFR-* targets are demonstrated against synthetic load in non-prod.

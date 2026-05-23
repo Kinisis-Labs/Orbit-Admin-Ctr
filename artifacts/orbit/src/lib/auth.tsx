@@ -26,7 +26,7 @@ export type EntraUser = {
 export const COST_READER_GROUP: EntraGroup = {
   id: "b7e3-aad-cost-readers",
   displayName: "Orbit-Cost-Readers",
-  description: "Allowed to view cost, billing, and revenue data in Orbit Command Center.",
+  description: "Allowed to view cost, billing, and revenue data in Orbit.",
 };
 
 const STORAGE_KEY = "orbit-mock-groups";

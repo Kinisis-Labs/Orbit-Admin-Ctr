@@ -82,7 +82,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Menu className="h-5 w-5 text-gray-300 hover:text-white" />
           </button>
           <Link href="/" className="flex items-center gap-2">
-            <span className="font-semibold text-[14px] tracking-wide">Orbit Command Center</span>
+            <span className="font-semibold text-[14px] tracking-[0.18em] uppercase">Orbit</span>
             <span className="text-[11px] text-gray-400 hidden lg:inline">· Azure Operations</span>
           </Link>
 

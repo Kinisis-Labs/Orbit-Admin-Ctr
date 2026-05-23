@@ -29,7 +29,7 @@ export default function Preferences() {
 
   return (
     <div className="space-y-4 max-w-3xl">
-      <PageHeader title="Preferences" subtitle="Personal preferences for Orbit Command Center. These are stored in your browser." />
+      <PageHeader title="Preferences" subtitle="Personal preferences for Orbit. These are stored in your browser." />
 
       <Row label="Theme" hint="Azure Portal dark and light themes.">
         <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>

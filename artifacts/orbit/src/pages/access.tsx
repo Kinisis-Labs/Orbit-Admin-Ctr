@@ -14,8 +14,8 @@ const ORBIT_GROUPS: GroupDef[] = [
   {
     id: "orbit-authorized-users",
     displayName: "Orbit-Authorized-Users",
-    description: "Baseline access — required to load Orbit Command Center at all.",
-    grants: ["Sign in to Orbit Command Center", "View Home, Alerts, Health, Network"],
+    description: "Baseline access — required to load Orbit at all.",
+    grants: ["Sign in to Orbit", "View Home, Alerts, Health, Network"],
   },
   {
     id: "orbit-admins",
@@ -50,7 +50,7 @@ export default function Access() {
     <div className="space-y-4">
       <PageHeader
         title="Identity & access"
-        subtitle="Entra ID groups that govern Orbit Command Center. Membership of the simulated user can be toggled for groups marked as such."
+        subtitle="Entra ID groups that govern Orbit. Membership of the simulated user can be toggled for groups marked as such."
       />
 
       <div className="bg-card border border-border shadow-sm p-4 text-[13px]">

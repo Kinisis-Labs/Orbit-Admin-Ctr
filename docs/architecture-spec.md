@@ -1,16 +1,16 @@
-# Orbit Command Center — Architecture Specification
+# Orbit — Architecture Specification
 
 **Version:** 3.0
 **Status:** Draft — supersedes _Kinisis Orbit Architecture Specification v2_
 **Owner:** Platform Engineering
 
-> **Rebrand note.** The product previously codenamed **Global App Admin Center (GAAC)** and then **Kinisis Orbit** is now **Orbit Command Center** (or "Orbit" for short). All user-facing copy, Azure resource names, Entra security groups, and internal workspace identifiers have been renamed to the `orbit` / `Orbit-*` convention as part of v3 (see §5 and §7).
+> **Rebrand note.** The product previously codenamed **Global App Admin Center (GAAC)** and then **Kinisis Orbit** is now **Orbit** (or "Orbit" for short). All user-facing copy, Azure resource names, Entra security groups, and internal workspace identifiers have been renamed to the `orbit` / `Orbit-*` convention as part of v3 (see §5 and §7).
 
 ---
 
 ## 1. Executive Summary
 
-Orbit Command Center is the centralised admin centre for every Kinisis-operated application. It gives engineers and operators a unified, real-time view of Azure infrastructure, network health, application telemetry, alerts, cost, and end-user engagement across all environments (prod, staging, dev) of every Kinisis app from a single Azure Portal–styled dashboard.
+Orbit is the centralised admin centre for every Kinisis-operated application. It gives engineers and operators a unified, real-time view of Azure infrastructure, network health, application telemetry, alerts, cost, and end-user engagement across all environments (prod, staging, dev) of every Kinisis app from a single Azure Portal–styled dashboard.
 
 The platform aggregates live operational data directly from Azure, Microsoft Entra (via Microsoft Graph and Entra sign-in logs), and per-application telemetry APIs. **No monitoring, telemetry, end-user, or customer data is persisted inside Orbit** — all data is queried live from authoritative sources at request time.
 
@@ -278,7 +278,7 @@ All alerts are read live; Orbit does not own alert rules or incident state — t
 ## 12. Data-Flow Model
 
 ```
-Operator opens Orbit Command Center
+Operator opens Orbit
         ↓
 Entra ID SSO + MFA + group check (Orbit-Authorized-Users)
         ↓
@@ -333,4 +333,4 @@ Before promoting v3 to production, the following must be in place (in this order
 
 ## 15. Conclusion
 
-Orbit Command Center v3 is the next evolution of the platform after v2's Kinisis Orbit. It carries forward v1/v2's core principle — **aggregate, never store** — while adding a Cloud Adoption Framework–aligned subscription, resource-group, and tagging scheme, employee engagement visibility via Microsoft Graph + Entra sign-in logs, and the lone new persisted data category needed to support it (the `user_activity` rollup table). With the single corporate Entra tenant as the only identity provider for the entire internal platform, the naming applied in §5.1, the resources in §5 provisioned, and the checklist in §13 completed, Orbit is ready to be the single operational pane of glass for every Kinisis-hosted application.
+Orbit v3 is the next evolution of the platform after v2's Kinisis Orbit. It carries forward v1/v2's core principle — **aggregate, never store** — while adding a Cloud Adoption Framework–aligned subscription, resource-group, and tagging scheme, employee engagement visibility via Microsoft Graph + Entra sign-in logs, and the lone new persisted data category needed to support it (the `user_activity` rollup table). With the single corporate Entra tenant as the only identity provider for the entire internal platform, the naming applied in §5.1, the resources in §5 provisioned, and the checklist in §13 completed, Orbit is ready to be the single operational pane of glass for every Kinisis-hosted application.
