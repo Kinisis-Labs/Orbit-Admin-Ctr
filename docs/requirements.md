@@ -18,7 +18,7 @@ Orbit Command Center ("Orbit") is the single internal admin centre for every Kin
 ### 1.2 In scope
 
 - Live aggregation and presentation of operational data from Azure (Resource Graph, Monitor, Log Analytics, Network Watcher, Application Insights, Cost Management).
-- Live aggregation of end-user activity from Clerk (Organizations, Backend API, webhooks).
+- Live aggregation of end-user activity from Microsoft Entra External ID (one app registration + security group per `{app, environment}`, sign-in log stream via Event Hub, profile lookups via Microsoft Graph).
 - Internal-only access governed by Microsoft Entra ID with MFA, RBAC, and Conditional Access.
 - A FinOps boundary that segregates cost data from operational data by RBAC group.
 - Per-environment scoping: prod and non-prod of the same app are independent first-class scopes.
@@ -60,7 +60,7 @@ Orbit Command Center ("Orbit") is the single internal admin centre for every Kin
 | **Global view**  | The default scope; aggregates across every tracked `{app, environment}` pair.                                        |
 | **Tracked app**  | A `{app, environment}` row in the inventory (see §6 in `architecture-spec.md`).                                      |
 | **FinOps boundary** | The runtime + UI rules that prevent cost data from appearing anywhere outside `Orbit-Cost-Readers`.                 |
-| **Clerk Organization** | One Clerk org per `{app, environment}`, named `<app>-<env>`. The source of truth for engagement.              |
+| **App user group** | One Entra security group per `{app, environment}`, named `<app>-<env>-users` (in the External ID tenant). The source of truth for engagement. |
 | **Aggregate, never store** | Orbit's foundational rule: data is queried live from authoritative sources at request time and is not persisted (the only exception is the user-activity rollup; see §6.10). |
 
 ---
@@ -69,7 +69,7 @@ Orbit Command Center ("Orbit") is the single internal admin centre for every Kin
 
 1. Microsoft Entra ID is the sole identity provider. Conditional Access, MFA, and group membership are all configured before Orbit goes live.
 2. Every tracked app already forwards Activity Log, Application Insights, and Cost Management exports into a Log Analytics workspace Orbit can query.
-3. Every tracked app already authenticates its end users via Clerk (a precondition for the Users & activity page).
+3. Every tracked app already authenticates its end users via its dedicated Entra External ID app registration (a precondition for the Users & activity page).
 4. Cost Management exports tag every resource with `workload` + `environment` per the architecture spec §5.1.
 5. ServiceNow exposes a read API for the engineering instance the Incidents page will integrate with.
 6. The Azure subscription topology in `architecture-spec.md` §5.2 is provisioned (subscriptions, RGs, tag policy) before Orbit's API roles are bound.
@@ -91,7 +91,7 @@ Orbit Command Center ("Orbit") is the single internal admin centre for every Kin
 | C9 | Network                     | Latency, packet loss, NSG/flow-log highlights from Network Watcher.                                              |
 | C10 | Log search                 | KQL search UI bound to per-app Log Analytics workspaces.                                                          |
 | C11 | Service health             | Azure Service Health advisories filtered to services Orbit + tracked apps depend on.                              |
-| C12 | Users & activity           | DAU/WAU/MAU/stickiness per app from Clerk; recent users roster; state Active/Idle/Inactive.                       |
+| C12 | Users & activity           | DAU/WAU/MAU/stickiness per app from Entra sign-in logs; recent users roster; state Active/Idle/Inactive.          |
 | C13 | Cost Management            | MTD spend, forecasts, daily spend chart, per-API allocation, revenue by channel. Gated by `Orbit-Cost-Readers`.   |
 | C14 | Budgets                    | Per-RG budgets, thresholds, burn %. Gated by `Orbit-Cost-Readers`.                                                |
 | C15 | Forecasts                  | 30/60/90 day cost forecasts. Gated by `Orbit-Cost-Readers`.                                                       |
@@ -188,9 +188,9 @@ Each of these surfaces SHARES the following requirements:
 - **FR-USERS-4** Recent users roster MUST list: name + email, app, state (Active / Idle / Inactive), last active, last sign-in, member-since.
 - **FR-USERS-5** State definitions: Active = `last_active_at` within 1 day, Idle = within 30 days, Inactive = older.
 - **FR-USERS-6** Roster MUST support search (name, email, app) and CSV export of the filtered view.
-- **FR-USERS-7** Numbers MUST be computed from the `user_activity` rollup table fed by Clerk webhooks (`session.created`, `user.*`, `organizationMembership.*`).
-- **FR-USERS-8** A banner MUST identify Clerk as the system of record and link to the Clerk dashboard.
-- **FR-USERS-9** Orbit MUST NOT persist user PII beyond display name, email, last-active timestamp; the full user record is read on demand from Clerk's Backend API.
+- **FR-USERS-7** Numbers MUST be computed from the `user_activity` rollup table fed by Entra `SignInLogs` + `NonInteractiveUserSignInLogs` streamed to Event Hub and filtered by `appId`.
+- **FR-USERS-8** A banner MUST identify Microsoft Entra External ID as the system of record and link to the relevant tenant in the Entra admin centre.
+- **FR-USERS-9** Orbit MUST NOT persist user PII beyond Entra `objectId`, display name, email, last-active timestamp; the full user record is read on demand from Microsoft Graph (`/users/{id}`).
 
 ### 6.11 Preferences
 
@@ -222,7 +222,7 @@ Each of these surfaces SHARES the following requirements:
 
 - **NFR-SEC-1** All traffic MUST be HTTPS, HSTS preloaded, TLS 1.2+ at Front Door.
 - **NFR-SEC-2** Azure tokens MUST NEVER be issued to the browser; all Azure calls use the API's managed identity.
-- **NFR-SEC-3** Clerk Backend API key and webhook signing secret MUST live in Key Vault; webhook payloads MUST be Svix-verified before any DB write.
+- **NFR-SEC-3** Microsoft Graph access MUST use the API's managed identity with the minimum application permissions (`GroupMember.Read.All`, `User.Read.All`, `AuditLog.Read.All`, `Application.Read.All`); no static keys. Event Hub consumer credentials MUST live in Key Vault and be rotated automatically.
 - **NFR-SEC-4** Public network access MUST be disabled on Postgres, Key Vault, App Configuration; access via private endpoints only.
 - **NFR-SEC-5** WAF MUST be enabled on Front Door with the OWASP managed ruleset.
 - **NFR-SEC-6** Penetration test MUST be passed before each major version GA.
@@ -266,11 +266,11 @@ The only data Orbit persists in `psql-orbit-<env>`:
 | `group_cache`          | Cached Entra group memberships                                                   | ≤5 min      |
 | `audit_log`            | Privileged actions (§6.12)                                                       | 13 months   |
 | `feature_flags`        | Per-tenant feature flag values                                                   | Lifetime    |
-| `user_activity`        | Append-only Clerk webhook events (`org_id`, `user_id`, `event_type`, `occurred_at`) | 13 months |
+| `user_activity`        | Append-only Entra sign-in events (`app_id`, `env`, `user_object_id`, `event_type`, `occurred_at`) | 13 months |
 
 ### 8.2 Aggregated data (read live, never stored)
 
-Telemetry, alerts, deployment history, log entries, cost line items, resource inventory, ServiceNow tickets, Clerk user-profile fields.
+Telemetry, alerts, deployment history, log entries, cost line items, resource inventory, ServiceNow tickets, end-user profile fields (read live from Microsoft Graph).
 
 ### 8.3 Data classification
 
@@ -282,7 +282,7 @@ Telemetry, alerts, deployment history, log entries, cost line items, resource in
 | User activity events         | Internal       | Orbit Postgres                  |
 | Azure telemetry              | Internal       | Azure (read live)               |
 | Cost data                    | Confidential   | Azure (read live, FinOps-gated) |
-| End-user PII (Clerk users)   | Confidential   | Clerk (read live on demand)     |
+| End-user PII (Entra users)   | Confidential   | Entra External ID (read live on demand via Graph) |
 
 ---
 
@@ -293,20 +293,18 @@ Telemetry, alerts, deployment history, log entries, cost line items, resource in
 | System / API                     | Purpose                                                  | Auth                                |
 | -------------------------------- | -------------------------------------------------------- | ----------------------------------- |
 | Microsoft Entra ID (OIDC)        | User sign-in, MFA, ID tokens                             | OIDC + Conditional Access           |
-| Microsoft Graph                  | Group membership for RBAC checks                          | App permissions (`GroupMember.Read.All`) |
+| Microsoft Graph                  | Staff group membership; end-user rosters, profiles, sign-in activity | Managed identity + app permissions (`GroupMember.Read.All`, `User.Read.All`, `AuditLog.Read.All`, `Application.Read.All`) |
 | Azure Resource Graph             | Resource inventory                                       | Managed identity                    |
 | Azure Monitor + App Insights     | Metrics, traces, exceptions, availability                | Managed identity                    |
 | Azure Log Analytics              | KQL queries against per-app workspaces                    | Managed identity                    |
 | Azure Network Watcher            | Latency, packet loss, NSG flow logs                       | Managed identity                    |
 | Azure Cost Management            | MTD spend, forecast, line items                           | Managed identity                    |
 | ServiceNow (read API)            | Active incident tickets per tracked app                   | OAuth / service account             |
-| Clerk Backend API                | Org rosters, user lookups, session counts                 | Bearer token (from Key Vault)       |
+| Entra Sign-In Logs (Event Hub)   | Per-app session events for the user-activity rollup       | Event Hub SAS (from Key Vault)      |
 
 ### 9.2 Inbound (push to Orbit)
 
-| Source            | Endpoint                  | Verification                                  |
-| ----------------- | ------------------------- | --------------------------------------------- |
-| Clerk webhooks    | `POST /api/webhooks/clerk` | Svix HMAC signature using shared secret      |
+Orbit exposes **no public webhook endpoints**. End-user activity is ingested by pulling from Azure Event Hub (`evh-orbit-signins-<env>`), which is private-endpoint-only and SAS-restricted. This removes a class of authentication-bypass risk versus public webhook endpoints.
 
 ### 9.3 Outbound (future v4)
 
@@ -335,7 +333,7 @@ Orbit Command Center v3 is accepted when:
 3. The §13 checklist in `architecture-spec.md` is fully complete.
 4. A walkthrough by each persona in §2 confirms their primary goals can be completed without leaving Orbit.
 5. The FinOps boundary is verified: a user removed from `Orbit-Cost-Readers` cannot retrieve a single byte of cost data via any UI surface or any direct API request.
-6. The Users & activity page reflects real Clerk activity for at least one tracked app for ≥7 days.
+6. The Users & activity page reflects real Entra sign-in activity for at least one tracked app for ≥7 days.
 
 ---
 
@@ -345,7 +343,7 @@ Orbit Command Center v3 is accepted when:
 | --------------- | ------------------------------------------------------------------------------------------- | ------------------------------------- |
 | **Phase 0 — Mocked** _(current)_ | All UI surfaces backed by deterministic mock data in the API. No external integrations live. | Internal demo, design sign-off.       |
 | **Phase 1 — Azure read-only**    | Resource Graph + Monitor + Cost Management + Log Analytics wired live, replacing mocks.        | UAT in non-prod by SRE + FinOps.      |
-| **Phase 2 — Clerk live**         | Clerk Organizations created, webhooks streaming into `user_activity`, Users page live.        | UAT by Product / Growth.              |
+| **Phase 2 — Entra live**         | Entra External ID app registrations + `<app>-<env>-users` groups created, Event Hub sign-in stream consumed into `user_activity`, Users page live. | UAT by Product / Growth.              |
 | **Phase 3 — Incidents live**     | ServiceNow read integration replaces the stub.                                                 | UAT by Operations.                    |
 | **Phase 4 — GA**                 | Pen test passed, custom domain bound, prod RBAC migrated off the dev simulator.                | Sign-off by Platform Eng + Security.  |
 

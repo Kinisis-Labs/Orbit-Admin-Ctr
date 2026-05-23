@@ -12,7 +12,7 @@
 
 Orbit Command Center is the centralised admin centre for every Kinisis-operated application. It gives engineers and operators a unified, real-time view of Azure infrastructure, network health, application telemetry, alerts, cost, and end-user engagement across all environments (prod, staging, dev) of every Kinisis app from a single Azure Portal–styled dashboard.
 
-The platform aggregates live operational data directly from Azure, Clerk, and per-application telemetry APIs. **No monitoring, telemetry, end-user, or customer data is persisted inside Orbit** — all data is queried live from authoritative sources at request time.
+The platform aggregates live operational data directly from Azure, Microsoft Entra (via Microsoft Graph and Entra sign-in logs), and per-application telemetry APIs. **No monitoring, telemetry, end-user, or customer data is persisted inside Orbit** — all data is queried live from authoritative sources at request time.
 
 ---
 
@@ -48,32 +48,34 @@ Internal Engineers / Operators
        ├──► Network Watcher           (latency, packet loss, NSG flow logs)
        ├──► Application Insights      (RUM, traces, exceptions)
        ├──► Azure Cost Management     (MTD spend, forecast, per-API allocation)
-       ├──► Microsoft Graph           (group membership for RBAC checks)
-       ├──► Clerk Backend API         (Organizations, members, users)         ← new in v3
-       ├──► Clerk Webhooks            (session / user events → Orbit DB)      ← new in v3
+       ├──► Microsoft Graph           (staff group membership for RBAC; end-user rosters & profiles)
+       ├──► Entra External ID         (end-user CIAM tenant — one app reg per {app, env})    ← new in v3
+       ├──► Event Hub: Entra sign-in logs (session events → Orbit DB rollup)                 ← new in v3
        └──► Per-app telemetry APIs    (custom KPIs exposed by each app)
 ```
 
-Frontend and API are deployed as a single logical unit per environment. The API performs all Azure-facing calls server-side via **managed identity**, so no Azure tokens are ever issued to the browser. Clerk credentials are held in Key Vault and never reach the browser.
+Frontend and API are deployed as a single logical unit per environment. The API performs all Azure-facing calls server-side via **managed identity**, so no Azure tokens are ever issued to the browser. Microsoft Graph is called via the same managed identity using application permissions — no static API keys, no third-party IdP, no secrets in the browser.
 
 ---
 
 ## 4. Tracked Applications (Tenant Inventory)
 
-Orbit treats each `{app, environment}` pair as a first-class **scope**, a first-class Clerk **Organization**, and a first-class Cost-Management tag pair. The seeded inventory is:
+Orbit treats each `{app, environment}` pair as a first-class **scope**, a first-class **Entra External ID app registration** (with a backing security group), and a first-class Cost-Management tag pair. The seeded inventory is:
 
-| App ID            | Display Name      | Env     | Region    | Resource Group              | Subscription                    | Clerk Org           |
-| ----------------- | ----------------- | ------- | --------- | --------------------------- | ------------------------------- | ------------------- |
-| `grailbabe`       | GrailBabe         | prod    | eastus2   | `rg-grailbabe-prod-eus2`    | `sub-kinisis-platform-prod`     | `grailbabe-prod`    |
-| `grailbabe-dev`   | GrailBabe (dev)   | dev     | eastus2   | `rg-grailbabe-dev-eus2`     | `sub-kinisis-platform-nonprod`  | `grailbabe-dev`     |
-| `kinisis-id`      | Kinisis ID        | prod    | eastus2   | `rg-kid-prod-eus2`          | `sub-kinisis-platform-prod`     | `kinisis-id-prod`   |
-| `ops-portal`      | Ops Portal        | prod    | centralus | `rg-ops-prod-cus`           | `sub-kinisis-internal-prod`     | `ops-portal-prod`   |
-| `ledger-api`      | Ledger API        | prod    | westus2   | `rg-ledger-prod-wus2`       | `sub-kinisis-finance-prod`      | `ledger-api-prod`   |
-| `atlas-cms`       | Atlas CMS         | staging | eastus2   | `rg-atlas-stg-eus2`         | `sub-kinisis-internal-nonprod`  | `atlas-cms-stg`     |
+| App ID            | Display Name      | Env     | Region    | Resource Group              | Subscription                    | Entra App Reg / User Group |
+| ----------------- | ----------------- | ------- | --------- | --------------------------- | ------------------------------- | -------------------------- |
+| `grailbabe`       | GrailBabe         | prod    | eastus2   | `rg-grailbabe-prod-eus2`    | `sub-kinisis-platform-prod`     | `app-grailbabe-prod` / `grailbabe-prod-users`    |
+| `grailbabe-dev`   | GrailBabe (dev)   | dev     | eastus2   | `rg-grailbabe-dev-eus2`     | `sub-kinisis-platform-nonprod`  | `app-grailbabe-dev` / `grailbabe-dev-users`      |
+| `kinisis-id`      | Kinisis ID        | prod    | eastus2   | `rg-kid-prod-eus2`          | `sub-kinisis-platform-prod`     | `app-kinisis-id-prod` / `kinisis-id-prod-users`  |
+| `ops-portal`      | Ops Portal        | prod    | centralus | `rg-ops-prod-cus`           | `sub-kinisis-internal-prod`     | `app-ops-portal-prod` / `ops-portal-prod-users`  |
+| `ledger-api`      | Ledger API        | prod    | westus2   | `rg-ledger-prod-wus2`       | `sub-kinisis-finance-prod`      | `app-ledger-api-prod` / `ledger-api-prod-users`  |
+| `atlas-cms`       | Atlas CMS         | staging | eastus2   | `rg-atlas-stg-eus2`         | `sub-kinisis-internal-nonprod`  | `app-atlas-cms-stg` / `atlas-cms-stg-users`      |
 
-**New in v3:** every tracked pair now binds to a real subscription name and a Clerk Organization. v2 placeholder subscription IDs (`a1f4-shared-platform`, `b203-internal-tools`, `c508-finance`) map onto `sub-kinisis-platform-prod`, `sub-kinisis-internal-prod`, and `sub-kinisis-finance-prod` respectively.
+**New in v3:** every tracked pair binds to a real subscription name plus an Entra External ID app registration and security group. The security group is the source-of-truth for "is this user a member of GrailBabe (prod)" — engagement queries on the Users & activity page are membership lookups against Microsoft Graph. v2 placeholder subscription IDs (`a1f4-shared-platform`, `b203-internal-tools`, `c508-finance`) map onto `sub-kinisis-platform-prod`, `sub-kinisis-internal-prod`, and `sub-kinisis-finance-prod` respectively.
 
-Future environments (`kinisis-id-dev`, `ledger-api-stg`, …) onboard by the same pattern — one row per `{app, environment}`, one Clerk Organization, one resource group.
+Customer-facing end-users (the people using GrailBabe, Kinisis ID, etc.) live in a single **Entra External ID** (CIAM) tenant — separate from the internal corporate Entra tenant that Orbit staff use. Apps choose which user-flows they invoke from that tenant, but every signed-in customer becomes a member of exactly one `<app>-<env>-users` group.
+
+Future environments (`kinisis-id-dev`, `ledger-api-stg`, …) onboard by the same pattern — one row per `{app, environment}`, one app registration, one user group, one resource group.
 
 ---
 
@@ -127,8 +129,8 @@ Provision the following in **each** environment (`prod` and `nonprod`). Resource
 | Container Apps Environment       | `cae-orbit-prod-eus2`      | `cae-orbit-nonprod-eus2`      | Runtime for the Express API                                             |
 | Container App                    | `ca-orbit-api-prod-eus2`   | `ca-orbit-api-nonprod-eus2`   | Orbit API service                                                       |
 | Azure Container Registry         | `acrkinisis01` (shared)    | `acrkinisis01` (shared)       | API container image registry — single, organisation-wide                |
-| Azure Database for PostgreSQL    | `psql-orbit-prod-eus2`     | `psql-orbit-nonprod-eus2`     | Sessions, group-cache, audit log, **Clerk user-activity rollups**       |
-| Key Vault                        | `kv-orbit-prod-eus2`       | `kv-orbit-nonprod-eus2`       | DB credentials, signing keys, Clerk API key + webhook secret, downstream secrets |
+| Azure Database for PostgreSQL    | `psql-orbit-prod-eus2`     | `psql-orbit-nonprod-eus2`     | Sessions, group-cache, audit log, **Entra sign-in rollups (`user_activity`)** |
+| Key Vault                        | `kv-orbit-prod-eus2`       | `kv-orbit-nonprod-eus2`       | DB credentials, signing keys, Event Hub SAS / consumer credentials, downstream secrets |
 | App Configuration                | `appcs-orbit-prod-eus2`    | `appcs-orbit-nonprod-eus2`    | Feature flags, scoped app inventory                                     |
 | Application Insights             | `appi-orbit-prod-eus2`     | `appi-orbit-nonprod-eus2`     | Telemetry for the Orbit platform itself                                 |
 | Log Analytics Workspace          | `law-orbit-prod-eus2`      | `law-orbit-nonprod-eus2`      | Centralised logs/queries for the Orbit platform                         |
@@ -144,13 +146,13 @@ These are items v2 did not call out and must be added before deployment:
    §5.2 subscriptions created (or existing ones renamed) and §5.1 tag-enforcement Azure Policy assigned at every subscription scope.
 2. **Resource-group rename pass.**
    Every existing RG in §4 renamed to the `rg-<workload>-<env>-<region>` pattern; any legacy `-gaac-` named Azure resources re-provisioned (or aliased) under the new `-orbit-` names as part of v3 cutover.
-3. **Clerk Backend API integration.**
-   Orbit calls Clerk's Backend API for org rosters, user lookups, and active-session counts. Key + webhook signing secret stored in Key Vault.
-4. **Clerk webhook receiver** on the Orbit API.
-   New endpoint `POST /api/webhooks/clerk` (Svix-signed) consumes `session.created`, `session.ended`, `user.created`, `user.updated`, `user.deleted`, `organizationMembership.created`, `organizationMembership.deleted`.
+3. **Microsoft Graph integration (extended).**
+   Orbit already uses Graph for staff group checks. v3 extends usage to: list members of each `<app>-<env>-users` group, look up user profiles (display name, email, `signInActivity.lastSignInDateTime`), and resolve app-registration metadata. Application permissions required: `GroupMember.Read.All`, `User.Read.All`, `AuditLog.Read.All`, `Application.Read.All`. All calls go through the API's managed identity — no static keys.
+4. **Entra sign-in log stream → Event Hub → Orbit consumer.**
+   In the External ID tenant, configure **diagnostic settings** to stream `SignInLogs` (and `NonInteractiveUserSignInLogs`) to `evh-orbit-signins-<env>`. The Orbit API runs a consumer that filters by `appId` (one of the §4 app registrations) and writes session events to `user_activity`. Replaces the v2-draft webhook approach — sign-in logs are the authoritative source and require no per-app code changes inside each Kinisis app.
 5. **`user_activity` rollup table** in `psql-orbit-<env>`.
-   Schema: `(org_id, user_id, event_type, occurred_at)` with daily materialised views (`dau_by_app`, `wau_by_app`, `mau_by_app`). Retention: 13 months. **The only new persisted data category in v3.**
-6. **One Clerk Organization per tracked `{app, environment}`** (§4), named `<app>-<env>`. Each Kinisis app reconfigured to enrol users into its org.
+   Schema: `(app_id, env, user_object_id, event_type, occurred_at)` with daily materialised views (`dau_by_app`, `wau_by_app`, `mau_by_app`). Retention: 13 months. **The only new persisted data category in v3.**
+6. **One Entra External ID app registration + `<app>-<env>-users` security group per tracked `{app, environment}`** (§4). Each Kinisis app is configured to use that app registration for sign-in, and a Conditional Access / app-assignment policy auto-adds successful sign-ins to the group.
 7. **API identity bindings extended** to every subscription that hosts a tracked app (platform-prod/nonprod, internal-prod/nonprod, finance-prod) — see §5.5.
 
 ### 5.5 RBAC bindings the API identity needs
@@ -181,17 +183,18 @@ The repository is a pnpm monorepo with the following deployable artifacts:
 
 **Contract-first.** All HTTP surfaces are defined in `lib/api-spec`, with Zod validators and React Query hooks generated from it. The API server validates every request and response against the same Zod schemas.
 
-**Mocked data layer (current).** All app, telemetry, network, alert, cost, and user-activity data is currently produced by deterministic seed functions in `artifacts/api-server/src/routes/orbit.ts` and `artifacts/orbit/src/lib/mock-data.ts`. The intent is for those handlers to be replaced one-by-one by live Azure + Clerk calls without changing the OpenAPI contract.
+**Mocked data layer (current).** All app, telemetry, network, alert, cost, and user-activity data is currently produced by deterministic seed functions in `artifacts/api-server/src/routes/orbit.ts` and `artifacts/orbit/src/lib/mock-data.ts`. The intent is for those handlers to be replaced one-by-one by live Azure + Microsoft Graph calls without changing the OpenAPI contract.
 
 ---
 
 ## 7. Security, Identity, and RBAC
 
-- **Authentication:** Microsoft Entra ID (OIDC), MFA enforced via Conditional Access. No local auth, no API keys for end users.
-- **Authorisation model:** Group-based. Membership is verified per request via Microsoft Graph (cached in Postgres for ≤5 min).
+- **Authentication (Orbit staff):** Microsoft Entra ID (corporate tenant), OIDC + PKCE, MFA enforced via Conditional Access. No local auth, no API keys, no third-party IdP.
+- **Authentication (Kinisis app end-users):** Microsoft Entra External ID (CIAM tenant) via one app registration per `{app, environment}`. Orbit does not handle these sign-ins — it only reads the resulting sign-in logs and group memberships.
+- **Authorisation model:** Group-based. Staff group membership is verified per request via Microsoft Graph (cached in Postgres for ≤5 min). End-user membership of `<app>-<env>-users` is the source-of-truth for engagement queries.
 - **HTTPS-only**, HSTS preload, TLS 1.2+ at Front Door.
-- **Managed identity** for all Azure-facing calls — no service principal secrets in code or Key Vault.
-- **Clerk Backend API key + webhook secret** held in Key Vault; webhook requests verified with Svix HMAC signatures before any DB write. **(new in v3)**
+- **Managed identity** for all Azure-facing calls (including Microsoft Graph) — no service principal secrets in code or Key Vault.
+- **Entra sign-in log stream** to Event Hub is consumed by the API using a managed-identity SAS; payload origin is implicitly trusted because the stream is private-endpoint-only and SAS-restricted. **(new in v3)**
 - **Audit logging** of every privileged action (group changes, cost queries, alert acknowledgements, user-search) to Log Analytics.
 
 ### Required Entra security groups
@@ -219,23 +222,25 @@ v1 surfaced cost data alongside operational telemetry on every page. v2 establis
 
 ## 9. Users & Activity (new in v3)
 
-Orbit's **Users & activity** page reports DAU / WAU / MAU, stickiness, inactive-user counts, and a recent-users roster per Kinisis app. Each tracked `{app, environment}` is modelled as a Clerk **Organization** (§4); "Active users for GrailBabe (prod)" = members of `grailbabe-prod` with `last_active_at` in the window.
+Orbit's **Users & activity** page reports DAU / WAU / MAU, stickiness, inactive-user counts, and a recent-users roster per Kinisis app. Each tracked `{app, environment}` is modelled as an **Entra External ID app registration with a backing security group** (§4); "Active users for GrailBabe (prod)" = members of `grailbabe-prod-users` whose latest `SignInLogs` event falls in the window.
 
 Data flow:
 
 ```
-Each Kinisis app (signs users in via Clerk)
-        ↓  session.created / user.* webhooks (Svix-signed)
-POST /api/webhooks/clerk        ← Orbit API
-        ↓
-psql-orbit-<env>.user_activity  ← append-only event log, 13-month retention
+Each Kinisis app (signs users in via its Entra External ID app registration)
+        ↓  SignInLogs / NonInteractiveUserSignInLogs (diagnostic setting)
+Event Hub: evh-orbit-signins-<env>
+        ↓  Orbit API consumer (managed-identity SAS), filtered by appId
+psql-orbit-<env>.user_activity   ← append-only event log, 13-month retention
         ↓
 materialised views (dau_by_app, wau_by_app, mau_by_app)
         ↓
 GET /api/users/activity, GET /api/users  ← Orbit UI
+                                ↓
+                        Microsoft Graph (live on demand for profile fields)
 ```
 
-- Orbit does **not** store user PII beyond what's required to render the recent-users table (display name, email, last-active timestamp). The full user record always lives in Clerk; Orbit reads it on demand via the Backend API.
+- Orbit does **not** store user PII beyond what's required to render the recent-users table (Entra `objectId`, display name, email, last-active timestamp). The full user record always lives in the External ID tenant; Orbit reads display name and email on demand via Microsoft Graph (`/users/{id}`).
 - The Users & activity page is visible to all `Orbit-Authorized-Users`. It is **not** behind the FinOps boundary, because engagement metrics are operational data, not financial data.
 - The Recent Users roster respects the global / per-app scope selector, identical to every other Orbit surface.
 
@@ -281,14 +286,14 @@ Entra ID SSO + MFA + group check (Orbit-Authorized-Users)
         ↓
 Selects scope (Global or a specific {app, environment})
         ↓
-Express API (managed identity) queries Azure + Clerk APIs in parallel
+Express API (managed identity) queries Azure + Microsoft Graph APIs in parallel
         ↓
 Responses validated against Zod schemas
         ↓
 Unified dashboard rendered in the browser
 ```
 
-**No monitoring data, telemetry history, customer data, or cost line items are persisted by Orbit.** The only persisted state is platform-internal: sessions, cached group membership, audit log, feature flags, and the Clerk user-activity rollup table (§9).
+**No monitoring data, telemetry history, customer data, or cost line items are persisted by Orbit.** The only persisted state is platform-internal: sessions, cached group membership, audit log, feature flags, and the Entra sign-in rollup table (§9).
 
 ---
 
@@ -306,8 +311,9 @@ Before promoting v3 to production, the following must be in place (in this order
 - [ ] Front Door created with `/api/*` routing rule + WAF policy.
 - [ ] Entra group `Orbit-Cost-Readers` created and populated with FinOps & engineering leads.
 - [ ] Microsoft Graph `GroupMember.Read.All` consented for the Orbit app registration.
-- [ ] **Clerk Organizations** created for every tracked `{app, environment}` (`<app>-<env>`); each Kinisis app reconfigured to enrol users into its org.
-- [ ] **Clerk webhook endpoint** registered (`/api/webhooks/clerk`) with signing secret stored in `kv-orbit-<env>`.
+- [ ] **Entra External ID tenant** provisioned; one **app registration** + one `<app>-<env>-users` security group created per tracked `{app, environment}` (§4); each Kinisis app reconfigured to authenticate against its app registration.
+- [ ] **Diagnostic settings** on the External ID tenant streaming `SignInLogs` + `NonInteractiveUserSignInLogs` to `evh-orbit-signins-<env>`; Orbit API consumer deployed and writing to `user_activity`.
+- [ ] **Microsoft Graph application permissions** consented for the Orbit API managed identity: `GroupMember.Read.All`, `User.Read.All`, `AuditLog.Read.All`, `Application.Read.All`.
 - [ ] Private endpoints for Postgres, Key Vault, App Config; public network access disabled.
 - [ ] Cost Management exports + per-RG budgets configured for every tracked `{app, environment}` pair, including `grailbabe-dev`.
 - [ ] Diagnostic settings on every monitored RG forwarding to `law-orbit-<env>`.
@@ -323,10 +329,10 @@ Before promoting v3 to production, the following must be in place (in this order
 - Microsoft Teams and PagerDuty integrations for two-way alert acknowledgement.
 - Two-way ServiceNow integration (acknowledge / resolve from Orbit).
 - Historical trend analysis beyond 13 months (would require introducing a time-series store — out of scope for v3).
-- Self-service onboarding flow for new `{app, environment}` scopes (new RG + Clerk Org + tag set + Orbit registry entry in one click).
+- Self-service onboarding flow for new `{app, environment}` scopes (new RG + Entra app registration + `<app>-<env>-users` group + tag set + Orbit registry entry in one click).
 
 ---
 
 ## 15. Conclusion
 
-Orbit Command Center v3 is the next evolution of the platform after v2's Kinisis Orbit. It carries forward v1/v2's core principle — **aggregate, never store** — while adding a Cloud Adoption Framework–aligned subscription, resource-group, and tagging scheme, end-user engagement visibility via Clerk Organizations, and the lone new persisted data category needed to support it (the `user_activity` rollup table). With the naming applied in §5.1, the resources in §5 provisioned, and the checklist in §13 completed, Orbit is ready to be the single operational pane of glass for every Kinisis-hosted application.
+Orbit Command Center v3 is the next evolution of the platform after v2's Kinisis Orbit. It carries forward v1/v2's core principle — **aggregate, never store** — while adding a Cloud Adoption Framework–aligned subscription, resource-group, and tagging scheme, end-user engagement visibility via Entra External ID + Microsoft Graph, and the lone new persisted data category needed to support it (the `user_activity` rollup table). With Microsoft Entra as the single identity provider (corporate tenant for staff, External ID tenant for end-users), the naming applied in §5.1, the resources in §5 provisioned, and the checklist in §13 completed, Orbit is ready to be the single operational pane of glass for every Kinisis-hosted application.

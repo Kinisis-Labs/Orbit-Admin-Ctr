@@ -52,11 +52,11 @@ export default function Users() {
     <div className="space-y-4">
       <PageHeader
         title="Users & activity"
-        subtitle="Active vs inactive users per Kinisis application. Source of truth: Clerk Organizations + session webhooks."
+        subtitle="Active vs inactive users per Kinisis application. Source of truth: Entra External ID app registrations + sign-in logs."
         right={<ScopeSelect />}
       />
 
-      <ClerkBanner />
+      <EntraBanner />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <Tile title="Total members" value={isLoading ? null : fmt(totals.members)} sub="Across scoped applications" />
@@ -168,23 +168,23 @@ export default function Users() {
   );
 }
 
-function ClerkBanner() {
+function EntraBanner() {
   return (
     <div className="bg-card border border-border shadow-sm p-3 flex items-start gap-3">
-      <div className="shrink-0 h-8 w-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center text-[11px] font-semibold">CK</div>
+      <div className="shrink-0 h-8 w-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center text-[11px] font-semibold">ID</div>
       <div className="flex-1 text-[12px] text-muted-foreground">
-        <span className="text-foreground font-semibold">Mock data.</span> When the Clerk integration is enabled, each Kinisis app will be a Clerk{" "}
-        <span className="font-mono text-foreground">Organization</span>. DAU / WAU / MAU will be computed from{" "}
-        <span className="font-mono text-foreground">session.created</span> webhooks, and Active / Idle / Inactive states from{" "}
-        <span className="font-mono text-foreground">user.last_active_at</span>.
+        <span className="text-foreground font-semibold">Mock data.</span> When live, each Kinisis app maps to one Entra External ID{" "}
+        <span className="font-mono text-foreground">app registration</span> with a backing{" "}
+        <span className="font-mono text-foreground">&lt;app&gt;-&lt;env&gt;-users</span> group. DAU / WAU / MAU come from{" "}
+        <span className="font-mono text-foreground">SignInLogs</span> streamed via Event Hub; profile fields are read live from Microsoft Graph.
       </div>
       <a
-        href="https://dashboard.clerk.com"
+        href="https://entra.microsoft.com"
         target="_blank"
         rel="noreferrer"
         className="text-primary text-[12px] inline-flex items-center gap-1 hover:underline shrink-0"
       >
-        Open Clerk dashboard <ExternalLink className="h-3 w-3" />
+        Open Entra admin centre <ExternalLink className="h-3 w-3" />
       </a>
     </div>
   );
