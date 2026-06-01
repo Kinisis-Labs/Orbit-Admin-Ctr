@@ -124,18 +124,20 @@ Provision the following in **each** environment (`prod` and `nonprod`). Resource
 | -------------------------------- | -------------------------- | ----------------------------- | ----------------------------------------------------------------------- |
 | Resource Group                   | `rg-orbit-prod-eus2`       | `rg-orbit-nonprod-eus2`       | Container for all per-env resources                                     |
 | Azure Front Door (Standard)      | `afd-orbit-prod`           | `afd-orbit-nonprod`           | TLS termination, WAF, custom domain                                     |
-| Static Web App                   | `stapp-orbit-prod-eus2`    | `stapp-orbit-nonprod-eus2`    | React/Vite frontend hosting                                             |
+| Static Web App                   | `swa-orbit-prod`           | `swa-orbit-nonprod`           | React/Vite frontend hosting                                             |
 | Container Apps Environment       | `cae-orbit-prod-eus2`      | `cae-orbit-nonprod-eus2`      | Runtime for the Express API                                             |
-| Container App                    | `ca-orbit-api-prod-eus2`   | `ca-orbit-api-nonprod-eus2`   | Orbit API service                                                       |
+| Container App                    | `ca-orbit-api-prod`        | `ca-orbit-api-nonprod`        | Orbit API service                                                       |
 | Azure Container Registry         | `acrkinisis01` (shared)    | `acrkinisis01` (shared)       | API container image registry — single, organisation-wide                |
 | Azure Database for PostgreSQL    | `pg-orbit-prod`            | `pg-orbit-nonprod`            | Sessions, group-cache, audit log, **Entra sign-in rollups (`user_activity`)** |
 | Key Vault                        | `kv-orbit-prod-eus2`       | `kv-orbit-nonprod-eus2`       | DB credentials, signing keys, Event Hub SAS / consumer credentials, downstream secrets |
 | App Configuration                | `appcs-orbit-prod-eus2`    | `appcs-orbit-nonprod-eus2`    | Feature flags, scoped app inventory                                     |
-| Application Insights             | `appi-orbit-prod-eus2`     | `appi-orbit-nonprod-eus2`     | Telemetry for the Orbit platform itself                                 |
+| Application Insights             | `appi-oribit-prod` (sic)   | `appi-orbit-nonprod`          | Telemetry for the Orbit platform itself                                 |
 | Log Analytics Workspace          | `law-orbit-prod-eus2`      | `law-orbit-nonprod-eus2`      | Centralised logs/queries for the Orbit platform                         |
 | Storage Account                  | `storbitprod01`            | `storbitnonprod01`            | Static asset overflow, export buckets                                   |
-| User-Assigned Managed Identity   | `id-orbit-api-prod-eus2`   | `id-orbit-api-nonprod-eus2`   | Identity used by the API to call downstream Azure services              |
+| User-Assigned Managed Identity   | `id-orbit-api-prod`        | `id-orbit-api-nonprod`        | Identity used by the API to call downstream Azure services              |
 | Private Endpoint(s)              | `pe-orbit-*-prod-eus2`     | `pe-orbit-*-nonprod-eus2`     | Private connectivity to Postgres, Key Vault, App Config                 |
+
+> **Resource naming — actual vs. intended.** The table is the *intended* convention. **Production** names confirmed from the Azure portal (June 2026) diverge: several omit the `-eus2` region suffix (`swa-orbit-prod`, `ca-orbit-api-prod`, `id-orbit-api-prod`, `pg-orbit-prod`, `appi-oribit-prod`), the Static Web App uses the `swa-` prefix (not `stapp-`), and Application Insights is **misspelled** `appi-oribit-prod` ("oribit"). `appcs-orbit-prod-eus2` and `cae-orbit-prod-eus2` match. A GitHub-OIDC federated managed identity (`…rg-orbit-prod-eus2Oidc`) also exists for the deploy workflow. **Non-production** names are projected from the same pattern and not yet confirmed. Resources not visible in the portal listing (Resource Group, Front Door, Key Vault, ACR, Log Analytics, Storage, Private Endpoints) remain as specified above and are unconfirmed.
 
 ### 5.4 New resources required for v3 (delta from v2)
 
