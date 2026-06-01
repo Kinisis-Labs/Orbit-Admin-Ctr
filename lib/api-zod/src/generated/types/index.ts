@@ -45,6 +45,8 @@ export * from './metricPoint';
 export * from './metricSeries';
 export * from './networkEndpoint';
 export * from './networkReport';
+export * from './playSubscriptionRow';
+export * from './playSubscriptionRowDataSource';
 export * from './postLedgerEntryRequest';
 export * from './postLedgerEntryRequestStatus';
 export * from './revenue';

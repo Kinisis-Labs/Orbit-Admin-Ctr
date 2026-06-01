@@ -444,3 +444,23 @@ export const ListUserActivityResponseItem = zod.object({
 export const ListUserActivityResponse = zod.array(ListUserActivityResponseItem)
 
 
+/**
+ * @summary Per-app Google Play subscription states + revenue (placeholder until the app is live)
+ */
+export const ListPlaySubscriptionsResponseItem = zod.object({
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "environment": zod.string(),
+  "packageName": zod.string(),
+  "activeSubscribers": zod.number().describe('Currently active\/paying subscribers'),
+  "canceledSubscribers": zod.number().describe('Auto-renew turned off but still within the paid term'),
+  "expiredSubscribers": zod.number().describe('Lapsed\/churned subscribers (inactive)'),
+  "mrr": zod.number().describe('Monthly recurring revenue in the reported currency'),
+  "revenueLast30d": zod.number().describe('Subscription revenue over the trailing 30 days'),
+  "currency": zod.string(),
+  "activeTrendPct": zod.number().describe('Active-subscriber change vs the prior period'),
+  "dataSource": zod.enum(['placeholder', 'live'])
+})
+export const ListPlaySubscriptionsResponse = zod.array(ListPlaySubscriptionsResponseItem)
+
+

@@ -289,6 +289,19 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/UserActivityRow" }
+  /play/subscriptions:
+    get:
+      operationId: listPlaySubscriptions
+      tags: [subscriptions]
+      summary: Per-app Google Play subscription states + revenue (placeholder until the app is live)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PlaySubscriptionRow" }
 components:
   parameters:
     AppId:
@@ -348,6 +361,22 @@ components:
         inactive30d: { type: integer }
         newLast7d: { type: integer }
         dauTrendPct: { type: number }
+    PlaySubscriptionRow:
+      type: object
+      required: [appId, appName, environment, packageName, activeSubscribers, canceledSubscribers, expiredSubscribers, mrr, revenueLast30d, currency, activeTrendPct, dataSource]
+      properties:
+        appId: { type: string }
+        appName: { type: string }
+        environment: { type: string }
+        packageName: { type: string }
+        activeSubscribers: { type: integer, description: Currently active/paying subscribers }
+        canceledSubscribers: { type: integer, description: Auto-renew turned off but still within the paid term }
+        expiredSubscribers: { type: integer, description: Lapsed/churned subscribers (inactive) }
+        mrr: { type: number, description: Monthly recurring revenue in the reported currency }
+        revenueLast30d: { type: number, description: Subscription revenue over the trailing 30 days }
+        currency: { type: string }
+        activeTrendPct: { type: number, description: Active-subscriber change vs the prior period }
+        dataSource: { type: string, enum: [placeholder, live] }
     MetricPoint:
       type: object
       required: [timestamp, value]

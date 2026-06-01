@@ -34,6 +34,7 @@ import type {
   LedgerReconciliation,
   LedgerReport,
   NetworkReport,
+  PlaySubscriptionRow,
   PostLedgerEntryRequest,
   StripeSyncResult,
   TelemetryReport,
@@ -1368,6 +1369,83 @@ export function useListUserActivity<TData = Awaited<ReturnType<typeof listUserAc
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListUserActivityQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListPlaySubscriptionsUrl = () => {
+
+
+
+
+  return `/api/play/subscriptions`
+}
+
+/**
+ * @summary Per-app Google Play subscription states + revenue (placeholder until the app is live)
+ */
+export const listPlaySubscriptions = async ( options?: RequestInit): Promise<PlaySubscriptionRow[]> => {
+
+  return customFetch<PlaySubscriptionRow[]>(getListPlaySubscriptionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPlaySubscriptionsQueryKey = () => {
+    return [
+    `/api/play/subscriptions`
+    ] as const;
+    }
+
+
+export const getListPlaySubscriptionsQueryOptions = <TData = Awaited<ReturnType<typeof listPlaySubscriptions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlaySubscriptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPlaySubscriptionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPlaySubscriptions>>> = ({ signal }) => listPlaySubscriptions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPlaySubscriptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPlaySubscriptionsQueryResult = NonNullable<Awaited<ReturnType<typeof listPlaySubscriptions>>>
+export type ListPlaySubscriptionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Per-app Google Play subscription states + revenue (placeholder until the app is live)
+ */
+
+export function useListPlaySubscriptions<TData = Awaited<ReturnType<typeof listPlaySubscriptions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlaySubscriptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPlaySubscriptionsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

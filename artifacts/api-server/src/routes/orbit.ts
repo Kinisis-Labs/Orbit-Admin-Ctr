@@ -34,6 +34,9 @@ export type AppRecord = {
   // consumer app whose end users sign in via Clerk (activity ingested from
   // Clerk webhooks). "entra" = employee-only internal tool (Orbit itself).
   userAuth: "clerk" | "entra";
+  // Google Play package name when this app ships an Android build tracked in the
+  // Play Console. Its presence flags the app for the Play subscriptions surface.
+  androidPackage?: string;
 };
 
 const APPS: AppRecord[] = [
@@ -57,6 +60,7 @@ const APPS: AppRecord[] = [
     },
     owners: ["Ryan Gutridge"],
     userAuth: "clerk",
+    androidPackage: "com.grailbabe.app",
   },
   {
     id: "grailbabe-dev",
@@ -78,6 +82,7 @@ const APPS: AppRecord[] = [
     },
     owners: ["Ryan Gutridge"],
     userAuth: "clerk",
+    androidPackage: "com.grailbabe.app.dev",
   },
   {
     id: "orbit",
@@ -160,6 +165,12 @@ export function findApp(id: string): AppRecord | undefined {
 // user-activity webhooks for.
 export function clerkApps(): AppRecord[] {
   return APPS.filter((a) => a.userAuth === "clerk");
+}
+
+// Apps that ship an Android build tracked in the Google Play Console — the ones
+// the Play subscriptions surface reports subscriber states + revenue for.
+export function playApps(): AppRecord[] {
+  return APPS.filter((a) => Boolean(a.androidPackage));
 }
 
 function activeAlertCount(app: AppRecord): number {

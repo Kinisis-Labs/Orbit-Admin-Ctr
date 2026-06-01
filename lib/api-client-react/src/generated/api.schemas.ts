@@ -71,6 +71,35 @@ export interface UserActivityRow {
   dauTrendPct: number;
 }
 
+export type PlaySubscriptionRowDataSource = typeof PlaySubscriptionRowDataSource[keyof typeof PlaySubscriptionRowDataSource];
+
+
+export const PlaySubscriptionRowDataSource = {
+  placeholder: 'placeholder',
+  live: 'live',
+} as const;
+
+export interface PlaySubscriptionRow {
+  appId: string;
+  appName: string;
+  environment: string;
+  packageName: string;
+  /** Currently active/paying subscribers */
+  activeSubscribers: number;
+  /** Auto-renew turned off but still within the paid term */
+  canceledSubscribers: number;
+  /** Lapsed/churned subscribers (inactive) */
+  expiredSubscribers: number;
+  /** Monthly recurring revenue in the reported currency */
+  mrr: number;
+  /** Subscription revenue over the trailing 30 days */
+  revenueLast30d: number;
+  currency: string;
+  /** Active-subscriber change vs the prior period */
+  activeTrendPct: number;
+  dataSource: PlaySubscriptionRowDataSource;
+}
+
 export interface MetricPoint {
   timestamp: string;
   value: number;

@@ -22,6 +22,7 @@ import NetworkPage from "@/pages/network";
 import Logs from "@/pages/logs";
 import ServiceHealth from "@/pages/service-health";
 import Subscriptions from "@/pages/subscriptions";
+import PlaySubscriptions from "@/pages/play-subscriptions";
 import Tags from "@/pages/tags";
 import Access from "@/pages/access";
 import Users from "@/pages/users";
@@ -57,6 +58,7 @@ function Router() {
         <Route path="/cost"><Gated><Cost /></Gated></Route>
         <Route path="/cost/budgets"><Gated><Budgets /></Gated></Route>
         <Route path="/cost/forecasts"><Gated><Forecasts /></Gated></Route>
+        <Route path="/play-subscriptions"><Gated><PlaySubscriptions /></Gated></Route>
         <Route path="/subscriptions" component={Subscriptions} />
         <Route path="/tags" component={Tags} />
         <Route path="/access" component={Access} />

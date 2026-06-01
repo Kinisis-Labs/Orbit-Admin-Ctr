@@ -3,6 +3,7 @@
 - [executeSql sandbox behavior](executesql-sandbox.md) — returns `{success:false, output:<error>}` on SQL errors; it does NOT throw, so try/catch won't catch.
 - [Ledger sale ingestion](ledger-sale-ingestion.md) — fee-aware sale = 2 legs/tx; idempotent replay; optional actual-fee override (live Stripe books real fee, GrailBabe-only).
 - [Fast Refresh export consistency](fast-refresh-export-consistency.md) — a .tsx mixing component + non-component (hook/context) exports breaks HMR; codegen invalidation then throws "must be used within a Provider". Split context/hook into a non-component module.
+- [FinOps backend gating](finops-backend-gating.md) — financial endpoints must enforce requireCostReader server-side, not just UI route gating; existing ledger/cost routes still only requireAuth.
 - [Azure deploy build gotchas](azure-deploy.md) — API Docker context = repo root (so .dockerignore must be root-level); runtime stage copies only dist/ (esbuild bundles all deps); vite build needs PORT+BASE_PATH env.
 - [Webhook ingestion idempotency](webhook-ingestion-idempotency.md) — commit dedupe marker in same tx as mutations; use event-time not ingest-time; GREATEST() guards out-of-order delivery.
 - [connect-pg-simple under esbuild](connect-pg-simple-esbuild.md) — bundled server has no table.sql → createTableIfMissing ENOENT; own user_sessions in schema + disable auto-create.

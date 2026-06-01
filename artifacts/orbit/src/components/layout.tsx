@@ -4,7 +4,7 @@ import { useListApps } from "@workspace/api-client-react";
 import {
   Cloud, Search, Settings as SettingsIcon, Home, Bell, DollarSign, LayoutDashboard,
   ChevronRight, Menu, Sun, Moon, Lock, Rocket, AlertOctagon, Activity,
-  HeartPulse, Network, FileText, ShieldAlert, Users, Layers, Tags, SlidersHorizontal, UserCheck,
+  HeartPulse, Network, FileText, ShieldAlert, Users, Layers, Tags, SlidersHorizontal, UserCheck, Smartphone,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/cost": "Cost Management",
   "/cost/budgets": "Budgets",
   "/cost/forecasts": "Forecasts",
+  "/play-subscriptions": "Play subscriptions",
   "/subscriptions": "Subscriptions",
   "/tags": "Tags",
   "/access": "Identity & access",
@@ -143,6 +144,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
               icon={<DollarSign className="h-[18px] w-[18px]" />}
               label="Cost Management"
               active={isCostRoute}
+              collapsed={navCollapsed}
+              trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
+              trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}
+            />
+            <NavItem
+              href="/play-subscriptions"
+              icon={<Smartphone className="h-[18px] w-[18px]" />}
+              label="Play subscriptions"
+              active={location === "/play-subscriptions"}
               collapsed={navCollapsed}
               trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
               trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}
