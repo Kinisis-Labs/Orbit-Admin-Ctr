@@ -63,46 +63,18 @@ const APPS: AppRecord[] = [
     owners: ["platform-eng@kinisis.io"],
   },
   {
-    id: "kinisis-id",
-    name: "Kinisis ID",
-    environment: "prod",
-    region: "eastus2",
-    resourceGroup: "rg-kid-prod",
-    status: "degraded",
-    activeAlerts: 3,
-    monthToDateCost: 2218.07,
-    subscriptionId: "a1f4-shared-platform",
-    description: "Identity and SSO platform for all Kinisis-managed apps.",
-    tags: { owner: "identity", tier: "tier-0", costCenter: "CC-1001" },
-    owners: ["identity@kinisis.io"],
-  },
-  {
-    id: "ops-portal",
-    name: "Ops Portal",
+    id: "orbit",
+    name: "Orbit",
     environment: "prod",
     region: "centralus",
-    resourceGroup: "rg-ops-prod",
+    resourceGroup: "rg-orbit-prod",
     status: "healthy",
     activeAlerts: 0,
     monthToDateCost: 612.33,
     subscriptionId: "b203-internal-tools",
-    description: "Internal engineering operations portal.",
+    description: "The Kinisis admin center — Azure operations dashboard.",
     tags: { owner: "platform", tier: "tier-2", costCenter: "CC-1042" },
     owners: ["platform-eng@kinisis.io"],
-  },
-  {
-    id: "atlas-cms",
-    name: "Atlas CMS",
-    environment: "staging",
-    region: "eastus2",
-    resourceGroup: "rg-atlas-stg",
-    status: "healthy",
-    activeAlerts: 0,
-    monthToDateCost: 184.55,
-    subscriptionId: "b203-internal-tools",
-    description: "Headless CMS powering marketing surfaces.",
-    tags: { owner: "marketing-eng", tier: "tier-3", costCenter: "CC-3010" },
-    owners: ["marketing-eng@kinisis.io"],
   },
 ];
 
@@ -327,16 +299,7 @@ const API_NAMES_BY_APP: Record<string, string[]> = {
     "GET /users/me",
     "POST /cart/items",
   ],
-  "kinisis-id": [
-    "POST /oauth/token",
-    "POST /sessions",
-    "GET /users/{id}",
-    "POST /mfa/verify",
-    "POST /signup",
-    "GET /jwks",
-    "POST /password/reset",
-  ],
-  "ops-portal": [
+  orbit: [
     "GET /incidents",
     "POST /incidents",
     "GET /dashboards/{id}",
@@ -344,25 +307,15 @@ const API_NAMES_BY_APP: Record<string, string[]> = {
     "GET /runs",
     "POST /runbooks/execute",
   ],
-  "atlas-cms": [
-    "GET /pages",
-    "POST /pages",
-    "GET /media",
-    "POST /media/upload",
-    "POST /publish",
-    "GET /drafts",
-  ],
 };
 
 // Mocked month-to-date revenue per app, split by channel. Designed to mirror what
 // real integrations would return (Stripe BalanceTransactions, App Store Connect
-// Sales/Trends, Google Play earnings reports). ops-portal is internal -> $0.
+// Sales/Trends, Google Play earnings reports). orbit is internal -> $0.
 const REVENUE_BY_APP: Record<string, { stripe: number; appStore: number; playStore: number }> = {
   grailbabe: { stripe: 28430.18, appStore: 9120.55, playStore: 4892.40 },
   "grailbabe-dev": { stripe: 0, appStore: 0, playStore: 0 },
-  "kinisis-id": { stripe: 18764.22, appStore: 0, playStore: 0 },
-  "ops-portal": { stripe: 0, appStore: 0, playStore: 0 },
-  "atlas-cms": { stripe: 2104.50, appStore: 0, playStore: 0 },
+  orbit: { stripe: 0, appStore: 0, playStore: 0 },
 };
 
 const REVENUE_SOURCE_LABELS = {
