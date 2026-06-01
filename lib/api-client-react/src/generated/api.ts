@@ -24,6 +24,7 @@ import type {
   GlobalHealth,
   HealthStatus,
   InfrastructureReport,
+  LedgerReport,
   NetworkReport,
   TelemetryReport
 } from './api.schemas';
@@ -608,6 +609,83 @@ export function useGetAppAlerts<TData = Awaited<ReturnType<typeof getAppAlerts>>
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetAppAlertsQueryOptions(appId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetLedgerUrl = (appId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/ledger`
+}
+
+/**
+ * @summary Financial ledger (balances, reconciliation, recent transactions) for an app
+ */
+export const getLedger = async (appId: string, options?: RequestInit): Promise<LedgerReport> => {
+
+  return customFetch<LedgerReport>(getGetLedgerUrl(appId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLedgerQueryKey = (appId: string,) => {
+    return [
+    `/api/apps/${appId}/ledger`
+    ] as const;
+    }
+
+
+export const getGetLedgerQueryOptions = <TData = Awaited<ReturnType<typeof getLedger>>, TError = ErrorType<unknown>>(appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLedger>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLedgerQueryKey(appId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLedger>>> = ({ signal }) => getLedger(appId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(appId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLedger>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLedgerQueryResult = NonNullable<Awaited<ReturnType<typeof getLedger>>>
+export type GetLedgerQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Financial ledger (balances, reconciliation, recent transactions) for an app
+ */
+
+export function useGetLedger<TData = Awaited<ReturnType<typeof getLedger>>, TError = ErrorType<unknown>>(
+ appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLedger>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLedgerQueryOptions(appId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

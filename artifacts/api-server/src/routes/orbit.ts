@@ -5,6 +5,7 @@ import {
   GetInfrastructureResponse,
   GetNetworkResponse,
   GetCostResponse,
+  GetLedgerResponse,
   GetTelemetryResponse,
   GetAppAlertsResponse,
   GetGlobalHealthResponse,
@@ -88,20 +89,6 @@ const APPS: AppRecord[] = [
     description: "Internal engineering operations portal.",
     tags: { owner: "platform", tier: "tier-2", costCenter: "CC-1042" },
     owners: ["platform-eng@kinisis.io"],
-  },
-  {
-    id: "ledger-api",
-    name: "Ledger API",
-    environment: "prod",
-    region: "westus2",
-    resourceGroup: "rg-ledger-prod",
-    status: "unhealthy",
-    activeAlerts: 5,
-    monthToDateCost: 3890.14,
-    subscriptionId: "c508-finance",
-    description: "Double-entry ledger service backing all transactional apps.",
-    tags: { owner: "finance-eng", tier: "tier-0", costCenter: "CC-2200" },
-    owners: ["finance-eng@kinisis.io", "sre@kinisis.io"],
   },
   {
     id: "atlas-cms",
@@ -357,15 +344,6 @@ const API_NAMES_BY_APP: Record<string, string[]> = {
     "GET /runs",
     "POST /runbooks/execute",
   ],
-  "ledger-api": [
-    "POST /transactions",
-    "GET /accounts/{id}/balance",
-    "GET /accounts",
-    "POST /journals",
-    "GET /transactions",
-    "POST /reconciliations",
-    "GET /reports/trial-balance",
-  ],
   "atlas-cms": [
     "GET /pages",
     "POST /pages",
@@ -384,7 +362,6 @@ const REVENUE_BY_APP: Record<string, { stripe: number; appStore: number; playSto
   "grailbabe-dev": { stripe: 0, appStore: 0, playStore: 0 },
   "kinisis-id": { stripe: 18764.22, appStore: 0, playStore: 0 },
   "ops-portal": { stripe: 0, appStore: 0, playStore: 0 },
-  "ledger-api": { stripe: 22518.96, appStore: 0, playStore: 0 },
   "atlas-cms": { stripe: 2104.50, appStore: 0, playStore: 0 },
 };
 
@@ -477,6 +454,126 @@ router.get("/apps/:appId/cost", (req, res) => {
   res.json(data);
 });
 
+// --- ledger ---
+const LEDGER_ACCOUNTS: Array<{
+  code: string;
+  name: string;
+  type: "asset" | "liability" | "equity" | "revenue" | "expense";
+  weight: number;
+}> = [
+  { code: "1000", name: "Cash & Settlement", type: "asset", weight: 1.0 },
+  { code: "1200", name: "Accounts Receivable", type: "asset", weight: 0.35 },
+  { code: "2000", name: "Accounts Payable", type: "liability", weight: 0.22 },
+  { code: "2300", name: "Deferred Revenue", type: "liability", weight: 0.28 },
+  { code: "4000", name: "Recognized Revenue", type: "revenue", weight: 1.0 },
+  { code: "5100", name: "Payment Processing Fees", type: "expense", weight: 0.045 },
+];
+
+const LEDGER_TX_TEMPLATES: Array<{
+  description: string;
+  debit: string;
+  credit: string;
+  weight: number;
+}> = [
+  { description: "Customer payment captured", debit: "1000", credit: "4000", weight: 1.0 },
+  { description: "Invoice posted", debit: "1200", credit: "4000", weight: 0.5 },
+  { description: "Subscription revenue recognized", debit: "2300", credit: "4000", weight: 0.4 },
+  { description: "Payout to operating bank", debit: "2000", credit: "1000", weight: 0.6 },
+  { description: "Payment processing fee", debit: "5100", credit: "1000", weight: 0.7 },
+  { description: "Refund issued", debit: "4000", credit: "1000", weight: 0.25 },
+  { description: "Chargeback reserve", debit: "1200", credit: "1000", weight: 0.12 },
+];
+
+function ledgerForApp(app: AppRecord) {
+  const rand = seededRand(app.id + "ledger");
+  const basis = revenueForApp(app.id).total;
+  const active = basis > 0;
+
+  const accounts = LEDGER_ACCOUNTS.map((a) => {
+    const balance = active
+      ? Number((basis * a.weight * (0.85 + rand() * 0.3)).toFixed(2))
+      : 0;
+    return { code: a.code, name: a.name, type: a.type, balance };
+  });
+
+  const totalBalance = Number(
+    accounts
+      .filter((a) => a.type === "asset")
+      .reduce((s, a) => s + a.balance, 0)
+      .toFixed(2),
+  );
+
+  const txCount = active ? 6 + Math.floor(rand() * 5) : 0;
+  const sick = app.status === "unhealthy" || app.status === "degraded";
+  const transactions: Array<{
+    id: string;
+    postedAt: string;
+    description: string;
+    debitAccount: string;
+    creditAccount: string;
+    amount: number;
+    status: "posted" | "pending" | "failed";
+  }> = [];
+  for (let i = 0; i < txCount; i++) {
+    const t = LEDGER_TX_TEMPLATES[Math.floor(rand() * LEDGER_TX_TEMPLATES.length)]!;
+    const amount = Number((basis * (0.01 + rand() * 0.06)).toFixed(2));
+    const roll = rand();
+    const status: "posted" | "pending" | "failed" =
+      i < 2 && roll < (sick ? 0.5 : 0.2)
+        ? roll < (sick ? 0.25 : 0.08)
+          ? "failed"
+          : "pending"
+        : "posted";
+    transactions.push({
+      id: `${app.id}-jrnl-${1000 + i}`,
+      postedAt: new Date(Date.now() - 1000 * 60 * (15 + i * 47 + Math.floor(rand() * 30))).toISOString(),
+      description: t.description,
+      debitAccount: t.debit,
+      creditAccount: t.credit,
+      amount,
+      status,
+    });
+  }
+  transactions.sort((a, b) => +new Date(b.postedAt) - +new Date(a.postedAt));
+
+  const unreconciled = transactions.filter((t) => t.status !== "posted");
+  const unreconciledAmount = Number(
+    unreconciled.reduce((s, t) => s + t.amount, 0).toFixed(2),
+  );
+  const recStatus: "reconciled" | "pending" | "discrepancy" = !active
+    ? "reconciled"
+    : sick && unreconciled.some((t) => t.status === "failed")
+      ? "discrepancy"
+      : unreconciled.length > 0
+        ? "pending"
+        : "reconciled";
+
+  return {
+    currency: "USD",
+    totalBalance,
+    accounts,
+    reconciliation: {
+      status: recStatus,
+      lastReconciledAt: new Date(
+        Date.now() - 1000 * 60 * 60 * (active ? 6 + Math.floor(rand() * 18) : 24),
+      ).toISOString(),
+      unreconciledCount: unreconciled.length,
+      unreconciledAmount,
+    },
+    transactions,
+  };
+}
+
+router.get("/apps/:appId/ledger", (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  const data = GetLedgerResponse.parse(ledgerForApp(app));
+  res.json(data);
+});
+
 // --- telemetry ---
 router.get("/apps/:appId/telemetry", (req, res) => {
   const app = findApp(req.params.appId);
@@ -498,7 +595,7 @@ router.get("/apps/:appId/telemetry", (req, res) => {
     ],
     topErrors: [
       {
-        message: "TimeoutException: upstream call to ledger-api exceeded 5s",
+        message: "TimeoutException: upstream call to the ledger service exceeded 5s",
         count: sick ? 412 : 18,
         lastSeen: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
       },

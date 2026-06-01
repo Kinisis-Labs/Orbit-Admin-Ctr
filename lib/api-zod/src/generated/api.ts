@@ -186,6 +186,40 @@ export const GetAppAlertsResponse = zod.array(GetAppAlertsResponseItem)
 
 
 /**
+ * @summary Financial ledger (balances, reconciliation, recent transactions) for an app
+ */
+export const GetLedgerParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const GetLedgerResponse = zod.object({
+  "currency": zod.string(),
+  "totalBalance": zod.number().describe('Net of asset balances (settlement position)'),
+  "accounts": zod.array(zod.object({
+  "code": zod.string().describe('Chart-of-accounts code'),
+  "name": zod.string(),
+  "type": zod.enum(['asset', 'liability', 'equity', 'revenue', 'expense']),
+  "balance": zod.number().describe('Current balance in the ledger currency')
+})),
+  "reconciliation": zod.object({
+  "status": zod.enum(['reconciled', 'pending', 'discrepancy']),
+  "lastReconciledAt": zod.coerce.date(),
+  "unreconciledCount": zod.number().describe('Number of journal entries not yet reconciled'),
+  "unreconciledAmount": zod.number().describe('Net value of unreconciled entries')
+}),
+  "transactions": zod.array(zod.object({
+  "id": zod.string(),
+  "postedAt": zod.coerce.date(),
+  "description": zod.string(),
+  "debitAccount": zod.string().describe('Chart-of-accounts code debited'),
+  "creditAccount": zod.string().describe('Chart-of-accounts code credited'),
+  "amount": zod.number(),
+  "status": zod.enum(['posted', 'pending', 'failed'])
+})).describe('Most recent journal entries, newest first.')
+})
+
+
+/**
  * @summary Global health overview across all apps
  */
 export const GetGlobalHealthResponse = zod.object({

@@ -5,6 +5,7 @@ import {
   useGetInfrastructure, getGetInfrastructureQueryKey, 
   useGetNetwork, getGetNetworkQueryKey, 
   useGetCost, getGetCostQueryKey, 
+  useGetLedger, getGetLedgerQueryKey, 
   useGetTelemetry, getGetTelemetryQueryKey, 
   useGetAppAlerts, getGetAppAlertsQueryKey 
 } from "@workspace/api-client-react";
@@ -91,6 +92,12 @@ export default function AppDetail() {
               {!canSeeCost && <Lock className="h-3 w-3" />}
             </span>
           </TabsTrigger>
+          <TabsTrigger value="ledger" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">
+            <span className="inline-flex items-center gap-1.5">
+              Ledger
+              {!canSeeCost && <Lock className="h-3 w-3" />}
+            </span>
+          </TabsTrigger>
           <TabsTrigger value="alerts" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">Alerts</TabsTrigger>
         </TabsList>
         
@@ -166,6 +173,14 @@ export default function AppDetail() {
               <CostTab appId={appId} />
             ) : (
               <AccessDenied resource={`Cost for ${app.name}`} requiredGroup={COST_READER_GROUP} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="ledger" className="m-0 space-y-4">
+            {canSeeCost ? (
+              <LedgerTab appId={appId} />
+            ) : (
+              <AccessDenied resource={`Ledger for ${app.name}`} requiredGroup={COST_READER_GROUP} />
             )}
           </TabsContent>
 
@@ -525,6 +540,141 @@ function CostTab({ appId }: { appId: string }) {
               })}
             </TableBody>
           </Table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LedgerTab({ appId }: { appId: string }) {
+  const { data, isLoading } = useGetLedger(appId, { query: { enabled: !!appId, queryKey: getGetLedgerQueryKey(appId) } });
+
+  if (isLoading) return <Skeleton className="h-64 w-full" />;
+  if (!data) return <div className="text-muted-foreground">No ledger data available</div>;
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: data.currency }).format(amount);
+
+  const accountName = (code: string) =>
+    data.accounts.find((a) => a.code === code)?.name ?? code;
+
+  const recStatusClass =
+    data.reconciliation.status === "reconciled"
+      ? "text-[#7FBA00]"
+      : data.reconciliation.status === "discrepancy"
+        ? "text-destructive"
+        : "text-amber-500";
+
+  const txStatusClass = (status: string) =>
+    status === "posted"
+      ? "text-[#7FBA00]"
+      : status === "failed"
+        ? "text-destructive"
+        : "text-amber-500";
+
+  return (
+    <div className="space-y-4">
+      {/* Summary tiles */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Settlement Position</div>
+          <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.totalBalance)}</div>
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Reconciliation</div>
+          <div className={`text-xl font-semibold capitalize ${recStatusClass}`}>{data.reconciliation.status}</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">
+            Last run {format(new Date(data.reconciliation.lastReconciledAt), "MM/dd HH:mm")}
+          </div>
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Unreconciled Entries</div>
+          <div className="text-xl font-semibold tabular-nums">{data.reconciliation.unreconciledCount}</div>
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Unreconciled Amount</div>
+          <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.reconciliation.unreconciledAmount)}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Account balances */}
+        <div className="lg:col-span-1 bg-card border border-border shadow-sm flex flex-col">
+          <div className="p-3 border-b border-border bg-card">
+            <h2 className="text-sm font-semibold">Account Balances</h2>
+          </div>
+          <div className="p-0">
+            <Table className="text-[12px]">
+              <TableHeader className="bg-muted/50 border-b border-border">
+                <TableRow className="hover:bg-transparent h-8">
+                  <TableHead className="font-semibold text-foreground">Account</TableHead>
+                  <TableHead className="font-semibold text-foreground text-right w-[110px]">Balance</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.accounts.map((acct) => (
+                  <TableRow key={acct.code} className="h-8 hover:bg-muted/40 border-b border-border/50">
+                    <TableCell className="py-2">
+                      <div className="font-medium">{acct.name}</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        <span className="font-mono">{acct.code}</span>
+                        <span className="mx-1">·</span>
+                        <span className="capitalize">{acct.type}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-2 text-right tabular-nums font-mono">{formatCurrency(acct.balance)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        {/* Recent transactions */}
+        <div className="lg:col-span-2 bg-card border border-border shadow-sm flex flex-col">
+          <div className="p-3 border-b border-border bg-card">
+            <h2 className="text-sm font-semibold">Recent Journal Entries</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <Table className="text-[13px]">
+              <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
+                <TableRow className="hover:bg-transparent h-8">
+                  <TableHead className="font-semibold text-foreground w-[120px]">Posted</TableHead>
+                  <TableHead className="font-semibold text-foreground">Description</TableHead>
+                  <TableHead className="font-semibold text-foreground">Debit → Credit</TableHead>
+                  <TableHead className="font-semibold text-foreground text-right w-[110px]">Amount</TableHead>
+                  <TableHead className="font-semibold text-foreground w-[80px]">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.transactions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                      No ledger activity for this app.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  data.transactions.map((tx) => (
+                    <TableRow key={tx.id} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                      <TableCell className="py-1 text-xs text-muted-foreground whitespace-nowrap">
+                        {format(new Date(tx.postedAt), "MM/dd HH:mm")}
+                      </TableCell>
+                      <TableCell className="py-1 font-medium text-[13px]">{tx.description}</TableCell>
+                      <TableCell className="py-1 text-[11px] text-muted-foreground">
+                        <span className="font-mono">{tx.debitAccount}</span> {accountName(tx.debitAccount)}
+                        <span className="mx-1">→</span>
+                        <span className="font-mono">{tx.creditAccount}</span> {accountName(tx.creditAccount)}
+                      </TableCell>
+                      <TableCell className="py-1 text-right font-mono tabular-nums">{formatCurrency(tx.amount)}</TableCell>
+                      <TableCell className="py-1">
+                        <span className={`text-xs capitalize ${txStatusClass(tx.status)}`}>{tx.status}</span>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
     </div>

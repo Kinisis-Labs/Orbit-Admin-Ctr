@@ -157,6 +157,75 @@ export interface CostReport {
   revenue: Revenue;
 }
 
+export type LedgerAccountType = typeof LedgerAccountType[keyof typeof LedgerAccountType];
+
+
+export const LedgerAccountType = {
+  asset: 'asset',
+  liability: 'liability',
+  equity: 'equity',
+  revenue: 'revenue',
+  expense: 'expense',
+} as const;
+
+export interface LedgerAccount {
+  /** Chart-of-accounts code */
+  code: string;
+  name: string;
+  type: LedgerAccountType;
+  /** Current balance in the ledger currency */
+  balance: number;
+}
+
+export type LedgerReconciliationStatus = typeof LedgerReconciliationStatus[keyof typeof LedgerReconciliationStatus];
+
+
+export const LedgerReconciliationStatus = {
+  reconciled: 'reconciled',
+  pending: 'pending',
+  discrepancy: 'discrepancy',
+} as const;
+
+export interface LedgerReconciliation {
+  status: LedgerReconciliationStatus;
+  lastReconciledAt: string;
+  /** Number of journal entries not yet reconciled */
+  unreconciledCount: number;
+  /** Net value of unreconciled entries */
+  unreconciledAmount: number;
+}
+
+export type LedgerTransactionStatus = typeof LedgerTransactionStatus[keyof typeof LedgerTransactionStatus];
+
+
+export const LedgerTransactionStatus = {
+  posted: 'posted',
+  pending: 'pending',
+  failed: 'failed',
+} as const;
+
+export interface LedgerTransaction {
+  id: string;
+  postedAt: string;
+  description: string;
+  /** Chart-of-accounts code debited */
+  debitAccount: string;
+  /** Chart-of-accounts code credited */
+  creditAccount: string;
+  amount: number;
+  status: LedgerTransactionStatus;
+}
+
+export interface LedgerReport {
+  currency: string;
+  /** Net of asset balances (settlement position) */
+  totalBalance: number;
+  accounts: LedgerAccount[];
+  reconciliation: LedgerReconciliation;
+  /** Most recent journal entries, newest first. */
+  transactions: LedgerTransaction[];
+}
+
 export interface TopError {
   message: string;
   count: number;

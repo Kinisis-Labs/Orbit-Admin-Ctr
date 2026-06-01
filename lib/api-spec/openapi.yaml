@@ -22,6 +22,8 @@ tags:
     description: Application telemetry
   - name: alerts
     description: Alerts and incidents
+  - name: ledger
+    description: Per-app financial ledger
   - name: global
     description: Global cross-app views
 paths:
@@ -123,6 +125,19 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/Alert" }
+  /apps/{appId}/ledger:
+    get:
+      operationId: getLedger
+      tags: [ledger]
+      summary: Financial ledger (balances, reconciliation, recent transactions) for an app
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LedgerReport" }
   /global/health:
     get:
       operationId: getGlobalHealth
@@ -318,6 +333,50 @@ components:
         bySource:
           type: array
           items: { $ref: "#/components/schemas/RevenueBySource" }
+    LedgerAccountType:
+      type: string
+      enum: [asset, liability, equity, revenue, expense]
+    LedgerAccount:
+      type: object
+      required: [code, name, type, balance]
+      properties:
+        code: { type: string, description: Chart-of-accounts code }
+        name: { type: string }
+        type: { $ref: "#/components/schemas/LedgerAccountType" }
+        balance: { type: number, description: Current balance in the ledger currency }
+    LedgerReconciliation:
+      type: object
+      required: [status, lastReconciledAt, unreconciledCount, unreconciledAmount]
+      properties:
+        status: { type: string, enum: [reconciled, pending, discrepancy] }
+        lastReconciledAt: { type: string, format: date-time }
+        unreconciledCount: { type: integer, description: Number of journal entries not yet reconciled }
+        unreconciledAmount: { type: number, description: Net value of unreconciled entries }
+    LedgerTransaction:
+      type: object
+      required: [id, postedAt, description, debitAccount, creditAccount, amount, status]
+      properties:
+        id: { type: string }
+        postedAt: { type: string, format: date-time }
+        description: { type: string }
+        debitAccount: { type: string, description: Chart-of-accounts code debited }
+        creditAccount: { type: string, description: Chart-of-accounts code credited }
+        amount: { type: number }
+        status: { type: string, enum: [posted, pending, failed] }
+    LedgerReport:
+      type: object
+      required: [currency, totalBalance, accounts, reconciliation, transactions]
+      properties:
+        currency: { type: string }
+        totalBalance: { type: number, description: Net of asset balances (settlement position) }
+        accounts:
+          type: array
+          items: { $ref: "#/components/schemas/LedgerAccount" }
+        reconciliation: { $ref: "#/components/schemas/LedgerReconciliation" }
+        transactions:
+          type: array
+          description: Most recent journal entries, newest first.
+          items: { $ref: "#/components/schemas/LedgerTransaction" }
     TelemetryReport:
       type: object
       required: [requestsPerMin, p95LatencyMs, errorRatePercent, availabilityPercent, series, topErrors]
