@@ -12,3 +12,9 @@ id = "ltZpKBUkHemtBrzUaGr2R"
 uri = "file://docs/requirements.md"
 type = "text"
 title = "Orbit Command Center — Requirements Specification (v1.0)"
+
+[[outputs]]
+id = "ZZxf4qTeBA6pY5TQJGvQm"
+uri = "file://attached_assets/Orbit_Command_Center_Deployment_Plan_UPDATED.docx"
+type = "word_document"
+title = "Orbit Command Center — Deployment Plan (updated)"
