@@ -63,7 +63,10 @@ export const sessionMiddleware: RequestHandler = session({
         : undefined,
     },
     tableName: "user_sessions",
-    createTableIfMissing: true,
+    // The table is owned by lib/db's schema and provisioned via `db push`
+    // (see lib/db/src/schema/session.ts). connect-pg-simple's auto-create
+    // can't run here because the bundled server has no `table.sql` on disk.
+    createTableIfMissing: false,
   }),
   cookie: {
     httpOnly: true,

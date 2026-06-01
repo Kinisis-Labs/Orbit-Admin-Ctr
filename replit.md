@@ -78,7 +78,8 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- **Session table is schema-owned, not auto-created.** The API ships as a single esbuild bundle (no `node_modules` at runtime), so `connect-pg-simple`'s `createTableIfMissing` can't find its `table.sql` (ENOENT) — symptom is sign-in failing at the OAuth callback ("Sign-in could not be completed"). The `user_sessions` table lives in `lib/db/src/schema/session.ts` and is provisioned by `pnpm --filter @workspace/db run push`; `createTableIfMissing` is `false`. Run a `db push` against any new environment's database (incl. Azure prod) before sign-in will work.
+- **`ENTRA_TENANT_ID` must be the bare tenant GUID** — no `ID ` prefix or stray whitespace. A malformed value makes OIDC discovery build an invalid `login.microsoftonline.com/<tenant>/v2.0` URL and the whole app 500s on every auth route.
 
 ## Pointers
 
