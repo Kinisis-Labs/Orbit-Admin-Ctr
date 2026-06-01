@@ -328,8 +328,8 @@ Orbit exposes **no public webhook endpoints**. End-user activity is ingested by 
 
 Orbit v3 is accepted when:
 
-1. All FR-* requirements pass UAT in the non-prod environment.
-2. All NFR-* targets are demonstrated against synthetic load in non-prod.
+1. All FR-* requirements pass UAT in the Replit dev environment (Orbit has no separate Azure non-prod).
+2. All NFR-* targets are demonstrated against synthetic load in the Replit dev environment.
 3. The §13 checklist in `architecture-spec.md` is fully complete.
 4. A walkthrough by each persona in §2 confirms their primary goals can be completed without leaving Orbit.
 5. The FinOps boundary is verified: a user removed from `Orbit-Cost-Readers` cannot retrieve a single byte of cost data via any UI surface or any direct API request.
@@ -342,7 +342,7 @@ Orbit v3 is accepted when:
 | Phase           | Scope                                                                                       | Gate                                  |
 | --------------- | ------------------------------------------------------------------------------------------- | ------------------------------------- |
 | **Phase 0 — Mocked** _(current)_ | All UI surfaces backed by deterministic mock data in the API. No external integrations live. | Internal demo, design sign-off.       |
-| **Phase 1 — Azure read-only**    | Resource Graph + Monitor + Cost Management + Log Analytics wired live, replacing mocks.        | UAT in non-prod by SRE + FinOps.      |
+| **Phase 1 — Azure read-only**    | Resource Graph + Monitor + Cost Management + Log Analytics wired live, replacing mocks.        | UAT in the Replit dev environment by SRE + FinOps. |
 | **Phase 2 — Entra live**         | Per-app app registrations + `<app>-<env>-users` groups created in the corporate tenant, Event Hub sign-in stream consumed into `user_activity`, Users page live. | UAT by Product / Growth.              |
 | **Phase 3 — Incidents live**     | ServiceNow read integration replaces the stub.                                                 | UAT by Operations.                    |
 | **Phase 4 — GA**                 | Pen test passed, custom domain bound, prod RBAC migrated off the dev simulator.                | Sign-off by Platform Eng + Security.  |
@@ -352,7 +352,7 @@ Orbit v3 is accepted when:
 ## 13. Open Questions
 
 1. Final custom domain — `orbit.kinisis.io` vs `orbit.kinisis.internal`?
-2. Should the simulator be available to Platform Admins in non-prod, or strictly dev-only?
+2. Should the dev/RBAC simulator be reachable by Platform Admins in prod, or stripped from the prod build entirely?
 3. Does Atlas CMS get promoted to its own prod env in v3, or stays staging-only?
 4. Budget thresholds — global default % values, or always set per app by FinOps?
 5. KQL query timeouts — server-side cap, or pass through Log Analytics' default?

@@ -51,7 +51,7 @@ The Kinisis admin center — an Azure operations dashboard giving operators a un
 
 ## Deployment (Azure production)
 
-Hosted on Azure in `rg-orbit-prod-eus2` (region East US 2), fronted by the shared Front Door `afd-shared-prod` at `https://orbit.kinisislabs.com`. The Replit environment remains the dev/iteration environment; production is Azure.
+Hosted on Azure in `rg-orbit-prod-eus2` (region East US 2), fronted by the shared Front Door `afd-shared-prod` at `https://orbit.kinisislabs.com`. The Replit environment remains the dev/iteration environment; production is Azure. Orbit runs a **single production environment** only — there is no separate Azure nonprod/dev (internal staff tool).
 
 - **Frontend** (`artifacts/orbit`) → Azure Static Web App `swa-orbit-prod`. Built/deployed by `.github/workflows/azure-static-web-apps.yml` (builds the pnpm monorepo, uploads with `skip_app_build`). SPA routing via `artifacts/orbit/public/staticwebapp.config.json`. Requires repo secret `AZURE_STATIC_WEB_APPS_API_TOKEN`.
 - **API** (`artifacts/api-server`) → Azure Container App `ca-orbit-api-prod` (env `cae-orbit-prod-eus2`). Containerized via `artifacts/api-server/Dockerfile`; **set the Container App ingress targetPort to `8080`**. Built/deployed by `.github/workflows/deploy-api-container.yml` (image → GHCR by default). Dormant until the Entra app registration + GitHub OIDC creds exist (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`).

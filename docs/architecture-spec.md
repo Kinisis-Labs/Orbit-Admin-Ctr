@@ -80,7 +80,7 @@ Future environments (`kinisis-id-dev`, `ledger-api-stg`, …) onboard by the sam
 
 ## 5. Azure Deployment Architecture
 
-Orbit (the platform) deploys into the **Shared Platform** subscriptions. v3 keeps the v2 prod/nonprod split, formalises the subscription topology, and applies a Cloud Adoption Framework–aligned naming and tagging scheme.
+Orbit (the platform) deploys into the **Shared Platform** subscriptions and runs a **single production environment** — it is an internal staff tool with no Orbit nonprod/dev. v3 formalises the subscription topology (which retains a prod/nonprod split for the customer-facing apps Orbit monitors) and applies a Cloud Adoption Framework–aligned naming and tagging scheme.
 
 ### 5.1 Naming convention (new in v3)
 
@@ -89,7 +89,7 @@ All v3 infrastructure follows Microsoft's [Cloud Adoption Framework](https://lea
 Tokens:
 
 - `<workload>` — `orbit`, `grailbabe`, `kid`, `ops`, `ledger`, `atlas`.
-- `<env>` — `prod`, `nonprod`, `dev`, `stg`. (`nonprod` is used for shared Orbit infra; apps name their specific env.)
+- `<env>` — `prod`, `nonprod`, `dev`, `stg`. (Orbit itself is prod-only; `nonprod`/`dev`/`stg` are used by the tracked apps and their shared infra.)
 - `<region>` — `eus2`, `cus`, `wus2`.
 - `<instance>` — numeric suffix when more than one of the same resource exists.
 
@@ -109,35 +109,35 @@ One subscription per business purpose, not per app. This keeps Cost Management, 
 | Subscription                   | Purpose                                                                                   | Owner          |
 | ------------------------------ | ----------------------------------------------------------------------------------------- | -------------- |
 | `sub-kinisis-platform-prod`    | Shared platform: Orbit, Kinisis ID, GrailBabe (prod) and other shared customer-facing apps | Platform Eng   |
-| `sub-kinisis-platform-nonprod` | Shared platform non-prod: Orbit nonprod, GrailBabe (dev), per-app dev environments        | Platform Eng   |
+| `sub-kinisis-platform-nonprod` | Shared platform non-prod: GrailBabe (dev) and per-app dev environments (no Orbit nonprod)  | Platform Eng   |
 | `sub-kinisis-internal-prod`    | Internal tools: Ops Portal, Atlas CMS (when promoted), other staff-only apps              | Internal Tools |
 | `sub-kinisis-internal-nonprod` | Internal tools non-prod / staging                                                          | Internal Tools |
 | `sub-kinisis-finance-prod`     | Finance-isolated workloads (Ledger API and any future PCI-scoped systems)                 | Finance Eng    |
 | `sub-kinisis-finance-nonprod`  | Finance non-prod                                                                           | Finance Eng    |
 | `sub-kinisis-sandbox`          | Engineer playground; no production data, no SLAs, auto-shutdown policies                  | Platform Eng   |
 
-### 5.3 Per-environment resources
+### 5.3 Production resources
 
-Provision the following in **each** environment (`prod` and `nonprod`). Resource names follow §5.1.
+Orbit runs a **single production environment** only — no separate Azure nonprod/dev (the Replit environment is used for dev/iteration). Resource names follow §5.1.
 
-| Resource Type                    | Prod Name                  | Nonprod Name                  | Purpose                                                                 |
-| -------------------------------- | -------------------------- | ----------------------------- | ----------------------------------------------------------------------- |
-| Resource Group                   | `rg-orbit-prod-eus2`       | `rg-orbit-nonprod-eus2`       | Container for all per-env resources                                     |
-| Azure Front Door (Standard)      | `afd-orbit-prod`           | `afd-orbit-nonprod`           | TLS termination, WAF, custom domain                                     |
-| Static Web App                   | `swa-orbit-prod`           | `swa-orbit-nonprod`           | React/Vite frontend hosting                                             |
-| Container Apps Environment       | `cae-orbit-prod-eus2`      | `cae-orbit-nonprod-eus2`      | Runtime for the Express API                                             |
-| Container App                    | `ca-orbit-api-prod`        | `ca-orbit-api-nonprod`        | Orbit API service                                                       |
-| Azure Container Registry         | `acrkinisis01` (shared)    | `acrkinisis01` (shared)       | API container image registry — single, organisation-wide                |
-| Azure Database for PostgreSQL    | `pg-orbit-prod`            | `pg-orbit-nonprod`            | Sessions, group-cache, audit log, **Entra sign-in rollups (`user_activity`)** |
-| Key Vault                        | `kv-orbit-prod-eus2`       | `kv-orbit-nonprod-eus2`       | DB credentials, signing keys, Event Hub SAS / consumer credentials, downstream secrets |
-| App Configuration                | `appcs-orbit-prod-eus2`    | `appcs-orbit-nonprod-eus2`    | Feature flags, scoped app inventory                                     |
-| Application Insights             | `appi-oribit-prod` (sic)   | `appi-orbit-nonprod`          | Telemetry for the Orbit platform itself                                 |
-| Log Analytics Workspace          | `law-orbit-prod-eus2`      | `law-orbit-nonprod-eus2`      | Centralised logs/queries for the Orbit platform                         |
-| Storage Account                  | `storbitprod01`            | `storbitnonprod01`            | Static asset overflow, export buckets                                   |
-| User-Assigned Managed Identity   | `id-orbit-api-prod`        | `id-orbit-api-nonprod`        | Identity used by the API to call downstream Azure services              |
-| Private Endpoint(s)              | `pe-orbit-*-prod-eus2`     | `pe-orbit-*-nonprod-eus2`     | Private connectivity to Postgres, Key Vault, App Config                 |
+| Resource Type                  | Name                     | Purpose                                                                 |
+| ------------------------------ | ------------------------ | ----------------------------------------------------------------------- |
+| Resource Group                 | `rg-orbit-prod-eus2`     | Container for all Orbit prod resources                                  |
+| Azure Front Door (Standard)    | `afd-orbit-prod`         | TLS termination, WAF, custom domain                                     |
+| Static Web App                 | `swa-orbit-prod`         | React/Vite frontend hosting                                             |
+| Container Apps Environment     | `cae-orbit-prod-eus2`    | Runtime for the Express API                                             |
+| Container App                  | `ca-orbit-api-prod`      | Orbit API service                                                       |
+| Azure Container Registry       | `acrkinisis01` (shared)  | API container image registry — single, organisation-wide                |
+| Azure Database for PostgreSQL  | `pg-orbit-prod`          | Sessions, group-cache, audit log, **Entra sign-in rollups (`user_activity`)** |
+| Key Vault                      | `kv-orbit-prod-eus2`     | DB credentials, signing keys, Event Hub SAS / consumer credentials, downstream secrets |
+| App Configuration              | `appcs-orbit-prod-eus2`  | Feature flags, scoped app inventory                                     |
+| Application Insights           | `appi-oribit-prod` (sic) | Telemetry for the Orbit platform itself                                 |
+| Log Analytics Workspace        | `law-orbit-prod-eus2`    | Centralised logs/queries for the Orbit platform                         |
+| Storage Account                | `storbitprod01`          | Static asset overflow, export buckets                                   |
+| User-Assigned Managed Identity | `id-orbit-api-prod`      | Identity used by the API to call downstream Azure services              |
+| Private Endpoint(s)            | `pe-orbit-*-prod-eus2`   | Private connectivity to Postgres, Key Vault, App Config                 |
 
-> **Resource naming — actual vs. intended.** The table is the *intended* convention. **Production** names confirmed from the Azure portal (June 2026) diverge: several omit the `-eus2` region suffix (`swa-orbit-prod`, `ca-orbit-api-prod`, `id-orbit-api-prod`, `pg-orbit-prod`, `appi-oribit-prod`), the Static Web App uses the `swa-` prefix (not `stapp-`), and Application Insights is **misspelled** `appi-oribit-prod` ("oribit"). `appcs-orbit-prod-eus2` and `cae-orbit-prod-eus2` match. A GitHub-OIDC federated managed identity (`…rg-orbit-prod-eus2Oidc`) also exists for the deploy workflow. **Non-production** names are projected from the same pattern and not yet confirmed. Resources not visible in the portal listing (Resource Group, Front Door, Key Vault, ACR, Log Analytics, Storage, Private Endpoints) remain as specified above and are unconfirmed.
+> **Resource naming — actual vs. intended.** Orbit runs a single prod environment (no nonprod/dev). The names above are the *intended* convention; **production** names confirmed from the Azure portal (June 2026) diverge: several omit the `-eus2` region suffix (`swa-orbit-prod`, `ca-orbit-api-prod`, `id-orbit-api-prod`, `pg-orbit-prod`, `appi-oribit-prod`), the Static Web App uses the `swa-` prefix (not `stapp-`), and Application Insights is **misspelled** `appi-oribit-prod` ("oribit"). `appcs-orbit-prod-eus2` and `cae-orbit-prod-eus2` match. A GitHub-OIDC federated managed identity (`…rg-orbit-prod-eus2Oidc`) also exists for the deploy workflow. Resources not visible in the portal listing (Front Door, Key Vault, ACR, Log Analytics, Storage, Private Endpoints) remain as specified above and are unconfirmed.
 
 ### 5.4 New resources required for v3 (delta from v2)
 
@@ -303,9 +303,9 @@ Before promoting v3 to production, the following must be in place (in this order
 
 - [ ] §5.2 subscriptions created or renamed; §5.1 tag-enforcement Azure Policy assigned at every subscription scope.
 - [ ] Resource groups renamed / created per §5.1 for Orbit and every tracked app in §4.
-- [ ] `rg-orbit-prod-eus2` and `rg-orbit-nonprod-eus2` populated with all resources in §5.3.
-- [ ] Azure Container Apps environment + Container App for the API in both envs.
-- [ ] PostgreSQL Flexible Server provisioned in both envs with HA on prod, including the new `user_activity` schema from §5.4.
+- [ ] `rg-orbit-prod-eus2` populated with all resources in §5.3.
+- [ ] Azure Container Apps environment + Container App for the API.
+- [ ] PostgreSQL Flexible Server provisioned with HA, including the new `user_activity` schema from §5.4.
 - [ ] Azure Container Registry (`acrkinisis01`) created; CI/CD publishing API images.
 - [ ] User-assigned managed identities created and assigned the §5.5 RBAC roles across **all subscriptions** that host tracked apps.
 - [ ] Front Door created with `/api/*` routing rule + WAF policy.
