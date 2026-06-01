@@ -258,7 +258,7 @@ Each of these surfaces SHARES the following requirements:
 
 ### 8.1 Persisted data (Orbit-owned)
 
-The only data Orbit persists in `psql-orbit-<env>`:
+The only data Orbit persists in `pg-orbit-<env>`:
 
 | Table                  | Purpose                                                                          | Retention   |
 | ---------------------- | -------------------------------------------------------------------------------- | ----------- |

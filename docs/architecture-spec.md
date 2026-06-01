@@ -128,7 +128,7 @@ Provision the following in **each** environment (`prod` and `nonprod`). Resource
 | Container Apps Environment       | `cae-orbit-prod-eus2`      | `cae-orbit-nonprod-eus2`      | Runtime for the Express API                                             |
 | Container App                    | `ca-orbit-api-prod-eus2`   | `ca-orbit-api-nonprod-eus2`   | Orbit API service                                                       |
 | Azure Container Registry         | `acrkinisis01` (shared)    | `acrkinisis01` (shared)       | API container image registry — single, organisation-wide                |
-| Azure Database for PostgreSQL    | `psql-orbit-prod-eus2`     | `psql-orbit-nonprod-eus2`     | Sessions, group-cache, audit log, **Entra sign-in rollups (`user_activity`)** |
+| Azure Database for PostgreSQL    | `pg-orbit-prod`            | `pg-orbit-nonprod`            | Sessions, group-cache, audit log, **Entra sign-in rollups (`user_activity`)** |
 | Key Vault                        | `kv-orbit-prod-eus2`       | `kv-orbit-nonprod-eus2`       | DB credentials, signing keys, Event Hub SAS / consumer credentials, downstream secrets |
 | App Configuration                | `appcs-orbit-prod-eus2`    | `appcs-orbit-nonprod-eus2`    | Feature flags, scoped app inventory                                     |
 | Application Insights             | `appi-orbit-prod-eus2`     | `appi-orbit-nonprod-eus2`     | Telemetry for the Orbit platform itself                                 |
@@ -149,7 +149,7 @@ These are items v2 did not call out and must be added before deployment:
    Orbit uses Graph for **staff** group checks — resolving the `Orbit-*` RBAC groups for signed-in employees. It is **not** used for consumer end-user engagement (that comes from Clerk, §9). Application permission required: `GroupMember.Read.All`, via the API's managed identity — no static keys.
 4. **Clerk webhook ingestion → Orbit API → Postgres.**
    Each tracked consumer app's Clerk instance posts user/session events (`user.created/updated/deleted`, `session.created`) to `POST /api/webhooks/clerk/:appId`. Orbit verifies the Svix signature with that app's signing secret, then writes **anonymous** activity (opaque Clerk user id + timestamps). No per-app code changes beyond configuring the webhook in Clerk.
-5. **Clerk activity tables** in `psql-orbit-<env>`.
+5. **Clerk activity tables** in `pg-orbit-<env>`.
    `app_users` (one row per app + opaque Clerk user id, with `created_at` / `last_sign_in_at` / `last_active_at`), `clerk_events` (Svix-id-keyed event metadata for idempotent replay — no payload), and `clerk_activity_daily` (per-app daily snapshot for the DAU trend). DAU/WAU/MAU are aggregate COUNTs over `app_users`. **The only new persisted data category — anonymous, no PII.**
 6. **One app registration + `<app>-<env>-users` security group per tracked `{app, environment}`** (§4) in the corporate Entra tenant. Each Kinisis app is configured to use that app registration for sign-in; app-assignment policies restrict access to the corresponding security group.
 7. **API identity bindings extended** to every subscription that hosts a tracked app (platform-prod/nonprod, internal-prod/nonprod, finance-prod) — see §5.5.
@@ -229,7 +229,7 @@ Each consumer app's Clerk instance (signs its end users in)
         ↓  Clerk webhook: user.created/updated/deleted, session.created
 POST /api/webhooks/clerk/:appId   ← Svix signature verified with that app's per-app signing secret
         ↓  Orbit API ingestion (idempotent on the Svix message id)
-psql-orbit-<env>:
+pg-orbit-<env>:
    app_users             ← one row per (app, opaque Clerk user id) + timestamps
    clerk_events          ← event metadata for idempotent replay (no payload)
    clerk_activity_daily  ← per-app daily snapshot powering the DAU trend
