@@ -1,1 +1,2 @@
 - [API server restart](api-server-restart.md) — api-server dev workflow bundles; restart it (not HMR) after route/mock-data edits before verifying.
+- [Finance subscription model](finance-subscription-model.md) — finance/ledger spans 3 subs (sharedplatform-prod, grailbabe-prod, grailbabedev-dev), NOT an isolated finance sub; spec is intentionally stale on this.
