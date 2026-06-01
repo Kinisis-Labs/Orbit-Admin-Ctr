@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import {
   GetLedgerResponse,
+  IngestLedgerSaleBody,
   ListLedgerEntriesResponse,
   ListLedgerEntriesResponseItem,
   PostLedgerEntryBody,
@@ -9,6 +10,7 @@ import {
 import { findApp } from "./orbit";
 import {
   getLedgerReport,
+  ingestSale,
   listEntries,
   postEntry,
   runReconciliation,
@@ -63,6 +65,33 @@ router.post("/apps/:appId/ledger/entries", async (req, res) => {
       return;
     }
     req.log.error({ err }, "failed to post ledger entry");
+    res.status(500).json({ error: "Internal error" });
+  }
+});
+
+// Ingest a platform sale, splitting it into a gross-revenue capture and a
+// platform-fee expense so net cash is correct. This is the generic seam the live
+// Stripe / Apple App Store / Google Play feeds will call.
+router.post("/apps/:appId/ledger/sales", async (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  const parsed = IngestLedgerSaleBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid sale", details: parsed.error.issues });
+    return;
+  }
+  try {
+    const result = await ingestSale(app.id, parsed.data);
+    res.status(201).json(result);
+  } catch (err) {
+    if (err instanceof LedgerError) {
+      res.status(err.statusCode).json({ error: err.message });
+      return;
+    }
+    req.log.error({ err }, "failed to ingest ledger sale");
     res.status(500).json({ error: "Internal error" });
   }
 });

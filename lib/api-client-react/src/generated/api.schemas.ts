@@ -272,6 +272,66 @@ export interface PostLedgerEntryRequest {
   postedAt?: string;
 }
 
+export interface LedgerRevenueBySource {
+  source: LedgerEntrySource;
+  /** Human-readable source label */
+  label: string;
+  /** Platform fee rate (e.g. 0.3 = 30%) */
+  feeRate: number;
+  /** Gross revenue recognized from this source */
+  gross: number;
+  /** Platform fee booked as expense for this source */
+  fee: number;
+  /** Net cash after the platform fee (gross - fee) */
+  net: number;
+}
+
+export interface LedgerRevenue {
+  /** Total recognized revenue before platform fees */
+  grossRevenue: number;
+  /** Total platform fees booked as expense */
+  platformFees: number;
+  /** Net revenue after platform fees */
+  netRevenue: number;
+  bySource: LedgerRevenueBySource[];
+}
+
+export type IngestSaleRequestStatus = typeof IngestSaleRequestStatus[keyof typeof IngestSaleRequestStatus];
+
+
+export const IngestSaleRequestStatus = {
+  posted: 'posted',
+  pending: 'pending',
+  failed: 'failed',
+} as const;
+
+export interface IngestSaleRequest {
+  source: LedgerEntrySource;
+  /**
+     * Gross sale amount before the platform fee
+     * @exclusiveMinimum 0
+     */
+  grossAmount: number;
+  /** @minLength 1 */
+  description?: string;
+  /** External transaction id for idempotent ingestion */
+  externalRef?: string;
+  status?: IngestSaleRequestStatus;
+  postedAt?: string;
+}
+
+export interface IngestSaleResult {
+  source: LedgerEntrySource;
+  /** Platform fee rate applied (e.g. 0.3 = 30%) */
+  feeRate: number;
+  gross: number;
+  fee: number;
+  /** Net cash after the platform fee */
+  net: number;
+  /** The journal entries created (or already present) for this sale. */
+  entries: LedgerJournalEntry[];
+}
+
 export interface LedgerReport {
   currency: string;
   /** Net of asset balances (settlement position) */
@@ -280,6 +340,7 @@ export interface LedgerReport {
   reconciliation: LedgerReconciliation;
   /** Most recent journal entries, newest first. */
   transactions: LedgerTransaction[];
+  revenue: LedgerRevenue;
 }
 
 export interface TopError {

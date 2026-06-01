@@ -215,7 +215,20 @@ export const GetLedgerResponse = zod.object({
   "creditAccount": zod.string().describe('Chart-of-accounts code credited'),
   "amount": zod.number(),
   "status": zod.enum(['posted', 'pending', 'failed'])
-})).describe('Most recent journal entries, newest first.')
+})).describe('Most recent journal entries, newest first.'),
+  "revenue": zod.object({
+  "grossRevenue": zod.number().describe('Total recognized revenue before platform fees'),
+  "platformFees": zod.number().describe('Total platform fees booked as expense'),
+  "netRevenue": zod.number().describe('Net revenue after platform fees'),
+  "bySource": zod.array(zod.object({
+  "source": zod.enum(['stripe', 'app_store', 'play_store', 'bank', 'manual']),
+  "label": zod.string().describe('Human-readable source label'),
+  "feeRate": zod.number().describe('Platform fee rate (e.g. 0.3 = 30%)'),
+  "gross": zod.number().describe('Gross revenue recognized from this source'),
+  "fee": zod.number().describe('Platform fee booked as expense for this source'),
+  "net": zod.number().describe('Net cash after the platform fee (gross - fee)')
+}))
+})
 })
 
 
@@ -258,6 +271,29 @@ export const PostLedgerEntryBody = zod.object({
   "amount": zod.number().gt(postLedgerEntryBodyAmountExclusiveMin),
   "source": zod.enum(['stripe', 'app_store', 'play_store', 'bank', 'manual']).optional(),
   "status": zod.enum(['posted', 'pending', 'failed']).default(postLedgerEntryBodyStatusDefault),
+  "postedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * Records a sale as a balanced pair of journal entries: gross revenue recognized and the platform fee (Apple 30%, Google 15%, Stripe 3%) booked as an expense, leaving net cash correct. Idempotent on (source, externalRef).
+ * @summary Ingest a platform sale, netting out the platform fee into the ledger
+ */
+export const IngestLedgerSaleParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const ingestLedgerSaleBodyGrossAmountExclusiveMin = 0;
+
+
+export const ingestLedgerSaleBodyStatusDefault = `posted`;
+
+export const IngestLedgerSaleBody = zod.object({
+  "source": zod.enum(['stripe', 'app_store', 'play_store', 'bank', 'manual']),
+  "grossAmount": zod.number().gt(ingestLedgerSaleBodyGrossAmountExclusiveMin).describe('Gross sale amount before the platform fee'),
+  "description": zod.string().min(1).optional(),
+  "externalRef": zod.string().optional().describe('External transaction id for idempotent ingestion'),
+  "status": zod.enum(['posted', 'pending', 'failed']).default(ingestLedgerSaleBodyStatusDefault),
   "postedAt": zod.coerce.date().optional()
 })
 

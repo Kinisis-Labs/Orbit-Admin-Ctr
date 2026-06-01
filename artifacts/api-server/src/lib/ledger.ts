@@ -5,7 +5,7 @@ import {
   ledgerReconciliationRunsTable,
   type LedgerEntryRow,
 } from "@workspace/db";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
 const CURRENCY = "USD";
 
@@ -17,6 +17,45 @@ type ReconStatus = "reconciled" | "pending" | "discrepancy";
 // Accounts whose balance increases on the debit side. Everything else
 // (liability, equity, revenue) increases on the credit side.
 const DEBIT_NORMAL = new Set<AccountType>(["asset", "expense"]);
+
+// Human-readable labels per ingestion source.
+const SOURCE_LABELS: Record<EntrySource, string> = {
+  stripe: "Stripe",
+  app_store: "Apple App Store",
+  play_store: "Google Play Store",
+  bank: "Bank",
+  manual: "Manual",
+};
+
+// Platform fee the storefront/processor keeps of each gross sale, in basis
+// points (1% = 100 bps) so the split stays exact in integer cents. Apple takes
+// 30%, Google Play 15%, Stripe 3%; bank/manual settlements have no platform cut.
+const PLATFORM_FEE_BPS: Record<EntrySource, number> = {
+  app_store: 3000,
+  play_store: 1500,
+  stripe: 300,
+  bank: 0,
+  manual: 0,
+};
+
+export function feeRateFor(source: EntrySource): number {
+  return (PLATFORM_FEE_BPS[source] ?? 0) / 10000;
+}
+
+// Chart-of-accounts codes a platform sale touches. Gross cash in, gross revenue
+// recognized, and the platform fee booked as an expense paid out of cash.
+const SALE_CASH_ACCOUNT = "1000";
+const SALE_REVENUE_ACCOUNT = "4000";
+const SALE_FEE_ACCOUNT = "5100";
+
+// Fixed display order for the per-source revenue breakdown.
+const REVENUE_SOURCE_ORDER: EntrySource[] = [
+  "stripe",
+  "app_store",
+  "play_store",
+  "bank",
+  "manual",
+];
 
 function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -30,6 +69,27 @@ function toCents(amount: string | number): number {
 
 function entryId(workloadId: string, id: number): string {
   return `${workloadId}-jrnl-${id}`;
+}
+
+// Derive the canonical gross/fee/net of a sale from its persisted journal rows,
+// so idempotent replays report what is actually stored rather than echoing the
+// (possibly mismatched) request payload. Gross is the cash<-revenue capture leg;
+// fee is the processing-fee<-cash leg.
+function summarizeSaleRows(rows: LedgerEntryRow[]): {
+  grossCents: number;
+  feeCents: number;
+  netCents: number;
+} {
+  let grossCents = 0;
+  let feeCents = 0;
+  for (const r of rows) {
+    if (r.debitAccount === SALE_CASH_ACCOUNT && r.creditAccount === SALE_REVENUE_ACCOUNT) {
+      grossCents += toCents(r.amount);
+    } else if (r.debitAccount === SALE_FEE_ACCOUNT && r.creditAccount === SALE_CASH_ACCOUNT) {
+      feeCents += toCents(r.amount);
+    }
+  }
+  return { grossCents, feeCents, netCents: grossCents - feeCents };
 }
 
 export interface LedgerEntryDto {
@@ -199,7 +259,63 @@ export async function getLedgerReport(workloadId: string) {
     status: e.status as EntryStatus,
   }));
 
-  return { currency: CURRENCY, totalBalance, accounts, reconciliation, transactions };
+  // Revenue breakdown: gross is recognized revenue (credits to the revenue
+  // account) and platform fees are the expense legs (debits to the fee account),
+  // both grouped by source from POSTED entries. Net = gross - fee.
+  const grossBySourceCents = new Map<string, number>();
+  const feeBySourceCents = new Map<string, number>();
+  for (const e of entryRows) {
+    if (e.status !== "posted") continue;
+    const c = toCents(e.amount);
+    if (e.creditAccount === SALE_REVENUE_ACCOUNT) {
+      grossBySourceCents.set(
+        e.source,
+        (grossBySourceCents.get(e.source) ?? 0) + c,
+      );
+    }
+    if (e.debitAccount === SALE_FEE_ACCOUNT) {
+      feeBySourceCents.set(e.source, (feeBySourceCents.get(e.source) ?? 0) + c);
+    }
+  }
+
+  const revenueBySource = REVENUE_SOURCE_ORDER.map((src) => ({
+    src,
+    grossCents: grossBySourceCents.get(src) ?? 0,
+    feeCents: feeBySourceCents.get(src) ?? 0,
+  }))
+    .filter((r) => r.grossCents !== 0 || r.feeCents !== 0)
+    .map((r) => ({
+      source: r.src,
+      label: SOURCE_LABELS[r.src],
+      feeRate: feeRateFor(r.src),
+      gross: r.grossCents / 100,
+      fee: r.feeCents / 100,
+      net: (r.grossCents - r.feeCents) / 100,
+    }));
+
+  const grossTotalCents = [...grossBySourceCents.values()].reduce(
+    (s, v) => s + v,
+    0,
+  );
+  const feeTotalCents = [...feeBySourceCents.values()].reduce(
+    (s, v) => s + v,
+    0,
+  );
+  const revenue = {
+    grossRevenue: grossTotalCents / 100,
+    platformFees: feeTotalCents / 100,
+    netRevenue: (grossTotalCents - feeTotalCents) / 100,
+    bySource: revenueBySource,
+  };
+
+  return {
+    currency: CURRENCY,
+    totalBalance,
+    accounts,
+    reconciliation,
+    transactions,
+    revenue,
+  };
 }
 
 export class LedgerError extends Error {
@@ -258,4 +374,152 @@ export async function postEntry(
     })
     .returning();
   return toEntryDto(row!);
+}
+
+export interface IngestSaleInput {
+  source: EntrySource;
+  grossAmount: number;
+  description?: string;
+  externalRef?: string;
+  status?: EntryStatus;
+  postedAt?: Date;
+}
+
+export interface IngestSaleResult {
+  source: EntrySource;
+  feeRate: number;
+  gross: number;
+  fee: number;
+  net: number;
+  entries: LedgerEntryDto[];
+}
+
+// Record a platform sale as a balanced pair of journal entries so the ledger
+// reflects gross revenue, the platform's cut as an expense, and net cash:
+//   1) gross capture:  D Cash (gross)  / C Recognized Revenue (gross)
+//   2) platform fee:   D Processing Fees (fee) / C Cash (fee)
+// Net cash settled = gross - fee. Both legs are written in one transaction so a
+// sale never lands half-recorded. Idempotent on (source, externalRef): re-running
+// the same external transaction returns the already-recorded pair instead of
+// double-counting. The fee leg uses a derived "<ref>:fee" external ref so it does
+// not collide with the gross leg under the (workload, source, externalRef) seam.
+export async function ingestSale(
+  workloadId: string,
+  input: IngestSaleInput,
+): Promise<IngestSaleResult> {
+  if (!(input.grossAmount > 0)) {
+    throw new LedgerError(400, "grossAmount must be greater than 0");
+  }
+  const bps = PLATFORM_FEE_BPS[input.source];
+  if (bps === undefined) {
+    throw new LedgerError(400, `unknown source: ${input.source}`);
+  }
+
+  const accountRows = await getAccountRows(workloadId);
+  const codes = new Set(accountRows.map((a) => a.code));
+  if (codes.size === 0) {
+    throw new LedgerError(400, `no chart of accounts for workload ${workloadId}`);
+  }
+  for (const code of [SALE_CASH_ACCOUNT, SALE_REVENUE_ACCOUNT, SALE_FEE_ACCOUNT]) {
+    if (!codes.has(code)) {
+      throw new LedgerError(
+        400,
+        `chart of accounts for workload ${workloadId} is missing required account ${code}`,
+      );
+    }
+  }
+
+  const grossCents = toCents(input.grossAmount);
+  if (grossCents < 1) {
+    throw new LedgerError(400, "grossAmount must be at least 0.01");
+  }
+  const feeCents = Math.round((grossCents * bps) / 10000);
+  const status: EntryStatus = input.status ?? "posted";
+  const label = SOURCE_LABELS[input.source];
+  const description = input.description ?? `${label} sale`;
+  const feeRef = input.externalRef ? `${input.externalRef}:fee` : null;
+
+  const rows = await db.transaction(async (tx) => {
+    // Re-read every leg already recorded for this external ref (both the gross
+    // ref and its derived "<ref>:fee"), used for the fast idempotent path and to
+    // resolve a lost insert race below.
+    const readExisting = () =>
+      tx
+        .select()
+        .from(ledgerEntriesTable)
+        .where(
+          and(
+            eq(ledgerEntriesTable.workloadId, workloadId),
+            eq(ledgerEntriesTable.source, input.source),
+            inArray(
+              ledgerEntriesTable.externalRef,
+              feeRef ? [input.externalRef!, feeRef] : [input.externalRef!],
+            ),
+          ),
+        );
+
+    // Idempotency fast path: if this sale was already recorded, return the
+    // persisted legs untouched.
+    if (input.externalRef) {
+      const existing = await readExisting();
+      if (existing.length > 0) return existing;
+    }
+
+    const inserted: LedgerEntryRow[] = [];
+    const grossInsert = await tx
+      .insert(ledgerEntriesTable)
+      .values({
+        workloadId,
+        description,
+        debitAccount: SALE_CASH_ACCOUNT,
+        creditAccount: SALE_REVENUE_ACCOUNT,
+        amount: (grossCents / 100).toFixed(2),
+        status,
+        source: input.source,
+        externalRef: input.externalRef ?? null,
+        ...(input.postedAt ? { postedAt: input.postedAt } : {}),
+      })
+      .onConflictDoNothing()
+      .returning();
+    // Lost a concurrent insert race on (workload, source, externalRef): the other
+    // request already committed this sale. Return its persisted legs instead of
+    // surfacing the unique violation as a 500.
+    if (grossInsert.length === 0) {
+      return input.externalRef ? await readExisting() : [];
+    }
+    inserted.push(grossInsert[0]!);
+
+    if (feeCents > 0) {
+      const feeInsert = await tx
+        .insert(ledgerEntriesTable)
+        .values({
+          workloadId,
+          description: `${label} platform fee`,
+          debitAccount: SALE_FEE_ACCOUNT,
+          creditAccount: SALE_CASH_ACCOUNT,
+          amount: (feeCents / 100).toFixed(2),
+          status,
+          source: input.source,
+          externalRef: feeRef,
+          ...(input.postedAt ? { postedAt: input.postedAt } : {}),
+        })
+        .onConflictDoNothing()
+        .returning();
+      if (feeInsert[0]) inserted.push(feeInsert[0]);
+    }
+    return inserted;
+  });
+
+  // Report the canonical gross/fee/net derived from the persisted rows so an
+  // idempotent replay reflects what is stored, not the (possibly mismatched)
+  // request payload.
+  const summary = summarizeSaleRows(rows);
+  return {
+    source: input.source,
+    feeRate: bps / 10000,
+    gross: summary.grossCents / 100,
+    fee: summary.feeCents / 100,
+    net: summary.netCents / 100,
+    entries: rows.map(toEntryDto),
+  };
 }

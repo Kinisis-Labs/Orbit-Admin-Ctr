@@ -597,6 +597,63 @@ function LedgerTab({ appId }: { appId: string }) {
         </div>
       </div>
 
+      {/* Revenue & platform fees */}
+      <div className="bg-card border border-border shadow-sm flex flex-col">
+        <div className="flex items-center justify-between p-3 border-b border-border bg-card">
+          <h2 className="text-sm font-semibold">Revenue &amp; Platform Fees</h2>
+          <div className="flex items-center gap-4 text-[12px]">
+            <div className="text-right">
+              <span className="text-muted-foreground mr-1">Gross</span>
+              <span className="font-semibold tabular-nums">{formatCurrency(data.revenue.grossRevenue)}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-muted-foreground mr-1">Fees</span>
+              <span className="font-semibold tabular-nums text-destructive">−{formatCurrency(data.revenue.platformFees)}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-muted-foreground mr-1">Net</span>
+              <span className="font-semibold tabular-nums text-[#7FBA00]">{formatCurrency(data.revenue.netRevenue)}</span>
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <Table className="text-[13px]">
+            <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
+              <TableRow className="hover:bg-transparent h-8">
+                <TableHead className="font-semibold text-foreground">Platform</TableHead>
+                <TableHead className="font-semibold text-foreground text-right w-[90px]">Fee Rate</TableHead>
+                <TableHead className="font-semibold text-foreground text-right w-[120px]">Gross</TableHead>
+                <TableHead className="font-semibold text-foreground text-right w-[120px]">Platform Fee</TableHead>
+                <TableHead className="font-semibold text-foreground text-right w-[120px]">Net Cash</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.revenue.bySource.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                    No revenue recorded for this app.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                data.revenue.bySource.map((r) => (
+                  <TableRow key={r.source} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                    <TableCell className="py-1.5 font-medium">{r.label}</TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums text-muted-foreground">
+                      {r.feeRate > 0 ? `${(r.feeRate * 100).toFixed(0)}%` : "—"}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums font-mono">{formatCurrency(r.gross)}</TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums font-mono text-destructive">
+                      {r.fee > 0 ? `−${formatCurrency(r.fee)}` : formatCurrency(0)}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums font-mono">{formatCurrency(r.net)}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Account balances */}
         <div className="lg:col-span-1 bg-card border border-border shadow-sm flex flex-col">

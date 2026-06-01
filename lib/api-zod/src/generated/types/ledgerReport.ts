@@ -7,6 +7,7 @@
  */
 import type { LedgerAccount } from './ledgerAccount';
 import type { LedgerReconciliation } from './ledgerReconciliation';
+import type { LedgerRevenue } from './ledgerRevenue';
 import type { LedgerTransaction } from './ledgerTransaction';
 
 export interface LedgerReport {
@@ -17,4 +18,5 @@ export interface LedgerReport {
   reconciliation: LedgerReconciliation;
   /** Most recent journal entries, newest first. */
   transactions: LedgerTransaction[];
+  revenue: LedgerRevenue;
 }

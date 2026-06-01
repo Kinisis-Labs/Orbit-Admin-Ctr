@@ -28,6 +28,8 @@ import type {
   GlobalHealth,
   HealthStatus,
   InfrastructureReport,
+  IngestSaleRequest,
+  IngestSaleResult,
   LedgerJournalEntry,
   LedgerReconciliation,
   LedgerReport,
@@ -852,6 +854,79 @@ export const usePostLedgerEntry = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getPostLedgerEntryMutationOptions(options));
+    }
+
+export const getIngestLedgerSaleUrl = (appId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/ledger/sales`
+}
+
+/**
+ * Records a sale as a balanced pair of journal entries: gross revenue recognized and the platform fee (Apple 30%, Google 15%, Stripe 3%) booked as an expense, leaving net cash correct. Idempotent on (source, externalRef).
+ * @summary Ingest a platform sale, netting out the platform fee into the ledger
+ */
+export const ingestLedgerSale = async (appId: string,
+    ingestSaleRequest: IngestSaleRequest, options?: RequestInit): Promise<IngestSaleResult> => {
+
+  return customFetch<IngestSaleResult>(getIngestLedgerSaleUrl(appId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      ingestSaleRequest,)
+  }
+);}
+
+
+
+
+export const getIngestLedgerSaleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestLedgerSale>>, TError,{appId: string;data: BodyType<IngestSaleRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof ingestLedgerSale>>, TError,{appId: string;data: BodyType<IngestSaleRequest>}, TContext> => {
+
+const mutationKey = ['ingestLedgerSale'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingestLedgerSale>>, {appId: string;data: BodyType<IngestSaleRequest>}> = (props) => {
+          const {appId,data} = props ?? {};
+
+          return  ingestLedgerSale(appId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IngestLedgerSaleMutationResult = NonNullable<Awaited<ReturnType<typeof ingestLedgerSale>>>
+    export type IngestLedgerSaleMutationBody = BodyType<IngestSaleRequest>
+    export type IngestLedgerSaleMutationError = ErrorType<void>
+
+    /**
+ * @summary Ingest a platform sale, netting out the platform fee into the ledger
+ */
+export const useIngestLedgerSale = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestLedgerSale>>, TError,{appId: string;data: BodyType<IngestSaleRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof ingestLedgerSale>>,
+        TError,
+        {appId: string;data: BodyType<IngestSaleRequest>},
+        TContext
+      > => {
+      return useMutation(getIngestLedgerSaleMutationOptions(options));
     }
 
 export const getReconcileLedgerUrl = (appId: string,) => {
