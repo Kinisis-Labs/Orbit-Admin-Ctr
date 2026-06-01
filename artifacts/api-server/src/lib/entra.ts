@@ -16,7 +16,10 @@ export interface EntraConfig {
   postLogoutRedirectUri?: string;
   /** Group object IDs (GUIDs) used for access gating, from the `groups` claim. */
   authorizedGroupId?: string;
+  adminGroupId?: string;
+  engineerGroupId?: string;
   costReaderGroupId?: string;
+  finopsGroupId?: string;
   scopes: string;
 }
 
@@ -33,7 +36,10 @@ export function getEntraConfig(): EntraConfig | null {
     redirectUri,
     postLogoutRedirectUri: process.env.ENTRA_POST_LOGOUT_REDIRECT_URI,
     authorizedGroupId: process.env.ENTRA_AUTHORIZED_GROUP_ID,
+    adminGroupId: process.env.ENTRA_ADMIN_GROUP_ID,
+    engineerGroupId: process.env.ENTRA_ENGINEER_GROUP_ID,
     costReaderGroupId: process.env.ENTRA_COST_READER_GROUP_ID,
+    finopsGroupId: process.env.ENTRA_FINOPS_GROUP_ID,
     scopes: process.env.ENTRA_SCOPES ?? "openid profile email",
   };
 }

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import * as client from "openid-client";
-import { getEntraConfig, getOidcConfiguration } from "../lib/entra";
+import { getEntraConfig, getOidcConfiguration, type EntraConfig } from "../lib/entra";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -9,6 +9,69 @@ const router: IRouter = Router();
 // COST_READER_GROUP.id in artifacts/orbit/src/lib/auth.tsx so the frontend's
 // hasGroup(COST_READER_GROUP.id) check works in both mock and Entra modes.
 const COST_READER_CLIENT_ID = "b7e3-aad-cost-readers";
+
+type OrbitGroup = { id: string; displayName: string; description: string };
+
+/**
+ * Orbit's RBAC groups, each mapped to an Entra group object id (GUID) supplied
+ * via env. The client-facing `id`s must match the ids used by the frontend
+ * (COST_READER_GROUP in artifacts/orbit/src/lib/auth.tsx and ORBIT_GROUPS in
+ * artifacts/orbit/src/pages/access.tsx) so hasGroup() and the "My membership"
+ * column work identically in mock and Entra modes. A group only resolves when
+ * its object id is configured AND present in the user's `groups` claim.
+ */
+function resolveOrbitGroups(
+  cfg: EntraConfig,
+  memberGroupIds: string[],
+): OrbitGroup[] {
+  const registry: Array<{ objectId?: string; group: OrbitGroup }> = [
+    {
+      objectId: cfg.authorizedGroupId,
+      group: {
+        id: "orbit-authorized-users",
+        displayName: "Orbit-Authorized-Users",
+        description: "Baseline access — required to load Orbit at all.",
+      },
+    },
+    {
+      objectId: cfg.adminGroupId,
+      group: {
+        id: "orbit-admins",
+        displayName: "Orbit-Admins",
+        description:
+          "Platform administration: feature flags, group management, preferences for all users.",
+      },
+    },
+    {
+      objectId: cfg.engineerGroupId,
+      group: {
+        id: "orbit-engineers",
+        displayName: "Orbit-Engineers",
+        description: "Operational actions on Kinisis applications.",
+      },
+    },
+    {
+      objectId: cfg.costReaderGroupId,
+      group: {
+        id: COST_READER_CLIENT_ID,
+        displayName: "Orbit-Cost-Readers",
+        description: "Allowed to view cost, billing, and revenue data in Orbit.",
+      },
+    },
+    {
+      objectId: cfg.finopsGroupId,
+      group: {
+        id: "orbit-finops",
+        displayName: "Orbit-FinOps",
+        description: "Cost Management write actions (budgets, allocations).",
+      },
+    },
+  ];
+  const member = new Set(memberGroupIds);
+  return registry
+    .filter((r) => r.objectId !== undefined && member.has(r.objectId))
+    .map((r) => r.group);
+}
 
 const str = (v: unknown): string | undefined =>
   typeof v === "string" ? v : undefined;
@@ -39,15 +102,7 @@ router.get("/auth/me", (req, res) => {
     res.status(401).json({ mode: "entra", authenticated: false });
     return;
   }
-  const groups: Array<{ id: string; displayName: string; description: string }> =
-    [];
-  if (u.isCostReader) {
-    groups.push({
-      id: COST_READER_CLIENT_ID,
-      displayName: "Orbit-Cost-Readers",
-      description: "Allowed to view cost, billing, and revenue data in Orbit.",
-    });
-  }
+  const groups = resolveOrbitGroups(cfg, u.groupIds);
   res.json({
     mode: "entra",
     authenticated: true,

@@ -59,7 +59,9 @@ Real Microsoft Entra ID sign-in (OpenID Connect, auth code + PKCE) is implemente
 
 Required env (shared, same in dev & prod): `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_AUTHORIZED_GROUP_ID` (Orbit-Authorized-Users object id), `ENTRA_COST_READER_GROUP_ID` (Orbit-Cost-Readers object id). Secret: `ENTRA_CLIENT_SECRET`. Per-environment: `ENTRA_REDIRECT_URI` (dev = `https://<replit-dev-domain>/api/auth/callback`, prod = `https://orbit.kinisislabs.com/api/auth/callback`). Optional: `ENTRA_SCOPES`, `ENTRA_POST_LOGOUT_REDIRECT_URI`. `SESSION_SECRET` is required in production (already set).
 
-Entra app registration checklist: register both the dev and prod redirect URIs (Web platform), enable the **groups claim** (Token configuration → add groups claim → Security groups, for ID tokens), and create a client secret. The groups claim emits group **object IDs** (GUIDs) — `ENTRA_AUTHORIZED_GROUP_ID` / `ENTRA_COST_READER_GROUP_ID` must be those GUIDs.
+Optional RBAC group env (shared, GUID object ids — only resolve membership when set): `ENTRA_ADMIN_GROUP_ID` (Orbit-Admins), `ENTRA_ENGINEER_GROUP_ID` (Orbit-Engineers), `ENTRA_FINOPS_GROUP_ID` (Orbit-FinOps). All five Orbit-* groups are resolved in `routes/auth.ts` (`resolveOrbitGroups`) and surfaced to the frontend via `/api/auth/me` so `hasGroup()` and the Access page reflect real membership in Entra mode. These three are membership-aware only — no API route is gated on them yet (only `Orbit-Authorized-Users` baseline + `Orbit-Cost-Readers` FinOps gate are enforced).
+
+Entra app registration checklist: register both the dev and prod redirect URIs (Web platform), enable the **groups claim** (Token configuration → add groups claim → Security groups, for ID tokens), and create a client secret. The groups claim emits group **object IDs** (GUIDs) — every `ENTRA_*_GROUP_ID` must be those GUIDs.
 
 ## Product
 
