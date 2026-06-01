@@ -285,12 +285,15 @@ export const IngestLedgerSaleParams = zod.object({
 
 export const ingestLedgerSaleBodyGrossAmountExclusiveMin = 0;
 
+export const ingestLedgerSaleBodyFeeAmountMin = 0;
+
 
 export const ingestLedgerSaleBodyStatusDefault = `posted`;
 
 export const IngestLedgerSaleBody = zod.object({
   "source": zod.enum(['stripe', 'app_store', 'play_store', 'bank', 'manual']),
   "grossAmount": zod.number().gt(ingestLedgerSaleBodyGrossAmountExclusiveMin).describe('Gross sale amount before the platform fee'),
+  "feeAmount": zod.number().min(ingestLedgerSaleBodyFeeAmountMin).optional().describe('Actual platform fee for this sale. When provided it overrides the flat schedule rate — used by live feeds (e.g. Stripe) that report the real per-transaction fee. Must not exceed grossAmount.'),
   "description": zod.string().min(1).optional(),
   "externalRef": zod.string().optional().describe('External transaction id for idempotent ingestion'),
   "status": zod.enum(['posted', 'pending', 'failed']).default(ingestLedgerSaleBodyStatusDefault),

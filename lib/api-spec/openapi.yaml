@@ -492,6 +492,13 @@ components:
       properties:
         source: { $ref: "#/components/schemas/LedgerEntrySource" }
         grossAmount: { type: number, exclusiveMinimum: 0, description: Gross sale amount before the platform fee }
+        feeAmount:
+          type: number
+          minimum: 0
+          description: >-
+            Actual platform fee for this sale. When provided it overrides the
+            flat schedule rate — used by live feeds (e.g. Stripe) that report the
+            real per-transaction fee. Must not exceed grossAmount.
         description: { type: string, minLength: 1 }
         externalRef: { type: string, description: External transaction id for idempotent ingestion }
         status: { type: string, enum: [posted, pending, failed], default: posted }

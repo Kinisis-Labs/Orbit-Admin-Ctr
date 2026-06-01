@@ -15,6 +15,11 @@ export interface IngestSaleRequest {
      * @exclusiveMinimum 0
      */
   grossAmount: number;
+  /**
+     * Actual platform fee for this sale. When provided it overrides the flat schedule rate — used by live feeds (e.g. Stripe) that report the real per-transaction fee. Must not exceed grossAmount.
+     * @minimum 0
+     */
+  feeAmount?: number;
   /** @minLength 1 */
   description?: string;
   /** External transaction id for idempotent ingestion */

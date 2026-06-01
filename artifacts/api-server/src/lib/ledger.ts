@@ -379,6 +379,10 @@ export async function postEntry(
 export interface IngestSaleInput {
   source: EntrySource;
   grossAmount: number;
+  // Actual platform fee for this sale. When provided it overrides the flat
+  // schedule rate — used by live feeds (e.g. Stripe) that report the real
+  // per-transaction fee. When omitted the source's schedule rate is applied.
+  feeAmount?: number;
   description?: string;
   externalRef?: string;
   status?: EntryStatus;
@@ -433,7 +437,20 @@ export async function ingestSale(
   if (grossCents < 1) {
     throw new LedgerError(400, "grossAmount must be at least 0.01");
   }
-  const feeCents = Math.round((grossCents * bps) / 10000);
+  // Prefer the actual fee when a live feed supplies it; otherwise fall back to
+  // the source's flat schedule rate.
+  let feeCents: number;
+  if (input.feeAmount !== undefined) {
+    if (!(input.feeAmount >= 0)) {
+      throw new LedgerError(400, "feeAmount must be zero or greater");
+    }
+    feeCents = toCents(input.feeAmount);
+    if (feeCents > grossCents) {
+      throw new LedgerError(400, "feeAmount must not exceed grossAmount");
+    }
+  } else {
+    feeCents = Math.round((grossCents * bps) / 10000);
+  }
   const status: EntryStatus = input.status ?? "posted";
   const label = SOURCE_LABELS[input.source];
   const description = input.description ?? `${label} sale`;
@@ -516,7 +533,9 @@ export async function ingestSale(
   const summary = summarizeSaleRows(rows);
   return {
     source: input.source,
-    feeRate: bps / 10000,
+    // Effective rate actually booked (matches persisted rows) — equals the
+    // schedule rate for estimated fees, or the real rate for live actual fees.
+    feeRate: summary.grossCents > 0 ? summary.feeCents / summary.grossCents : 0,
     gross: summary.grossCents / 100,
     fee: summary.feeCents / 100,
     net: summary.netCents / 100,
