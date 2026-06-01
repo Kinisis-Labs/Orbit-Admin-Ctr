@@ -30,8 +30,26 @@ leg (D Processing Fees / C Cash). Net cash = gross - fee.
 *before* any insert. Do all fee math in integer cents
 (`Math.round(grossCents * bps / 10000)`).
 
-## Fee schedule
+## Fee schedule vs. actual fee
 
 Stored in basis points: app_store 3000 (30%), play_store 1500 (15%),
-stripe 300 (3%), bank/manual 0. Live Stripe/Apple/Google API clients are a
-future follow-up; the generic POST `/apps/{appId}/ledger/sales` is the seam.
+stripe 300 (3%), bank/manual 0. The bps schedule is only a *fallback estimate*.
+
+**Decision:** the ingestion seam accepts an optional explicit fee override
+(`feeAmount`). Live feeds that report the real per-transaction fee must pass it
+so the ledger books the *actual* cost, not the flat estimate.
+**Why:** real processor fees vary per charge; booking a flat % overstates/understates net.
+**How to apply:** when an override is given, validate `0 <= fee <= gross`, book it
+verbatim, and report the *effective* rate (`fee/gross`) — never the schedule rate.
+The aggregate report's per-source `feeRate` stays the nominal schedule rate; only
+gross/fee/net reflect reality.
+
+## Live Stripe
+
+Connected via a raw `STRIPE_SECRET_KEY` secret (user dismissed the Replit Stripe
+connector), so use the Stripe SDK directly — NOT the connector's
+`getUncachableStripeClient`. Import is **pull-based**: list succeeded charges,
+expand `balance_transaction`, book `balance_transaction.fee` as the actual fee,
+externalRef = Stripe `charge.id` (idempotent). Scoped to GrailBabe only.
+**Why pull, not webhook:** simpler + idempotent re-runs are safe; no webhook
+secret/raw-body wiring needed. Apple/Google deferred (APIs not available yet).

@@ -302,6 +302,29 @@ export const IngestLedgerSaleBody = zod.object({
 
 
 /**
+ * Pulls succeeded Stripe charges and records each as a balanced sale, booking Stripe's actual reported per-transaction fee as the platform-fee expense. Idempotent on the Stripe charge id, so re-running is safe. Enabled for GrailBabe only.
+ * @summary Import live Stripe charges into the app's ledger with their actual fees
+ */
+export const SyncStripeSalesParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const SyncStripeSalesResponse = zod.object({
+  "fetched": zod.number().describe('Total Stripe charges examined'),
+  "imported": zod.number().describe('Charges newly recorded in the ledger this run'),
+  "alreadyRecorded": zod.number().describe('Charges already present (idempotent replays)'),
+  "skipped": zod.number().describe('Charges skipped (not succeeded'),
+  "gross": zod.number().describe('Total gross of all valid Stripe sales in the ledger'),
+  "fee": zod.number().describe('Total actual Stripe fees booked'),
+  "net": zod.number().describe('Total net cash after Stripe fees'),
+  "skips": zod.array(zod.object({
+  "chargeId": zod.string(),
+  "reason": zod.string()
+})).describe('Per-charge skip reasons, capped for readability.')
+})
+
+
+/**
  * @summary Run reconciliation for an app's ledger and persist the result
  */
 export const ReconcileLedgerParams = zod.object({

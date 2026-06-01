@@ -6,6 +6,7 @@ import {
   ListLedgerEntriesResponseItem,
   PostLedgerEntryBody,
   ReconcileLedgerResponse,
+  SyncStripeSalesResponse,
 } from "@workspace/api-zod";
 import { findApp } from "./orbit";
 import {
@@ -16,6 +17,11 @@ import {
   runReconciliation,
   LedgerError,
 } from "../lib/ledger";
+import { isStripeConfigured } from "../lib/stripeClient";
+import { syncStripeSales } from "../lib/stripeSync";
+
+// Live Stripe import is intentionally scoped to GrailBabe only.
+const STRIPE_SYNC_WORKLOAD = "grailbabe";
 
 const router: IRouter = Router();
 
@@ -92,6 +98,37 @@ router.post("/apps/:appId/ledger/sales", async (req, res) => {
       return;
     }
     req.log.error({ err }, "failed to ingest ledger sale");
+    res.status(500).json({ error: "Internal error" });
+  }
+});
+
+// Import live Stripe charges into the ledger, booking each sale's actual Stripe
+// fee as the platform-fee expense. Scoped to GrailBabe only.
+router.post("/apps/:appId/ledger/stripe/sync", async (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  if (app.id !== STRIPE_SYNC_WORKLOAD) {
+    res
+      .status(400)
+      .json({ error: "Live Stripe sync is only enabled for GrailBabe" });
+    return;
+  }
+  if (!isStripeConfigured()) {
+    res.status(503).json({ error: "Stripe is not connected" });
+    return;
+  }
+  try {
+    const result = await syncStripeSales(app.id);
+    res.json(SyncStripeSalesResponse.parse(result));
+  } catch (err) {
+    if (err instanceof LedgerError) {
+      res.status(err.statusCode).json({ error: err.message });
+      return;
+    }
+    req.log.error({ err }, "failed to sync stripe sales");
     res.status(500).json({ error: "Internal error" });
   }
 });

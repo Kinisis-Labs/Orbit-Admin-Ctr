@@ -52,5 +52,7 @@ export * from './revenueBySource';
 export * from './revenueSource';
 export * from './severity';
 export * from './status';
+export * from './stripeSyncResult';
+export * from './stripeSyncSkip';
 export * from './telemetryReport';
 export * from './topError';

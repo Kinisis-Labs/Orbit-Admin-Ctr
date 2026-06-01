@@ -200,6 +200,30 @@ paths:
           description: Invalid sale (bad amount, unknown source, or missing accounts)
         "404":
           description: App not found
+  /apps/{appId}/ledger/stripe/sync:
+    post:
+      operationId: syncStripeSales
+      tags: [ledger]
+      summary: Import live Stripe charges into the app's ledger with their actual fees
+      description: >-
+        Pulls succeeded Stripe charges and records each as a balanced sale,
+        booking Stripe's actual reported per-transaction fee as the platform-fee
+        expense. Idempotent on the Stripe charge id, so re-running is safe.
+        Enabled for GrailBabe only.
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: Sync completed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StripeSyncResult" }
+        "400":
+          description: Stripe sync is not enabled for this app
+        "404":
+          description: App not found
+        "503":
+          description: Stripe is not connected
   /apps/{appId}/ledger/reconcile:
     post:
       operationId: reconcileLedger
@@ -508,7 +532,8 @@ components:
       required: [source, feeRate, gross, fee, net, entries]
       properties:
         source: { $ref: "#/components/schemas/LedgerEntrySource" }
-        feeRate: { type: number, description: Platform fee rate applied (e.g. 0.3 = 30%) }
+        created: { type: boolean, description: True when new legs were recorded; false on an idempotent replay }
+        feeRate: { type: number, description: Effective platform fee rate booked (e.g. 0.3 = 30%) }
         gross: { type: number }
         fee: { type: number }
         net: { type: number, description: Net cash after the platform fee }
@@ -516,6 +541,27 @@ components:
           type: array
           description: The journal entries created (or already present) for this sale.
           items: { $ref: "#/components/schemas/LedgerJournalEntry" }
+    StripeSyncSkip:
+      type: object
+      required: [chargeId, reason]
+      properties:
+        chargeId: { type: string }
+        reason: { type: string }
+    StripeSyncResult:
+      type: object
+      required: [fetched, imported, alreadyRecorded, skipped, gross, fee, net, skips]
+      properties:
+        fetched: { type: integer, description: Total Stripe charges examined }
+        imported: { type: integer, description: Charges newly recorded in the ledger this run }
+        alreadyRecorded: { type: integer, description: Charges already present (idempotent replays) }
+        skipped: { type: integer, description: Charges skipped (not succeeded, non-USD, or errored) }
+        gross: { type: number, description: Total gross of all valid Stripe sales in the ledger }
+        fee: { type: number, description: Total actual Stripe fees booked }
+        net: { type: number, description: Total net cash after Stripe fees }
+        skips:
+          type: array
+          description: Per-charge skip reasons, capped for readability.
+          items: { $ref: "#/components/schemas/StripeSyncSkip" }
     LedgerReport:
       type: object
       required: [currency, totalBalance, accounts, reconciliation, transactions, revenue]

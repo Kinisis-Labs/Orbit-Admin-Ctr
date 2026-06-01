@@ -10,7 +10,9 @@ import type { LedgerJournalEntry } from './ledgerJournalEntry';
 
 export interface IngestSaleResult {
   source: LedgerEntrySource;
-  /** Platform fee rate applied (e.g. 0.3 = 30%) */
+  /** True when new legs were recorded; false on an idempotent replay */
+  created?: boolean;
+  /** Effective platform fee rate booked (e.g. 0.3 = 30%) */
   feeRate: number;
   gross: number;
   fee: number;

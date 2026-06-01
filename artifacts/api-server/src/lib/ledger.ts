@@ -391,6 +391,9 @@ export interface IngestSaleInput {
 
 export interface IngestSaleResult {
   source: EntrySource;
+  // true when this call recorded new legs; false on an idempotent replay of an
+  // already-recorded sale.
+  created: boolean;
   feeRate: number;
   gross: number;
   fee: number;
@@ -456,7 +459,7 @@ export async function ingestSale(
   const description = input.description ?? `${label} sale`;
   const feeRef = input.externalRef ? `${input.externalRef}:fee` : null;
 
-  const rows = await db.transaction(async (tx) => {
+  const { rows, created } = await db.transaction(async (tx) => {
     // Re-read every leg already recorded for this external ref (both the gross
     // ref and its derived "<ref>:fee"), used for the fast idempotent path and to
     // resolve a lost insert race below.
@@ -479,7 +482,7 @@ export async function ingestSale(
     // persisted legs untouched.
     if (input.externalRef) {
       const existing = await readExisting();
-      if (existing.length > 0) return existing;
+      if (existing.length > 0) return { rows: existing, created: false };
     }
 
     const inserted: LedgerEntryRow[] = [];
@@ -502,7 +505,10 @@ export async function ingestSale(
     // request already committed this sale. Return its persisted legs instead of
     // surfacing the unique violation as a 500.
     if (grossInsert.length === 0) {
-      return input.externalRef ? await readExisting() : [];
+      return {
+        rows: input.externalRef ? await readExisting() : [],
+        created: false,
+      };
     }
     inserted.push(grossInsert[0]!);
 
@@ -524,7 +530,7 @@ export async function ingestSale(
         .returning();
       if (feeInsert[0]) inserted.push(feeInsert[0]);
     }
-    return inserted;
+    return { rows: inserted, created: true };
   });
 
   // Report the canonical gross/fee/net derived from the persisted rows so an
@@ -533,6 +539,7 @@ export async function ingestSale(
   const summary = summarizeSaleRows(rows);
   return {
     source: input.source,
+    created,
     // Effective rate actually booked (matches persisted rows) — equals the
     // schedule rate for estimated fees, or the real rate for live actual fees.
     feeRate: summary.grossCents > 0 ? summary.feeCents / summary.grossCents : 0,

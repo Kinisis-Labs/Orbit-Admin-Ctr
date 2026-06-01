@@ -35,6 +35,7 @@ import type {
   LedgerReport,
   NetworkReport,
   PostLedgerEntryRequest,
+  StripeSyncResult,
   TelemetryReport
 } from './api.schemas';
 
@@ -927,6 +928,77 @@ export const useIngestLedgerSale = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getIngestLedgerSaleMutationOptions(options));
+    }
+
+export const getSyncStripeSalesUrl = (appId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/ledger/stripe/sync`
+}
+
+/**
+ * Pulls succeeded Stripe charges and records each as a balanced sale, booking Stripe's actual reported per-transaction fee as the platform-fee expense. Idempotent on the Stripe charge id, so re-running is safe. Enabled for GrailBabe only.
+ * @summary Import live Stripe charges into the app's ledger with their actual fees
+ */
+export const syncStripeSales = async (appId: string, options?: RequestInit): Promise<StripeSyncResult> => {
+
+  return customFetch<StripeSyncResult>(getSyncStripeSalesUrl(appId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSyncStripeSalesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncStripeSales>>, TError,{appId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncStripeSales>>, TError,{appId: string}, TContext> => {
+
+const mutationKey = ['syncStripeSales'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncStripeSales>>, {appId: string}> = (props) => {
+          const {appId} = props ?? {};
+
+          return  syncStripeSales(appId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncStripeSalesMutationResult = NonNullable<Awaited<ReturnType<typeof syncStripeSales>>>
+
+    export type SyncStripeSalesMutationError = ErrorType<void>
+
+    /**
+ * @summary Import live Stripe charges into the app's ledger with their actual fees
+ */
+export const useSyncStripeSales = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncStripeSales>>, TError,{appId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncStripeSales>>,
+        TError,
+        {appId: string},
+        TContext
+      > => {
+      return useMutation(getSyncStripeSalesMutationOptions(options));
     }
 
 export const getReconcileLedgerUrl = (appId: string,) => {

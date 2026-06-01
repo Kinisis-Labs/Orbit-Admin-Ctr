@@ -1,4 +1,4 @@
 - [Orval codegen quirks](orval-codegen.md) — query params + the barrel `export *` collide (TS2308 duplicate `*Params`); not every response gets a `*Response` zod.
 - [DB ops in this repo](db-ops.md) — `drizzle-kit push` needs a TTY (fails on populated-table constraint adds); apply such constraints via direct SQL instead.
 - [executeSql sandbox behavior](executesql-sandbox.md) — returns `{success:false, output:<error>}` on SQL errors; it does NOT throw, so try/catch won't catch.
-- [Ledger sale ingestion](ledger-sale-ingestion.md) — fee-aware sale = 2 legs in 1 tx; idempotent replay must return canonical persisted values; onConflictDoNothing for race safety; reject sub-cent before insert.
+- [Ledger sale ingestion](ledger-sale-ingestion.md) — fee-aware sale = 2 legs in 1 tx; idempotent replay returns canonical persisted values; optional actual-fee override (live Stripe books real balance_transaction.fee, GrailBabe-only); onConflictDoNothing race safety.

@@ -7,8 +7,10 @@ import {
   useGetCost, getGetCostQueryKey, 
   useGetLedger, getGetLedgerQueryKey, 
   useGetTelemetry, getGetTelemetryQueryKey, 
-  useGetAppAlerts, getGetAppAlertsQueryKey 
+  useGetAppAlerts, getGetAppAlertsQueryKey,
+  useSyncStripeSales,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -22,6 +24,7 @@ import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock } from "l
 import { Button } from "@/components/ui/button";
 import { useAuth, COST_READER_GROUP } from "@/lib/auth";
 import { AccessDenied } from "@/components/access-denied";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AppDetail() {
   const params = useParams();
@@ -548,6 +551,27 @@ function CostTab({ appId }: { appId: string }) {
 
 function LedgerTab({ appId }: { appId: string }) {
   const { data, isLoading } = useGetLedger(appId, { query: { enabled: !!appId, queryKey: getGetLedgerQueryKey(appId) } });
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const stripeSyncEnabled = appId === "grailbabe";
+  const syncStripe = useSyncStripeSales({
+    mutation: {
+      onSuccess: (result) => {
+        queryClient.invalidateQueries({ queryKey: getGetLedgerQueryKey(appId) });
+        toast({
+          title: "Stripe sync complete",
+          description: `${result.imported} imported, ${result.alreadyRecorded} already recorded, ${result.skipped} skipped. Net ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(result.net)}.`,
+        });
+      },
+      onError: () => {
+        toast({
+          title: "Stripe sync failed",
+          description: "Could not import Stripe charges. Check the server logs.",
+          variant: "destructive",
+        });
+      },
+    },
+  });
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No ledger data available</div>;
@@ -600,7 +624,21 @@ function LedgerTab({ appId }: { appId: string }) {
       {/* Revenue & platform fees */}
       <div className="bg-card border border-border shadow-sm flex flex-col">
         <div className="flex items-center justify-between p-3 border-b border-border bg-card">
-          <h2 className="text-sm font-semibold">Revenue &amp; Platform Fees</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold">Revenue &amp; Platform Fees</h2>
+            {stripeSyncEnabled && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[12px]"
+                onClick={() => syncStripe.mutate({ appId })}
+                disabled={syncStripe.isPending}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 mr-1 ${syncStripe.isPending ? "animate-spin" : ""}`} />
+                {syncStripe.isPending ? "Syncing Stripe…" : "Sync Stripe"}
+              </Button>
+            )}
+          </div>
           <div className="flex items-center gap-4 text-[12px]">
             <div className="text-right">
               <span className="text-muted-foreground mr-1">Gross</span>

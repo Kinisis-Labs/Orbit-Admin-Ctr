@@ -327,7 +327,9 @@ export interface IngestSaleRequest {
 
 export interface IngestSaleResult {
   source: LedgerEntrySource;
-  /** Platform fee rate applied (e.g. 0.3 = 30%) */
+  /** True when new legs were recorded; false on an idempotent replay */
+  created?: boolean;
+  /** Effective platform fee rate booked (e.g. 0.3 = 30%) */
   feeRate: number;
   gross: number;
   fee: number;
@@ -335,6 +337,30 @@ export interface IngestSaleResult {
   net: number;
   /** The journal entries created (or already present) for this sale. */
   entries: LedgerJournalEntry[];
+}
+
+export interface StripeSyncSkip {
+  chargeId: string;
+  reason: string;
+}
+
+export interface StripeSyncResult {
+  /** Total Stripe charges examined */
+  fetched: number;
+  /** Charges newly recorded in the ledger this run */
+  imported: number;
+  /** Charges already present (idempotent replays) */
+  alreadyRecorded: number;
+  /** Charges skipped (not succeeded */
+  skipped: number;
+  /** Total gross of all valid Stripe sales in the ledger */
+  gross: number;
+  /** Total actual Stripe fees booked */
+  fee: number;
+  /** Total net cash after Stripe fees */
+  net: number;
+  /** Per-charge skip reasons, capped for readability. */
+  skips: StripeSyncSkip[];
 }
 
 export interface LedgerReport {
