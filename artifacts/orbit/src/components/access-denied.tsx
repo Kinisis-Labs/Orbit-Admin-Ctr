@@ -13,7 +13,7 @@ export function AccessDenied({
   resource: string;
   requiredGroup: EntraGroup;
 }) {
-  const { user, grantGroup } = useAuth();
+  const { user, grantGroup, mode } = useAuth();
 
   return (
     <div className="max-w-2xl mx-auto mt-10 bg-card border border-border shadow-sm">
@@ -51,18 +51,27 @@ export function AccessDenied({
           <Mail className="h-3.5 w-3.5 mr-1.5" />
           Request access
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-sm h-8 text-[13px]"
-          onClick={() => grantGroup(requiredGroup)}
-          data-testid="mock-grant-access"
-        >
-          Grant {requiredGroup.displayName} (mock)
-        </Button>
-        <span className="text-[11px] text-muted-foreground">
-          The "Request access" button is illustrative; the mock grant is for demoing the allowed state.
-        </span>
+        {mode === "mock" ? (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm h-8 text-[13px]"
+              onClick={() => grantGroup(requiredGroup)}
+              data-testid="mock-grant-access"
+            >
+              Grant {requiredGroup.displayName} (mock)
+            </Button>
+            <span className="text-[11px] text-muted-foreground">
+              The "Request access" button is illustrative; the mock grant is for demoing the allowed state.
+            </span>
+          </>
+        ) : (
+          <span className="text-[11px] text-muted-foreground">
+            Ask an administrator to add you to{" "}
+            <span className="font-mono">{requiredGroup.displayName}</span> in Entra ID.
+          </span>
+        )}
       </div>
     </div>
   );

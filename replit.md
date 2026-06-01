@@ -26,8 +26,12 @@ The Kinisis admin center — an Azure operations dashboard giving operators a un
 - `docs/requirements.md` — Requirements spec v1.0. Functional (FR-*) + non-functional (NFR-*) requirements, personas, acceptance criteria, release phases.
 - `lib/api-spec/` — OpenAPI contract. Run `pnpm --filter @workspace/api-spec run codegen` after changes.
 - `artifacts/api-server/src/routes/orbit.ts` — All mock data (apps, telemetry, cost, alerts, revenue).
-- `artifacts/orbit/src/lib/auth.tsx` — Mock Entra auth + `COST_READER_GROUP` definition.
+- `artifacts/orbit/src/lib/auth.tsx` — Frontend auth provider: fetches `/api/auth/me`, real Entra sign-in or mock fallback, `COST_READER_GROUP` definition.
 - `artifacts/orbit/src/lib/scope.tsx` — Scope selector (Global vs per-app).
+- `artifacts/api-server/src/lib/entra.ts` — Entra OIDC config + cached discovery (`isEntraConfigured()` decides Entra vs mock mode).
+- `artifacts/api-server/src/lib/session.ts` — express-session + connect-pg-simple Postgres session store.
+- `artifacts/api-server/src/middlewares/auth.ts` — `requireAuth` / `requireCostReader` (no-ops in mock/dev mode).
+- `artifacts/api-server/src/routes/auth.ts` — `/api/auth/me`, `/login`, `/callback`, `/logout` (auth code + PKCE).
 
 ## Architecture decisions
 
@@ -47,7 +51,15 @@ Hosted on Azure in `rg-orbit-prod-eus2` (region East US 2), fronted by the share
 - **Identity for Azure data:** the API authenticates to Azure (Resource Graph, Monitor, Cost Management, Microsoft Graph, Key Vault, App Configuration) via the user-assigned managed identity `id-orbit-api-prod-eus2` — use `DefaultAzureCredential`, **no client secret**. (Integration code deferred; dashboard data is still mock.)
 - **Also provisioned:** App Configuration `appcs-orbit-prod-eus2` (`APP_CONFIGURATION_ENDPOINT`) and Application Insights `appi-orbit-prod-eus2` (`APPLICATIONINSIGHTS_CONNECTION_STRING`) — SDK wiring not built yet.
 
-**Pending on the Azure side:** Front Door routes + custom domain, and the Entra app registration. App authentication (Entra) and real Azure data integrations are not yet built — the current deploy serves mock dashboard data plus the live Stripe-backed ledger.
+**Pending on the Azure side:** Front Door routes + custom domain. Real Azure *data* integrations (Resource Graph, Monitor, Cost Management, Graph) are not yet built — the dashboard still serves mock data plus the live Stripe-backed ledger.
+
+### Authentication (Entra ID) — built, config-gated
+
+Real Microsoft Entra ID sign-in (OpenID Connect, auth code + PKCE) is implemented. It activates only when **all** of these are present; otherwise the app runs in **mock mode** (open data routes, simulated user) so the Replit dev preview keeps working. In production the API **fails closed**: it refuses to start if Entra is not fully configured.
+
+Required env (shared, same in dev & prod): `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_AUTHORIZED_GROUP_ID` (Orbit-Authorized-Users object id), `ENTRA_COST_READER_GROUP_ID` (Orbit-Cost-Readers object id). Secret: `ENTRA_CLIENT_SECRET`. Per-environment: `ENTRA_REDIRECT_URI` (dev = `https://<replit-dev-domain>/api/auth/callback`, prod = `https://orbit.kinisislabs.com/api/auth/callback`). Optional: `ENTRA_SCOPES`, `ENTRA_POST_LOGOUT_REDIRECT_URI`. `SESSION_SECRET` is required in production (already set).
+
+Entra app registration checklist: register both the dev and prod redirect URIs (Web platform), enable the **groups claim** (Token configuration → add groups claim → Security groups, for ID tokens), and create a client secret. The groups claim emits group **object IDs** (GUIDs) — `ENTRA_AUTHORIZED_GROUP_ID` / `ENTRA_COST_READER_GROUP_ID` must be those GUIDs.
 
 ## Product
 

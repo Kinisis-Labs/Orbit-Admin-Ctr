@@ -1,7 +1,9 @@
+import { LogOut } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -15,7 +17,7 @@ import { useAuth, COST_READER_GROUP } from "@/lib/auth";
  * behavior on the Cost Management page).
  */
 export function UserMenu() {
-  const { user, groups, hasGroup, grantGroup, revokeGroup } = useAuth();
+  const { user, groups, hasGroup, grantGroup, revokeGroup, mode, signOut } = useAuth();
   const hasCost = hasGroup(COST_READER_GROUP.id);
 
   const toggleCost = (next: boolean) => {
@@ -57,28 +59,41 @@ export function UserMenu() {
             ))}
           </div>
         </div>
+        {mode === "mock" && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-3 py-2">
+              <div className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground mb-1.5">
+                Permission simulator (mock)
+              </div>
+              <label className="flex items-start gap-2 cursor-pointer" htmlFor="cost-readers-toggle">
+                <Switch
+                  id="cost-readers-toggle"
+                  checked={hasCost}
+                  onCheckedChange={toggleCost}
+                  data-testid="toggle-cost-readers"
+                />
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[12px] font-medium text-foreground">
+                    Member of <span className="font-mono">{COST_READER_GROUP.displayName}</span>
+                  </span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    Required to view Cost Management. Toggle off to preview the no-access state.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </>
+        )}
         <DropdownMenuSeparator />
-        <div className="px-3 py-2">
-          <div className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground mb-1.5">
-            Permission simulator (mock)
-          </div>
-          <label className="flex items-start gap-2 cursor-pointer" htmlFor="cost-readers-toggle">
-            <Switch
-              id="cost-readers-toggle"
-              checked={hasCost}
-              onCheckedChange={toggleCost}
-              data-testid="toggle-cost-readers"
-            />
-            <span className="flex-1 min-w-0">
-              <span className="block text-[12px] font-medium text-foreground">
-                Member of <span className="font-mono">{COST_READER_GROUP.displayName}</span>
-              </span>
-              <span className="block text-[11px] text-muted-foreground">
-                Required to view Cost Management. Toggle off to preview the no-access state.
-              </span>
-            </span>
-          </label>
-        </div>
+        <DropdownMenuItem
+          onClick={signOut}
+          data-testid="sign-out"
+          className="mx-1 my-1 text-[13px] cursor-pointer"
+        >
+          <LogOut className="h-3.5 w-3.5 mr-2" />
+          Sign out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

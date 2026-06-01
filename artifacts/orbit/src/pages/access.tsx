@@ -44,7 +44,7 @@ const ORBIT_GROUPS: GroupDef[] = [
 ];
 
 export default function Access() {
-  const { hasGroup, user, groups, grantGroup, revokeGroup } = useAuth();
+  const { hasGroup, user, groups, grantGroup, revokeGroup, mode } = useAuth();
 
   return (
     <div className="space-y-4">
@@ -99,7 +99,7 @@ export default function Access() {
                     )}
                   </TableCell>
                   <TableCell className="py-2 text-right">
-                    {toggleable ? (
+                    {toggleable && mode === "mock" ? (
                       <button
                         type="button"
                         className="text-primary hover:underline text-[12px]"
