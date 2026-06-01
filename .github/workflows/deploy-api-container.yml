@@ -1,0 +1,82 @@
+name: Deploy Orbit API to Azure Container Apps
+
+# Backend (artifacts/api-server) -> ca-orbit-api-prod-eus2.
+# Builds the container image, pushes it to GHCR, and rolls the Container App to
+# the new image.
+#
+# Prerequisites (currently pending on the Azure side):
+#   1. Entra app registration with a GitHub OIDC federated credential
+#      (subject: repo:<owner>/<repo>:ref:refs/heads/main), granted "Contributor"
+#      on ca-orbit-api-prod-eus2 (or rg-orbit-prod-eus2).
+#   2. Repo secrets: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID.
+#   3. ca-orbit-api-prod-eus2 must be able to pull from GHCR: either make the
+#      ghcr.io/<owner>/orbit-api package public, or add registry credentials to
+#      the Container App (Settings > Containers > Registries).
+#
+# To use Azure Container Registry instead of GHCR: replace the GHCR login + the
+# IMAGE value with your ACR (e.g. <acr>.azurecr.io/orbit-api) and `az acr login`.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "artifacts/api-server/**"
+      - "lib/db/**"
+      - "lib/api-zod/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/deploy-api-container.yml"
+  workflow_dispatch:
+
+env:
+  RESOURCE_GROUP: rg-orbit-prod-eus2
+  CONTAINER_APP: ca-orbit-api-prod-eus2
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute lowercase image name
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/orbit-api" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: artifacts/api-server/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Roll Container App to new image
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az containerapp update \
+              --name "$CONTAINER_APP" \
+              --resource-group "$RESOURCE_GROUP" \
+              --image "${{ steps.image.outputs.name }}:${{ github.sha }}"

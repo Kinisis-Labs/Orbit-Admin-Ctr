@@ -1,0 +1,12 @@
+# Docker build context is the repo root (docker build -f artifacts/api-server/Dockerfile .)
+# Docker only honors a .dockerignore at the build-context root, so it lives here.
+**/node_modules
+**/dist
+**/.tsbuildinfo
+**/*.log
+.git
+.github
+.local
+.agents
+attached_assets
+artifacts/mockup-sandbox

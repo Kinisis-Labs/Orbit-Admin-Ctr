@@ -3,3 +3,4 @@
 - [executeSql sandbox behavior](executesql-sandbox.md) — returns `{success:false, output:<error>}` on SQL errors; it does NOT throw, so try/catch won't catch.
 - [Ledger sale ingestion](ledger-sale-ingestion.md) — fee-aware sale = 2 legs/tx; idempotent replay; optional actual-fee override (live Stripe books real fee, GrailBabe-only).
 - [Fast Refresh export consistency](fast-refresh-export-consistency.md) — a .tsx mixing component + non-component (hook/context) exports breaks HMR; codegen invalidation then throws "must be used within a Provider". Split context/hook into a non-component module.
+- [Azure deploy build gotchas](azure-deploy.md) — API Docker context = repo root (so .dockerignore must be root-level); runtime stage copies only dist/ (esbuild bundles all deps); vite build needs PORT+BASE_PATH env.
