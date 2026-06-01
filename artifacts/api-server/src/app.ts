@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
+import clerkWebhookRouter from "./routes/clerkWebhook";
 import { logger } from "./lib/logger";
 import { sessionMiddleware } from "./lib/session";
 import { isEntraConfigured } from "./lib/entra";
@@ -40,6 +41,11 @@ app.use(
   }),
 );
 app.use(cors());
+
+// Clerk webhooks need the raw request body for Svix signature verification, so
+// they must be mounted BEFORE the global JSON body parser consumes the stream.
+app.use("/api/webhooks/clerk", clerkWebhookRouter);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(sessionMiddleware);

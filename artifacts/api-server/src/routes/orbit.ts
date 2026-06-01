@@ -30,6 +30,10 @@ export type AppRecord = {
   description: string;
   tags: Record<string, string>;
   owners: string[];
+  // Which identity system authenticates this app's END USERS. "clerk" =
+  // consumer app whose end users sign in via Clerk (activity ingested from
+  // Clerk webhooks). "entra" = employee-only internal tool (Orbit itself).
+  userAuth: "clerk" | "entra";
 };
 
 const APPS: AppRecord[] = [
@@ -52,6 +56,7 @@ const APPS: AppRecord[] = [
       criticality: "mission-critical",
     },
     owners: ["Ryan Gutridge"],
+    userAuth: "clerk",
   },
   {
     id: "grailbabe-dev",
@@ -72,6 +77,7 @@ const APPS: AppRecord[] = [
       criticality: "low",
     },
     owners: ["Ryan Gutridge"],
+    userAuth: "clerk",
   },
   {
     id: "orbit",
@@ -92,6 +98,7 @@ const APPS: AppRecord[] = [
       criticality: "high",
     },
     owners: ["Ryan Gutridge"],
+    userAuth: "entra",
   },
 ];
 
@@ -147,6 +154,12 @@ function makeDaily(seed: string, days: number, base: number) {
 
 export function findApp(id: string): AppRecord | undefined {
   return APPS.find((a) => a.id === id);
+}
+
+// Apps whose END USERS authenticate via Clerk — the ones Orbit ingests
+// user-activity webhooks for.
+export function clerkApps(): AppRecord[] {
+  return APPS.filter((a) => a.userAuth === "clerk");
 }
 
 function activeAlertCount(app: AppRecord): number {

@@ -58,6 +58,19 @@ export type AppDetail = AppSummary & {
   owners: string[];
 };
 
+export interface UserActivityRow {
+  appId: string;
+  appName: string;
+  environment: string;
+  totalMembers: number;
+  dau: number;
+  wau: number;
+  mau: number;
+  inactive30d: number;
+  newLast7d: number;
+  dauTrendPct: number;
+}
+
 export interface MetricPoint {
   timestamp: string;
   value: number;

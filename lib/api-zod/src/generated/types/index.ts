@@ -56,3 +56,4 @@ export * from './stripeSyncResult';
 export * from './stripeSyncSkip';
 export * from './telemetryReport';
 export * from './topError';
+export * from './userActivityRow';

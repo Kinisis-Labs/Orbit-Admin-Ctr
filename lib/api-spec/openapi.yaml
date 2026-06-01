@@ -26,6 +26,8 @@ tags:
     description: Per-app financial ledger
   - name: global
     description: Global cross-app views
+  - name: users
+    description: End-user activity (Clerk-sourced) for consumer apps
 paths:
   /healthz:
     get:
@@ -274,6 +276,19 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/GlobalCostSummary" }
+  /users/activity:
+    get:
+      operationId: listUserActivity
+      tags: [users]
+      summary: Per-app end-user activity (Clerk-sourced aggregate counts)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/UserActivityRow" }
 components:
   parameters:
     AppId:
@@ -319,6 +334,20 @@ components:
             owners:
               type: array
               items: { type: string }
+    UserActivityRow:
+      type: object
+      required: [appId, appName, environment, totalMembers, dau, wau, mau, inactive30d, newLast7d, dauTrendPct]
+      properties:
+        appId: { type: string }
+        appName: { type: string }
+        environment: { type: string }
+        totalMembers: { type: integer }
+        dau: { type: integer }
+        wau: { type: integer }
+        mau: { type: integer }
+        inactive30d: { type: integer }
+        newLast7d: { type: integer }
+        dauTrendPct: { type: number }
     MetricPoint:
       type: object
       required: [timestamp, value]

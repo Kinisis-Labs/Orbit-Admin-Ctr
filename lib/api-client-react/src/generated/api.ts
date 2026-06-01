@@ -36,7 +36,8 @@ import type {
   NetworkReport,
   PostLedgerEntryRequest,
   StripeSyncResult,
-  TelemetryReport
+  TelemetryReport,
+  UserActivityRow
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1290,6 +1291,83 @@ export function useGetGlobalCostSummary<TData = Awaited<ReturnType<typeof getGlo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetGlobalCostSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListUserActivityUrl = () => {
+
+
+
+
+  return `/api/users/activity`
+}
+
+/**
+ * @summary Per-app end-user activity (Clerk-sourced aggregate counts)
+ */
+export const listUserActivity = async ( options?: RequestInit): Promise<UserActivityRow[]> => {
+
+  return customFetch<UserActivityRow[]>(getListUserActivityUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListUserActivityQueryKey = () => {
+    return [
+    `/api/users/activity`
+    ] as const;
+    }
+
+
+export const getListUserActivityQueryOptions = <TData = Awaited<ReturnType<typeof listUserActivity>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUserActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListUserActivityQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listUserActivity>>> = ({ signal }) => listUserActivity({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listUserActivity>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListUserActivityQueryResult = NonNullable<Awaited<ReturnType<typeof listUserActivity>>>
+export type ListUserActivityQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Per-app end-user activity (Clerk-sourced aggregate counts)
+ */
+
+export function useListUserActivity<TData = Awaited<ReturnType<typeof listUserActivity>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUserActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListUserActivityQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -426,3 +426,21 @@ export const GetGlobalCostSummaryResponse = zod.object({
 })
 
 
+/**
+ * @summary Per-app end-user activity (Clerk-sourced aggregate counts)
+ */
+export const ListUserActivityResponseItem = zod.object({
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "environment": zod.string(),
+  "totalMembers": zod.number(),
+  "dau": zod.number(),
+  "wau": zod.number(),
+  "mau": zod.number(),
+  "inactive30d": zod.number(),
+  "newLast7d": zod.number(),
+  "dauTrendPct": zod.number()
+})
+export const ListUserActivityResponse = zod.array(ListUserActivityResponseItem)
+
+

@@ -2,3 +2,4 @@
 // Each model/table is split into its own file under ./schema.
 
 export * from "./ledger";
+export * from "./clerk";

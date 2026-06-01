@@ -3,6 +3,7 @@ import healthRouter from "./health";
 import authRouter from "./auth";
 import orbitRouter from "./orbit";
 import ledgerRouter from "./ledger";
+import usersRouter from "./users";
 import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -15,5 +16,6 @@ router.use(authRouter);
 // so the dev preview keeps working without sign-in.
 router.use(requireAuth, orbitRouter);
 router.use(requireAuth, ledgerRouter);
+router.use(requireAuth, usersRouter);
 
 export default router;
