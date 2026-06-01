@@ -3,7 +3,7 @@ import { useListApps } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
-import { GLOBAL_SCOPE, useScope } from "@/lib/scope";
+import { GLOBAL_SCOPE, useScope } from "@/lib/scope-context";
 
 type Theme = "dark" | "light";
 type Density = "comfortable" | "compact";

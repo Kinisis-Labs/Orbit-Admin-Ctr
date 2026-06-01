@@ -13,7 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { RefreshCw, Filter, Download } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ScopeSelect, useScope } from "@/lib/scope";
+import { ScopeSelect } from "@/lib/scope";
+import { useScope } from "@/lib/scope-context";
 
 export default function Home() {
   const { scope, setScope, isGlobal } = useScope();

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useListApps } from "@workspace/api-client-react";
 import {
   Select,
@@ -7,17 +7,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { GLOBAL_SCOPE, ScopeContext, useScope } from "./scope-context";
 
-export const GLOBAL_SCOPE = "__global__";
 const STORAGE_KEY = "orbit-scope";
-
-type ScopeContextValue = {
-  scope: string;
-  setScope: (v: string) => void;
-  isGlobal: boolean;
-};
-
-const ScopeContext = createContext<ScopeContextValue | null>(null);
 
 export function ScopeProvider({ children }: { children: React.ReactNode }) {
   const [scope, setScopeState] = useState<string>(() => {
@@ -48,12 +40,6 @@ export function ScopeProvider({ children }: { children: React.ReactNode }) {
   );
 
   return <ScopeContext.Provider value={value}>{children}</ScopeContext.Provider>;
-}
-
-export function useScope() {
-  const ctx = useContext(ScopeContext);
-  if (!ctx) throw new Error("useScope must be used within a ScopeProvider");
-  return ctx;
 }
 
 export function ScopeSelect({ id = "scope-select" }: { id?: string }) {

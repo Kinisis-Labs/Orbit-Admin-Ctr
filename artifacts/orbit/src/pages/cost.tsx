@@ -11,7 +11,8 @@ import { Progress } from "@/components/ui/progress";
 import { Link } from "wouter";
 import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ScopeSelect, useScope } from "@/lib/scope";
+import { ScopeSelect } from "@/lib/scope";
+import { useScope } from "@/lib/scope-context";
 import { CostTabs } from "@/components/cost-tabs";
 
 const fmt = (amount: number, currency = "USD") =>

@@ -8,7 +8,8 @@ import { Search, Download, TrendingDown, TrendingUp, ExternalLink } from "lucide
 import { format, formatDistanceToNow } from "date-fns";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { buildUserActivity, buildUserSample, type UserRecord } from "@/lib/mock-data";
-import { ScopeSelect, useScope } from "@/lib/scope";
+import { ScopeSelect } from "@/lib/scope";
+import { useScope } from "@/lib/scope-context";
 
 const STATE_TONE: Record<UserRecord["state"], "ok" | "warn" | "muted"> = {
   Active: "ok",

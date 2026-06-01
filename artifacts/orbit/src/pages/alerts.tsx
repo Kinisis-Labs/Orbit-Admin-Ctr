@@ -14,7 +14,8 @@ import { Link } from "wouter";
 import { RefreshCw, Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScopeSelect, useScope } from "@/lib/scope";
+import { ScopeSelect } from "@/lib/scope";
+import { useScope } from "@/lib/scope-context";
 
 type AlertRow = {
   id: string;

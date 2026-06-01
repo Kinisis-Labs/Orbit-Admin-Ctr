@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Download, RefreshCw, Search } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
-import { ScopeSelect, useScope } from "@/lib/scope";
+import { ScopeSelect } from "@/lib/scope";
+import { useScope } from "@/lib/scope-context";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { buildDeployments, type DeploymentStatus } from "@/lib/mock-data";
 

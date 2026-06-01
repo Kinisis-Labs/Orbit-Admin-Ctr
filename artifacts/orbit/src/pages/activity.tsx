@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { buildActivity, type ActivityEntry } from "@/lib/mock-data";
-import { useScope, ScopeSelect } from "@/lib/scope";
+import { ScopeSelect } from "@/lib/scope";
+import { useScope } from "@/lib/scope-context";
 
 const STATUS_TONE: Record<ActivityEntry["status"], "ok" | "warn" | "bad"> = {
   Succeeded: "ok",
