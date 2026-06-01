@@ -6,11 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
@@ -24,13 +28,16 @@ import type {
   GlobalHealth,
   HealthStatus,
   InfrastructureReport,
+  LedgerJournalEntry,
+  LedgerReconciliation,
   LedgerReport,
   NetworkReport,
+  PostLedgerEntryRequest,
   TelemetryReport
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
-import type { ErrorType } from '../custom-fetch';
+import type { ErrorType , BodyType } from '../custom-fetch';
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -697,6 +704,225 @@ export function useGetLedger<TData = Awaited<ReturnType<typeof getLedger>>, TErr
 
 
 
+
+export const getListLedgerEntriesUrl = (appId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/ledger/entries`
+}
+
+/**
+ * @summary List journal entries for an app, newest first
+ */
+export const listLedgerEntries = async (appId: string, options?: RequestInit): Promise<LedgerJournalEntry[]> => {
+
+  return customFetch<LedgerJournalEntry[]>(getListLedgerEntriesUrl(appId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListLedgerEntriesQueryKey = (appId: string,) => {
+    return [
+    `/api/apps/${appId}/ledger/entries`
+    ] as const;
+    }
+
+
+export const getListLedgerEntriesQueryOptions = <TData = Awaited<ReturnType<typeof listLedgerEntries>>, TError = ErrorType<unknown>>(appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLedgerEntries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListLedgerEntriesQueryKey(appId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLedgerEntries>>> = ({ signal }) => listLedgerEntries(appId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(appId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLedgerEntries>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListLedgerEntriesQueryResult = NonNullable<Awaited<ReturnType<typeof listLedgerEntries>>>
+export type ListLedgerEntriesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List journal entries for an app, newest first
+ */
+
+export function useListLedgerEntries<TData = Awaited<ReturnType<typeof listLedgerEntries>>, TError = ErrorType<unknown>>(
+ appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLedgerEntries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListLedgerEntriesQueryOptions(appId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getPostLedgerEntryUrl = (appId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/ledger/entries`
+}
+
+/**
+ * @summary Post a new balanced double-entry journal entry
+ */
+export const postLedgerEntry = async (appId: string,
+    postLedgerEntryRequest: PostLedgerEntryRequest, options?: RequestInit): Promise<LedgerJournalEntry> => {
+
+  return customFetch<LedgerJournalEntry>(getPostLedgerEntryUrl(appId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      postLedgerEntryRequest,)
+  }
+);}
+
+
+
+
+export const getPostLedgerEntryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postLedgerEntry>>, TError,{appId: string;data: BodyType<PostLedgerEntryRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postLedgerEntry>>, TError,{appId: string;data: BodyType<PostLedgerEntryRequest>}, TContext> => {
+
+const mutationKey = ['postLedgerEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postLedgerEntry>>, {appId: string;data: BodyType<PostLedgerEntryRequest>}> = (props) => {
+          const {appId,data} = props ?? {};
+
+          return  postLedgerEntry(appId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostLedgerEntryMutationResult = NonNullable<Awaited<ReturnType<typeof postLedgerEntry>>>
+    export type PostLedgerEntryMutationBody = BodyType<PostLedgerEntryRequest>
+    export type PostLedgerEntryMutationError = ErrorType<void>
+
+    /**
+ * @summary Post a new balanced double-entry journal entry
+ */
+export const usePostLedgerEntry = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postLedgerEntry>>, TError,{appId: string;data: BodyType<PostLedgerEntryRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof postLedgerEntry>>,
+        TError,
+        {appId: string;data: BodyType<PostLedgerEntryRequest>},
+        TContext
+      > => {
+      return useMutation(getPostLedgerEntryMutationOptions(options));
+    }
+
+export const getReconcileLedgerUrl = (appId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/ledger/reconcile`
+}
+
+/**
+ * @summary Run reconciliation for an app's ledger and persist the result
+ */
+export const reconcileLedger = async (appId: string, options?: RequestInit): Promise<LedgerReconciliation> => {
+
+  return customFetch<LedgerReconciliation>(getReconcileLedgerUrl(appId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getReconcileLedgerMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileLedger>>, TError,{appId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileLedger>>, TError,{appId: string}, TContext> => {
+
+const mutationKey = ['reconcileLedger'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileLedger>>, {appId: string}> = (props) => {
+          const {appId} = props ?? {};
+
+          return  reconcileLedger(appId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileLedgerMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileLedger>>>
+
+    export type ReconcileLedgerMutationError = ErrorType<void>
+
+    /**
+ * @summary Run reconciliation for an app's ledger and persist the result
+ */
+export const useReconcileLedger = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileLedger>>, TError,{appId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileLedger>>,
+        TError,
+        {appId: string},
+        TContext
+      > => {
+      return useMutation(getReconcileLedgerMutationOptions(options));
+    }
 
 export const getGetGlobalHealthUrl = () => {
 

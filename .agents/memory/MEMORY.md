@@ -1,2 +1,3 @@
-- [API server restart](api-server-restart.md) — api-server dev workflow bundles; restart it (not HMR) after route/mock-data edits before verifying.
-- [Finance subscription model](finance-subscription-model.md) — finance/ledger spans 3 subs (sharedplatform-prod, grailbabe-prod, grailbabedev-dev), NOT an isolated finance sub; spec is intentionally stale on this.
+- [Orval codegen quirks](orval-codegen.md) — query params + the barrel `export *` collide (TS2308 duplicate `*Params`); not every response gets a `*Response` zod.
+- [DB ops in this repo](db-ops.md) — `drizzle-kit push` needs a TTY (fails on populated-table constraint adds); apply such constraints via direct SQL instead.
+- [executeSql sandbox behavior](executesql-sandbox.md) — returns `{success:false, output:<error>}` on SQL errors; it does NOT throw, so try/catch won't catch.

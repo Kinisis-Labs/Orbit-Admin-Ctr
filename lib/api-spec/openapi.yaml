@@ -138,6 +138,57 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LedgerReport" }
+  /apps/{appId}/ledger/entries:
+    get:
+      operationId: listLedgerEntries
+      tags: [ledger]
+      summary: List journal entries for an app, newest first
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LedgerJournalEntry" }
+    post:
+      operationId: postLedgerEntry
+      tags: [ledger]
+      summary: Post a new balanced double-entry journal entry
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PostLedgerEntryRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LedgerJournalEntry" }
+        "400":
+          description: Invalid entry (unbalanced, unknown account, or bad amount)
+        "404":
+          description: App not found
+  /apps/{appId}/ledger/reconcile:
+    post:
+      operationId: reconcileLedger
+      tags: [ledger]
+      summary: Run reconciliation for an app's ledger and persist the result
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LedgerReconciliation" }
+        "404":
+          description: App not found
   /global/health:
     get:
       operationId: getGlobalHealth
@@ -363,6 +414,32 @@ components:
         creditAccount: { type: string, description: Chart-of-accounts code credited }
         amount: { type: number }
         status: { type: string, enum: [posted, pending, failed] }
+    LedgerEntrySource:
+      type: string
+      enum: [stripe, app_store, play_store, bank, manual]
+    LedgerJournalEntry:
+      type: object
+      required: [id, postedAt, description, debitAccount, creditAccount, amount, status, source]
+      properties:
+        id: { type: string }
+        postedAt: { type: string, format: date-time }
+        description: { type: string }
+        debitAccount: { type: string, description: Chart-of-accounts code debited }
+        creditAccount: { type: string, description: Chart-of-accounts code credited }
+        amount: { type: number }
+        status: { type: string, enum: [posted, pending, failed] }
+        source: { $ref: "#/components/schemas/LedgerEntrySource" }
+    PostLedgerEntryRequest:
+      type: object
+      required: [description, debitAccount, creditAccount, amount]
+      properties:
+        description: { type: string, minLength: 1 }
+        debitAccount: { type: string, description: Chart-of-accounts code to debit }
+        creditAccount: { type: string, description: Chart-of-accounts code to credit }
+        amount: { type: number, exclusiveMinimum: 0 }
+        source: { $ref: "#/components/schemas/LedgerEntrySource" }
+        status: { type: string, enum: [posted, pending, failed], default: posted }
+        postedAt: { type: string, format: date-time }
     LedgerReport:
       type: object
       required: [currency, totalBalance, accounts, reconciliation, transactions]

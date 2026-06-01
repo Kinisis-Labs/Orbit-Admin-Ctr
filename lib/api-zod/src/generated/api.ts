@@ -220,6 +220,64 @@ export const GetLedgerResponse = zod.object({
 
 
 /**
+ * @summary List journal entries for an app, newest first
+ */
+export const ListLedgerEntriesParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const ListLedgerEntriesResponseItem = zod.object({
+  "id": zod.string(),
+  "postedAt": zod.coerce.date(),
+  "description": zod.string(),
+  "debitAccount": zod.string().describe('Chart-of-accounts code debited'),
+  "creditAccount": zod.string().describe('Chart-of-accounts code credited'),
+  "amount": zod.number(),
+  "status": zod.enum(['posted', 'pending', 'failed']),
+  "source": zod.enum(['stripe', 'app_store', 'play_store', 'bank', 'manual'])
+})
+export const ListLedgerEntriesResponse = zod.array(ListLedgerEntriesResponseItem)
+
+
+/**
+ * @summary Post a new balanced double-entry journal entry
+ */
+export const PostLedgerEntryParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+
+export const postLedgerEntryBodyAmountExclusiveMin = 0;
+
+export const postLedgerEntryBodyStatusDefault = `posted`;
+
+export const PostLedgerEntryBody = zod.object({
+  "description": zod.string().min(1),
+  "debitAccount": zod.string().describe('Chart-of-accounts code to debit'),
+  "creditAccount": zod.string().describe('Chart-of-accounts code to credit'),
+  "amount": zod.number().gt(postLedgerEntryBodyAmountExclusiveMin),
+  "source": zod.enum(['stripe', 'app_store', 'play_store', 'bank', 'manual']).optional(),
+  "status": zod.enum(['posted', 'pending', 'failed']).default(postLedgerEntryBodyStatusDefault),
+  "postedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Run reconciliation for an app's ledger and persist the result
+ */
+export const ReconcileLedgerParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const ReconcileLedgerResponse = zod.object({
+  "status": zod.enum(['reconciled', 'pending', 'discrepancy']),
+  "lastReconciledAt": zod.coerce.date(),
+  "unreconciledCount": zod.number().describe('Number of journal entries not yet reconciled'),
+  "unreconciledAmount": zod.number().describe('Net value of unreconciled entries')
+})
+
+
+/**
  * @summary Global health overview across all apps
  */
 export const GetGlobalHealthResponse = zod.object({

@@ -216,6 +216,62 @@ export interface LedgerTransaction {
   status: LedgerTransactionStatus;
 }
 
+export type LedgerEntrySource = typeof LedgerEntrySource[keyof typeof LedgerEntrySource];
+
+
+export const LedgerEntrySource = {
+  stripe: 'stripe',
+  app_store: 'app_store',
+  play_store: 'play_store',
+  bank: 'bank',
+  manual: 'manual',
+} as const;
+
+export type LedgerJournalEntryStatus = typeof LedgerJournalEntryStatus[keyof typeof LedgerJournalEntryStatus];
+
+
+export const LedgerJournalEntryStatus = {
+  posted: 'posted',
+  pending: 'pending',
+  failed: 'failed',
+} as const;
+
+export interface LedgerJournalEntry {
+  id: string;
+  postedAt: string;
+  description: string;
+  /** Chart-of-accounts code debited */
+  debitAccount: string;
+  /** Chart-of-accounts code credited */
+  creditAccount: string;
+  amount: number;
+  status: LedgerJournalEntryStatus;
+  source: LedgerEntrySource;
+}
+
+export type PostLedgerEntryRequestStatus = typeof PostLedgerEntryRequestStatus[keyof typeof PostLedgerEntryRequestStatus];
+
+
+export const PostLedgerEntryRequestStatus = {
+  posted: 'posted',
+  pending: 'pending',
+  failed: 'failed',
+} as const;
+
+export interface PostLedgerEntryRequest {
+  /** @minLength 1 */
+  description: string;
+  /** Chart-of-accounts code to debit */
+  debitAccount: string;
+  /** Chart-of-accounts code to credit */
+  creditAccount: string;
+  /** @exclusiveMinimum 0 */
+  amount: number;
+  source?: LedgerEntrySource;
+  status?: PostLedgerEntryRequestStatus;
+  postedAt?: string;
+}
+
 export interface LedgerReport {
   currency: string;
   /** Net of asset balances (settlement position) */
