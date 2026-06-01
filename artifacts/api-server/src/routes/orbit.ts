@@ -39,42 +39,60 @@ const APPS: AppRecord[] = [
     name: "GrailBabe",
     environment: "prod",
     region: "eastus2",
-    resourceGroup: "rg-grailbabe-prod",
+    resourceGroup: "rg-grailbabeprod-compute-prod-eus2",
     status: "healthy",
     activeAlerts: 1,
     monthToDateCost: 4128.42,
     subscriptionId: "a1f4-shared-platform",
     description: "Consumer marketplace for limited-edition collectibles.",
-    tags: { owner: "platform", tier: "tier-1", costCenter: "CC-1042" },
-    owners: ["platform-eng@kinisis.io", "sre@kinisis.io"],
+    tags: {
+      workload: "GrailBabeProd",
+      environment: "prod",
+      owner: "Ryan Gutridge",
+      "cost-center": "CC-GrailBabeProd",
+      criticality: "mission-critical",
+    },
+    owners: ["Ryan Gutridge"],
   },
   {
     id: "grailbabe-dev",
     name: "GrailBabe (dev)",
     environment: "dev",
     region: "eastus2",
-    resourceGroup: "rg-grailbabe-dev",
+    resourceGroup: "rg-grailbabedev-compute-dev-eus2",
     status: "degraded",
     activeAlerts: 2,
     monthToDateCost: 318.74,
     subscriptionId: "a1f4-shared-platform",
     description: "Development environment for the GrailBabe consumer marketplace.",
-    tags: { owner: "platform", tier: "tier-3", costCenter: "CC-1042", env: "dev" },
-    owners: ["platform-eng@kinisis.io"],
+    tags: {
+      workload: "GrailBabeDev",
+      environment: "dev",
+      owner: "Ryan Gutridge",
+      "cost-center": "CC-GrailBabeDev",
+      criticality: "low",
+    },
+    owners: ["Ryan Gutridge"],
   },
   {
     id: "orbit",
     name: "Orbit",
     environment: "prod",
-    region: "centralus",
-    resourceGroup: "rg-orbit-prod",
+    region: "eastus2",
+    resourceGroup: "rg-orbit-prod-eus2",
     status: "healthy",
     activeAlerts: 0,
     monthToDateCost: 612.33,
     subscriptionId: "b203-internal-tools",
     description: "The Kinisis admin center — Azure operations dashboard.",
-    tags: { owner: "platform", tier: "tier-2", costCenter: "CC-1042" },
-    owners: ["platform-eng@kinisis.io"],
+    tags: {
+      workload: "Orbit",
+      environment: "prod",
+      owner: "Ryan Gutridge",
+      "cost-center": "CC-Orbit",
+      criticality: "high",
+    },
+    owners: ["Ryan Gutridge"],
   },
 ];
 
@@ -346,11 +364,11 @@ function splitInts(total: number, weights: number[]): number[] {
 function apiUsageForApp(app: AppRecord) {
   const rand = seededRand(app.id + "api");
   const baseCalls = 8_000_000 + Math.floor(rand() * 42_000_000);
-  const tierMultiplier =
-    app.tags.tier === "tier-0" ? 3.2 :
-    app.tags.tier === "tier-1" ? 2.0 :
-    app.tags.tier === "tier-2" ? 1.0 : 0.4;
-  const totalCalls = Math.floor(baseCalls * tierMultiplier);
+  const criticalityMultiplier =
+    app.tags.criticality === "mission-critical" ? 3.2 :
+    app.tags.criticality === "high" ? 2.0 :
+    app.tags.criticality === "medium" ? 1.0 : 0.4;
+  const totalCalls = Math.floor(baseCalls * criticalityMultiplier);
   const cost = Number(((totalCalls / 1_000_000) * API_COST_PER_MILLION).toFixed(2));
 
   const names = API_NAMES_BY_APP[app.id] ?? ["GET /", "POST /", "GET /health"];
