@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "Orbit Command Center"
+title = "Orbit"
 version = "1.0.0"
 id = "artifacts/gaac"
 router = "path"

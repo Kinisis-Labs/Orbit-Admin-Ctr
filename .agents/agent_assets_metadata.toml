@@ -18,3 +18,9 @@ id = "ZZxf4qTeBA6pY5TQJGvQm"
 uri = "file://attached_assets/Orbit_Command_Center_Deployment_Plan_UPDATED.docx"
 type = "word_document"
 title = "Orbit Command Center — Deployment Plan (updated)"
+
+[[outputs]]
+id = "DoyX7FHkSH6pHwTg6Lc2O"
+uri = "file://attached_assets/Orbit_Deployment_Plan_UPDATED.docx"
+type = "word_document"
+title = "Orbit — Deployment Plan (renamed)"
