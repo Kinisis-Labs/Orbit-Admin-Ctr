@@ -1,16 +1,16 @@
 name: Deploy Orbit API to Azure Container Apps
 
-# Backend (artifacts/api-server) -> ca-orbit-api-prod-eus2.
+# Backend (artifacts/api-server) -> ca-orbit-api-prod.
 # Builds the container image, pushes it to GHCR, and rolls the Container App to
 # the new image.
 #
 # Prerequisites (currently pending on the Azure side):
 #   1. Entra app registration with a GitHub OIDC federated credential
 #      (subject: repo:<owner>/<repo>:ref:refs/heads/main), granted "Contributor"
-#      on ca-orbit-api-prod-eus2 (or rg-orbit-prod-eus2).
-#   2. Repo secrets: CAORBITAPIPROD_AZURE_CLIENT_ID, CAORBITAPIPROD_AZURE_TENANT_ID,
-#      CAORBITAPIPROD_AZURE_SUBSCRIPTION_ID.
-#   3. ca-orbit-api-prod-eus2 must be able to pull from GHCR: either make the
+#      on ca-orbit-api-prod (or rg-orbit-prod-eus2).
+#   2. OrbitProduction environment secrets: AZURE_CLIENT_ID, AZURE_TENANT_ID,
+#      AZURE_SUBSCRIPTION_ID.
+#   3. ca-orbit-api-prod must be able to pull from GHCR: either make the
 #      ghcr.io/<owner>/orbit-api package public, or add registry credentials to
 #      the Container App (Settings > Containers > Registries).
 #
@@ -31,7 +31,7 @@ on:
 
 env:
   RESOURCE_GROUP: rg-orbit-prod-eus2
-  CONTAINER_APP: ca-orbit-api-prod-eus2
+  CONTAINER_APP: ca-orbit-api-prod
 
 permissions:
   contents: read
@@ -41,6 +41,7 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment: OrbitProduction
     steps:
       - uses: actions/checkout@v4
 
@@ -68,9 +69,9 @@ jobs:
       - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CAORBITAPIPROD_AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.CAORBITAPIPROD_AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.CAORBITAPIPROD_AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Roll Container App to new image
         uses: azure/cli@v2
