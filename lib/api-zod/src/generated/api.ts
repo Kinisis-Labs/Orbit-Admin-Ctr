@@ -29,7 +29,8 @@ export const ListAppsResponseItem = zod.object({
   "tags": zod.record(zod.string(), zod.string()),
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "activeAlerts": zod.number(),
-  "monthToDateCost": zod.number()
+  "monthToDateCost": zod.number(),
+  "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).')
 })
 export const ListAppsResponse = zod.array(ListAppsResponseItem)
 
@@ -48,7 +49,8 @@ export const GetAppResponse = zod.object({
   "tags": zod.record(zod.string(), zod.string()),
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "activeAlerts": zod.number(),
-  "monthToDateCost": zod.number()
+  "monthToDateCost": zod.number(),
+  "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).')
 }).and(zod.object({
   "description": zod.string().optional(),
   "owners": zod.array(zod.string())

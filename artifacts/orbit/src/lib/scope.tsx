@@ -3,7 +3,9 @@ import { useListApps } from "@workspace/api-client-react";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -52,6 +54,17 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
     if (!apps.some((a) => a.id === scope)) setScope(GLOBAL_SCOPE);
   }, [apps, scope, setScope]);
 
+  // Apps without a group render as top-level entries; grouped apps render
+  // under a labelled section (e.g. "Platform").
+  const ungrouped = (apps ?? []).filter((a) => !a.group);
+  const groups = new Map<string, NonNullable<typeof apps>>();
+  for (const a of apps ?? []) {
+    if (!a.group) continue;
+    const arr = groups.get(a.group) ?? [];
+    arr.push(a);
+    groups.set(a.group, arr);
+  }
+
   return (
     <div className="flex items-center gap-2">
       <label htmlFor={id} className="text-[12px] text-muted-foreground font-medium">
@@ -68,10 +81,20 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={GLOBAL_SCOPE}>Global — All Applications</SelectItem>
-          {apps?.map((a) => (
+          {ungrouped.map((a) => (
             <SelectItem key={a.id} value={a.id}>
               {a.name}
             </SelectItem>
+          ))}
+          {[...groups.entries()].map(([label, items]) => (
+            <SelectGroup key={label}>
+              <SelectLabel>{label}</SelectLabel>
+              {items.map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
           ))}
         </SelectContent>
       </Select>

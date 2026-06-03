@@ -337,6 +337,7 @@ components:
         status: { $ref: "#/components/schemas/Status" }
         activeAlerts: { type: integer }
         monthToDateCost: { type: number }
+        group: { type: string, description: Optional scope-selector grouping label (e.g. Platform). }
     AppDetail:
       allOf:
         - $ref: "#/components/schemas/AppSummary"

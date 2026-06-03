@@ -10,7 +10,6 @@ import { and, eq, like, sql } from "drizzle-orm";
 
 const CLERK_APPS = [
   { id: "grailbabe", base: 4200 },
-  { id: "grailbabe-dev", base: 45 },
 ];
 
 const DAY = 86_400_000;

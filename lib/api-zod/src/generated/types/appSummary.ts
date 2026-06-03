@@ -20,4 +20,6 @@ export interface AppSummary {
   status: Status;
   activeAlerts: number;
   monthToDateCost: number;
+  /** Optional scope-selector grouping label (e.g. Platform). */
+  group?: string;
 }

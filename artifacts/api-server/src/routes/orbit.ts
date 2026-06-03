@@ -33,10 +33,13 @@ export type AppRecord = {
   // Which identity system authenticates this app's END USERS. "clerk" =
   // consumer app whose end users sign in via Clerk (activity ingested from
   // Clerk webhooks). "entra" = employee-only internal tool (Orbit itself).
-  userAuth: "clerk" | "entra";
+  userAuth: "clerk" | "entra" | "none";
   // Google Play package name when this app ships an Android build tracked in the
   // Play Console. Its presence flags the app for the Play subscriptions surface.
   androidPackage?: string;
+  // Optional grouping label for the scope selector (e.g. "Platform"). Apps
+  // without a group render as top-level scope entries.
+  group?: string;
 };
 
 const APPS: AppRecord[] = [
@@ -63,28 +66,6 @@ const APPS: AppRecord[] = [
     androidPackage: "com.grailbabe.app",
   },
   {
-    id: "grailbabe-dev",
-    name: "GrailBabe (dev)",
-    environment: "dev",
-    region: "eastus2",
-    resourceGroup: "rg-grailbabedev-compute-dev-eus2",
-    status: "degraded",
-    activeAlerts: 2,
-    monthToDateCost: 318.74,
-    subscriptionId: "a1f4-shared-platform",
-    description: "Development environment for the GrailBabe consumer marketplace.",
-    tags: {
-      workload: "GrailBabeDev",
-      environment: "dev",
-      owner: "Ryan Gutridge",
-      "cost-center": "CC-GrailBabeDev",
-      criticality: "low",
-    },
-    owners: ["Ryan Gutridge"],
-    userAuth: "clerk",
-    androidPackage: "com.grailbabe.app.dev",
-  },
-  {
     id: "orbit",
     name: "Orbit",
     environment: "prod",
@@ -104,6 +85,28 @@ const APPS: AppRecord[] = [
     },
     owners: ["Ryan Gutridge"],
     userAuth: "entra",
+  },
+  {
+    id: "kinisis-labs",
+    name: "Kinisis Labs",
+    environment: "prod",
+    region: "eastus2",
+    resourceGroup: "rg-kinisislabs-web-prod-eus2",
+    status: "healthy",
+    activeAlerts: 0,
+    monthToDateCost: 47.18,
+    subscriptionId: "a1f4-shared-platform",
+    description: "Public marketing site for Kinisis Labs (kinisislabs.com).",
+    tags: {
+      workload: "KinisisLabs",
+      environment: "prod",
+      owner: "Ryan Gutridge",
+      "cost-center": "CC-Platform",
+      criticality: "medium",
+    },
+    owners: ["Ryan Gutridge"],
+    userAuth: "none",
+    group: "Platform",
   },
 ];
 
@@ -191,6 +194,7 @@ router.get("/apps", (_req, res) => {
       status: app.status,
       activeAlerts: activeAlertCount(app),
       monthToDateCost: app.monthToDateCost,
+      group: app.group,
     })),
   );
   res.json(data);
@@ -331,15 +335,6 @@ const API_NAMES_BY_APP: Record<string, string[]> = {
     "GET /users/me",
     "POST /cart/items",
   ],
-  "grailbabe-dev": [
-    "GET /products",
-    "GET /products/{id}",
-    "POST /orders",
-    "GET /search",
-    "POST /checkout",
-    "GET /users/me",
-    "POST /cart/items",
-  ],
   orbit: [
     "GET /incidents",
     "POST /incidents",
@@ -348,6 +343,13 @@ const API_NAMES_BY_APP: Record<string, string[]> = {
     "GET /runs",
     "POST /runbooks/execute",
   ],
+  "kinisis-labs": [
+    "GET /",
+    "GET /about",
+    "GET /pricing",
+    "GET /blog",
+    "GET /contact",
+  ],
 };
 
 // Mocked month-to-date revenue per app, split by channel. Designed to mirror what
@@ -355,8 +357,8 @@ const API_NAMES_BY_APP: Record<string, string[]> = {
 // Sales/Trends, Google Play earnings reports). orbit is internal -> $0.
 const REVENUE_BY_APP: Record<string, { stripe: number; appStore: number; playStore: number }> = {
   grailbabe: { stripe: 28430.18, appStore: 9120.55, playStore: 4892.40 },
-  "grailbabe-dev": { stripe: 0, appStore: 0, playStore: 0 },
   orbit: { stripe: 0, appStore: 0, playStore: 0 },
+  "kinisis-labs": { stripe: 0, appStore: 0, playStore: 0 },
 };
 
 const REVENUE_SOURCE_LABELS = {
