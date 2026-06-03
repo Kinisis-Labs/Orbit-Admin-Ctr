@@ -10,9 +10,13 @@ name: Deploy Orbit API to Azure Container Apps
 #      on ca-orbit-api-prod (or rg-orbit-prod-eus2).
 #   2. OrbitProduction environment secrets: AZURE_CLIENT_ID, AZURE_TENANT_ID,
 #      AZURE_SUBSCRIPTION_ID.
-#   3. ca-orbit-api-prod must be able to pull from GHCR: either make the
-#      ghcr.io/<owner>/orbit-api package public, or add registry credentials to
-#      the Container App (Settings > Containers > Registries).
+#   3. OrbitProduction environment secret: GHCR_PAT — a GitHub Personal Access
+#      Token (classic or fine-grained) with read:packages scope. The workflow
+#      registers this as a pull credential on ca-orbit-api-prod so Azure can
+#      pull from ghcr.io on every revision. Create it at
+#      github.com/settings/tokens (classic: check "read:packages" only;
+#      fine-grained: select "Packages" → Read). The token must belong to an
+#      account that has read access to the ghcr.io/<owner>/orbit-api package.
 #
 # To use Azure Container Registry instead of GHCR: replace the GHCR login + the
 # IMAGE value with your ACR (e.g. <acr>.azurecr.io/orbit-api) and `az acr login`.
@@ -72,6 +76,18 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Configure GHCR pull credentials on Container App
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az containerapp registry set \
+              --name "$CONTAINER_APP" \
+              --resource-group "$RESOURCE_GROUP" \
+              --server ghcr.io \
+              --username "${{ github.actor }}" \
+              --password "${{ secrets.GHCR_PAT }}"
 
       - name: Roll Container App to new image
         uses: azure/cli@v2
