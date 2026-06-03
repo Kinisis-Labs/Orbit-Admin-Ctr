@@ -37,7 +37,6 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.development]
-ENTRA_REDIRECT_URI = "https://283d7e18-0520-4c52-ba7a-b394a64b2a55-00-2rliqsxq32nc9.kirk.replit.dev/api/auth/callback"
 
 [userenv.production]
 ENTRA_REDIRECT_URI = "https://orbit.kinisislabs.com/api/auth/callback"
