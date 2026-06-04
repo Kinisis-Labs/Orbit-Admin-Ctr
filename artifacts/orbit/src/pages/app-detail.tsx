@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -344,24 +344,29 @@ function OverviewCostTile({ appId }: { appId: string }) {
   );
 }
 
+const FORCE_REFRESH_COOLDOWN_MS = 30_000;
+
 function ForceRefreshButton({
   isRefreshing,
+  isCoolingDown,
   onRefresh,
 }: {
   isRefreshing: boolean;
+  isCoolingDown: boolean;
   onRefresh: () => void;
 }) {
+  const disabled = isRefreshing || isCoolingDown;
   return (
     <Button
       variant="ghost"
       size="sm"
       className="h-6 px-2 text-[10px] rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted gap-1"
       onClick={onRefresh}
-      disabled={isRefreshing}
-      title="Bypass cache and fetch latest data from Azure"
+      disabled={disabled}
+      title={isCoolingDown ? "Recently refreshed — wait 30 s before refreshing again" : "Bypass cache and fetch latest data from Azure"}
     >
       <RefreshCw className={`h-3 w-3${isRefreshing ? " animate-spin" : ""}`} />
-      {isRefreshing ? "Refreshing…" : "Force refresh"}
+      {isRefreshing ? "Refreshing…" : isCoolingDown ? "Just refreshed" : "Force refresh"}
     </Button>
   );
 }
@@ -369,9 +374,18 @@ function ForceRefreshButton({
 function useForceRefresh(url: string, queryKey: readonly unknown[]) {
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!lastRefreshedAt) return;
+    const id = setTimeout(() => setLastRefreshedAt(null), FORCE_REFRESH_COOLDOWN_MS);
+    return () => clearTimeout(id);
+  }, [lastRefreshedAt]);
+
+  const isCoolingDown = lastRefreshedAt !== null;
 
   const forceRefresh = async () => {
-    if (isRefreshing) return;
+    if (isRefreshing || isCoolingDown) return;
     setIsRefreshing(true);
     try {
       const res = await fetch(`${url}?refresh=true`, { credentials: "same-origin" });
@@ -381,10 +395,11 @@ function useForceRefresh(url: string, queryKey: readonly unknown[]) {
       }
     } finally {
       setIsRefreshing(false);
+      setLastRefreshedAt(Date.now());
     }
   };
 
-  return { isRefreshing, forceRefresh };
+  return { isRefreshing, isCoolingDown, forceRefresh };
 }
 
 function isLiveMode(mode: string) {
@@ -393,7 +408,7 @@ function isLiveMode(mode: string) {
 function InfraTab({ appId }: { appId: string }) {
   const queryKey = getGetInfrastructureQueryKey(appId);
   const { data, isLoading } = useGetInfrastructure(appId, undefined, { query: { enabled: !!appId, queryKey } });
-  const { isRefreshing, forceRefresh } = useForceRefresh(`/api/apps/${appId}/infrastructure`, queryKey);
+  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/infrastructure`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No infrastructure data available</div>;
@@ -405,7 +420,7 @@ function InfraTab({ appId }: { appId: string }) {
           <h2 className="text-sm font-semibold">Resources</h2>
           <div className="flex items-center gap-2">
             {data.dataSource === "live" && (
-              <ForceRefreshButton isRefreshing={isRefreshing} onRefresh={forceRefresh} />
+              <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
             )}
             <DataSourceBadge dataSource={data.dataSource} />
           </div>
@@ -465,7 +480,7 @@ function NetworkTab({ appId }: { appId: string }) {
   const { mode } = useAuth();
   const queryKey = getGetNetworkQueryKey(appId);
   const { data, isLoading } = useGetNetwork(appId, undefined, { query: { enabled: !!appId, queryKey } });
-  const { isRefreshing, forceRefresh } = useForceRefresh(`/api/apps/${appId}/network`, queryKey);
+  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/network`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No network data available</div>;
@@ -476,7 +491,7 @@ function NetworkTab({ appId }: { appId: string }) {
         <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Endpoints</h2>
           {isLiveMode(mode) && (
-            <ForceRefreshButton isRefreshing={isRefreshing} onRefresh={forceRefresh} />
+            <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
           )}
         </div>
         <div className="p-0 overflow-y-auto max-h-[500px]">
@@ -541,7 +556,7 @@ function NetworkTab({ appId }: { appId: string }) {
 function TelemetryTab({ appId }: { appId: string }) {
   const queryKey = getGetTelemetryQueryKey(appId);
   const { data, isLoading } = useGetTelemetry(appId, undefined, { query: { enabled: !!appId, queryKey } });
-  const { isRefreshing, forceRefresh } = useForceRefresh(`/api/apps/${appId}/telemetry`, queryKey);
+  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/telemetry`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No telemetry data available</div>;
@@ -552,7 +567,7 @@ function TelemetryTab({ appId }: { appId: string }) {
         <span className="text-xs text-muted-foreground font-medium">Key metrics (last 24 h)</span>
         <div className="flex items-center gap-2">
           {data.dataSource === "live" && (
-            <ForceRefreshButton isRefreshing={isRefreshing} onRefresh={forceRefresh} />
+            <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
           )}
           <DataSourceBadge dataSource={data.dataSource} />
         </div>
@@ -632,7 +647,7 @@ function TelemetryTab({ appId }: { appId: string }) {
 function CostTab({ appId }: { appId: string }) {
   const queryKey = getGetCostQueryKey(appId);
   const { data, isLoading } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey } });
-  const { isRefreshing, forceRefresh } = useForceRefresh(`/api/apps/${appId}/cost`, queryKey);
+  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/cost`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No cost data available</div>;
@@ -647,7 +662,7 @@ function CostTab({ appId }: { appId: string }) {
         <span className="text-xs text-muted-foreground font-medium">Month-to-date cost breakdown</span>
         <div className="flex items-center gap-2">
           {data.dataSource === "live" && (
-            <ForceRefreshButton isRefreshing={isRefreshing} onRefresh={forceRefresh} />
+            <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
           )}
           <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
         </div>
@@ -1011,7 +1026,7 @@ function AlertsTab({ appId }: { appId: string }) {
   const { mode } = useAuth();
   const queryKey = getGetAppAlertsQueryKey(appId);
   const { data: alerts, isLoading } = useGetAppAlerts(appId, undefined, { query: { enabled: !!appId, queryKey } });
-  const { isRefreshing, forceRefresh } = useForceRefresh(`/api/apps/${appId}/alerts`, queryKey);
+  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/alerts`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
 
@@ -1020,7 +1035,7 @@ function AlertsTab({ appId }: { appId: string }) {
       <div className="flex items-center justify-between p-2 border-b border-border bg-card">
         <h2 className="text-sm font-semibold px-2">Alert Rules</h2>
         {isLiveMode(mode) && (
-          <ForceRefreshButton isRefreshing={isRefreshing} onRefresh={forceRefresh} />
+          <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
         )}
       </div>
       <div className="overflow-x-auto">

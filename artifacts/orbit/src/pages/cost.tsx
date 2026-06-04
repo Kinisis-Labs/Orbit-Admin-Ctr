@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useGetGlobalCostSummary,
   useGetCost,
@@ -81,24 +81,29 @@ function DataSourceBadge({
   );
 }
 
+const FORCE_REFRESH_COOLDOWN_MS = 30_000;
+
 function ForceRefreshButton({
   isRefreshing,
+  isCoolingDown,
   onRefresh,
 }: {
   isRefreshing: boolean;
+  isCoolingDown: boolean;
   onRefresh: () => void;
 }) {
+  const disabled = isRefreshing || isCoolingDown;
   return (
     <Button
       variant="ghost"
       size="sm"
       className="h-6 px-2 text-[10px] rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted gap-1"
       onClick={onRefresh}
-      disabled={isRefreshing}
-      title="Bypass cache and fetch latest data from Azure"
+      disabled={disabled}
+      title={isCoolingDown ? "Recently refreshed — wait 30 s before refreshing again" : "Bypass cache and fetch latest data from Azure"}
     >
       <RefreshCw className={`h-3 w-3${isRefreshing ? " animate-spin" : ""}`} />
-      {isRefreshing ? "Refreshing…" : "Force refresh"}
+      {isRefreshing ? "Refreshing…" : isCoolingDown ? "Just refreshed" : "Force refresh"}
     </Button>
   );
 }
@@ -106,9 +111,18 @@ function ForceRefreshButton({
 function useForceRefresh(url: string, queryKey: readonly unknown[]) {
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!lastRefreshedAt) return;
+    const id = setTimeout(() => setLastRefreshedAt(null), FORCE_REFRESH_COOLDOWN_MS);
+    return () => clearTimeout(id);
+  }, [lastRefreshedAt]);
+
+  const isCoolingDown = lastRefreshedAt !== null;
 
   const forceRefresh = async () => {
-    if (isRefreshing) return;
+    if (isRefreshing || isCoolingDown) return;
     setIsRefreshing(true);
     try {
       const res = await fetch(`${url}?refresh=true`, { credentials: "same-origin" });
@@ -118,10 +132,11 @@ function useForceRefresh(url: string, queryKey: readonly unknown[]) {
       }
     } finally {
       setIsRefreshing(false);
+      setLastRefreshedAt(Date.now());
     }
   };
 
-  return { isRefreshing, forceRefresh };
+  return { isRefreshing, isCoolingDown, forceRefresh };
 }
 
 export default function Cost() {
@@ -157,7 +172,7 @@ function GlobalCost() {
   const { data: cost, isLoading } = useGetGlobalCostSummary(undefined, {
     query: { queryKey },
   });
-  const { isRefreshing, forceRefresh } = useForceRefresh("/api/global/cost-summary", queryKey);
+  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh("/api/global/cost-summary", queryKey);
   const budgetPercent = cost ? (cost.monthToDate / cost.budget) * 100 : 0;
   const netClass = cost && cost.revenue.total - cost.monthToDate >= 0 ? "text-emerald-500" : "text-destructive";
   const net = cost ? cost.revenue.total - cost.monthToDate : 0;
@@ -168,7 +183,7 @@ function GlobalCost() {
       {!isLoading && cost && (
         <div className="flex items-center justify-end gap-2">
           {cost.dataSource === "live" && (
-            <ForceRefreshButton isRefreshing={isRefreshing} onRefresh={forceRefresh} />
+            <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
           )}
           <DataSourceBadge dataSource={cost.dataSource} dataAsOf={cost.dataAsOf} />
         </div>
@@ -446,7 +461,7 @@ function AppCost() {
   const { data, isLoading } = useGetCost(scope, undefined, {
     query: { queryKey },
   });
-  const { isRefreshing, forceRefresh } = useForceRefresh(`/api/apps/${scope}/cost`, queryKey);
+  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${scope}/cost`, queryKey);
   const budgetPercent = data ? (data.monthToDate / data.budget) * 100 : 0;
   const net = data ? data.revenue.total - data.monthToDate : 0;
   const marginPct = data && data.revenue.total > 0 ? (net / data.revenue.total) * 100 : null;
@@ -457,7 +472,7 @@ function AppCost() {
       {!isLoading && data && (
         <div className="flex items-center justify-end gap-2">
           {data.dataSource === "live" && (
-            <ForceRefreshButton isRefreshing={isRefreshing} onRefresh={forceRefresh} />
+            <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
           )}
           <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
         </div>
