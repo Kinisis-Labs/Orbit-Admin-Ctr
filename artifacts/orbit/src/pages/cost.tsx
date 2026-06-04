@@ -220,6 +220,7 @@ function GlobalCost() {
   });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh("/api/global/cost-summary", queryKey);
   const [showDailyTable, setShowDailyTable] = useState(false);
+  const [copiedDaily, setCopiedDaily] = useState(false);
   const budgetPercent = cost ? (cost.monthToDate / cost.budget) * 100 : 0;
   const netClass = cost && cost.revenue.total - cost.monthToDate >= 0 ? "text-emerald-500" : "text-destructive";
   const net = cost ? cost.revenue.total - cost.monthToDate : 0;
@@ -245,6 +246,61 @@ function GlobalCost() {
     const params = new URLSearchParams(search);
     params.set("date", date.toISOString().slice(0, 10));
     navigate(`/cost?${params.toString()}`);
+  }
+
+  function buildDailyCsv() {
+    if (!cost?.daily?.length) return null;
+    const headers = ["Date", "Spend (USD)", "vs Last Week (%)"];
+    const rows = [...cost.daily].reverse().map((day) => {
+      const dateLabel = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(day.timestamp as string));
+      const pct = day.vsLastWeek;
+      const pctLabel = pct == null ? "" : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
+      return [dateLabel, day.value.toFixed(2), pctLabel];
+    });
+    return [headers, ...rows]
+      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+  }
+
+  function handleDailyExport() {
+    const csv = buildDailyCsv();
+    if (!csv) return;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `daily-spend-global-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleDailyCopy() {
+    const csv = buildDailyCsv();
+    if (!csv) return;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(csv).then(() => {
+        setCopiedDaily(true);
+        setTimeout(() => setCopiedDaily(false), 2000);
+      }).catch(() => {
+        const ta = document.createElement("textarea");
+        ta.value = csv;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { document.execCommand("copy"); setCopiedDaily(true); setTimeout(() => setCopiedDaily(false), 2000); } catch { /* skip */ } finally { document.body.removeChild(ta); }
+      });
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = csv;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try { document.execCommand("copy"); setCopiedDaily(true); setTimeout(() => setCopiedDaily(false), 2000); } catch { /* skip */ } finally { document.body.removeChild(ta); }
+    }
   }
 
   return (
@@ -374,14 +430,47 @@ function GlobalCost() {
         <div className="p-3 border-b border-border bg-card flex items-center justify-between">
           <h2 className="text-sm font-semibold">Daily Spend</h2>
           {!isLoading && cost && cost.daily.length > 0 && (
-            <button
-              onClick={() => setShowDailyTable((v) => !v)}
-              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <TableIcon className="h-3.5 w-3.5" />
-              {showDailyTable ? "Hide table" : "Show table"}
-              {showDailyTable ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            </button>
+            <div className="flex items-center gap-1">
+              {showDailyTable && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+                    onClick={handleDailyExport}
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                    Export
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+                    onClick={handleDailyCopy}
+                  >
+                    {copiedDaily ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
+                        <span className="text-green-500">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clipboard className="h-3.5 w-3.5 mr-1.5" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </>
+              )}
+              <button
+                onClick={() => setShowDailyTable((v) => !v)}
+                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors ml-1"
+              >
+                <TableIcon className="h-3.5 w-3.5" />
+                {showDailyTable ? "Hide table" : "Show table"}
+                {showDailyTable ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              </button>
+            </div>
           )}
         </div>
         <div className="p-4 h-72">
@@ -685,6 +774,7 @@ function AppCost() {
 
   const [copied, setCopied] = useState(false);
   const [showDailyTable, setShowDailyTable] = useState(false);
+  const [copiedDaily, setCopiedDaily] = useState(false);
 
   const search = useSearch();
   const [, navigate] = useLocation();
@@ -718,6 +808,64 @@ function AppCost() {
     return [headers, ...rows]
       .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
       .join("\n");
+  }
+
+  function buildDailyCsv() {
+    if (!data?.daily?.length) return null;
+    const headers = ["Date", "Spend (USD)", "vs Last Week (%)"];
+    const rows = [...data.daily].reverse().map((day) => {
+      const dateLabel = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(day.timestamp as string));
+      const pct = day.vsLastWeek;
+      const pctLabel = pct == null ? "" : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
+      return [dateLabel, day.value.toFixed(2), pctLabel];
+    });
+    return [headers, ...rows]
+      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+  }
+
+  function handleDailyExport() {
+    const csv = buildDailyCsv();
+    if (!csv) return;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `daily-spend-${scope}-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleDailyCopy() {
+    const csv = buildDailyCsv();
+    if (!csv) return;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(csv).then(() => {
+        setCopiedDaily(true);
+        setTimeout(() => setCopiedDaily(false), 2000);
+      }).catch(() => fallbackCopyDaily(csv));
+    } else {
+      fallbackCopyDaily(csv);
+    }
+  }
+
+  function fallbackCopyDaily(text: string) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      document.execCommand("copy");
+      setCopiedDaily(true);
+      setTimeout(() => setCopiedDaily(false), 2000);
+    } catch {
+      // clipboard unavailable — silently skip
+    } finally {
+      document.body.removeChild(ta);
+    }
   }
 
   function handleBreakdownExport() {
@@ -877,14 +1025,47 @@ function AppCost() {
         <div className="p-3 border-b border-border bg-card flex items-center justify-between">
           <h2 className="text-sm font-semibold">Daily Spend</h2>
           {!isLoading && data && data.daily.length > 0 && (
-            <button
-              onClick={() => setShowDailyTable((v) => !v)}
-              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <TableIcon className="h-3.5 w-3.5" />
-              {showDailyTable ? "Hide table" : "Show table"}
-              {showDailyTable ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            </button>
+            <div className="flex items-center gap-1">
+              {showDailyTable && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+                    onClick={handleDailyExport}
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                    Export
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+                    onClick={handleDailyCopy}
+                  >
+                    {copiedDaily ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
+                        <span className="text-green-500">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clipboard className="h-3.5 w-3.5 mr-1.5" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </>
+              )}
+              <button
+                onClick={() => setShowDailyTable((v) => !v)}
+                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors ml-1"
+              >
+                <TableIcon className="h-3.5 w-3.5" />
+                {showDailyTable ? "Hide table" : "Show table"}
+                {showDailyTable ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              </button>
+            </div>
           )}
         </div>
         <div className="p-4 h-72">
