@@ -95,7 +95,8 @@ jobs:
           echo ""
           echo "Once the TXT record propagates, Azure will auto-validate and the domain will become active."
 
-      - name: Print current SWA hostname
+      - name: Print current SWA hostname and update Front Door origin
+        continue-on-error: true
         run: |
           SWA_HOST=$(az staticwebapp show \
             --name swa-orbit-prod \
@@ -103,6 +104,45 @@ jobs:
             --query "defaultHostname" -o tsv)
           echo "SWA default hostname: $SWA_HOST"
           echo "Front Door SWA origin should be set to: $SWA_HOST"
+
+          # Auto-update Front Door SWA origin if the hostname has changed.
+          # Requires Contributor (or CDN Profile Contributor) on the shared
+          # platform resource group. Runs best-effort — failure does NOT
+          # block the asset deploy below.
+          AFD_RG=$(az group list --query "[?contains(name,'platform-shared')].name | [0]" -o tsv 2>/dev/null || true)
+          if [ -z "$AFD_RG" ]; then
+            echo "Shared platform resource group not found — skipping Front Door update."
+            exit 0
+          fi
+          echo "Found Front Door resource group: $AFD_RG"
+          ORIGIN_ID=$(az afd origin list \
+            --profile-name afd-shared-prod \
+            --resource-group "$AFD_RG" \
+            --origin-group-name default-origin-group \
+            --query "[?contains(hostName,'azurestaticapps.net')].name | [0]" \
+            -o tsv 2>/dev/null || true)
+          if [ -z "$ORIGIN_ID" ]; then
+            echo "SWA origin not found in Front Door — skipping update."
+            exit 0
+          fi
+          CURRENT=$(az afd origin show \
+            --profile-name afd-shared-prod \
+            --resource-group "$AFD_RG" \
+            --origin-group-name default-origin-group \
+            --origin-name "$ORIGIN_ID" \
+            --query "hostName" -o tsv 2>/dev/null || true)
+          if [ "$CURRENT" = "$SWA_HOST" ]; then
+            echo "Front Door origin already up to date: $SWA_HOST"
+            exit 0
+          fi
+          echo "Updating Front Door origin from $CURRENT to $SWA_HOST..."
+          az afd origin update \
+            --profile-name afd-shared-prod \
+            --resource-group "$AFD_RG" \
+            --origin-group-name default-origin-group \
+            --origin-name "$ORIGIN_ID" \
+            --host-name "$SWA_HOST" \
+            --origin-host-header "$SWA_HOST" || echo "Front Door update failed (permissions?) — update manually."
 
       - name: Get SWA deployment token
         id: swa-token
