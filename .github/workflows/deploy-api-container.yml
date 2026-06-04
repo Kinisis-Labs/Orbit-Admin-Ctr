@@ -32,6 +32,7 @@ on:
 
 env:
   RESOURCE_GROUP: rg-orbit-prod-eus2
+  # Confirmed resource name (no -eus2 suffix — see Azure portal).
   CONTAINER_APP: ca-orbit-api-prod
 
 permissions:

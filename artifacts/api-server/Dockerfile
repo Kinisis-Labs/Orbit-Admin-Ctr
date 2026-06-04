@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 #
 # Container image for the Orbit API (Express). Runs on Azure Container Apps
-# (ca-orbit-api-prod-eus2). The esbuild build bundles the workspace libs
+# (ca-orbit-api-prod). The esbuild build bundles the workspace libs
 # (@workspace/db, @workspace/api-zod) and all runtime deps (pg, express, stripe,
 # drizzle, pino) into dist/, so the runtime stage only needs Node + dist/.
 
