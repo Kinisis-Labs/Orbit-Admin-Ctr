@@ -10,7 +10,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { GLOBAL_SCOPE, ScopeContext, useScope } from "./scope-context";
-import { AuthBadge } from "@/components/auth-badge";
 
 const STORAGE_KEY = "orbit-scope";
 
@@ -93,7 +92,6 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
             <span className="flex items-center gap-2 min-w-0">
               <span className="truncate">{selectedApp.name}</span>
               <span className="shrink-0 text-[11px] text-muted-foreground">{selectedApp.environment}</span>
-              <AuthBadge userAuth={selectedApp.userAuth} />
             </span>
           ) : (
             <SelectValue placeholder="Select scope" />
@@ -106,7 +104,6 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
               <span className="flex items-center gap-2 min-w-0">
                 <span className="truncate">{a.name}</span>
                 <span className="shrink-0 text-[11px] text-muted-foreground">{a.environment}</span>
-                <AuthBadge userAuth={a.userAuth} />
               </span>
             </SelectItem>
           ))}
@@ -118,7 +115,6 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
                   <span className="flex items-center gap-2 min-w-0">
                     <span className="truncate">{a.name}</span>
                     <span className="shrink-0 text-[11px] text-muted-foreground">{a.environment}</span>
-                    <AuthBadge userAuth={a.userAuth} />
                   </span>
                 </SelectItem>
               ))}
