@@ -92,7 +92,6 @@ export const APPS: AppRecord[] = [
     },
     owners: ["Ryan Gutridge"],
     userAuth: "none",
-    group: "Platform",
   },
 ];
 
