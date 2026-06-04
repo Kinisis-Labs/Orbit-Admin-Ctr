@@ -111,7 +111,7 @@ export default function Cost() {
 
 function GlobalCost() {
   const queryKey = getGetGlobalCostSummaryQueryKey();
-  const { data: cost, isLoading } = useGetGlobalCostSummary(undefined, {
+  const { data: cost, isLoading, isFetching } = useGetGlobalCostSummary(undefined, {
     query: { queryKey },
   });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh("/api/global/cost-summary", queryKey);
@@ -130,6 +130,12 @@ function GlobalCost() {
           <DataSourceBadge dataSource={cost.dataSource} dataAsOf={cost.dataAsOf} />
         </div>
       )}
+      {isFetching && !isLoading && (
+        <div className="h-0.5 w-full overflow-hidden bg-transparent">
+          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
+        </div>
+      )}
+      <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Tile
           title="Actual cost (MTD)"
@@ -393,6 +399,7 @@ function GlobalCost() {
           </TableBody>
         </Table>
       </Panel>
+      </div>
     </>
   );
 }
@@ -400,7 +407,7 @@ function GlobalCost() {
 function AppCost() {
   const { scope } = useScope();
   const queryKey = getGetCostQueryKey(scope);
-  const { data, isLoading } = useGetCost(scope, undefined, {
+  const { data, isLoading, isFetching } = useGetCost(scope, undefined, {
     query: { queryKey },
   });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${scope}/cost`, queryKey);
@@ -419,6 +426,12 @@ function AppCost() {
           <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
         </div>
       )}
+      {isFetching && !isLoading && (
+        <div className="h-0.5 w-full overflow-hidden bg-transparent">
+          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
+        </div>
+      )}
+      <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Tile
           title="Actual cost (MTD)"
@@ -547,6 +560,7 @@ function AppCost() {
             </TableBody>
           </Table>
         </Panel>
+      </div>
       </div>
     </>
   );

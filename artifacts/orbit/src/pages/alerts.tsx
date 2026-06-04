@@ -43,10 +43,10 @@ export default function Alerts() {
   const globalQueryKey = getListGlobalAlertsQueryKey();
   const appQueryKey = getGetAppAlertsQueryKey(scope);
 
-  const { data: globalAlerts, isLoading: globalLoading } = useListGlobalAlerts(undefined, {
+  const { data: globalAlerts, isLoading: globalLoading, isFetching: globalFetching } = useListGlobalAlerts(undefined, {
     query: { enabled: isGlobal, queryKey: globalQueryKey },
   });
-  const { data: appAlerts, isLoading: appLoading } = useGetAppAlerts(scope, undefined, {
+  const { data: appAlerts, isLoading: appLoading, isFetching: appFetching } = useGetAppAlerts(scope, undefined, {
     query: { enabled: !isGlobal, queryKey: appQueryKey },
   });
 
@@ -55,6 +55,7 @@ export default function Alerts() {
   const { isRefreshing, isCoolingDown, forceRefresh } = isGlobal ? globalRefresh : appRefresh;
 
   const isLoading = isGlobal ? globalLoading : appLoading;
+  const isFetching = isGlobal ? globalFetching : appFetching;
   const rows: AlertRow[] | undefined = isGlobal
     ? globalAlerts
     : appAlerts?.map((a) => ({
@@ -165,7 +166,13 @@ export default function Alerts() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {isFetching && !isLoading && (
+          <div className="h-0.5 w-full overflow-hidden bg-transparent">
+            <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
+          </div>
+        )}
+
+        <div className={`overflow-x-auto transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
           <Table className="text-[13px]">
             <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
               <TableRow className="hover:bg-transparent">
