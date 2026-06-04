@@ -30,6 +30,18 @@ export const Severity = {
 } as const;
 
 /**
+ * Identity system that authenticates this app's end users. "clerk" = consumer app with Clerk-authenticated users (activity ingested via webhooks). "entra" = employee-only internal tool authenticated via Entra ID. "none" = no end-user authentication (e.g. public marketing site).
+ */
+export type UserAuthType = typeof UserAuthType[keyof typeof UserAuthType];
+
+
+export const UserAuthType = {
+  clerk: 'clerk',
+  entra: 'entra',
+  none: 'none',
+} as const;
+
+/**
  * Azure resource tags applied to this application's resource group. The five standard Kinisis tag keys are typed explicitly; any additional tags on the resource group are preserved as free-form string values.
  */
 export interface AppTags {
@@ -79,27 +91,13 @@ export interface AppSummary {
   monthToDateCost: number;
   /** Optional scope-selector grouping label (e.g. Platform). */
   group?: string;
-  /** Identity system that authenticates this app's end users. */
-  userAuth: AppSummaryUserAuth;
+  userAuth: UserAuthType;
 }
-
-/**
- * Identity system that authenticates this app's end users. "clerk" = consumer app with Clerk-authenticated users (activity ingested via webhooks). "entra" = employee-only internal tool authenticated via Entra ID. "none" = no end-user authentication (e.g. public marketing site).
- */
-export type AppDetailUserAuth = typeof AppDetailUserAuth[keyof typeof AppDetailUserAuth];
-
-
-export const AppDetailUserAuth = {
-  clerk: 'clerk',
-  entra: 'entra',
-  none: 'none',
-} as const;
 
 export type AppDetail = AppSummary & {
   description?: string;
   owners: string[];
-  /** Identity system that authenticates this app's end users. "clerk" = consumer app with Clerk-authenticated users (activity ingested via webhooks). "entra" = employee-only internal tool authenticated via Entra ID. "none" = no end-user authentication (e.g. public marketing site). */
-  userAuth: AppDetailUserAuth;
+  userAuth: UserAuthType;
   /** Google Play package name when this app ships a tracked Android build. Presence flags the app for the Play subscriptions surface. */
   androidPackage?: string;
 };

@@ -37,7 +37,7 @@ export const ListAppsResponseItem = zod.object({
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),
   "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).'),
-  "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users.')
+  "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users. \"clerk\" = consumer app with Clerk-authenticated users (activity ingested via webhooks). \"entra\" = employee-only internal tool authenticated via Entra ID. \"none\" = no end-user authentication (e.g. public marketing site).')
 })
 export const ListAppsResponse = zod.array(ListAppsResponseItem)
 
@@ -64,7 +64,7 @@ export const GetAppResponse = zod.object({
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),
   "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).'),
-  "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users.')
+  "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users. \"clerk\" = consumer app with Clerk-authenticated users (activity ingested via webhooks). \"entra\" = employee-only internal tool authenticated via Entra ID. \"none\" = no end-user authentication (e.g. public marketing site).')
 }).and(zod.object({
   "description": zod.string().optional(),
   "owners": zod.array(zod.string()),

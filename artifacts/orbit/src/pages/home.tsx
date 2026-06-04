@@ -15,14 +15,23 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AuthBadge } from "@/components/auth-badge";
 
 type UserAuthFilter = "all" | "clerk" | "entra" | "none";
+type EnvFilter = "all" | "prod" | "staging" | "dev";
 
 export default function Home() {
   const { scope, setScope, isGlobal } = useScope();
   const [authFilter, setAuthFilter] = useState<UserAuthFilter>("all");
+  const [envFilter, setEnvFilter] = useState<EnvFilter>("all");
+
+  useEffect(() => {
+    if (!isGlobal) {
+      setAuthFilter("all");
+      setEnvFilter("all");
+    }
+  }, [isGlobal]);
 
   const { data: apps, isLoading: appsLoading } = useListApps();
   const { data: health, isLoading: healthLoading } = useGetGlobalHealth({
@@ -36,7 +45,11 @@ export default function Home() {
     query: { enabled: !isGlobal, queryKey: getGetAppQueryKey(scope) },
   });
 
-  const filteredApps = apps?.filter((a) => authFilter === "all" || a.userAuth === authFilter);
+  const filteredApps = apps?.filter(
+    (a) =>
+      (authFilter === "all" || a.userAuth === authFilter) &&
+      (envFilter === "all" || a.environment === envFilter),
+  );
   const activeRegions = apps ? new Set(apps.map((a) => a.region)).size : 0;
   const selectedApp = apps?.find((a) => a.id === scope);
 
@@ -93,7 +106,7 @@ export default function Home() {
       {isGlobal ? (
         <div className="bg-card border border-border shadow-sm flex flex-col">
           <div className="flex items-center justify-between p-2 border-b border-border bg-card">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 flex-wrap">
               <h2 className="text-sm font-semibold px-2">App Services</h2>
               <div className="flex items-center gap-1">
                 {(["all", "clerk", "entra", "none"] as UserAuthFilter[]).map((f) => (
@@ -107,6 +120,22 @@ export default function Home() {
                     }`}
                   >
                     {f === "all" ? "All" : f === "clerk" ? "Clerk" : f === "entra" ? "Entra" : "None"}
+                  </button>
+                ))}
+              </div>
+              <div className="w-px h-4 bg-border" />
+              <div className="flex items-center gap-1">
+                {(["all", "prod", "staging", "dev"] as EnvFilter[]).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setEnvFilter(f)}
+                    className={`h-6 px-2 rounded-sm text-[11px] font-medium transition-colors ${
+                      envFilter === f
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {f === "all" ? "All envs" : f === "prod" ? "Prod" : f === "staging" ? "Staging" : "Dev"}
                   </button>
                 ))}
               </div>

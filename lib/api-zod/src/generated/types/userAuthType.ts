@@ -9,10 +9,10 @@
 /**
  * Identity system that authenticates this app's end users. "clerk" = consumer app with Clerk-authenticated users (activity ingested via webhooks). "entra" = employee-only internal tool authenticated via Entra ID. "none" = no end-user authentication (e.g. public marketing site).
  */
-export type AppDetailUserAuth = typeof AppDetailUserAuth[keyof typeof AppDetailUserAuth];
+export type UserAuthType = typeof UserAuthType[keyof typeof UserAuthType];
 
 
-export const AppDetailUserAuth = {
+export const UserAuthType = {
   clerk: 'clerk',
   entra: 'entra',
   none: 'none',

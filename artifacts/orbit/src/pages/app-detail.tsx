@@ -9,7 +9,7 @@ import {
   useGetTelemetry, getGetTelemetryQueryKey, 
   useGetAppAlerts, getGetAppAlertsQueryKey,
   useSyncStripeSales,
-  AppDetailUserAuth,
+  UserAuthType,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -236,7 +236,7 @@ export default function AppDetail() {
 // ----------------------------------------------------------------------
 
 function UserAuthBadge({ userAuth }: { userAuth: string }) {
-  if (userAuth === AppDetailUserAuth.clerk) {
+  if (userAuth === UserAuthType.clerk) {
     return (
       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400 text-[11px] font-semibold">
         <Users className="h-3 w-3" />
@@ -244,7 +244,7 @@ function UserAuthBadge({ userAuth }: { userAuth: string }) {
       </span>
     );
   }
-  if (userAuth === AppDetailUserAuth.entra) {
+  if (userAuth === UserAuthType.entra) {
     return (
       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[11px] font-semibold">
         <Building2 className="h-3 w-3" />

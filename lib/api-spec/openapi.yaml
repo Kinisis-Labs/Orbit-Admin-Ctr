@@ -321,6 +321,14 @@ components:
     Severity:
       type: string
       enum: [info, warning, error, critical]
+    UserAuthType:
+      type: string
+      enum: [clerk, entra, none]
+      description: >-
+        Identity system that authenticates this app's end users.
+        "clerk" = consumer app with Clerk-authenticated users (activity ingested via webhooks).
+        "entra" = employee-only internal tool authenticated via Entra ID.
+        "none" = no end-user authentication (e.g. public marketing site).
     AppTags:
       type: object
       description: >-
@@ -360,10 +368,7 @@ components:
         monthToDateCost: { type: number }
         group: { type: string, description: Optional scope-selector grouping label (e.g. Platform). }
         userAuth:
-          type: string
-          enum: [clerk, entra, none]
-          description: >-
-            Identity system that authenticates this app's end users.
+          $ref: "#/components/schemas/UserAuthType"
     AppDetail:
       allOf:
         - $ref: "#/components/schemas/AppSummary"
@@ -375,13 +380,7 @@ components:
               type: array
               items: { type: string }
             userAuth:
-              type: string
-              enum: [clerk, entra, none]
-              description: >-
-                Identity system that authenticates this app's end users.
-                "clerk" = consumer app with Clerk-authenticated users (activity ingested via webhooks).
-                "entra" = employee-only internal tool authenticated via Entra ID.
-                "none" = no end-user authentication (e.g. public marketing site).
+              $ref: "#/components/schemas/UserAuthType"
             androidPackage:
               type: string
               description: >-

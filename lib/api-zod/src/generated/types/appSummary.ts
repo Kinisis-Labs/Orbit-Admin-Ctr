@@ -6,9 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AppSummaryEnvironment } from './appSummaryEnvironment';
-import type { AppSummaryUserAuth } from './appSummaryUserAuth';
 import type { AppTags } from './appTags';
 import type { Status } from './status';
+import type { UserAuthType } from './userAuthType';
 
 export interface AppSummary {
   id: string;
@@ -23,6 +23,5 @@ export interface AppSummary {
   monthToDateCost: number;
   /** Optional scope-selector grouping label (e.g. Platform). */
   group?: string;
-  /** Identity system that authenticates this app's end users. */
-  userAuth: AppSummaryUserAuth;
+  userAuth: UserAuthType;
 }
