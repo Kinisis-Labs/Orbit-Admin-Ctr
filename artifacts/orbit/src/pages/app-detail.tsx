@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { getSpendThreshold, DEFAULT_SPEND_THRESHOLD } from "@/lib/spend-threshold";
 import { useParams } from "wouter";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
@@ -612,14 +613,14 @@ function TelemetryTab({ appId }: { appId: string }) {
 
 
 const BAR_COLOR_DEFAULT  = "hsl(var(--primary))";
-const BAR_COLOR_UP_MILD  = "hsl(38 92% 50%)";   // amber — 0–15% above last week
-const BAR_COLOR_UP_HIGH  = "hsl(var(--destructive))"; // red  — >15% above last week
+const BAR_COLOR_UP_MILD  = "hsl(38 92% 50%)";   // amber — 0–threshold% above last week
+const BAR_COLOR_UP_HIGH  = "hsl(var(--destructive))"; // red  — >threshold% above last week
 const BAR_COLOR_DOWN     = "hsl(160 84% 39%)";  // emerald — below last week
 
-function getBarFill(vsLastWeek: number | null | undefined): string {
-  if (vsLastWeek == null)  return BAR_COLOR_DEFAULT;
-  if (vsLastWeek > 15)     return BAR_COLOR_UP_HIGH;
-  if (vsLastWeek > 0)      return BAR_COLOR_UP_MILD;
+function getBarFill(vsLastWeek: number | null | undefined, threshold: number): string {
+  if (vsLastWeek == null)     return BAR_COLOR_DEFAULT;
+  if (vsLastWeek > threshold) return BAR_COLOR_UP_HIGH;
+  if (vsLastWeek > 0)         return BAR_COLOR_UP_MILD;
   return BAR_COLOR_DOWN;
 }
 
@@ -627,6 +628,13 @@ function CostTab({ appId }: { appId: string }) {
   const queryKey = getGetCostQueryKey(appId);
   const { data, isLoading, isFetching } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey } });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/cost`, queryKey);
+  const [threshold, setThreshold] = useState(() => getSpendThreshold(appId));
+  const refreshThreshold = useCallback(() => setThreshold(getSpendThreshold(appId)), [appId]);
+  useEffect(() => {
+    refreshThreshold();
+    window.addEventListener("orbit-spend-threshold-changed", refreshThreshold);
+    return () => window.removeEventListener("orbit-spend-threshold-changed", refreshThreshold);
+  }, [refreshThreshold]);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No cost data available</div>;
@@ -704,7 +712,7 @@ function CostTab({ appId }: { appId: string }) {
                 />
                 <Bar dataKey="value" radius={0}>
                   {data.daily.map((entry, idx) => (
-                    <Cell key={idx} fill={getBarFill(entry.vsLastWeek)} />
+                    <Cell key={idx} fill={getBarFill(entry.vsLastWeek, threshold)} />
                   ))}
                 </Bar>
               </BarChart>
@@ -717,11 +725,11 @@ function CostTab({ appId }: { appId: string }) {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_UP_MILD }} />
-              <span>Up 0–15%</span>
+              <span>Up 0–{threshold}%</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_UP_HIGH }} />
-              <span>Up &gt;15%</span>
+              <span>Up &gt;{threshold}%</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_DEFAULT }} />

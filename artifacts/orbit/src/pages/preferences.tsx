@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
 import { useListApps } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
 import { GLOBAL_SCOPE, useScope } from "@/lib/scope-context";
+import {
+  DEFAULT_SPEND_THRESHOLD,
+  getSpendThreshold,
+  setSpendThreshold,
+  removeSpendThreshold,
+  clearSpendThresholds,
+} from "@/lib/spend-threshold";
 
 type Theme = "dark" | "light";
 type Density = "comfortable" | "compact";
@@ -13,6 +21,23 @@ export default function Preferences() {
   const { scope, setScope } = useScope();
   const [theme, setTheme] = useState<Theme>(() => (typeof window === "undefined" ? "dark" : (localStorage.getItem("orbit-theme") === "light" ? "light" : "dark")));
   const [density, setDensity] = useState<Density>(() => (typeof window === "undefined" ? "comfortable" : (localStorage.getItem("orbit-density") === "compact" ? "compact" : "comfortable")));
+  const [thresholds, setThresholds] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {};
+    const all: Record<string, string> = {};
+    for (const app of ([] as { id: string }[])) all[app.id] = String(getSpendThreshold(app.id));
+    return all;
+  });
+
+  useEffect(() => {
+    if (!apps) return;
+    setThresholds((prev) => {
+      const next: Record<string, string> = {};
+      for (const app of apps) {
+        next[app.id] = prev[app.id] !== undefined ? prev[app.id] : String(getSpendThreshold(app.id));
+      }
+      return next;
+    });
+  }, [apps]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -22,9 +47,33 @@ export default function Preferences() {
 
   useEffect(() => { localStorage.setItem("orbit-density", density); }, [density]);
 
+  const handleThresholdChange = (appId: string, raw: string) => {
+    setThresholds((prev) => ({ ...prev, [appId]: raw }));
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    setSpendThreshold(appId, parsed);
+    window.dispatchEvent(new Event("orbit-spend-threshold-changed"));
+  };
+
+  const handleThresholdBlur = (appId: string, raw: string) => {
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      removeSpendThreshold(appId);
+      setThresholds((prev) => ({ ...prev, [appId]: String(DEFAULT_SPEND_THRESHOLD) }));
+      window.dispatchEvent(new Event("orbit-spend-threshold-changed"));
+    }
+  };
+
   const reset = () => {
     setTheme("dark"); setDensity("comfortable"); setScope(GLOBAL_SCOPE);
     localStorage.removeItem("orbit-nav-collapsed");
+    clearSpendThresholds();
+    if (apps) {
+      const restored: Record<string, string> = {};
+      for (const app of apps) restored[app.id] = String(DEFAULT_SPEND_THRESHOLD);
+      setThresholds(restored);
+      window.dispatchEvent(new Event("orbit-spend-threshold-changed"));
+    }
   };
 
   return (
@@ -60,6 +109,34 @@ export default function Preferences() {
           </SelectContent>
         </Select>
       </Row>
+
+      {apps && apps.length > 0 && (
+        <div className="bg-card border border-border shadow-sm">
+          <div className="px-4 py-3 border-b border-border">
+            <div className="text-[13px] font-semibold text-foreground">Spend alert threshold</div>
+            <div className="text-[12px] text-muted-foreground mt-0.5">
+              Bars on the daily spend chart turn red when spend exceeds last week by more than this percentage. Default is {DEFAULT_SPEND_THRESHOLD}%.
+            </div>
+          </div>
+          {apps.map((app) => (
+            <div key={app.id} className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border last:border-b-0">
+              <div className="text-[13px] text-foreground">{app.name}</div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={1}
+                  max={999}
+                  value={thresholds[app.id] ?? String(DEFAULT_SPEND_THRESHOLD)}
+                  onChange={(e) => handleThresholdChange(app.id, e.target.value)}
+                  onBlur={(e) => handleThresholdBlur(app.id, e.target.value)}
+                  className="h-8 w-[90px] rounded-sm text-[13px] text-right"
+                />
+                <span className="text-[13px] text-muted-foreground">%</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="pt-3 border-t border-border">
         <Button variant="outline" size="sm" className="h-8 rounded-sm" onClick={reset}>Reset to defaults</Button>
