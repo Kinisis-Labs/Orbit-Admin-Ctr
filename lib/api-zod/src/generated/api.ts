@@ -36,7 +36,8 @@ export const ListAppsResponseItem = zod.object({
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),
-  "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).')
+  "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).'),
+  "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users.')
 })
 export const ListAppsResponse = zod.array(ListAppsResponseItem)
 
@@ -62,7 +63,8 @@ export const GetAppResponse = zod.object({
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),
-  "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).')
+  "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).'),
+  "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users.')
 }).and(zod.object({
   "description": zod.string().optional(),
   "owners": zod.array(zod.string()),

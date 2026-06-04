@@ -195,6 +195,7 @@ router.get("/apps", (_req, res) => {
       activeAlerts: activeAlertCount(app),
       monthToDateCost: app.monthToDateCost,
       group: app.group,
+      userAuth: app.userAuth,
     })),
   );
   res.json(data);

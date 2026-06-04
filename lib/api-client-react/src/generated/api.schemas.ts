@@ -67,6 +67,8 @@ export interface AppSummary {
   monthToDateCost: number;
   /** Optional scope-selector grouping label (e.g. Platform). */
   group?: string;
+  /** Identity system that authenticates this app's end users. */
+  userAuth: AppSummaryUserAuth;
 }
 
 /**

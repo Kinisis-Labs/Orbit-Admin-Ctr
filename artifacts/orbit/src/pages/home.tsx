@@ -10,14 +10,19 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Filter, Download } from "lucide-react";
+import { RefreshCw, Download } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
+import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+
+type UserAuthFilter = "all" | "clerk" | "entra" | "none";
 
 export default function Home() {
   const { scope, setScope, isGlobal } = useScope();
+  const [authFilter, setAuthFilter] = useState<UserAuthFilter>("all");
 
   const { data: apps, isLoading: appsLoading } = useListApps();
   const { data: health, isLoading: healthLoading } = useGetGlobalHealth({
@@ -31,6 +36,7 @@ export default function Home() {
     query: { enabled: !isGlobal, queryKey: getGetAppQueryKey(scope) },
   });
 
+  const filteredApps = apps?.filter((a) => authFilter === "all" || a.userAuth === authFilter);
   const activeRegions = apps ? new Set(apps.map((a) => a.region)).size : 0;
   const selectedApp = apps?.find((a) => a.id === scope);
 
@@ -87,15 +93,28 @@ export default function Home() {
       {isGlobal ? (
         <div className="bg-card border border-border shadow-sm flex flex-col">
           <div className="flex items-center justify-between p-2 border-b border-border bg-card">
-            <h2 className="text-sm font-semibold px-2">App Services</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold px-2">App Services</h2>
+              <div className="flex items-center gap-1">
+                {(["all", "clerk", "entra", "none"] as UserAuthFilter[]).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setAuthFilter(f)}
+                    className={`h-6 px-2 rounded-sm text-[11px] font-medium transition-colors ${
+                      authFilter === f
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {f === "all" ? "All" : f === "clerk" ? "Clerk" : f === "entra" ? "Entra" : "None"}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
                 <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                 Refresh
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
-                <Filter className="h-3.5 w-3.5 mr-1.5" />
-                Add filter
               </Button>
               <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
                 <Download className="h-3.5 w-3.5 mr-1.5" />
@@ -117,13 +136,14 @@ export default function Home() {
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="h-8 font-semibold text-foreground w-[250px]">Name</TableHead>
                     <TableHead className="h-8 font-semibold text-foreground">Status</TableHead>
+                    <TableHead className="h-8 font-semibold text-foreground">Identity</TableHead>
                     <TableHead className="h-8 font-semibold text-foreground">Environment</TableHead>
                     <TableHead className="h-8 font-semibold text-foreground">Location</TableHead>
                     <TableHead className="h-8 font-semibold text-foreground text-right">Alerts</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {apps?.map((app) => (
+                  {filteredApps?.map((app) => (
                     <TableRow
                       key={app.id}
                       className="h-8 border-b border-border/50 hover:bg-muted/40 cursor-pointer"
@@ -137,14 +157,17 @@ export default function Home() {
                       <TableCell className="py-1">
                         <StatusBadge status={app.status} />
                       </TableCell>
+                      <TableCell className="py-1">
+                        <AuthBadge userAuth={app.userAuth} />
+                      </TableCell>
                       <TableCell className="py-1 text-muted-foreground">{app.environment}</TableCell>
                       <TableCell className="py-1 text-muted-foreground">{app.region}</TableCell>
                       <TableCell className="py-1 text-right tabular-nums">{app.activeAlerts || 0}</TableCell>
                     </TableRow>
                   ))}
-                  {apps?.length === 0 && (
+                  {filteredApps?.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                         No applications found.
                       </TableCell>
                     </TableRow>
@@ -215,5 +238,27 @@ function Field({ label, value, mono = false }: { label: string; value: React.Rea
       <div className="text-muted-foreground font-medium">{label}</div>
       <div className={`col-span-2 ${mono ? "font-mono text-[12px]" : ""} text-foreground truncate`}>{value}</div>
     </div>
+  );
+}
+
+function AuthBadge({ userAuth }: { userAuth: "clerk" | "entra" | "none" }) {
+  if (userAuth === "clerk") {
+    return (
+      <Badge variant="outline" className="text-[11px] h-5 px-1.5 font-medium border-violet-400/60 text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30">
+        Clerk
+      </Badge>
+    );
+  }
+  if (userAuth === "entra") {
+    return (
+      <Badge variant="outline" className="text-[11px] h-5 px-1.5 font-medium border-blue-400/60 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30">
+        Entra
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="text-[11px] h-5 px-1.5 font-medium border-border text-muted-foreground">
+      None
+    </Badge>
   );
 }

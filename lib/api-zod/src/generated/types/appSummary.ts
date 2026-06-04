@@ -7,6 +7,7 @@
  */
 import type { AppSummaryEnvironment } from './appSummaryEnvironment';
 import type { AppTags } from './appTags';
+import type { AppSummaryUserAuth } from './appSummaryUserAuth';
 import type { Status } from './status';
 
 export interface AppSummary {
@@ -22,4 +23,6 @@ export interface AppSummary {
   monthToDateCost: number;
   /** Optional scope-selector grouping label (e.g. Platform). */
   group?: string;
+  /** Identity system that authenticates this app's end users. */
+  userAuth: AppSummaryUserAuth;
 }

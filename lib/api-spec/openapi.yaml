@@ -345,7 +345,7 @@ components:
           description: "Business criticality classification (e.g. mission-critical, high, medium, low)."
     AppSummary:
       type: object
-      required: [id, name, environment, region, status, resourceGroup, subscriptionId, tags, activeAlerts, monthToDateCost]
+      required: [id, name, environment, region, status, resourceGroup, subscriptionId, tags, activeAlerts, monthToDateCost, userAuth]
       properties:
         id: { type: string }
         name: { type: string }
@@ -359,6 +359,11 @@ components:
         activeAlerts: { type: integer }
         monthToDateCost: { type: number }
         group: { type: string, description: Optional scope-selector grouping label (e.g. Platform). }
+        userAuth:
+          type: string
+          enum: [clerk, entra, none]
+          description: >-
+            Identity system that authenticates this app's end users.
     AppDetail:
       allOf:
         - $ref: "#/components/schemas/AppSummary"
