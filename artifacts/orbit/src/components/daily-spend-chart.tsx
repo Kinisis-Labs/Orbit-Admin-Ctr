@@ -9,12 +9,21 @@ type DailyCostPoint = {
   vsLastWeek?: number | null;
 };
 
+type EnrichedPoint = DailyCostPoint & {
+  anomaly?: {
+    isAnomaly: boolean;
+    vsAvgMultiple: number;
+    windowLabel: string;
+  };
+};
+
 type Range = 7 | 14 | 30;
 
 const BAR_COLOR_DEFAULT = "hsl(var(--primary))";
 const BAR_COLOR_UP_MILD = "hsl(38 92% 50%)";
 const BAR_COLOR_UP_HIGH = "hsl(var(--destructive))";
 const BAR_COLOR_DOWN = "hsl(160 84% 39%)";
+const BAR_COLOR_ANOMALY = "hsl(32 98% 46%)";
 
 function getBarFill(vsLastWeek: number | null | undefined, threshold: number): string {
   if (vsLastWeek == null) return BAR_COLOR_DEFAULT;
@@ -29,28 +38,71 @@ const RANGE_OPTIONS: { label: string; days: Range }[] = [
   { label: "30d", days: 30 },
 ];
 
+function computeAnomalies(data: DailyCostPoint[], range: Range, sigmas: number): EnrichedPoint[] {
+  const values = data.map((d) => d.value);
+  if (values.length < 3) return data.map((d) => ({ ...d }));
+
+  const mean = values.reduce((s, v) => s + v, 0) / values.length;
+  const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length;
+  const sigma = Math.sqrt(variance);
+  const anomalyThreshold = mean + sigmas * sigma;
+  const windowLabel = `${range}d`;
+
+  return data.map((d) => ({
+    ...d,
+    anomaly: {
+      isAnomaly: d.value > anomalyThreshold && mean > 0,
+      vsAvgMultiple: mean > 0 ? d.value / mean : 1,
+      windowLabel,
+    },
+  }));
+}
+
 export function DailySpendChart({
   daily,
   formatCurrency,
   colorByTrend = false,
+  showAnomalies = true,
   showLegend = false,
   threshold = 15,
+  anomalySigmas = 2,
 }: {
   daily: DailyCostPoint[];
   formatCurrency: (v: number) => string;
   colorByTrend?: boolean;
+  showAnomalies?: boolean;
   showLegend?: boolean;
   threshold?: number;
+  anomalySigmas?: number;
 }) {
   const maxDays = daily.length;
   const defaultRange: Range = maxDays >= 30 ? 30 : maxDays >= 14 ? 14 : 7;
   const [range, setRange] = useState<Range>(defaultRange);
 
   const visibleData = useMemo(() => {
-    return daily.slice(-range);
-  }, [daily, range]);
+    const sliced = daily.slice(-range);
+    return showAnomalies ? computeAnomalies(sliced, range, anomalySigmas) : sliced.map((d) => ({ ...d }));
+  }, [daily, range, showAnomalies, anomalySigmas]);
+
+  const hasAnyAnomaly = useMemo(
+    () => showAnomalies && visibleData.some((d) => (d as EnrichedPoint).anomaly?.isAnomaly),
+    [visibleData, showAnomalies],
+  );
 
   const availableRanges = RANGE_OPTIONS.filter((o) => o.days <= Math.max(maxDays, 7));
+
+  function getCellFill(entry: EnrichedPoint, idx: number): string {
+    const anomaly = entry.anomaly;
+    if (colorByTrend) {
+      return getBarFill(entry.vsLastWeek, threshold);
+    }
+    if (showAnomalies && anomaly?.isAnomaly) {
+      return BAR_COLOR_ANOMALY;
+    }
+    return BAR_COLOR_DEFAULT;
+  }
+
+  const needsCells = colorByTrend || showAnomalies;
 
   return (
     <div className="flex flex-col h-full">
@@ -93,10 +145,10 @@ export function DailySpendChart({
               content={<DailySpendTooltip formatCurrency={formatCurrency} />}
               cursor={{ fill: "hsl(var(--muted))" }}
             />
-            {colorByTrend ? (
+            {needsCells ? (
               <Bar dataKey="value" radius={0}>
                 {visibleData.map((entry, idx) => (
-                  <Cell key={idx} fill={getBarFill(entry.vsLastWeek, threshold)} />
+                  <Cell key={idx} fill={getCellFill(entry as EnrichedPoint, idx)} />
                 ))}
               </Bar>
             ) : (
@@ -105,24 +157,34 @@ export function DailySpendChart({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      {showLegend && colorByTrend && (
+      {(showLegend || hasAnyAnomaly) && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 pt-2 pb-1 text-[11px] text-muted-foreground shrink-0">
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_DOWN }} />
-            <span>Below last week</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_UP_MILD }} />
-            <span>Up 0–{threshold}%</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_UP_HIGH }} />
-            <span>Up &gt;{threshold}%</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_DEFAULT }} />
-            <span>No prior data</span>
-          </div>
+          {showLegend && colorByTrend && (
+            <>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_DOWN }} />
+                <span>Below last week</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_UP_MILD }} />
+                <span>Up 0–{threshold}%</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_UP_HIGH }} />
+                <span>Up &gt;{threshold}%</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_DEFAULT }} />
+                <span>No prior data</span>
+              </div>
+            </>
+          )}
+          {hasAnyAnomaly && (
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_ANOMALY }} />
+              <span>Spend anomaly (&gt;{anomalySigmas}σ above window average)</span>
+            </div>
+          )}
         </div>
       )}
     </div>

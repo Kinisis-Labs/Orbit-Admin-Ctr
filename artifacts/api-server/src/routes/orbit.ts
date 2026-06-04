@@ -154,6 +154,16 @@ function makeDaily(seed: string, days: number, base: number) {
   const values = Array.from({ length: totalDays }, () =>
     Number((base * (0.6 + rand() * 0.8)).toFixed(2))
   );
+  // Inject 1-2 deterministic anomaly spikes into the visible window so
+  // operators can see the amber anomaly highlight in the demo environment.
+  // Spike magnitude is 2.4-3.0× base; positions are seeded so they are
+  // stable across reloads but vary per app.
+  const spikeRand = seededRand(seed + "spikes");
+  const spikeCount = Math.floor(spikeRand() * 2) + 1; // 1 or 2 spikes
+  for (let s = 0; s < spikeCount; s++) {
+    const pos = 7 + Math.floor(spikeRand() * days); // only in visible window
+    values[pos] = Number((base * (2.4 + spikeRand() * 0.6)).toFixed(2));
+  }
   return Array.from({ length: days }, (_, i) => {
     const d = new Date(now);
     d.setUTCHours(0, 0, 0, 0);
