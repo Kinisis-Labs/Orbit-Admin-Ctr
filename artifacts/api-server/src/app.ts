@@ -10,8 +10,16 @@ import { isEntraConfigured } from "./lib/entra";
 // Fail closed in production: never serve protected routes with auth disabled.
 // The mock fallback (requireAuth no-op) is only acceptable in development.
 if (process.env.NODE_ENV === "production" && !isEntraConfigured()) {
+  const missing = [
+    ["ENTRA_TENANT_ID", process.env.ENTRA_TENANT_ID],
+    ["ENTRA_CLIENT_ID", process.env.ENTRA_CLIENT_ID],
+    ["ENTRA_CLIENT_SECRET", process.env.ENTRA_CLIENT_SECRET],
+    ["ENTRA_REDIRECT_URI", process.env.ENTRA_REDIRECT_URI],
+  ]
+    .filter(([, v]) => !v)
+    .map(([k]) => k);
   throw new Error(
-    "Entra ID auth is not fully configured (ENTRA_TENANT_ID, ENTRA_CLIENT_ID, ENTRA_CLIENT_SECRET, ENTRA_REDIRECT_URI) — refusing to start in production with authentication disabled.",
+    `Entra ID auth is not fully configured — missing: ${missing.join(", ")} — refusing to start in production with authentication disabled.`,
   );
 }
 
