@@ -63,5 +63,21 @@ az staticwebapp create --name swa-orbit-prod --resource-group rg-orbit-prod-eus2
 
 **Why:** `az staticwebapp create` without `--source` skips the GitHub App registration, so the SWA accepts deployments with just the API token. The workflow fetches the token at runtime so no GitHub secrets need updating.
 
+## Front Door origin update
+
+The deploy workflow auto-discovers and updates the AFD origin on every run, but the Orbit deploy identity lacks `Microsoft.Cdn/profiles/originGroups/origins/write` on the shared RG — so the step has `continue-on-error: true` and prints a warning. Manual fix path when needed:
+
+- **Front Door profile:** `afd-shared-prod` in `rg-kinisislabs-platform-shared-prod-eus2`
+- **Origin group:** `default-origin-group` → **origin:** `default-origin`
+- Update host name to `<new-swa-default-hostname>.7.azurestaticapps.net`
+
+To automate: grant the deploy identity (object id `5428ed38-93f6-42f0-a5b2-9575c19e0d4f`) **CDN Endpoint Contributor** on `afd-shared-prod`, or **Contributor** on `rg-kinisislabs-platform-shared-prod-eus2`.
+
+## Custom domain on SWA
+
+`orbit.kinisislabs.com` registered as SWA custom domain (June 2026). Validation uses TXT record (not CNAME, because the domain is already CNAMEd to Front Door):
+- **Record:** `_dnsauth.orbit.kinisislabs.com` TXT = `_14714r9g5208w9v72sy381n6wxm6vds`
+- Azure auto-validates once the TXT propagates.
+
 ## Race condition on simultaneous runs
 If two SWA Deploy runs happen at the same time (push + dispatch), the second gets "Deployment Canceled." Not a real failure — only one push runs at a time in normal operation.

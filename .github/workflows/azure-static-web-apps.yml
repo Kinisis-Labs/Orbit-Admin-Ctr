@@ -9,6 +9,10 @@ on:
         description: "Delete and recreate the SWA resource to reset content service registration"
         type: boolean
         default: false
+      add_custom_domain:
+        description: "Register orbit.kinisislabs.com as a custom domain on the SWA (run once; outputs TXT record for DNS validation)"
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -65,6 +69,79 @@ jobs:
             --query "defaultHostname" -o tsv)
           echo "=== New hostname: $NEW_HOST ==="
           echo "ACTION REQUIRED: Update Front Door SWA origin to: $NEW_HOST"
+
+      - name: Register custom domain orbit.kinisislabs.com
+        if: ${{ inputs.add_custom_domain == true }}
+        run: |
+          echo "=== Registering custom domain ==="
+          az staticwebapp hostname set \
+            --name swa-orbit-prod \
+            --resource-group rg-orbit-prod-eus2 \
+            --hostname orbit.kinisislabs.com \
+            --validation-method dns-txt-token || true
+
+          echo ""
+          echo "=== Validation token ==="
+          az staticwebapp hostname show \
+            --name swa-orbit-prod \
+            --resource-group rg-orbit-prod-eus2 \
+            --hostname orbit.kinisislabs.com \
+            -o json
+
+          echo ""
+          echo "ACTION REQUIRED: In your DNS provider, add a TXT record:"
+          echo "  Name:  _dnsauth.orbit.kinisislabs.com"
+          echo "  Value: (see validationToken in the JSON above)"
+          echo ""
+          echo "Once the TXT record propagates, Azure will auto-validate and the domain will become active."
+
+      - name: Update Front Door SWA origin to current hostname
+        continue-on-error: true
+        run: |
+          SWA_HOST=$(az staticwebapp show \
+            --name swa-orbit-prod \
+            --resource-group rg-orbit-prod-eus2 \
+            --query "defaultHostname" -o tsv)
+          echo "Current SWA hostname: $SWA_HOST"
+
+          # Find the Front Door profile (shared, may be in a different RG)
+          AFD_ID=$(az afd profile list --query "[?name=='afd-shared-prod'].id" -o tsv 2>/dev/null || true)
+          if [ -z "$AFD_ID" ]; then
+            echo "Searching all resource groups for afd-shared-prod..."
+            AFD_ID=$(az resource list --name afd-shared-prod --resource-type "Microsoft.Cdn/profiles" --query "[0].id" -o tsv)
+          fi
+
+          if [ -z "$AFD_ID" ]; then
+            echo "WARNING: Could not find afd-shared-prod — update the Front Door SWA origin manually to: $SWA_HOST"
+          else
+            AFD_RG=$(echo "$AFD_ID" | cut -d'/' -f5)
+            echo "Found Front Door in resource group: $AFD_RG"
+
+            # Find and update the origin pointing to an azurestaticapps.net hostname
+            ORIGIN_GROUP=$(az afd origin-group list --profile-name afd-shared-prod \
+              --resource-group "$AFD_RG" --query "[].name" -o tsv)
+
+            for OG in $ORIGIN_GROUP; do
+              ORIGINS=$(az afd origin list --profile-name afd-shared-prod \
+                --resource-group "$AFD_RG" --origin-group-name "$OG" \
+                --query "[?contains(hostName,'azurestaticapps.net')].{name:name,host:hostName}" -o json)
+              if echo "$ORIGINS" | python3 -c "import sys,json; o=json.load(sys.stdin); exit(0 if o else 1)" 2>/dev/null; then
+                echo "Found SWA origin(s) in group $OG: $ORIGINS"
+                for ORIGIN_NAME in $(echo "$ORIGINS" | python3 -c "import sys,json; [print(o['name']) for o in json.load(sys.stdin)]"); do
+                  echo "Updating origin $ORIGIN_NAME in group $OG to $SWA_HOST..."
+                  az afd origin update \
+                    --profile-name afd-shared-prod \
+                    --resource-group "$AFD_RG" \
+                    --origin-group-name "$OG" \
+                    --origin-name "$ORIGIN_NAME" \
+                    --host-name "$SWA_HOST" \
+                    --origin-host-header "$SWA_HOST" \
+                    --output none
+                  echo "Updated."
+                done
+              fi
+            done
+          fi
 
       - name: Get SWA deployment token
         id: swa-token
