@@ -219,6 +219,11 @@ export async function fetchMetricTimeSeries(
   }
 }
 
+// Cache: app id → { result, expiresAt }
+const METRICS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+type MetricsCacheEntry = { result: TelemetrySummary; expiresAt: number };
+const _metricsCache = new Map<string, MetricsCacheEntry>();
+
 /**
  * Convenience wrapper for route handlers: resolves the App Insights component
  * resource ID for `app` (via Resource Graph), then calls fetchMetricTimeSeries
@@ -246,12 +251,24 @@ export async function fetchAppTimeSeries(
  *   - requests/duration (P95 approximated from average — real P95 via Log Analytics)
  *   - availabilityResults/availabilityPercentage
  *
+ * Results are cached in-process for METRICS_CACHE_TTL_MS (5 min). Pass
+ * `bypassCache: true` to skip the cache and force a fresh API call (the fresh
+ * result is still written back to the cache).
+ *
  * Returns null when not configured, no App Insights found, or on any error.
  */
 export async function fetchAppMetrics(
   app: AppRecord,
+  { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<TelemetrySummary | null> {
   if (!isAzureConfigured()) return null;
+
+  if (!bypassCache) {
+    const entry = _metricsCache.get(app.id);
+    if (entry && entry.expiresAt > Date.now()) {
+      return entry.result;
+    }
+  }
 
   const resourceId = await resolveAppInsightsResourceId(app);
   if (!resourceId) return null;
@@ -301,12 +318,14 @@ export async function fetchAppMetrics(
     // as an approximation. Real P95 is available via fetchMetricTimeSeries.
     const p95LatencyMs = Number((avgDurationMs * 1.4).toFixed(0));
 
-    return {
+    const summary: TelemetrySummary = {
       requestsPerMin,
       p95LatencyMs,
       errorRatePercent,
       availabilityPercent: Number(availabilityPct.toFixed(2)),
     };
+    _metricsCache.set(app.id, { result: summary, expiresAt: Date.now() + METRICS_CACHE_TTL_MS });
+    return summary;
   } catch {
     return null;
   }

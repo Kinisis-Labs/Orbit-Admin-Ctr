@@ -280,7 +280,7 @@ router.get("/apps/:appId/infrastructure", async (req, res) => {
     return;
   }
   const [liveResources, liveCpuSeries, liveMemSeries] = await Promise.all([
-    fetchResourcesByResourceGroup(app),
+    fetchResourcesByResourceGroup(app, { bypassCache }),
     fetchAppTimeSeries(app, "cpu_pct", 24),
     fetchAppTimeSeries(app, "memory_pct", 24),
   ]);
@@ -341,7 +341,8 @@ router.get("/apps/:appId/network", async (req, res) => {
     res.status(404).json({ error: "App not found" });
     return;
   }
-  const liveEndpoints = await fetchNetworkEndpoints(app);
+  const bypassCache = req.query["refresh"] === "true";
+  const liveEndpoints = await fetchNetworkEndpoints(app, { bypassCache });
   const endpoints = liveEndpoints ?? mockNetworkEndpoints(app);
   const throughput = [
     makeSeries(app.id, "Ingress (Mbps)", "Mbps", 24, 220, 120),
@@ -494,17 +495,19 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
     res.status(404).json({ error: "App not found" });
     return;
   }
+  const bypassCache = req.query["refresh"] === "true";
   const rand = seededRand(app.id + "tel");
   const sick = app.status === "unhealthy";
 
   // Fetch point-in-time summary and all three time-series in parallel.
   const [liveMetrics, liveRpmSeries, liveLatenSeries, liveErrSeries] =
     await Promise.all([
-      fetchAppMetrics(app),
+      fetchAppMetrics(app, { bypassCache }),
       fetchAppTimeSeries(app, "requests_per_min", 24),
       fetchAppTimeSeries(app, "p95_latency_ms", 24),
       fetchAppTimeSeries(app, "error_rate_pct", 24),
     ]);
+
 
   const data = GetTelemetryResponse.parse({
     requestsPerMin: liveMetrics?.requestsPerMin ?? Number((400 + rand() * 1200).toFixed(0)),
@@ -633,7 +636,8 @@ router.get("/apps/:appId/alerts", async (req, res) => {
     res.status(404).json({ error: "App not found" });
     return;
   }
-  const liveAlerts = await fetchActiveAlerts(app);
+  const bypassCache = req.query["refresh"] === "true";
+  const liveAlerts = await fetchActiveAlerts(app, { bypassCache });
   const alerts = liveAlerts ?? buildAlertsForApp(app);
   const data = GetAppAlertsResponse.parse(alerts);
   res.json(data);

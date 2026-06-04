@@ -70,16 +70,33 @@ function normalizeSource(raw: string | undefined): AlertSource {
   return "AzureMonitor";
 }
 
+// Cache: app id → { result, expiresAt }
+const ALERTS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+type AlertsCacheEntry = { result: AlertEntry[]; expiresAt: number };
+const _alertsCache = new Map<string, AlertsCacheEntry>();
+
 /**
  * Fetch active Azure Monitor alert instances for the app's resource group
  * using a Resource Graph KQL query against the alertsmanagementresources table.
+ *
+ * Results are cached in-process for ALERTS_CACHE_TTL_MS (5 min). Pass
+ * `bypassCache: true` to skip the cache and force a fresh API call (the fresh
+ * result is still written back to the cache).
  *
  * Returns null when not configured or on any error (caller falls back to mock).
  */
 export async function fetchActiveAlerts(
   app: AppRecord,
+  { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<AlertEntry[] | null> {
   if (!isAzureConfigured()) return null;
+
+  if (!bypassCache) {
+    const entry = _alertsCache.get(app.id);
+    if (entry && entry.expiresAt > Date.now()) {
+      return entry.result;
+    }
+  }
 
   const subscriptionIds = getSubscriptionIds();
   const rg = app.resourceGroup.toLowerCase();
@@ -110,7 +127,7 @@ export async function fetchActiveAlerts(
 
     const rows = (result.data as Record<string, unknown>[]) ?? [];
 
-    return rows.map((row, i) => {
+    const alerts = rows.map((row, i) => {
       const sev = String(row["severity"] ?? "Sev4").replace(/sev/i, "");
       const firedAt = String(
         row["firedDateTime"] ?? new Date().toISOString(),
@@ -130,6 +147,9 @@ export async function fetchActiveAlerts(
         status: mapState(String(row["alertState"] ?? "")),
       };
     });
+
+    _alertsCache.set(app.id, { result: alerts, expiresAt: Date.now() + ALERTS_CACHE_TTL_MS });
+    return alerts;
   } catch {
     return null;
   }

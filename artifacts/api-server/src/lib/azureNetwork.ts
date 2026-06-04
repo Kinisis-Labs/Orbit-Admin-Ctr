@@ -37,17 +37,34 @@ function mapNetworkStatus(
   return "unknown";
 }
 
+// Cache: app id → { result, expiresAt }
+const NETWORK_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+type NetworkCacheEntry = { result: NetworkEndpoint[]; expiresAt: number };
+const _networkCache = new Map<string, NetworkCacheEntry>();
+
 /**
  * Fetch networking resource health for the app's resource group via Resource Graph.
  * Queries for Front Door profiles, Application Gateways, Virtual Networks, and
  * Private DNS zones in the RG, then maps them to the dashboard endpoint shape.
  *
+ * Results are cached in-process for NETWORK_CACHE_TTL_MS (10 min). Pass
+ * `bypassCache: true` to skip the cache and force a fresh API call (the fresh
+ * result is still written back to the cache).
+ *
  * Returns null when not configured or on any error (caller falls back to mock).
  */
 export async function fetchNetworkEndpoints(
   app: AppRecord,
+  { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<NetworkEndpoint[] | null> {
   if (!isAzureConfigured()) return null;
+
+  if (!bypassCache) {
+    const entry = _networkCache.get(app.id);
+    if (entry && entry.expiresAt > Date.now()) {
+      return entry.result;
+    }
+  }
 
   const subscriptionIds = getSubscriptionIds();
   const rg = app.resourceGroup.toLowerCase();
@@ -122,6 +139,7 @@ export async function fetchNetworkEndpoints(
       };
     });
 
+    _networkCache.set(app.id, { result: endpoints, expiresAt: Date.now() + NETWORK_CACHE_TTL_MS });
     return endpoints;
   } catch {
     return null;

@@ -47,15 +47,33 @@ function mapStatus(
   return "unknown";
 }
 
+// Cache: app id → { result, expiresAt }
+const RESOURCES_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+type ResourcesCacheEntry = { result: ResourceEntry[]; expiresAt: number };
+const _resourcesCache = new Map<string, ResourcesCacheEntry>();
+
 /**
  * Fetch resources in the app's resource group from Azure Resource Graph.
  * Returns an array of resource entries in the standard dashboard shape.
- * Falls back to an empty array on error so the route can use the mock.
+ *
+ * Results are cached in-process for RESOURCES_CACHE_TTL_MS (15 min). Pass
+ * `bypassCache: true` to skip the cache and force a fresh API call (the fresh
+ * result is still written back to the cache).
+ *
+ * Falls back to null on error so the route can use the mock.
  */
 export async function fetchResourcesByResourceGroup(
   app: AppRecord,
+  { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<ResourceEntry[] | null> {
   if (!isAzureConfigured()) return null;
+
+  if (!bypassCache) {
+    const entry = _resourcesCache.get(app.id);
+    if (entry && entry.expiresAt > Date.now()) {
+      return entry.result;
+    }
+  }
 
   const subscriptionIds = getSubscriptionIds();
   const rg = app.resourceGroup.toLowerCase();
@@ -78,7 +96,7 @@ export async function fetchResourcesByResourceGroup(
     });
 
     const rows = (result.data as Record<string, unknown>[]) ?? [];
-    return rows.map((row) => ({
+    const resources = rows.map((row) => ({
       id: String(row["id"] ?? ""),
       name: String(row["name"] ?? ""),
       type: normalizeType(String(row["type"] ?? "")),
@@ -88,6 +106,9 @@ export async function fetchResourcesByResourceGroup(
       ),
       location: String(row["location"] ?? app.region),
     }));
+
+    _resourcesCache.set(app.id, { result: resources, expiresAt: Date.now() + RESOURCES_CACHE_TTL_MS });
+    return resources;
   } catch {
     return null;
   }
