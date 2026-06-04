@@ -38,11 +38,24 @@ jobs:
             ${{ steps.image.outputs.name }}:latest
             ${{ steps.image.outputs.name }}:${{ github.sha }}
 
-      - uses: azure/login@v2
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set GHCR pull credentials on Container App
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az containerapp registry set \
+              --name ca-orbit-api-prod \
+              --resource-group rg-orbit-prod-eus2 \
+              --server ghcr.io \
+              --username "${{ github.actor }}" \
+              --password "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Update Container App image
         uses: azure/cli@v2
