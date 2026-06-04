@@ -65,7 +65,10 @@ jobs:
               --end-ip-address "$RUNNER_IP"
 
       - name: Run DB migrations
-        run: pnpm --filter @workspace/db run push-force
+        run: |
+          echo "Waiting for firewall rule to propagate..."
+          sleep 15
+          pnpm --filter @workspace/db run push-force
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
