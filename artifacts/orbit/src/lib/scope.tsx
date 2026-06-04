@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { GLOBAL_SCOPE, ScopeContext, useScope } from "./scope-context";
+import { AuthBadge } from "@/components/auth-badge";
 
 const STORAGE_KEY = "orbit-scope";
 
@@ -92,7 +93,11 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
           <SelectItem value={GLOBAL_SCOPE}>Global — All Applications</SelectItem>
           {ungrouped.map((a) => (
             <SelectItem key={a.id} value={a.id}>
-              {a.name}
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="truncate">{a.name}</span>
+                <span className="shrink-0 text-[11px] text-muted-foreground">{a.environment}</span>
+                <AuthBadge userAuth={a.userAuth} />
+              </span>
             </SelectItem>
           ))}
           {sortedGroups.map(([label, items]) => (
@@ -100,7 +105,11 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
               <SelectLabel>{label}</SelectLabel>
               {items.map((a) => (
                 <SelectItem key={a.id} value={a.id}>
-                  {a.name}
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="truncate">{a.name}</span>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">{a.environment}</span>
+                    <AuthBadge userAuth={a.userAuth} />
+                  </span>
                 </SelectItem>
               ))}
             </SelectGroup>

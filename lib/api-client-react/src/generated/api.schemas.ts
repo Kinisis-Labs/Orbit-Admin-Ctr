@@ -54,6 +54,18 @@ export const AppSummaryEnvironment = {
   dev: 'dev',
 } as const;
 
+/**
+ * Identity system that authenticates this app's end users.
+ */
+export type AppSummaryUserAuth = typeof AppSummaryUserAuth[keyof typeof AppSummaryUserAuth];
+
+
+export const AppSummaryUserAuth = {
+  clerk: 'clerk',
+  entra: 'entra',
+  none: 'none',
+} as const;
+
 export interface AppSummary {
   id: string;
   name: string;

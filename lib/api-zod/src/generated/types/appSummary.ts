@@ -6,8 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AppSummaryEnvironment } from './appSummaryEnvironment';
-import type { AppTags } from './appTags';
 import type { AppSummaryUserAuth } from './appSummaryUserAuth';
+import type { AppTags } from './appTags';
 import type { Status } from './status';
 
 export interface AppSummary {

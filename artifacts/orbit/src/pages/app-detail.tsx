@@ -264,22 +264,6 @@ function UserAuthBadge({ userAuth }: { userAuth: string }) {
 // Sub-components for tabs
 // ----------------------------------------------------------------------
 
-function fmtDataAsOf(iso: string | undefined | null): string | null {
-  if (!iso) return null;
-  try {
-    const d = new Date(iso);
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      timeZoneName: "short",
-    }).format(d);
-  } catch {
-    return null;
-  }
-}
-
 function DataSourceBadge({
   dataSource,
   dataAsOf,
