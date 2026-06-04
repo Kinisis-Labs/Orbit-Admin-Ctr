@@ -27,6 +27,7 @@ const BAR_COLOR_DOWN = "hsl(160 84% 39%)";
 const BAR_COLOR_ANOMALY = "hsl(32 98% 46%)";
 const BAR_COLOR_PEAK = "hsl(45 100% 51%)";
 const ANOMALY_OUTLINE_COLOR = "hsl(32 98% 46%)";
+const OVER_BUDGET_STROKE_COLOR = "hsl(0 84% 40%)";
 
 function getBarFill(vsLastWeek: number | null | undefined, threshold: number): string {
   if (vsLastWeek == null) return BAR_COLOR_DEFAULT;
@@ -108,6 +109,11 @@ export function DailySpendChart({
   }, [visibleData, highlightPeak]);
 
   const availableRanges = RANGE_OPTIONS.filter((o) => o.days <= Math.max(maxDays, 7));
+
+  const hasAnyOverBudget = useMemo(
+    () => budgetLine != null && budgetLine > 0 && visibleDataWithPeak.some((d) => d.value > budgetLine),
+    [visibleDataWithPeak, budgetLine],
+  );
 
   function getCellFill(entry: EnrichedPoint): string {
     if (colorByTrend) {
@@ -207,6 +213,21 @@ export function DailySpendChart({
               </Bar>
             )}
             {budgetLine != null && budgetLine > 0 && (
+              <Bar dataKey="value" radius={0} fill="transparent" legendType="none">
+                {visibleDataWithPeak.map((entry, idx) => {
+                  const isOverBudget = entry.value > budgetLine;
+                  return (
+                    <Cell
+                      key={idx}
+                      fill="transparent"
+                      stroke={isOverBudget ? OVER_BUDGET_STROKE_COLOR : "none"}
+                      strokeWidth={isOverBudget ? 3 : 0}
+                    />
+                  );
+                })}
+              </Bar>
+            )}
+            {budgetLine != null && budgetLine > 0 && (
               <ReferenceLine
                 y={budgetLine}
                 stroke={BUDGET_LINE_COLOR}
@@ -225,7 +246,7 @@ export function DailySpendChart({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      {(showLegend || hasAnyAnomaly) && (
+      {(showLegend || hasAnyAnomaly || hasAnyOverBudget) && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 pt-2 pb-1 text-[11px] text-muted-foreground shrink-0">
           {showLegend && colorByTrend && (
             <>
@@ -266,6 +287,15 @@ export function DailySpendChart({
             <div className="flex items-center gap-1.5">
               <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_ANOMALY }} />
               <span>Spend anomaly (&gt;{anomalySigmas}σ above window average)</span>
+            </div>
+          )}
+          {hasAnyOverBudget && (
+            <div className="flex items-center gap-1.5">
+              <span
+                className="inline-block w-2.5 h-2.5 shrink-0"
+                style={{ border: `3px solid ${OVER_BUDGET_STROKE_COLOR}`, background: "transparent" }}
+              />
+              <span>Over daily budget</span>
             </div>
           )}
         </div>
