@@ -19,6 +19,8 @@ export * from './costByService';
 export * from './costReport';
 export * from './costReportDataSource';
 export * from './getAppAlertsParams';
+export * from './getCostParams';
+export * from './getGlobalCostSummaryParams';
 export * from './getInfrastructureParams';
 export * from './getNetworkParams';
 export * from './getTelemetryParams';

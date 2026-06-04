@@ -30,6 +30,18 @@ Orval does not always emit `<Op>Response` for non-200 success bodies (e.g. a
 object against the equivalent shared item schema instead (e.g. a single posted
 journal entry was validated with `ListLedgerEntriesResponseItem`).
 
+## Zod param symbol naming differs by whether a path param exists
+When an endpoint has **both a path param and a query param**, Orval names the
+zod schema `<Op>Params` (e.g. `GetCostParams`). When it has **only query params**
+(no path params), Orval names it `<Op>QueryParams` (e.g.
+`GetGlobalCostSummaryQueryParams`). Both still cause TS2308 and must be
+explicitly re-exported from `lib/api-zod/src/index.ts`.
+
+## Adding query params shifts the generated hook signature
+When a previously-parameterless endpoint gains a query param, Orval inserts a
+`params?` argument **before** the `options` argument. Every existing call site
+must be updated to pass `undefined` as params: `useGetFoo(undefined, { query: … })`.
+
 ## Misc
 - Never change OpenAPI `info.title` — it drives generated filenames.
 - `pnpm --filter @workspace/api-spec run codegen` also runs `typecheck:libs`;

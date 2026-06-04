@@ -9,4 +9,6 @@ export {
   GetNetworkParams,
   GetTelemetryParams,
   GetAppAlertsParams,
+  GetCostParams,
+  GetGlobalCostSummaryQueryParams,
 } from "./generated/api";

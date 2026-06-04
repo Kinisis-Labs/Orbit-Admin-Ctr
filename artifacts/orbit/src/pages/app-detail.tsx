@@ -304,7 +304,7 @@ function DataSourceBadge({
 }
 
 function OverviewCostTile({ appId }: { appId: string }) {
-  const { data, isLoading } = useGetCost(appId, { query: { enabled: !!appId, queryKey: getGetCostQueryKey(appId) } });
+  const { data, isLoading } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey: getGetCostQueryKey(appId) } });
 
   if (isLoading) return <Skeleton className="h-20 w-full" />;
   if (!data) return null;
@@ -630,7 +630,9 @@ function TelemetryTab({ appId }: { appId: string }) {
 }
 
 function CostTab({ appId }: { appId: string }) {
-  const { data, isLoading } = useGetCost(appId, { query: { enabled: !!appId, queryKey: getGetCostQueryKey(appId) } });
+  const queryKey = getGetCostQueryKey(appId);
+  const { data, isLoading } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { isRefreshing, forceRefresh } = useForceRefresh(`/api/apps/${appId}/cost`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No cost data available</div>;
@@ -643,7 +645,12 @@ function CostTab({ appId }: { appId: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground font-medium">Month-to-date cost breakdown</span>
-        <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
+        <div className="flex items-center gap-2">
+          {data.dataSource === "live" && (
+            <ForceRefreshButton isRefreshing={isRefreshing} onRefresh={forceRefresh} />
+          )}
+          <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
+        </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">

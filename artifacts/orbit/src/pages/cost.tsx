@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   useGetGlobalCostSummary,
   useGetCost,
@@ -5,6 +6,7 @@ import {
   getGetGlobalCostSummaryQueryKey,
   getGetCostQueryKey,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
@@ -79,6 +81,49 @@ function DataSourceBadge({
   );
 }
 
+function ForceRefreshButton({
+  isRefreshing,
+  onRefresh,
+}: {
+  isRefreshing: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-6 px-2 text-[10px] rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted gap-1"
+      onClick={onRefresh}
+      disabled={isRefreshing}
+      title="Bypass cache and fetch latest data from Azure"
+    >
+      <RefreshCw className={`h-3 w-3${isRefreshing ? " animate-spin" : ""}`} />
+      {isRefreshing ? "Refreshing…" : "Force refresh"}
+    </Button>
+  );
+}
+
+function useForceRefresh(url: string, queryKey: readonly unknown[]) {
+  const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const forceRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      const res = await fetch(`${url}?refresh=true`, { credentials: "same-origin" });
+      if (res.ok) {
+        const data: unknown = await res.json();
+        queryClient.setQueryData([...queryKey], data);
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  return { isRefreshing, forceRefresh };
+}
+
 export default function Cost() {
   const { scope, isGlobal } = useScope();
   const { data: apps } = useListApps();
@@ -108,9 +153,11 @@ export default function Cost() {
 }
 
 function GlobalCost() {
-  const { data: cost, isLoading } = useGetGlobalCostSummary({
-    query: { queryKey: getGetGlobalCostSummaryQueryKey() },
+  const queryKey = getGetGlobalCostSummaryQueryKey();
+  const { data: cost, isLoading } = useGetGlobalCostSummary(undefined, {
+    query: { queryKey },
   });
+  const { isRefreshing, forceRefresh } = useForceRefresh("/api/global/cost-summary", queryKey);
   const budgetPercent = cost ? (cost.monthToDate / cost.budget) * 100 : 0;
   const netClass = cost && cost.revenue.total - cost.monthToDate >= 0 ? "text-emerald-500" : "text-destructive";
   const net = cost ? cost.revenue.total - cost.monthToDate : 0;
@@ -118,11 +165,18 @@ function GlobalCost() {
 
   return (
     <>
+      {!isLoading && cost && (
+        <div className="flex items-center justify-end gap-2">
+          {cost.dataSource === "live" && (
+            <ForceRefreshButton isRefreshing={isRefreshing} onRefresh={forceRefresh} />
+          )}
+          <DataSourceBadge dataSource={cost.dataSource} dataAsOf={cost.dataAsOf} />
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Tile
           title="Actual cost (MTD)"
           value={isLoading ? null : cost ? fmt(cost.monthToDate, cost.currency) : "$0.00"}
-          badge={!isLoading && cost ? <DataSourceBadge dataSource={cost.dataSource} dataAsOf={cost.dataAsOf} /> : undefined}
         />
         <Tile title="Forecasted cost" value={isLoading ? null : cost ? fmt(cost.forecast, cost.currency) : "$0.00"} />
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
@@ -388,9 +442,11 @@ function GlobalCost() {
 
 function AppCost() {
   const { scope } = useScope();
-  const { data, isLoading } = useGetCost(scope, {
-    query: { queryKey: getGetCostQueryKey(scope) },
+  const queryKey = getGetCostQueryKey(scope);
+  const { data, isLoading } = useGetCost(scope, undefined, {
+    query: { queryKey },
   });
+  const { isRefreshing, forceRefresh } = useForceRefresh(`/api/apps/${scope}/cost`, queryKey);
   const budgetPercent = data ? (data.monthToDate / data.budget) * 100 : 0;
   const net = data ? data.revenue.total - data.monthToDate : 0;
   const marginPct = data && data.revenue.total > 0 ? (net / data.revenue.total) * 100 : null;
@@ -398,11 +454,18 @@ function AppCost() {
 
   return (
     <>
+      {!isLoading && data && (
+        <div className="flex items-center justify-end gap-2">
+          {data.dataSource === "live" && (
+            <ForceRefreshButton isRefreshing={isRefreshing} onRefresh={forceRefresh} />
+          )}
+          <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Tile
           title="Actual cost (MTD)"
           value={isLoading ? null : data ? fmt(data.monthToDate, data.currency) : "$0.00"}
-          badge={!isLoading && data ? <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} /> : undefined}
         />
         <Tile title="Forecasted cost" value={isLoading ? null : data ? fmt(data.forecast, data.currency) : "$0.00"} />
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">

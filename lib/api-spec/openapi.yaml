@@ -97,6 +97,7 @@ paths:
       tags: [cost]
       parameters:
         - $ref: "#/components/parameters/AppId"
+        - $ref: "#/components/parameters/Refresh"
       responses:
         "200":
           description: OK
@@ -276,6 +277,8 @@ paths:
       operationId: getGlobalCostSummary
       tags: [global, cost]
       summary: Cost summary across all apps
+      parameters:
+        - $ref: "#/components/parameters/Refresh"
       responses:
         "200":
           description: OK

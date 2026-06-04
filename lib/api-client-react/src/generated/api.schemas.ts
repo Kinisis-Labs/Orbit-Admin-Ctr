@@ -66,18 +66,6 @@ export const AppSummaryEnvironment = {
   dev: 'dev',
 } as const;
 
-/**
- * Identity system that authenticates this app's end users.
- */
-export type AppSummaryUserAuth = typeof AppSummaryUserAuth[keyof typeof AppSummaryUserAuth];
-
-
-export const AppSummaryUserAuth = {
-  clerk: 'clerk',
-  entra: 'entra',
-  none: 'none',
-} as const;
-
 export interface AppSummary {
   id: string;
   name: string;
@@ -652,6 +640,13 @@ export type GetNetworkParams = {
 refresh?: RefreshParameter;
 };
 
+export type GetCostParams = {
+/**
+ * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+ */
+refresh?: RefreshParameter;
+};
+
 export type GetTelemetryParams = {
 /**
  * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
@@ -667,6 +662,13 @@ refresh?: RefreshParameter;
 };
 
 export type ListGlobalAlertsParams = {
+/**
+ * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+ */
+refresh?: RefreshParameter;
+};
+
+export type GetGlobalCostSummaryParams = {
 /**
  * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
  */

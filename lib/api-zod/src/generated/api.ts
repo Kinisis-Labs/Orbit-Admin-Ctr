@@ -134,6 +134,10 @@ export const GetCostParams = zod.object({
   "appId": zod.coerce.string()
 })
 
+export const GetCostQueryParams = zod.object({
+  "refresh": zod.coerce.boolean().optional().describe('When true, bypasses the in-process server-side cache and fetches fresh data from Azure.')
+})
+
 export const GetCostResponse = zod.object({
   "currency": zod.string(),
   "monthToDate": zod.number(),
@@ -415,6 +419,10 @@ export const ListGlobalAlertsResponse = zod.array(ListGlobalAlertsResponseItem)
 /**
  * @summary Cost summary across all apps
  */
+export const GetGlobalCostSummaryQueryParams = zod.object({
+  "refresh": zod.coerce.boolean().optional().describe('When true, bypasses the in-process server-side cache and fetches fresh data from Azure.')
+})
+
 export const GetGlobalCostSummaryResponse = zod.object({
   "currency": zod.string(),
   "monthToDate": zod.number(),
