@@ -620,7 +620,6 @@ export interface GlobalCostSummary {
   dataSource: GlobalCostSummaryDataSource;
   /** Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live. */
   dataAsOf?: string;
-  daily: DailyCostPoint[];
   byApp: GlobalCostSummaryByAppItem[];
   /** Cost breakdown by Azure resource type, aggregated across all apps. */
   byResource: CostByService[];

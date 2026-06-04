@@ -11,7 +11,7 @@ import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "wouter";
-import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff, AlertTriangle, Clipboard, Check, X } from "lucide-react";
+import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff, AlertTriangle, Clipboard, Check, X, ChevronDown, ChevronUp, TableIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
@@ -219,6 +219,7 @@ function GlobalCost() {
     query: { queryKey },
   });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh("/api/global/cost-summary", queryKey);
+  const [showDailyTable, setShowDailyTable] = useState(false);
   const budgetPercent = cost ? (cost.monthToDate / cost.budget) * 100 : 0;
   const netClass = cost && cost.revenue.total - cost.monthToDate >= 0 ? "text-emerald-500" : "text-destructive";
   const net = cost ? cost.revenue.total - cost.monthToDate : 0;
@@ -331,8 +332,18 @@ function GlobalCost() {
       </div>
 
       <div className="bg-card border border-border shadow-sm flex flex-col">
-        <div className="p-3 border-b border-border bg-card">
+        <div className="p-3 border-b border-border bg-card flex items-center justify-between">
           <h2 className="text-sm font-semibold">Daily Spend</h2>
+          {!isLoading && cost && cost.daily.length > 0 && (
+            <button
+              onClick={() => setShowDailyTable((v) => !v)}
+              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <TableIcon className="h-3.5 w-3.5" />
+              {showDailyTable ? "Hide table" : "Show table"}
+              {showDailyTable ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
+          )}
         </div>
         <div className="p-4 h-72">
           {isLoading || !cost ? (
@@ -350,6 +361,49 @@ function GlobalCost() {
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No daily data available</div>
           )}
         </div>
+        {showDailyTable && cost && cost.daily.length > 0 && (
+          <div className="border-t border-border overflow-x-auto">
+            <Table className="text-[13px]">
+              <TableHeader className="bg-muted/50 border-b border-border">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-8 font-semibold text-foreground w-[140px]">Date</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground text-right w-[140px]">Spend</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground text-right w-[140px]">vs Last Week</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...cost.daily].reverse().map((day) => {
+                  const pct = day.vsLastWeek;
+                  const pctClass =
+                    pct == null
+                      ? "text-muted-foreground/50"
+                      : pct > 15
+                        ? "text-destructive"
+                        : pct > 0
+                          ? "text-amber-500 dark:text-amber-400"
+                          : "text-emerald-600 dark:text-emerald-400";
+                  const pctLabel =
+                    pct == null
+                      ? "—"
+                      : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
+                  return (
+                    <TableRow key={day.timestamp as string} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                      <TableCell className="py-1 font-medium tabular-nums text-[12px]">
+                        {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(day.timestamp as string))}
+                      </TableCell>
+                      <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">
+                        {fmt(day.value, cost.currency)}
+                      </TableCell>
+                      <TableCell className={`py-1 text-right font-mono text-[12px] tabular-nums font-semibold ${pctClass}`}>
+                        {pctLabel}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       <Panel
