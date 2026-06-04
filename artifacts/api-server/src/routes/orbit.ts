@@ -22,19 +22,11 @@ const router: IRouter = Router();
 type Status = "healthy" | "degraded" | "unhealthy" | "unknown";
 type Severity = "info" | "warning" | "error" | "critical";
 
-// AppRecord derives its shape from the OpenAPI contract (GetAppResponse) so
-// that adding a required field to the spec causes a compile-time error here
-// rather than a runtime surprise.  The intersection adds the Orbit-internal
-// fields that never appear in the API response itself.
-export type AppRecord = ReturnType<typeof GetAppResponse.parse> & {
-  // Which identity system authenticates this app's END USERS. "clerk" =
-  // consumer app whose end users sign in via Clerk (activity ingested from
-  // Clerk webhooks). "entra" = employee-only internal tool (Orbit itself).
-  userAuth: "clerk" | "entra" | "none";
-  // Google Play package name when this app ships an Android build tracked in the
-  // Play Console. Its presence flags the app for the Play subscriptions surface.
-  androidPackage?: string;
-};
+// AppRecord derives its full shape from the OpenAPI contract (GetAppResponse)
+// so that adding a required field to the spec causes a compile-time error here
+// rather than a runtime surprise. userAuth and androidPackage are now part of
+// the AppDetail schema in the spec, so no intersection is needed.
+export type AppRecord = ReturnType<typeof GetAppResponse.parse>;
 
 export const APPS: AppRecord[] = [
   {

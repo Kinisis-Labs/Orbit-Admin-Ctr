@@ -5,9 +5,14 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { AppDetailUserAuth } from './appDetailUserAuth';
 import type { AppSummary } from './appSummary';
 
 export type AppDetail = AppSummary & {
   description?: string;
   owners: string[];
+  /** Identity system that authenticates this app's end users. "clerk" = consumer app with Clerk-authenticated users (activity ingested via webhooks). "entra" = employee-only internal tool authenticated via Entra ID. "none" = no end-user authentication (e.g. public marketing site). */
+  userAuth: AppDetailUserAuth;
+  /** Google Play package name when this app ships a tracked Android build. Presence flags the app for the Play subscriptions surface. */
+  androidPackage?: string;
 };

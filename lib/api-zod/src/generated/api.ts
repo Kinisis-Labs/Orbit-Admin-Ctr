@@ -53,7 +53,9 @@ export const GetAppResponse = zod.object({
   "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).')
 }).and(zod.object({
   "description": zod.string().optional(),
-  "owners": zod.array(zod.string())
+  "owners": zod.array(zod.string()),
+  "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users. \"clerk\" = consumer app with Clerk-authenticated users (activity ingested via webhooks). \"entra\" = employee-only internal tool authenticated via Entra ID. \"none\" = no end-user authentication (e.g. public marketing site).'),
+  "androidPackage": zod.string().optional().describe('Google Play package name when this app ships a tracked Android build. Presence flags the app for the Play subscriptions surface.')
 }))
 
 

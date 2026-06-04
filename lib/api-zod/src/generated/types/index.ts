@@ -12,6 +12,7 @@ export * from './alertStatus';
 export * from './apiByName';
 export * from './apiUsage';
 export * from './appDetail';
+export * from './appDetailUserAuth';
 export * from './appSummary';
 export * from './appSummaryEnvironment';
 export * from './appSummaryTags';
