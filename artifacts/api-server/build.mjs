@@ -61,7 +61,9 @@ async function buildAll() {
       "@grpc/*",
       "@swc/*",
       "@aws-sdk/*",
-      "@azure/*",
+      // @azure/* is intentionally NOT externalized — the Azure SDKs are pure JS
+      // and bundle cleanly with esbuild. The runtime Docker stage copies only
+      // dist/ (no node_modules), so they must be inlined to resolve at startup.
       "@opentelemetry/*",
       "@google-cloud/*",
       "@google/*",

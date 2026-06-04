@@ -11,6 +11,11 @@ import {
   ListGlobalAlertsResponse,
   GetGlobalCostSummaryResponse,
 } from "@workspace/api-zod";
+import { fetchResourcesByResourceGroup } from "../lib/azureResources.js";
+import { fetchMonthToDateCost } from "../lib/azureCost.js";
+import { fetchAppMetrics } from "../lib/azureMonitor.js";
+import { fetchActiveAlerts } from "../lib/azureAlerts.js";
+import { fetchNetworkEndpoints } from "../lib/azureNetwork.js";
 
 const router: IRouter = Router();
 
@@ -214,14 +219,9 @@ router.get("/apps/:appId", (req, res) => {
 });
 
 // --- infrastructure ---
-router.get("/apps/:appId/infrastructure", (req, res) => {
-  const app = findApp(req.params.appId);
-  if (!app) {
-    res.status(404).json({ error: "App not found" });
-    return;
-  }
+function mockInfraResources(app: AppRecord) {
   const rand = seededRand(app.id + "infra");
-  const resources = [
+  return [
     {
       id: `${app.id}-app-plan`,
       name: `plan-${app.id}-prod`,
@@ -268,6 +268,16 @@ router.get("/apps/:appId/infrastructure", (req, res) => {
       memoryPercent: Number((40 + rand() * 40).toFixed(1)),
     },
   ];
+}
+
+router.get("/apps/:appId/infrastructure", async (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  const liveResources = await fetchResourcesByResourceGroup(app);
+  const resources = liveResources ?? mockInfraResources(app);
   const series = [
     makeSeries(app.id, "CPU %", "%", 24, 45, 25),
     makeSeries(app.id, "Memory %", "%", 24, 60, 20),
@@ -278,14 +288,9 @@ router.get("/apps/:appId/infrastructure", (req, res) => {
 });
 
 // --- network ---
-router.get("/apps/:appId/network", (req, res) => {
-  const app = findApp(req.params.appId);
-  if (!app) {
-    res.status(404).json({ error: "App not found" });
-    return;
-  }
+function mockNetworkEndpoints(app: AppRecord) {
   const rand = seededRand(app.id + "net");
-  const endpoints = [
+  return [
     {
       name: "Front Door",
       status: app.status === "unhealthy" ? "degraded" : "healthy",
@@ -315,6 +320,16 @@ router.get("/apps/:appId/network", (req, res) => {
       region: "global",
     },
   ];
+}
+
+router.get("/apps/:appId/network", async (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  const liveEndpoints = await fetchNetworkEndpoints(app);
+  const endpoints = liveEndpoints ?? mockNetworkEndpoints(app);
   const throughput = [
     makeSeries(app.id, "Ingress (Mbps)", "Mbps", 24, 220, 120),
     makeSeries(app.id, "Egress (Mbps)", "Mbps", 24, 180, 100),
@@ -429,21 +444,27 @@ function buildByServiceForApp(
   ];
 }
 
-router.get("/apps/:appId/cost", (req, res) => {
+router.get("/apps/:appId/cost", async (req, res) => {
   const app = findApp(req.params.appId);
   if (!app) {
     res.status(404).json({ error: "App not found" });
     return;
   }
   const apiUsage = apiUsageForApp(app);
-  const mtd = Number((app.monthToDateCost + apiUsage.cost).toFixed(2));
+  const liveCost = await fetchMonthToDateCost(app);
+  const mtd = liveCost
+    ? liveCost.monthToDate
+    : Number((app.monthToDateCost + apiUsage.cost).toFixed(2));
+  const byService = liveCost
+    ? liveCost.byService
+    : buildByServiceForApp(app, apiUsage);
   const data = GetCostResponse.parse({
     currency: "USD",
     monthToDate: mtd,
     forecast: Number((mtd * 1.7).toFixed(2)),
     budget: Number((mtd * 2.0).toFixed(2)),
     daily: makeDaily(app.id, 30, mtd / 18),
-    byService: buildByServiceForApp(app, apiUsage),
+    byService,
     apiUsage,
     revenue: revenueForApp(app.id),
   });
@@ -451,7 +472,7 @@ router.get("/apps/:appId/cost", (req, res) => {
 });
 
 // --- telemetry ---
-router.get("/apps/:appId/telemetry", (req, res) => {
+router.get("/apps/:appId/telemetry", async (req, res) => {
   const app = findApp(req.params.appId);
   if (!app) {
     res.status(404).json({ error: "App not found" });
@@ -459,15 +480,16 @@ router.get("/apps/:appId/telemetry", (req, res) => {
   }
   const rand = seededRand(app.id + "tel");
   const sick = app.status === "unhealthy";
+  const liveMetrics = await fetchAppMetrics(app);
   const data = GetTelemetryResponse.parse({
-    requestsPerMin: Number((400 + rand() * 1200).toFixed(0)),
-    p95LatencyMs: Number(((sick ? 800 : 220) + rand() * 200).toFixed(0)),
-    errorRatePercent: Number(((sick ? 4.2 : 0.3) + rand() * 0.6).toFixed(2)),
-    availabilityPercent: Number((sick ? 97.4 : 99.92).toFixed(2)),
+    requestsPerMin: liveMetrics?.requestsPerMin ?? Number((400 + rand() * 1200).toFixed(0)),
+    p95LatencyMs: liveMetrics?.p95LatencyMs ?? Number(((sick ? 800 : 220) + rand() * 200).toFixed(0)),
+    errorRatePercent: liveMetrics?.errorRatePercent ?? Number(((sick ? 4.2 : 0.3) + rand() * 0.6).toFixed(2)),
+    availabilityPercent: liveMetrics?.availabilityPercent ?? Number((sick ? 97.4 : 99.92).toFixed(2)),
     series: [
-      makeSeries(app.id, "Requests / min", "rpm", 24, 800, 300),
-      makeSeries(app.id, "P95 latency (ms)", "ms", 24, sick ? 700 : 220, 120),
-      makeSeries(app.id, "Error rate (%)", "%", 24, sick ? 4 : 0.4, 1.2),
+      makeSeries(app.id, "Requests / min", "rpm", 24, liveMetrics?.requestsPerMin ?? 800, 300),
+      makeSeries(app.id, "P95 latency (ms)", "ms", 24, liveMetrics?.p95LatencyMs ?? (sick ? 700 : 220), 120),
+      makeSeries(app.id, "Error rate (%)", "%", 24, liveMetrics?.errorRatePercent ?? (sick ? 4 : 0.4), 1.2),
     ],
     topErrors: [
       {
@@ -570,13 +592,15 @@ function buildAlertsForApp(app: AppRecord) {
   return out;
 }
 
-router.get("/apps/:appId/alerts", (req, res) => {
+router.get("/apps/:appId/alerts", async (req, res) => {
   const app = findApp(req.params.appId);
   if (!app) {
     res.status(404).json({ error: "App not found" });
     return;
   }
-  const data = GetAppAlertsResponse.parse(buildAlertsForApp(app));
+  const liveAlerts = await fetchActiveAlerts(app);
+  const alerts = liveAlerts ?? buildAlertsForApp(app);
+  const data = GetAppAlertsResponse.parse(alerts);
   res.json(data);
 });
 

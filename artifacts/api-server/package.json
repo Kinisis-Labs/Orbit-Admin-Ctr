@@ -10,6 +10,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@azure/arm-costmanagement": "1.0.0-beta.1",
+    "@azure/arm-monitor": "^7.0.0",
+    "@azure/arm-resourcegraph": "^4.2.1",
+    "@azure/identity": "^4.13.1",
+    "@azure/monitor-query": "^1.3.3",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "connect-pg-simple": "^10.0.0",
