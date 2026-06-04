@@ -59,8 +59,8 @@ jobs:
             echo "Runner IP: $RUNNER_IP"
             az postgres flexible-server firewall-rule create \
               --resource-group rg-orbit-prod-eus2 \
-              --name pg-orbit-prod \
-              --rule-name github-actions-ci \
+              --server-name pg-orbit-prod \
+              --name github-actions-ci \
               --start-ip-address "$RUNNER_IP" \
               --end-ip-address "$RUNNER_IP"
 
@@ -77,8 +77,8 @@ jobs:
           inlineScript: |
             az postgres flexible-server firewall-rule delete \
               --resource-group rg-orbit-prod-eus2 \
-              --name pg-orbit-prod \
-              --rule-name github-actions-ci \
+              --server-name pg-orbit-prod \
+              --name github-actions-ci \
               --yes || true
 
       - name: Update Container App image and env vars
