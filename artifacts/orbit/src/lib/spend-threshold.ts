@@ -1,3 +1,5 @@
+import { useState, useEffect, useCallback } from "react";
+
 export const DEFAULT_SPEND_THRESHOLD = 15;
 const STORAGE_KEY = "orbit-spend-thresholds";
 
@@ -26,4 +28,22 @@ export function removeSpendThreshold(appId: string): void {
 
 export function clearSpendThresholds(): void {
   localStorage.removeItem(STORAGE_KEY);
+}
+
+export function useSpendThreshold(appId: string): number {
+  const [threshold, setThreshold] = useState(() => getSpendThreshold(appId));
+  const refresh = useCallback(() => setThreshold(getSpendThreshold(appId)), [appId]);
+  useEffect(() => {
+    refresh();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) refresh();
+    };
+    window.addEventListener("orbit-spend-threshold-changed", refresh);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("orbit-spend-threshold-changed", refresh);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [refresh]);
+  return threshold;
 }

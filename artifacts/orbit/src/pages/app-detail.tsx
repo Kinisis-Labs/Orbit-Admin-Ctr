@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
-import { getSpendThreshold, DEFAULT_SPEND_THRESHOLD } from "@/lib/spend-threshold";
+import { useSpendThreshold, DEFAULT_SPEND_THRESHOLD } from "@/lib/spend-threshold";
 import { useParams } from "wouter";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
@@ -616,20 +615,7 @@ function CostTab({ appId }: { appId: string }) {
   const queryKey = getGetCostQueryKey(appId);
   const { data, isLoading, isFetching } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey } });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/cost`, queryKey);
-  const [threshold, setThreshold] = useState(() => getSpendThreshold(appId));
-  const refreshThreshold = useCallback(() => setThreshold(getSpendThreshold(appId)), [appId]);
-  useEffect(() => {
-    refreshThreshold();
-    const onStorageEvent = (e: StorageEvent) => {
-      if (e.key === "orbit-spend-thresholds") refreshThreshold();
-    };
-    window.addEventListener("orbit-spend-threshold-changed", refreshThreshold);
-    window.addEventListener("storage", onStorageEvent);
-    return () => {
-      window.removeEventListener("orbit-spend-threshold-changed", refreshThreshold);
-      window.removeEventListener("storage", onStorageEvent);
-    };
-  }, [refreshThreshold]);
+  const threshold = useSpendThreshold(appId);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No cost data available</div>;

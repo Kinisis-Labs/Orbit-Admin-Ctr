@@ -40,6 +40,27 @@ export default function Preferences() {
   }, [apps]);
 
   useEffect(() => {
+    if (!apps) return;
+    const refreshAll = () => {
+      setThresholds((prev) => {
+        const next: Record<string, string> = { ...prev };
+        for (const app of apps) next[app.id] = String(getSpendThreshold(app.id));
+        return next;
+      });
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== "orbit-spend-thresholds") return;
+      refreshAll();
+    };
+    window.addEventListener("orbit-spend-threshold-changed", refreshAll);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("orbit-spend-threshold-changed", refreshAll);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [apps]);
+
+  useEffect(() => {
     const root = document.documentElement;
     if (theme === "dark") root.classList.add("dark"); else root.classList.remove("dark");
     localStorage.setItem("orbit-theme", theme);
