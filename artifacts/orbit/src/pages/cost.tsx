@@ -17,6 +17,9 @@ import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { CostTabs } from "@/components/cost-tabs";
 import { useState } from "react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { format } from "date-fns";
+import { DailySpendTooltip } from "@/components/daily-spend-tooltip";
 
 const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
@@ -217,6 +220,32 @@ function GlobalCost() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-card border border-border shadow-sm flex flex-col">
+        <div className="p-3 border-b border-border bg-card">
+          <h2 className="text-sm font-semibold">Daily Spend</h2>
+        </div>
+        <div className="p-4 h-64">
+          {isLoading ? (
+            <Skeleton className="h-full w-full" />
+          ) : cost?.daily?.length ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={cost.daily} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis dataKey="timestamp" tickFormatter={(v) => format(new Date(v), "MMM d")} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis tickFormatter={(v) => `$${v}`} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip
+                  content={<DailySpendTooltip formatCurrency={(v) => fmt(v, cost.currency)} />}
+                  cursor={{ fill: "hsl(var(--muted))" }}
+                />
+                <Bar dataKey="value" fill="hsl(var(--primary))" radius={0} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No daily data available</div>
           )}
         </div>
       </div>
@@ -604,6 +633,32 @@ function AppCost() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-card border border-border shadow-sm flex flex-col">
+        <div className="p-3 border-b border-border bg-card">
+          <h2 className="text-sm font-semibold">Daily Spend</h2>
+        </div>
+        <div className="p-4 h-64">
+          {isLoading ? (
+            <Skeleton className="h-full w-full" />
+          ) : data?.daily?.length ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.daily} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis dataKey="timestamp" tickFormatter={(v) => format(new Date(v), "MMM d")} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis tickFormatter={(v) => `$${v}`} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip
+                  content={<DailySpendTooltip formatCurrency={(v) => fmt(v, data.currency)} />}
+                  cursor={{ fill: "hsl(var(--muted))" }}
+                />
+                <Bar dataKey="value" fill="hsl(var(--primary))" radius={0} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No daily data available</div>
           )}
         </div>
       </div>

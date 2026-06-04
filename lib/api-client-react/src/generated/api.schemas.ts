@@ -610,6 +610,8 @@ export interface GlobalCostSummary {
   monthToDate: number;
   forecast: number;
   budget: number;
+  /** Day-by-day total spend across all apps for the last 30 days, with vs-last-week comparison. */
+  daily: DailyCostPoint[];
   /** Total month-to-date API calls across all apps */
   apiCalls: number;
   /** Portion of monthToDate attributable to API usage */

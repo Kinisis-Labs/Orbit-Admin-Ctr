@@ -430,6 +430,11 @@ export const GetGlobalCostSummaryResponse = zod.object({
   "monthToDate": zod.number(),
   "forecast": zod.number(),
   "budget": zod.number(),
+  "daily": zod.array(zod.object({
+  "timestamp": zod.coerce.date(),
+  "value": zod.number(),
+  "vsLastWeek": zod.number().nullish().describe('Percentage change vs the same day 7 days ago. Positive = higher spend, negative = lower. Omitted when comparison data is unavailable (first 7 days of the series).')
+})).describe('Day-by-day total spend across all apps for the last 30 days, with vs-last-week comparison.'),
   "apiCalls": zod.number().describe('Total month-to-date API calls across all apps'),
   "apiCost": zod.number().describe('Portion of monthToDate attributable to API usage'),
   "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether cost figures come from live Azure Cost Management or built-in mock values.'),

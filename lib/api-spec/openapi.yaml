@@ -748,12 +748,16 @@ components:
         currency: { type: string }
     GlobalCostSummary:
       type: object
-      required: [currency, monthToDate, forecast, budget, apiCalls, apiCost, byApp, byResource, apiByApp, apiByName, revenue, revenueByApp, dataSource]
+      required: [currency, monthToDate, forecast, budget, apiCalls, apiCost, daily, byApp, byResource, apiByApp, apiByName, revenue, revenueByApp, dataSource]
       properties:
         currency: { type: string }
         monthToDate: { type: number }
         forecast: { type: number }
         budget: { type: number }
+        daily:
+          type: array
+          description: Day-by-day total spend across all apps for the last 30 days, with vs-last-week comparison.
+          items: { $ref: "#/components/schemas/DailyCostPoint" }
         apiCalls: { type: integer, description: Total month-to-date API calls across all apps }
         apiCost: { type: number, description: Portion of monthToDate attributable to API usage }
         dataSource: { type: string, enum: [live, mock], description: "Indicates whether cost figures come from live Azure Cost Management or built-in mock values." }

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CostByService } from './costByService';
+import type { DailyCostPoint } from './dailyCostPoint';
 import type { GlobalCostSummaryApiByAppItem } from './globalCostSummaryApiByAppItem';
 import type { GlobalCostSummaryApiByNameItem } from './globalCostSummaryApiByNameItem';
 import type { GlobalCostSummaryByAppItem } from './globalCostSummaryByAppItem';
@@ -18,6 +19,8 @@ export interface GlobalCostSummary {
   monthToDate: number;
   forecast: number;
   budget: number;
+  /** Day-by-day total spend across all apps for the last 30 days, with vs-last-week comparison. */
+  daily: DailyCostPoint[];
   /** Total month-to-date API calls across all apps */
   apiCalls: number;
   /** Portion of monthToDate attributable to API usage */

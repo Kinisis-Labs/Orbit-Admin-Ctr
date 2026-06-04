@@ -792,6 +792,7 @@ router.get("/global/cost-summary", async (req, res) => {
     monthToDate: Number(mtd.toFixed(2)),
     forecast: Number((mtd * 1.65).toFixed(2)),
     budget: Number((mtd * 2.0).toFixed(2)),
+    daily: makeDaily("global", 30, mtd / 30),
     apiCalls,
     apiCost: Number(apiCost.toFixed(2)),
     dataSource: anyLive ? "live" : "mock",
