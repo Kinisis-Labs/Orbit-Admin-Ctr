@@ -1,0 +1,153 @@
+06/04/2026, 18:59:03
+
+Deactivated apps/v1.Deployment k8se-apps/ca-orbit-api-prod--0000043 from 1 to 0
+06/04/2026, 18:56:52
+
+Container 'bootstrap-container-pre-deployment' was terminated with exit code '1' and reason 'ProcessExited'
+06/04/2026, 18:56:51
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:662b827c51a34004aecfd9d1ebc6c90a5b2b7c35'
+06/04/2026, 18:56:51
+
+Successfully pulled image "ghcr.io/kinisis-labs/orbit-api:662b827c51a34004aecfd9d1ebc6c90a5b2b7c35" in 17ms. Image size: 81788928 bytes.
+06/04/2026, 18:56:51
+
+Started container 'bootstrap-container-pre-deployment'
+06/04/2026, 18:56:51
+
+Created container 'bootstrap-container-pre-deployment'
+06/04/2026, 18:56:13
+
+Started container 'bootstrap-container-pre-deployment'
+06/04/2026, 18:56:13
+
+Created container 'bootstrap-container-pre-deployment'
+06/04/2026, 18:56:12
+
+Pulling image 'mcr.microsoft.com/k8se/quickstart:latest'
+06/04/2026, 18:56:12
+
+Successfully pulled image "mcr.microsoft.com/k8se/quickstart:latest" in 3.34s. Image size: 35651584 bytes.
+06/04/2026, 18:55:57
+
+Replica 'ca-orbit-api-prod--0000039-668d9557b4-5dkqm' has been scheduled to run on a node.
+06/04/2026, 18:55:31
+
+Container 'bootstrap-container-pre-deployment' was terminated with exit code '1' and reason 'ProcessExited'
+06/04/2026, 18:55:31
+
+Created container 'bootstrap-container-pre-deployment'
+06/04/2026, 18:55:31
+
+Started container 'bootstrap-container-pre-deployment'
+06/04/2026, 18:55:31
+
+Successfully pulled image "ghcr.io/kinisis-labs/orbit-api:662b827c51a34004aecfd9d1ebc6c90a5b2b7c35" in 22ms. Image size: 81788928 bytes.
+06/04/2026, 18:55:31
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:662b827c51a34004aecfd9d1ebc6c90a5b2b7c35'
+06/04/2026, 18:54:51
+
+Container 'bootstrap-container-pre-deployment' was terminated with exit code '1' and reason 'ProcessExited'
+06/04/2026, 18:54:50
+
+Started container 'bootstrap-container-pre-deployment'
+06/04/2026, 18:54:50
+
+Created container 'bootstrap-container-pre-deployment'
+06/04/2026, 18:54:50
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:662b827c51a34004aecfd9d1ebc6c90a5b2b7c35'
+06/04/2026, 18:54:50
+
+Successfully pulled image "ghcr.io/kinisis-labs/orbit-api:662b827c51a34004aecfd9d1ebc6c90a5b2b7c35" in 16ms. Image size: 81788928 bytes.
+06/04/2026, 18:54:33
+
+ScaledObject was removed from KEDA watch and would not be auto-scaled.
+06/04/2026, 18:54:33
+
+KEDA is stopping the watch for revision 'ca-orbit-api-prod--0000042' to monitor scale operations for this revision
+06/04/2026, 18:54:30
+
+Started container 'bootstrap-container-pre-deployment'
+06/04/2026, 18:54:30
+
+Container 'bootstrap-container-pre-deployment' was terminated with exit code '1' and reason 'ProcessExited'
+06/04/2026, 18:54:30
+
+Created container 'bootstrap-container-pre-deployment'
+06/04/2026, 18:54:30
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:662b827c51a34004aecfd9d1ebc6c90a5b2b7c35'
+06/04/2026, 18:54:30
+
+Successfully pulled image "ghcr.io/kinisis-labs/orbit-api:662b827c51a34004aecfd9d1ebc6c90a5b2b7c35" in 19ms. Image size: 81788928 bytes.
+06/04/2026, 18:54:20
+
+Container 'bootstrap-container-pre-deployment' was terminated with exit code '1' and reason 'ProcessExited'
+06/04/2026, 18:54:19
+
+Created container 'bootstrap-container-pre-deployment'
+06/04/2026, 18:54:19
+
+Started container 'bootstrap-container-pre-deployment'
+06/04/2026, 18:54:18
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:662b827c51a34004aecfd9d1ebc6c90a5b2b7c35'
+06/04/2026, 18:54:18
+
+Successfully pulled image "ghcr.io/kinisis-labs/orbit-api:662b827c51a34004aecfd9d1ebc6c90a5b2b7c35" in 3.79s. Image size: 81788928 bytes.
+06/04/2026, 18:54:03
+
+Target resource doesn't exist
+06/04/2026, 18:54:03
+
+Target resource doesn't exist
+06/04/2026, 18:54:03
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-api-prod
+06/04/2026, 18:54:03
+
+Creating a new revision: ca-orbit-api-prod--0000043
+06/04/2026, 18:54:03
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-api-prod
+06/04/2026, 18:54:03
+
+Replica 'ca-orbit-api-prod--0000043-bdff85f56-s79dm' has been scheduled to run on a node.
+06/04/2026, 18:54:03
+
+Target resource doesn't exist
+06/04/2026, 18:54:03
+
+Successfully provisioned revision 'ca-orbit-api-prod--0000043'
+06/04/2026, 18:54:03
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-api-prod
+06/04/2026, 18:54:03
+
+Target resource doesn't exist
+06/04/2026, 18:54:03
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-api-prod
+06/04/2026, 18:54:03
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-api-prod
+06/04/2026, 18:54:03
+
+Scaler external-push is built
+06/04/2026, 18:54:03
+
+KEDA is starting a watch for revision 'ca-orbit-api-prod--0000043' to monitor scale operations for this revision
+06/04/2026, 18:54:03
+
+Scaler external-push is built
+06/04/2026, 18:54:03
+
+Target resource doesn't exist
+06/04/2026, 18:54:03
+
+Target resource doesn't exist
+06/04/2026, 18:52:17
+
+Deactivated apps/v1.Deployment k8se-apps/ca-orbit-api-prod--0000039 from 1 to 0
