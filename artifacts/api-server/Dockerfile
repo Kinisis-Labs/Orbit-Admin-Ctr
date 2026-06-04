@@ -19,9 +19,8 @@ RUN pnpm --filter @workspace/api-server run build
 # ---- Runtime stage --------------------------------------------------------
 FROM node:24-slim AS runtime
 ENV NODE_ENV=production
-# Container Apps ingress targetPort should match this (8080).
-ENV PORT=8080
+ENV PORT=80
 WORKDIR /app
 COPY --from=build /repo/artifacts/api-server/dist ./dist
-EXPOSE 8080
+EXPOSE 80
 CMD ["node", "--enable-source-maps", "dist/index.mjs"]

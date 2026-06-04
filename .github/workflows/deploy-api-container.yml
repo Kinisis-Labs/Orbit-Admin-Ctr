@@ -56,7 +56,7 @@ jobs:
               --image "${{ steps.image.outputs.name }}:${{ github.sha }}" \
               --set-env-vars \
                 NODE_ENV=production \
-                PORT=8080 \
+                PORT=80 \
                 DATABASE_SSL=true \
                 SESSION_COOKIE_DOMAIN=.kinisislabs.com \
                 ENTRA_TENANT_ID="${{ secrets.ENTRA_TENANT_ID }}" \
@@ -68,7 +68,7 @@ jobs:
             az containerapp ingress update \
               --name ca-orbit-api-prod \
               --resource-group rg-orbit-prod-eus2 \
-              --target-port 8080
+              --target-port 80
 
       - name: Print Container App FQDN (for Front Door origin config)
         uses: azure/cli@v2
