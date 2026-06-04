@@ -351,14 +351,20 @@ function isLiveMode(mode: string) {
 }
 function InfraTab({ appId }: { appId: string }) {
   const queryKey = getGetInfrastructureQueryKey(appId);
-  const { data, isLoading } = useGetInfrastructure(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { data, isLoading, isFetching } = useGetInfrastructure(appId, undefined, { query: { enabled: !!appId, queryKey } });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/infrastructure`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No infrastructure data available</div>;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <>
+      {isFetching && !isLoading && (
+        <div className="h-0.5 w-full overflow-hidden bg-transparent">
+          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
+        </div>
+      )}
+    <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="lg:col-span-1 bg-card border border-border shadow-sm flex flex-col">
         <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Resources</h2>
@@ -417,20 +423,27 @@ function InfraTab({ appId }: { appId: string }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
 function NetworkTab({ appId }: { appId: string }) {
   const { mode } = useAuth();
   const queryKey = getGetNetworkQueryKey(appId);
-  const { data, isLoading } = useGetNetwork(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { data, isLoading, isFetching } = useGetNetwork(appId, undefined, { query: { enabled: !!appId, queryKey } });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/network`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No network data available</div>;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <>
+      {isFetching && !isLoading && (
+        <div className="h-0.5 w-full overflow-hidden bg-transparent">
+          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
+        </div>
+      )}
+    <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="lg:col-span-1 bg-card border border-border shadow-sm flex flex-col">
         <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Endpoints</h2>
@@ -494,19 +507,26 @@ function NetworkTab({ appId }: { appId: string }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
 function TelemetryTab({ appId }: { appId: string }) {
   const queryKey = getGetTelemetryQueryKey(appId);
-  const { data, isLoading } = useGetTelemetry(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { data, isLoading, isFetching } = useGetTelemetry(appId, undefined, { query: { enabled: !!appId, queryKey } });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/telemetry`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No telemetry data available</div>;
 
   return (
-    <div className="space-y-4">
+    <>
+      {isFetching && !isLoading && (
+        <div className="h-0.5 w-full overflow-hidden bg-transparent">
+          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
+        </div>
+      )}
+    <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground font-medium">Key metrics (last 24 h)</span>
         <div className="flex items-center gap-2">
@@ -585,12 +605,13 @@ function TelemetryTab({ appId }: { appId: string }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
 function CostTab({ appId }: { appId: string }) {
   const queryKey = getGetCostQueryKey(appId);
-  const { data, isLoading } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { data, isLoading, isFetching } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey } });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/cost`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
@@ -601,7 +622,13 @@ function CostTab({ appId }: { appId: string }) {
   };
 
   return (
-    <div className="space-y-4">
+    <>
+      {isFetching && !isLoading && (
+        <div className="h-0.5 w-full overflow-hidden bg-transparent">
+          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
+        </div>
+      )}
+    <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground font-medium">Month-to-date cost breakdown</span>
         <div className="flex items-center gap-2">
@@ -736,11 +763,12 @@ function CostTab({ appId }: { appId: string }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
 function LedgerTab({ appId }: { appId: string }) {
-  const { data, isLoading } = useGetLedger(appId, { query: { enabled: !!appId, queryKey: getGetLedgerQueryKey(appId) } });
+  const { data, isLoading, isFetching } = useGetLedger(appId, { query: { enabled: !!appId, queryKey: getGetLedgerQueryKey(appId) } });
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const stripeSyncEnabled = appId === "grailbabe";
@@ -787,7 +815,13 @@ function LedgerTab({ appId }: { appId: string }) {
         : "text-amber-500";
 
   return (
-    <div className="space-y-4">
+    <>
+      {isFetching && !isLoading && (
+        <div className="h-0.5 w-full overflow-hidden bg-transparent">
+          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
+        </div>
+      )}
+    <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       {/* Summary tiles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
@@ -963,19 +997,26 @@ function LedgerTab({ appId }: { appId: string }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
 function AlertsTab({ appId }: { appId: string }) {
   const { mode } = useAuth();
   const queryKey = getGetAppAlertsQueryKey(appId);
-  const { data: alerts, isLoading } = useGetAppAlerts(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { data: alerts, isLoading, isFetching } = useGetAppAlerts(appId, undefined, { query: { enabled: !!appId, queryKey } });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/alerts`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
 
   return (
-    <div className="bg-card border border-border shadow-sm flex flex-col">
+    <>
+      {isFetching && !isLoading && (
+        <div className="h-0.5 w-full overflow-hidden bg-transparent">
+          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
+        </div>
+      )}
+    <div className={`bg-card border border-border shadow-sm flex flex-col transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="flex items-center justify-between p-2 border-b border-border bg-card">
         <h2 className="text-sm font-semibold px-2">Alert Rules</h2>
         {isLiveMode(mode) && (
@@ -1025,5 +1066,6 @@ function AlertsTab({ appId }: { appId: string }) {
         </Table>
       </div>
     </div>
+    </>
   );
 }
