@@ -6,7 +6,9 @@ import {
   getGetAppQueryKey,
   getGetGlobalHealthQueryKey,
   getListGlobalAlertsQueryKey,
+  getListAppsQueryKey,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -64,7 +66,36 @@ export default function Home() {
     }
   }, [isGlobal]);
 
-  const { data: apps, isLoading: appsLoading } = useListApps();
+  const queryClient = useQueryClient();
+
+  const { data: apps, isLoading: appsLoading, isFetching: appsFetching } = useListApps();
+
+  function handleRefresh() {
+    queryClient.invalidateQueries({ queryKey: getListAppsQueryKey() });
+  }
+
+  function handleExport() {
+    if (!filteredApps) return;
+    const headers = ["Name", "Status", "Identity", "Environment", "Region", "Active Alerts"];
+    const rows = filteredApps.map((a) => [
+      a.name,
+      a.status,
+      a.userAuth,
+      a.environment,
+      a.region,
+      String(a.activeAlerts ?? 0),
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `app-services-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
   const { data: health, isLoading: healthLoading } = useGetGlobalHealth({
     query: { enabled: isGlobal, queryKey: getGetGlobalHealthQueryKey() },
   });
@@ -185,11 +216,23 @@ export default function Home() {
               )}
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
-                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+                onClick={handleRefresh}
+                disabled={appsFetching}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${appsFetching ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+                onClick={handleExport}
+                disabled={!filteredApps || filteredApps.length === 0}
+              >
                 <Download className="h-3.5 w-3.5 mr-1.5" />
                 Export
               </Button>
