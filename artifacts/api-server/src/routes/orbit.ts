@@ -278,8 +278,8 @@ router.get("/apps/:appId/infrastructure", async (req, res) => {
   const bypassCache = req.query["refresh"] === "true";
   const [liveResources, liveCpuSeries, liveMemSeries] = await Promise.all([
     fetchResourcesByResourceGroup(app, { bypassCache }),
-    fetchAppTimeSeries(app, "cpu_pct", 24),
-    fetchAppTimeSeries(app, "memory_pct", 24),
+    fetchAppTimeSeries(app, "cpu_pct", 24, { bypassCache }),
+    fetchAppTimeSeries(app, "memory_pct", 24, { bypassCache }),
   ]);
   const resources = liveResources ?? mockInfraResources(app);
   const series = [
@@ -500,9 +500,9 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
   const [liveMetrics, liveRpmSeries, liveLatenSeries, liveErrSeries] =
     await Promise.all([
       fetchAppMetrics(app, { bypassCache }),
-      fetchAppTimeSeries(app, "requests_per_min", 24),
-      fetchAppTimeSeries(app, "p95_latency_ms", 24),
-      fetchAppTimeSeries(app, "error_rate_pct", 24),
+      fetchAppTimeSeries(app, "requests_per_min", 24, { bypassCache }),
+      fetchAppTimeSeries(app, "p95_latency_ms", 24, { bypassCache }),
+      fetchAppTimeSeries(app, "error_rate_pct", 24, { bypassCache }),
     ]);
 
 

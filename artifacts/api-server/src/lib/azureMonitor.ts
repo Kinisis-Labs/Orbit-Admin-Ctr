@@ -124,10 +124,15 @@ const _appInsightsIdCache = new Map<string, string | null>();
 /**
  * Resolve the Application Insights component resource ID for the app's RG.
  * Returns null if none found. Result is cached in-process.
+ * Pass `bypassCache: true` to force a fresh Resource Graph lookup.
  */
 async function resolveAppInsightsResourceId(
   app: AppRecord,
+  { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<string | null> {
+  if (bypassCache) {
+    _appInsightsIdCache.delete(app.id);
+  }
   if (_appInsightsIdCache.has(app.id)) {
     return _appInsightsIdCache.get(app.id) ?? null;
   }
@@ -236,9 +241,10 @@ export async function fetchAppTimeSeries(
   app: AppRecord,
   metricName: string,
   hours: number,
+  { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<TimeSeriesPoint[] | null> {
   if (!isMonitorConfigured()) return null;
-  const resourceId = await resolveAppInsightsResourceId(app);
+  const resourceId = await resolveAppInsightsResourceId(app, { bypassCache });
   if (!resourceId) return null;
   return fetchMetricTimeSeries(resourceId, metricName, hours);
 }
