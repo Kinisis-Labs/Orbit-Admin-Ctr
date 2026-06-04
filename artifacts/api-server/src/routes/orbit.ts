@@ -634,16 +634,30 @@ router.get("/global/alerts", (_req, res) => {
   res.json(data);
 });
 
-router.get("/global/cost-summary", (_req, res) => {
+router.get("/global/cost-summary", async (_req, res) => {
   const apiByApp = new Map(APPS.map((a) => [a.id, apiUsageForApp(a)] as const));
+
+  // Fetch live Azure cost for every app in parallel; falls back to null (mock) when unconfigured.
+  const liveCostResults = await Promise.all(APPS.map((a) => fetchMonthToDateCost(a)));
+  const liveCostByApp = new Map(APPS.map((a, i) => [a.id, liveCostResults[i]] as const));
+
   const apiCost = APPS.reduce((s, a) => s + (apiByApp.get(a.id)?.cost ?? 0), 0);
   const apiCalls = APPS.reduce((s, a) => s + (apiByApp.get(a.id)?.totalCalls ?? 0), 0);
-  const mtd = APPS.reduce((s, a) => s + a.monthToDateCost, 0) + apiCost;
+
+  // Per-app infra cost: prefer real Azure data, fall back to mock monthToDateCost.
+  const infraCostByApp = new Map(
+    APPS.map((a) => {
+      const live = liveCostByApp.get(a.id);
+      return [a.id, live ? live.monthToDate : a.monthToDateCost] as const;
+    }),
+  );
+
+  const mtd = APPS.reduce((s, a) => s + infraCostByApp.get(a.id)!, 0) + apiCost;
 
   const revenueByApp = APPS.map((a) => {
     const r = REVENUE_BY_APP[a.id] ?? { stripe: 0, appStore: 0, playStore: 0 };
     const total = Number((r.stripe + r.appStore + r.playStore).toFixed(2));
-    const cost = Number((a.monthToDateCost + (apiByApp.get(a.id)?.cost ?? 0)).toFixed(2));
+    const cost = Number((infraCostByApp.get(a.id)! + (apiByApp.get(a.id)?.cost ?? 0)).toFixed(2));
     const net = Number((total - cost).toFixed(2));
     return {
       appId: a.id,
@@ -672,11 +686,13 @@ router.get("/global/cost-summary", (_req, res) => {
     ],
   };
 
-  // Aggregate byService across all apps, preserving insertion order.
+  // Aggregate byService across all apps. Use live Azure service breakdown when available.
   const byResourceMap = new Map<string, number>();
   for (const a of APPS) {
     const usage = apiByApp.get(a.id)!;
-    for (const line of buildByServiceForApp(a, usage)) {
+    const live = liveCostByApp.get(a.id);
+    const lines = live ? live.byService : buildByServiceForApp(a, usage);
+    for (const line of lines) {
       byResourceMap.set(line.service, (byResourceMap.get(line.service) ?? 0) + line.amount);
     }
   }
@@ -694,7 +710,7 @@ router.get("/global/cost-summary", (_req, res) => {
     byApp: APPS.map((a) => ({
       appId: a.id,
       appName: a.name,
-      amount: Number((a.monthToDateCost + (apiByApp.get(a.id)?.cost ?? 0)).toFixed(2)),
+      amount: Number((infraCostByApp.get(a.id)! + (apiByApp.get(a.id)?.cost ?? 0)).toFixed(2)),
     })),
     byResource,
     apiByApp: APPS.map((a) => {
