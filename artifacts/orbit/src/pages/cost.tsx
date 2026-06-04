@@ -758,6 +758,8 @@ function AppCost() {
               formatCurrency={(v) => fmt(v, data.currency)}
               showAnomalies
               highlightPeak
+              colorByTrend
+              showLegend
             />
           ) : (
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No daily data available</div>
