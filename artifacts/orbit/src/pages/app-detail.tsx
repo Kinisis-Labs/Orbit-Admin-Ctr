@@ -22,10 +22,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { 
-  LineChart, Line, AreaChart, Area, BarChart, Bar, Cell,
+  LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { DailySpendTooltip } from "@/components/daily-spend-tooltip";
+import { DailySpendChart } from "@/components/daily-spend-chart";
 import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone } from "lucide-react";
 
 const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
@@ -612,18 +612,6 @@ function TelemetryTab({ appId }: { appId: string }) {
 }
 
 
-const BAR_COLOR_DEFAULT  = "hsl(var(--primary))";
-const BAR_COLOR_UP_MILD  = "hsl(38 92% 50%)";   // amber — 0–threshold% above last week
-const BAR_COLOR_UP_HIGH  = "hsl(var(--destructive))"; // red  — >threshold% above last week
-const BAR_COLOR_DOWN     = "hsl(160 84% 39%)";  // emerald — below last week
-
-function getBarFill(vsLastWeek: number | null | undefined, threshold: number): string {
-  if (vsLastWeek == null)     return BAR_COLOR_DEFAULT;
-  if (vsLastWeek > threshold) return BAR_COLOR_UP_HIGH;
-  if (vsLastWeek > 0)         return BAR_COLOR_UP_MILD;
-  return BAR_COLOR_DOWN;
-}
-
 function CostTab({ appId }: { appId: string }) {
   const queryKey = getGetCostQueryKey(appId);
   const { data, isLoading, isFetching } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey } });
@@ -707,41 +695,14 @@ function CostTab({ appId }: { appId: string }) {
           <div className="p-3 border-b border-border bg-card">
             <h2 className="text-sm font-semibold">Daily Spend</h2>
           </div>
-          <div className="p-4 h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.daily} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis dataKey="timestamp" tickFormatter={(v) => format(new Date(v), "MMM d")} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis tickFormatter={(v) => `$${v}`} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip
-                  content={<DailySpendTooltip formatCurrency={formatCurrency} />}
-                  cursor={{ fill: 'hsl(var(--muted))' }}
-                />
-                <Bar dataKey="value" radius={0}>
-                  {data.daily.map((entry, idx) => (
-                    <Cell key={idx} fill={getBarFill(entry.vsLastWeek, threshold)} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pb-3 text-[11px] text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_DOWN }} />
-              <span>Below last week</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_UP_MILD }} />
-              <span>Up 0–{threshold}%</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_UP_HIGH }} />
-              <span>Up &gt;{threshold}%</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_DEFAULT }} />
-              <span>No prior data</span>
-            </div>
+          <div className="p-4 h-72">
+            <DailySpendChart
+              daily={data.daily}
+              formatCurrency={formatCurrency}
+              colorByTrend
+              showLegend
+              threshold={threshold}
+            />
           </div>
         </div>
 
