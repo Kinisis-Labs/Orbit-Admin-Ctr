@@ -199,7 +199,9 @@ export async function fetchMetricTimeSeries(
   if (!queryFn) return null;
 
   const cacheKey = `${resourceId}:${metricName}:${hours}`;
-  if (!bypassCache) {
+  if (bypassCache) {
+    _timeSeriesCache.delete(cacheKey);
+  } else {
     const entry = _timeSeriesCache.get(cacheKey);
     if (entry && entry.expiresAt > Date.now()) {
       return entry.result;
@@ -264,6 +266,22 @@ export async function fetchAppTimeSeries(
   { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<TimeSeriesPoint[] | null> {
   if (!isMonitorConfigured()) return null;
+
+  // When bypassing, evict all _timeSeriesCache entries for this app's resource
+  // ID before resolveAppInsightsResourceId clears the ID cache. This ensures
+  // every metric/hours variant is immediately invalidated, not just the one
+  // being refreshed.
+  if (bypassCache) {
+    const cachedResourceId = _appInsightsIdCache.get(app.id);
+    if (cachedResourceId) {
+      for (const key of _timeSeriesCache.keys()) {
+        if (key.startsWith(`${cachedResourceId}:`)) {
+          _timeSeriesCache.delete(key);
+        }
+      }
+    }
+  }
+
   const resourceId = await resolveAppInsightsResourceId(app, { bypassCache });
   if (!resourceId) return null;
   return fetchMetricTimeSeries(resourceId, metricName, hours, { bypassCache });
