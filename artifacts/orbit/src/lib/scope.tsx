@@ -89,14 +89,15 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
           data-testid="scope-select"
           className="h-8 w-[260px] rounded-sm border-border bg-card text-[13px]"
         >
-          <SelectValue placeholder="Select scope">
-            {selectedApp ? (
-              <span className="flex items-center gap-1.5 min-w-0 overflow-hidden">
-                <span className="truncate">{selectedApp.name}</span>
-                <span className="shrink-0 text-muted-foreground">· {selectedApp.environment}</span>
-              </span>
-            ) : undefined}
-          </SelectValue>
+          {selectedApp ? (
+            <span className="flex items-center gap-2 min-w-0">
+              <span className="truncate">{selectedApp.name}</span>
+              <span className="shrink-0 text-[11px] text-muted-foreground">{selectedApp.environment}</span>
+              <AuthBadge userAuth={selectedApp.userAuth} />
+            </span>
+          ) : (
+            <SelectValue placeholder="Select scope" />
+          )}
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={GLOBAL_SCOPE}>Global — All Applications</SelectItem>
