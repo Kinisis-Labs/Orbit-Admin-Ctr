@@ -11,7 +11,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { Link } from "wouter";
-import { Filter, Search } from "lucide-react";
+import { Filter, Search, Download, Clipboard, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScopeSelect } from "@/lib/scope";
@@ -68,6 +68,74 @@ export default function Alerts() {
       a.appName.toLowerCase().includes(filter.toLowerCase()),
   );
 
+  const [copied, setCopied] = useState(false);
+
+  function buildCsv() {
+    if (!filteredAlerts) return null;
+    const headers = isGlobal
+      ? ["Fired At", "Severity", "Target Resource", "Alert Rule / Title", "Signal Type", "State"]
+      : ["Fired At", "Severity", "Alert Rule / Title", "Signal Type", "State"];
+    const rowData = filteredAlerts.map((a) => {
+      const base = [
+        format(new Date(a.firedAt), "MM/dd/yyyy HH:mm"),
+        a.severity,
+        a.title,
+        a.source,
+        a.status,
+      ];
+      return isGlobal ? [base[0], base[1], a.appName, base[2], base[3], base[4]] : base;
+    });
+    return [headers, ...rowData]
+      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+  }
+
+  function handleExport() {
+    const csv = buildCsv();
+    if (!csv) return;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `alerts-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function fallbackCopy(text: string) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      document.execCommand("copy");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard unavailable — silently skip
+    } finally {
+      document.body.removeChild(ta);
+    }
+  }
+
+  function handleCopy() {
+    const csv = buildCsv();
+    if (!csv) return;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(csv).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }).catch(() => {
+        fallbackCopy(csv);
+      });
+    } else {
+      fallbackCopy(csv);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4 flex-wrap">
@@ -103,14 +171,45 @@ export default function Alerts() {
             </span>
           </div>
 
-          <div className="relative w-full sm:w-64">
-            <Search className="h-3.5 w-3.5 absolute left-2 top-1.5 text-muted-foreground" />
-            <Input
-              placeholder="Search by name..."
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="h-7 pl-7 text-xs rounded-sm focus-visible:ring-1 focus-visible:ring-primary border-muted-foreground/30"
-            />
+          <div className="flex items-center gap-1 flex-wrap justify-end">
+            <div className="relative w-full sm:w-64">
+              <Search className="h-3.5 w-3.5 absolute left-2 top-1.5 text-muted-foreground" />
+              <Input
+                placeholder="Search by name..."
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="h-7 pl-7 text-xs rounded-sm focus-visible:ring-1 focus-visible:ring-primary border-muted-foreground/30"
+              />
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+              onClick={handleExport}
+              disabled={!filteredAlerts || filteredAlerts.length === 0}
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Export
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+              onClick={handleCopy}
+              disabled={!filteredAlerts || filteredAlerts.length === 0}
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
+                  <span className="text-green-500">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Clipboard className="h-3.5 w-3.5 mr-1.5" />
+                  Copy
+                </>
+              )}
+            </Button>
           </div>
         </div>
 
