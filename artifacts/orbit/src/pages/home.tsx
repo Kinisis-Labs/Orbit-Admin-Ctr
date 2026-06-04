@@ -10,7 +10,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Download } from "lucide-react";
+import { RefreshCw, Download, ChevronRight } from "lucide-react";
 import { Link, useSearch, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -100,13 +100,13 @@ export default function Home() {
 
       {isGlobal ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <Tile title="Total Applications" value={healthLoading ? null : health?.totalApps ?? 0} sub="Active resources" />
+          <Tile title="Total Applications" value={healthLoading ? null : health?.totalApps ?? 0} sub="Active resources" href="/health" />
           <Tile
             title="Global Health"
             value={healthLoading ? null : health?.healthy ?? 0}
             sub={`${health?.degraded ?? 0} degraded, ${health?.unhealthy ?? 0} unhealthy`}
           />
-          <Tile title="Active Alerts" value={alertsLoading ? null : alerts?.length ?? 0} sub="Requiring attention" />
+          <Tile title="Active Alerts" value={alertsLoading ? null : alerts?.length ?? 0} sub="Requiring attention" href="/alerts" />
           <Tile
             title="Active Regions"
             value={appsLoading ? null : activeRegions}
@@ -291,16 +291,33 @@ export default function Home() {
   );
 }
 
-function Tile({ title, value, sub }: { title: string; value: React.ReactNode; sub: string }) {
-  return (
-    <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-      <div className="text-[12px] text-muted-foreground font-medium mb-1 truncate">{title}</div>
+function Tile({ title, value, sub, href }: { title: string; value: React.ReactNode; sub: string; href?: string }) {
+  const inner = (
+    <>
+      <div className="flex items-center justify-between gap-1 mb-1">
+        <div className="text-[12px] text-muted-foreground font-medium truncate">{title}</div>
+        {href && <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />}
+      </div>
       {value === null ? (
         <Skeleton className="h-7 w-20 mb-1" />
       ) : (
         <div className="text-xl font-semibold text-foreground mb-1 tabular-nums">{value}</div>
       )}
       <div className="text-[11px] text-muted-foreground truncate">{sub}</div>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between hover:bg-muted/40 hover:border-border/80 transition-colors cursor-pointer">
+        {inner}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+      {inner}
     </div>
   );
 }
