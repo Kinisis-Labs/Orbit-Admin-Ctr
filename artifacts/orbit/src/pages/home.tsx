@@ -11,25 +11,56 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RefreshCw, Download } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useSearch, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { AuthBadge } from "@/components/auth-badge";
 
 type UserAuthFilter = "all" | "clerk" | "entra" | "none";
 type EnvFilter = "all" | "prod" | "staging" | "dev";
 
+const AUTH_VALUES: UserAuthFilter[] = ["all", "clerk", "entra", "none"];
+const ENV_VALUES: EnvFilter[] = ["all", "prod", "staging", "dev"];
+
+function parseAuthFilter(value: string | null): UserAuthFilter {
+  return AUTH_VALUES.includes(value as UserAuthFilter) ? (value as UserAuthFilter) : "all";
+}
+function parseEnvFilter(value: string | null): EnvFilter {
+  return ENV_VALUES.includes(value as EnvFilter) ? (value as EnvFilter) : "all";
+}
+
 export default function Home() {
   const { scope, setScope, isGlobal } = useScope();
-  const [authFilter, setAuthFilter] = useState<UserAuthFilter>("all");
-  const [envFilter, setEnvFilter] = useState<EnvFilter>("all");
+  const search = useSearch();
+  const [, navigate] = useLocation();
+
+  const params = new URLSearchParams(search);
+  const authFilter = parseAuthFilter(params.get("auth"));
+  const envFilter = parseEnvFilter(params.get("env"));
+
+  function setAuthFilter(value: UserAuthFilter) {
+    const next = new URLSearchParams(search);
+    if (value === "all") next.delete("auth"); else next.set("auth", value);
+    const qs = next.toString();
+    navigate(qs ? `/?${qs}` : "/", { replace: true });
+  }
+
+  function setEnvFilter(value: EnvFilter) {
+    const next = new URLSearchParams(search);
+    if (value === "all") next.delete("env"); else next.set("env", value);
+    const qs = next.toString();
+    navigate(qs ? `/?${qs}` : "/", { replace: true });
+  }
 
   useEffect(() => {
     if (!isGlobal) {
-      setAuthFilter("all");
-      setEnvFilter("all");
+      const next = new URLSearchParams(search);
+      next.delete("auth");
+      next.delete("env");
+      const qs = next.toString();
+      navigate(qs ? `/?${qs}` : "/", { replace: true });
     }
   }, [isGlobal]);
 
