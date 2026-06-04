@@ -45,7 +45,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Update Container App image
+      - name: Update Container App image and env vars
         uses: azure/cli@v2
         with:
           azcliversion: latest
@@ -53,7 +53,18 @@ jobs:
             az containerapp update \
               --name ca-orbit-api-prod \
               --resource-group rg-orbit-prod-eus2 \
-              --image "${{ steps.image.outputs.name }}:${{ github.sha }}"
+              --image "${{ steps.image.outputs.name }}:${{ github.sha }}" \
+              --set-env-vars \
+                NODE_ENV=production \
+                PORT=8080 \
+                DATABASE_SSL=true \
+                SESSION_COOKIE_DOMAIN=.kinisislabs.com \
+                ENTRA_TENANT_ID="${{ secrets.ENTRA_TENANT_ID }}" \
+                ENTRA_CLIENT_ID="${{ secrets.ENTRA_CLIENT_ID }}" \
+                ENTRA_CLIENT_SECRET="${{ secrets.ENTRA_CLIENT_SECRET }}" \
+                ENTRA_REDIRECT_URI=https://orbit.kinisislabs.com/api/auth/callback \
+                ENTRA_AUTHORIZED_GROUP_ID="${{ secrets.ENTRA_AUTHORIZED_GROUP_ID }}" \
+                ENTRA_COST_READER_GROUP_ID="${{ secrets.ENTRA_COST_READER_GROUP_ID }}"
 
       - name: Print Container App FQDN (for Front Door origin config)
         uses: azure/cli@v2
