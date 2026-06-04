@@ -9,6 +9,7 @@ import {
   useGetTelemetry, getGetTelemetryQueryKey, 
   useGetAppAlerts, getGetAppAlertsQueryKey,
   useSyncStripeSales,
+  AppDetailUserAuth,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,7 +21,7 @@ import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff } from "lucide-react";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, COST_READER_GROUP } from "@/lib/auth";
 import { AccessDenied } from "@/components/access-denied";
@@ -126,6 +127,10 @@ export default function AppDetail() {
                     <div className="text-muted-foreground font-medium">Environment</div>
                     <div className="col-span-2">{app.environment}</div>
                   </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="text-muted-foreground font-medium">User auth</div>
+                    <div className="col-span-2"><UserAuthBadge userAuth={app.userAuth} /></div>
+                  </div>
                 </div>
                 <div className="flex flex-col gap-3">
                   <div className="grid grid-cols-3 gap-2">
@@ -154,6 +159,17 @@ export default function AppDetail() {
                       {app.owners?.join(", ") || <span className="text-muted-foreground italic">Unassigned</span>}
                     </div>
                   </div>
+                  {app.androidPackage && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="text-muted-foreground font-medium">Android package</div>
+                      <div className="col-span-2">
+                        <span className="inline-flex items-center gap-1.5 text-[12px]">
+                          <Smartphone className="h-3.5 w-3.5 text-[#7FBA00] shrink-0" />
+                          <span className="font-mono text-foreground break-all">{app.androidPackage}</span>
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -193,6 +209,35 @@ export default function AppDetail() {
         </div>
       </Tabs>
     </div>
+  );
+}
+
+// ----------------------------------------------------------------------
+// Auth type badge
+// ----------------------------------------------------------------------
+
+function UserAuthBadge({ userAuth }: { userAuth: string }) {
+  if (userAuth === AppDetailUserAuth.clerk) {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400 text-[11px] font-semibold">
+        <Users className="h-3 w-3" />
+        Clerk
+      </span>
+    );
+  }
+  if (userAuth === AppDetailUserAuth.entra) {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[11px] font-semibold">
+        <Building2 className="h-3 w-3" />
+        Entra ID
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[11px] font-semibold">
+      <Globe className="h-3 w-3" />
+      Public
+    </span>
   );
 }
 
