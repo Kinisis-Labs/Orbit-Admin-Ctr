@@ -8,7 +8,7 @@
 import type { ApiUsage } from './apiUsage';
 import type { CostByService } from './costByService';
 import type { CostReportDataSource } from './costReportDataSource';
-import type { MetricPoint } from './metricPoint';
+import type { DailyCostPoint } from './dailyCostPoint';
 import type { Revenue } from './revenue';
 
 export interface CostReport {
@@ -16,7 +16,7 @@ export interface CostReport {
   monthToDate: number;
   forecast: number;
   budget: number;
-  daily: MetricPoint[];
+  daily: DailyCostPoint[];
   byService: CostByService[];
   apiUsage: ApiUsage;
   revenue: Revenue;

@@ -18,6 +18,7 @@ export * from './appTags';
 export * from './costByService';
 export * from './costReport';
 export * from './costReportDataSource';
+export * from './dailyCostPoint';
 export * from './getAppAlertsParams';
 export * from './getCostParams';
 export * from './getGlobalCostSummaryParams';

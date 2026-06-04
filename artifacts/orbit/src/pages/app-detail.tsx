@@ -22,7 +22,8 @@ import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { 
   LineChart, Line, AreaChart, Area, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  type TooltipProps,
 } from "recharts";
 import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone } from "lucide-react";
 
@@ -609,6 +610,46 @@ function TelemetryTab({ appId }: { appId: string }) {
   );
 }
 
+function DailySpendTooltip({
+  active,
+  payload,
+  label,
+  formatCurrency,
+}: TooltipProps<number, string> & { formatCurrency: (v: number) => string }) {
+  if (!active || !payload?.length) return null;
+  const point = payload[0].payload as { value: number; vsLastWeek?: number | null };
+  const vsLastWeek = point.vsLastWeek;
+  const isUp = vsLastWeek != null && vsLastWeek > 0;
+  const isDown = vsLastWeek != null && vsLastWeek < 0;
+  return (
+    <div
+      style={{
+        backgroundColor: "hsl(var(--card))",
+        borderColor: "hsl(var(--border))",
+        borderWidth: 1,
+        borderStyle: "solid",
+        borderRadius: 2,
+        fontSize: 12,
+        padding: "6px 10px",
+      }}
+    >
+      <div className="font-medium text-foreground mb-1">
+        {label ? format(new Date(label as string), "MMM d, yyyy") : ""}
+      </div>
+      <div className="text-foreground tabular-nums">
+        Cost: {formatCurrency(point.value)}
+      </div>
+      {vsLastWeek != null && (
+        <div
+          className={`tabular-nums mt-0.5 ${isUp ? "text-destructive" : isDown ? "text-emerald-500" : "text-muted-foreground"}`}
+        >
+          {isUp ? "↑" : isDown ? "↓" : "—"} {Math.abs(vsLastWeek).toFixed(1)}% vs last week
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CostTab({ appId }: { appId: string }) {
   const queryKey = getGetCostQueryKey(appId);
   const { data, isLoading, isFetching } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey } });
@@ -684,10 +725,8 @@ function CostTab({ appId }: { appId: string }) {
                 <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis dataKey="timestamp" tickFormatter={(v) => format(new Date(v), "MMM d")} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis tickFormatter={(v) => `$${v}`} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '2px', fontSize: '12px' }}
-                  labelFormatter={(v) => format(new Date(v), "MMM d, yyyy")}
-                  formatter={(v: number) => [formatCurrency(v), 'Cost']}
+                <Tooltip
+                  content={<DailySpendTooltip formatCurrency={formatCurrency} />}
                   cursor={{ fill: 'hsl(var(--muted))' }}
                 />
                 <Bar dataKey="value" fill="hsl(var(--primary))" radius={0} />

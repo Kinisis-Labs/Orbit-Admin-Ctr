@@ -137,6 +137,13 @@ export interface MetricPoint {
   value: number;
 }
 
+export interface DailyCostPoint {
+  timestamp: string;
+  value: number;
+  /** Percentage change vs the same day 7 days ago. Positive = higher spend, negative = lower. Omitted when comparison data is unavailable (first 7 days of the series). */
+  vsLastWeek?: number | null;
+}
+
 export interface MetricSeries {
   name: string;
   unit: string;
@@ -251,7 +258,7 @@ export interface CostReport {
   monthToDate: number;
   forecast: number;
   budget: number;
-  daily: MetricPoint[];
+  daily: DailyCostPoint[];
   byService: CostByService[];
   apiUsage: ApiUsage;
   revenue: Revenue;

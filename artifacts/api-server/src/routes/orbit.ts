@@ -148,13 +148,23 @@ function makeSeries(
 function makeDaily(seed: string, days: number, base: number) {
   const rand = seededRand(seed + "daily");
   const now = new Date();
+  // Generate 7 extra prior-week values so every day in the visible window
+  // has a vsLastWeek comparison point.
+  const totalDays = days + 7;
+  const values = Array.from({ length: totalDays }, () =>
+    Number((base * (0.6 + rand() * 0.8)).toFixed(2))
+  );
   return Array.from({ length: days }, (_, i) => {
     const d = new Date(now);
     d.setUTCHours(0, 0, 0, 0);
     d.setUTCDate(d.getUTCDate() - (days - 1 - i));
+    const cur = values[i + 7];
+    const prev = values[i]; // same relative day, 7 indices back
+    const vsLastWeek = prev > 0 ? Number(((cur - prev) / prev * 100).toFixed(1)) : null;
     return {
       timestamp: d.toISOString(),
-      value: Number((base * (0.6 + rand() * 0.8)).toFixed(2)),
+      value: cur,
+      vsLastWeek,
     };
   });
 }

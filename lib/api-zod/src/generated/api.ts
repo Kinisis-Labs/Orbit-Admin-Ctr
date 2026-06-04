@@ -145,7 +145,8 @@ export const GetCostResponse = zod.object({
   "budget": zod.number(),
   "daily": zod.array(zod.object({
   "timestamp": zod.coerce.date(),
-  "value": zod.number()
+  "value": zod.number(),
+  "vsLastWeek": zod.number().nullish().describe('Percentage change vs the same day 7 days ago. Positive = higher spend, negative = lower. Omitted when comparison data is unavailable (first 7 days of the series).')
 })),
   "byService": zod.array(zod.object({
   "service": zod.string(),

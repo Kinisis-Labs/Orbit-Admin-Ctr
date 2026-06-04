@@ -437,6 +437,13 @@ components:
       properties:
         timestamp: { type: string, format: date-time }
         value: { type: number }
+    DailyCostPoint:
+      type: object
+      required: [timestamp, value]
+      properties:
+        timestamp: { type: string, format: date-time }
+        value: { type: number }
+        vsLastWeek: { type: number, nullable: true, description: "Percentage change vs the same day 7 days ago. Positive = higher spend, negative = lower. Omitted when comparison data is unavailable (first 7 days of the series)." }
     MetricSeries:
       type: object
       required: [name, unit, points]
@@ -523,7 +530,7 @@ components:
         budget: { type: number }
         daily:
           type: array
-          items: { $ref: "#/components/schemas/MetricPoint" }
+          items: { $ref: "#/components/schemas/DailyCostPoint" }
         byService:
           type: array
           items: { $ref: "#/components/schemas/CostByService" }
