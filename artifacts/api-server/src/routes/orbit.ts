@@ -734,17 +734,41 @@ router.get("/global/cost-summary", async (req, res) => {
   };
 
   // Aggregate byService across all apps. Use live Azure service breakdown when available.
-  const byResourceMap = new Map<string, number>();
+  // Track amount and weighted trend per service so the global table can show WoW.
+  const byResourceMap = new Map<string, { amount: number; weightedTrendSum: number; trendWeight: number }>();
   for (const a of APPS) {
     const usage = apiByApp.get(a.id)!;
     const live = liveCostByApp.get(a.id);
     const lines = live ? live.byService : buildByServiceForApp(a, usage);
     for (const line of lines) {
-      byResourceMap.set(line.service, (byResourceMap.get(line.service) ?? 0) + line.amount);
+      const existing = byResourceMap.get(line.service) ?? { amount: 0, weightedTrendSum: 0, trendWeight: 0 };
+      let weightedTrendSum = existing.weightedTrendSum;
+      let trendWeight = existing.trendWeight;
+      if (line.trend != null) {
+        const sign = line.trend.startsWith("-") ? -1 : 1;
+        const pct = parseFloat(line.trend.replace(/[^0-9.]/g, "")) * sign;
+        if (!isNaN(pct)) {
+          weightedTrendSum += pct * line.amount;
+          trendWeight += line.amount;
+        }
+      }
+      byResourceMap.set(line.service, {
+        amount: existing.amount + line.amount,
+        weightedTrendSum,
+        trendWeight,
+      });
     }
   }
   const byResource = Array.from(byResourceMap.entries())
-    .map(([service, amount]) => ({ service, amount: Number(amount.toFixed(2)) }))
+    .map(([service, { amount, weightedTrendSum, trendWeight }]) => {
+      const roundedAmount = Number(amount.toFixed(2));
+      let trend: string | undefined;
+      if (trendWeight > 0) {
+        const avg = weightedTrendSum / trendWeight;
+        trend = (avg >= 0 ? "+" : "") + avg.toFixed(1) + "%";
+      }
+      return { service, amount: roundedAmount, ...(trend !== undefined ? { trend } : {}) };
+    })
     .sort((a, b) => b.amount - a.amount);
 
   const anyLive = liveCostResults.some((r) => r !== null);

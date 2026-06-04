@@ -305,26 +305,65 @@ function GlobalCost() {
       </Panel>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Panel title="Cost by Resource" rightHeader={<span className="text-[11px] text-muted-foreground pr-2">Aggregated across all apps</span>}>
+        <Panel
+          title="Cost by Resource"
+          rightHeader={<span className="text-[11px] text-muted-foreground pr-2">Aggregated across all apps</span>}
+          toolbar={
+            <ToolbarBtn icon={Download} onClick={() => {
+              if (!cost?.byResource?.length) return;
+              const headers = ["Resource Type", "Cost (MTD)", "% of Total", "WoW Trend"];
+              const rows = cost.byResource.map((item) => [
+                item.service,
+                item.amount.toFixed(2),
+                cost.monthToDate > 0 ? ((item.amount / cost.monthToDate) * 100).toFixed(1) + "%" : "0.0%",
+                item.trend ?? "N/A",
+              ]);
+              const csv = [headers, ...rows]
+                .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+                .join("\n");
+              const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+              const url = URL.createObjectURL(blob);
+              const anchor = document.createElement("a");
+              anchor.href = url;
+              anchor.download = `cost-by-resource-${new Date().toISOString().slice(0, 10)}.csv`;
+              anchor.click();
+              URL.revokeObjectURL(url);
+            }}>Download CSV</ToolbarBtn>
+          }
+        >
           <Table className="text-[13px]">
             <THead>
               <TableHead className="h-8 font-semibold text-foreground">Resource Type</TableHead>
               <TableHead className="h-8 font-semibold text-foreground text-right w-[130px]">Cost (MTD)</TableHead>
-              <TableHead className="h-8 font-semibold text-foreground w-[160px]"></TableHead>
+              <TableHead className="h-8 font-semibold text-foreground text-right w-[80px]">WoW</TableHead>
+              <TableHead className="h-8 font-semibold text-foreground w-[140px]"></TableHead>
             </THead>
             <TableBody>
               {isLoading ? (
-                <SkeletonRows cols={3} rows={4} />
+                <SkeletonRows cols={4} rows={4} />
               ) : (
-                cost?.byResource?.map((item) => (
-                  <TableRow key={item.service} className="h-8 border-b border-border/50 hover:bg-muted/40">
-                    <TableCell className="py-1 font-medium">{item.service}</TableCell>
-                    <TableCell className="py-1 text-right font-mono text-[12px]">{fmt(item.amount, cost.currency)}</TableCell>
-                    <TableCell className="py-1">
-                      <Progress value={(item.amount / (cost?.monthToDate || 1)) * 100} className="h-1.5 rounded-none bg-muted" />
-                    </TableCell>
-                  </TableRow>
-                ))
+                cost?.byResource?.map((item) => {
+                  const trend = item.trend;
+                  const isPos = trend?.startsWith("+");
+                  const isNeg = trend?.startsWith("-");
+                  const trendClass = isPos
+                    ? "text-destructive"
+                    : isNeg
+                      ? "text-emerald-500"
+                      : "text-muted-foreground";
+                  return (
+                    <TableRow key={item.service} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                      <TableCell className="py-1 font-medium">{item.service}</TableCell>
+                      <TableCell className="py-1 text-right font-mono text-[12px]">{fmt(item.amount, cost.currency)}</TableCell>
+                      <TableCell className={`py-1 text-right font-mono text-[11px] ${trendClass}`}>
+                        {trend ?? <span className="text-muted-foreground/50">—</span>}
+                      </TableCell>
+                      <TableCell className="py-1">
+                        <Progress value={(item.amount / (cost?.monthToDate || 1)) * 100} className="h-1.5 rounded-none bg-muted" />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -730,9 +769,9 @@ function SkeletonRows({ cols, rows }: { cols: number; rows: number }) {
   );
 }
 
-function ToolbarBtn({ icon: Icon, children }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
+function ToolbarBtn({ icon: Icon, children, onClick }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode; onClick?: () => void }) {
   return (
-    <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
+    <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10" onClick={onClick}>
       <Icon className="h-3.5 w-3.5 mr-1.5" />
       {children}
     </Button>
