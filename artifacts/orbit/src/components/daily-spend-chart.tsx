@@ -3,14 +3,14 @@ import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveCo
 import { format } from "date-fns";
 import { DailySpendTooltip } from "@/components/daily-spend-tooltip";
 
-type DailyCostPoint = {
+export type DailyCostPoint = {
   timestamp: string | Date;
   value: number;
   vsLastWeek?: number | null;
   isPeak?: boolean;
 };
 
-type EnrichedPoint = DailyCostPoint & {
+export type EnrichedPoint = DailyCostPoint & {
   anomaly?: {
     isAnomaly: boolean;
     vsAvgMultiple: number;
@@ -41,7 +41,7 @@ const RANGE_OPTIONS: { label: string; days: Range }[] = [
   { label: "30d", days: 30 },
 ];
 
-function computeAnomalies(data: DailyCostPoint[], range: Range, sigmas: number): EnrichedPoint[] {
+export function computeAnomalies(data: DailyCostPoint[], range: Range, sigmas: number): EnrichedPoint[] {
   const values = data.map((d) => d.value);
   if (values.length < 3) return data.map((d) => ({ ...d }));
 

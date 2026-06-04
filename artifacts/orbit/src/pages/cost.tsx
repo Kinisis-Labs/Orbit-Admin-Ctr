@@ -11,13 +11,14 @@ import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "wouter";
-import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff, AlertTriangle, Clipboard, Check } from "lucide-react";
+import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff, AlertTriangle, Clipboard, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { CostTabs } from "@/components/cost-tabs";
-import { useState } from "react";
-import { DailySpendChart } from "@/components/daily-spend-chart";
+import { useMemo, useState } from "react";
+import { DailySpendChart, computeAnomalies, type DailyCostPoint } from "@/components/daily-spend-chart";
+import { format } from "date-fns";
 
 const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
@@ -83,6 +84,107 @@ function DataSourceBadge({
   );
 }
 
+const ANOMALY_SIGMAS = 2;
+const ANOMALY_WINDOW = 30;
+const ANOMALY_RECENT_DAYS = 3;
+
+function isoDate(ts: string | Date): string {
+  return new Date(ts).toISOString().slice(0, 10);
+}
+
+function detectRecentAnomaly(daily: DailyCostPoint[] | undefined | null): {
+  date: Date;
+  dateKey: string;
+  value: number;
+  vsAvgMultiple: number;
+  excess: number;
+  currency?: string;
+} | null {
+  if (!daily || daily.length < 3) return null;
+
+  const window = daily.slice(-ANOMALY_WINDOW);
+  const enriched = computeAnomalies(window, ANOMALY_WINDOW, ANOMALY_SIGMAS);
+
+  const now = new Date();
+  const cutoff = new Date(now);
+  cutoff.setDate(cutoff.getDate() - ANOMALY_RECENT_DAYS);
+  cutoff.setHours(0, 0, 0, 0);
+
+  const recent = enriched
+    .filter((d) => d.anomaly?.isAnomaly && new Date(d.timestamp) >= cutoff)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  if (!recent.length) return null;
+
+  const hit = recent[0];
+  const vsAvgMultiple = hit.anomaly!.vsAvgMultiple;
+  const mean = vsAvgMultiple > 0 ? hit.value / vsAvgMultiple : 0;
+  const excess = hit.value - mean;
+
+  return {
+    date: new Date(hit.timestamp),
+    dateKey: isoDate(hit.timestamp),
+    value: hit.value,
+    vsAvgMultiple,
+    excess,
+  };
+}
+
+const LS_KEY_PREFIX = "orbit-cost-anomaly-dismissed-";
+
+function AnomalyAlertBanner({
+  daily,
+  formatCurrency,
+}: {
+  daily: DailyCostPoint[] | undefined | null;
+  formatCurrency: (v: number) => string;
+}) {
+  const anomaly = useMemo(() => detectRecentAnomaly(daily), [daily]);
+  const [dismissed, setDismissed] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(LS_KEY_PREFIX + (anomaly?.dateKey ?? "")) ?? null;
+    } catch {
+      return null;
+    }
+  });
+
+  if (!anomaly) return null;
+
+  const lsKey = LS_KEY_PREFIX + anomaly.dateKey;
+  if (dismissed === "1") return null;
+
+  function dismiss() {
+    try { localStorage.setItem(lsKey, "1"); } catch { /* ignore */ }
+    setDismissed("1");
+  }
+
+  const dateLabel = format(anomaly.date, "EEE, MMM d");
+  const multipleLabel = `${anomaly.vsAvgMultiple.toFixed(1)}×`;
+
+  return (
+    <div className="flex items-start gap-3 px-3 py-2.5 rounded-sm border border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-300">
+      <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
+      <div className="flex-1 min-w-0 text-[13px] leading-snug">
+        <span className="font-semibold">Cost anomaly detected — </span>
+        <span>
+          {dateLabel} was {multipleLabel} the 30-day average
+          {anomaly.excess > 0 && (
+            <>, an estimated <span className="font-semibold">{formatCurrency(anomaly.excess)}</span> above baseline</>
+          )}
+          . Check the Daily Spend chart below.
+        </span>
+      </div>
+      <button
+        onClick={dismiss}
+        className="shrink-0 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
+        aria-label="Dismiss anomaly alert"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
 export default function Cost() {
   const { scope, isGlobal } = useScope();
   const { data: apps } = useListApps();
@@ -136,6 +238,12 @@ function GlobalCost() {
         <div className="h-0.5 w-full overflow-hidden bg-transparent">
           <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
         </div>
+      )}
+      {!isLoading && cost?.daily && (
+        <AnomalyAlertBanner
+          daily={cost.daily}
+          formatCurrency={(v) => fmt(v, cost.currency)}
+        />
       )}
       <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
@@ -558,6 +666,12 @@ function AppCost() {
         <div className="h-0.5 w-full overflow-hidden bg-transparent">
           <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
         </div>
+      )}
+      {!isLoading && data?.daily && (
+        <AnomalyAlertBanner
+          daily={data.daily}
+          formatCurrency={(v) => fmt(v, data.currency)}
+        />
       )}
       <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">

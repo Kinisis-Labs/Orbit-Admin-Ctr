@@ -164,6 +164,11 @@ function makeDaily(seed: string, days: number, base: number) {
     const pos = 7 + Math.floor(spikeRand() * days); // only in visible window
     values[pos] = Number((base * (2.4 + spikeRand() * 0.6)).toFixed(2));
   }
+  // Always inject one spike 2 days ago so the cost-anomaly alert banner is
+  // reliably visible in the demo / dev environment. Magnitude is seeded per
+  // app but always in the 2.5-3.0× range so it clears the 2σ threshold.
+  const recentSpikeRand = seededRand(seed + "recentspike");
+  values[7 + days - 2] = Number((base * (2.5 + recentSpikeRand() * 0.5)).toFixed(2));
   return Array.from({ length: days }, (_, i) => {
     const d = new Date(now);
     d.setUTCHours(0, 0, 0, 0);
