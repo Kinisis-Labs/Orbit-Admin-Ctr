@@ -12,12 +12,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Download, ChevronRight } from "lucide-react";
+import { RefreshCw, Download, ChevronRight, Clipboard, Check } from "lucide-react";
 import { Link, useSearch, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AuthBadge } from "@/components/auth-badge";
 
 type UserAuthFilter = "all" | "clerk" | "entra" | "none";
@@ -74,8 +74,10 @@ export default function Home() {
     queryClient.invalidateQueries({ queryKey: getListAppsQueryKey() });
   }
 
-  function handleExport() {
-    if (!filteredApps) return;
+  const [copied, setCopied] = useState(false);
+
+  function buildCsv() {
+    if (!filteredApps) return null;
     const headers = ["Name", "Status", "Identity", "Environment", "Region", "Active Alerts"];
     const rows = filteredApps.map((a) => [
       a.name,
@@ -85,9 +87,14 @@ export default function Home() {
       a.region,
       String(a.activeAlerts ?? 0),
     ]);
-    const csv = [headers, ...rows]
+    return [headers, ...rows]
       .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
       .join("\n");
+  }
+
+  function handleExport() {
+    const csv = buildCsv();
+    if (!csv) return;
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -95,6 +102,40 @@ export default function Home() {
     anchor.download = `app-services-${new Date().toISOString().slice(0, 10)}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
+  }
+
+  function handleCopy() {
+    const csv = buildCsv();
+    if (!csv) return;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(csv).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }).catch(() => {
+        fallbackCopy(csv);
+      });
+    } else {
+      fallbackCopy(csv);
+    }
+  }
+
+  function fallbackCopy(text: string) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      document.execCommand("copy");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard unavailable — silently skip
+    } finally {
+      document.body.removeChild(ta);
+    }
   }
   const { data: health, isLoading: healthLoading } = useGetGlobalHealth({
     query: { enabled: isGlobal, queryKey: getGetGlobalHealthQueryKey() },
@@ -235,6 +276,25 @@ export default function Home() {
               >
                 <Download className="h-3.5 w-3.5 mr-1.5" />
                 Export
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+                onClick={handleCopy}
+                disabled={!filteredApps || filteredApps.length === 0}
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
+                    <span className="text-green-500">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Clipboard className="h-3.5 w-3.5 mr-1.5" />
+                    Copy
+                  </>
+                )}
               </Button>
             </div>
           </div>
