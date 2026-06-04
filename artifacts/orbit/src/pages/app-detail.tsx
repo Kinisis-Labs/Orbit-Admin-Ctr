@@ -42,6 +42,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth, COST_READER_GROUP } from "@/lib/auth";
 import { AccessDenied } from "@/components/access-denied";
 import { useToast } from "@/hooks/use-toast";
+import { BAR_COLOR_DEFAULT, BAR_COLOR_UP_MILD, BAR_COLOR_UP_HIGH, BAR_COLOR_DOWN, getBarFill } from "@/lib/bar-trend";
 
 export default function AppDetail() {
   const params = useParams();

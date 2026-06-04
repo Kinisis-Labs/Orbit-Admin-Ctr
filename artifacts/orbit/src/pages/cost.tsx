@@ -227,13 +227,15 @@ function GlobalCost() {
           <h2 className="text-sm font-semibold">Daily Spend</h2>
         </div>
         <div className="p-4 h-72">
-          {isLoading ? (
+          {isLoading || !cost ? (
             <Skeleton className="h-full w-full" />
-          ) : cost?.daily?.length ? (
+          ) : cost.daily.length ? (
             <DailySpendChart
               daily={cost.daily}
               formatCurrency={(v) => fmt(v, cost.currency)}
               highlightPeak
+              colorByTrend
+              showLegend
             />
           ) : (
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No daily data available</div>
