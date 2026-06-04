@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth, COST_READER_GROUP } from "@/lib/auth";
+import { useOverBudgetDays } from "@/hooks/use-over-budget-days";
 
 type Theme = "dark" | "light";
 
@@ -63,6 +64,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [theme]);
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+
+  const { overBudgetCount } = useOverBudgetDays(canSeeCost);
 
   const currentAppId = location.startsWith("/apps/") ? location.split("/")[2] : null;
   const currentApp = apps?.find(a => a.id === currentAppId);
@@ -146,6 +149,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               collapsed={navCollapsed}
               trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
               trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}
+              overBudgetCount={canSeeCost ? overBudgetCount : 0}
             />
             <NavItem
               href="/play-subscriptions"
@@ -227,6 +231,7 @@ function NavItem({
   collapsed,
   trailingIcon,
   trailingTitle,
+  overBudgetCount = 0,
 }: {
   href: string;
   icon: React.ReactNode;
@@ -235,22 +240,41 @@ function NavItem({
   collapsed: boolean;
   trailingIcon?: React.ReactNode;
   trailingTitle?: string;
+  overBudgetCount?: number;
 }) {
+  const hasAlert = overBudgetCount > 0;
   return (
     <Link href={href}>
       <div
-        title={collapsed ? label : trailingTitle}
+        title={collapsed ? (hasAlert ? `${label} — ${overBudgetCount} over-budget ${overBudgetCount === 1 ? "day" : "days"}` : label) : trailingTitle}
         className={`flex items-center gap-3 px-2.5 py-2 rounded-sm cursor-pointer whitespace-nowrap transition-colors
         ${active
           ? "bg-primary/10 text-primary border-l-2 border-primary"
           : "text-foreground hover:bg-muted border-l-2 border-transparent"
         }
       `}>
-        <div className="shrink-0">{icon}</div>
+        <div className="relative shrink-0">
+          {icon}
+          {hasAlert && collapsed && (
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-60" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive" />
+            </span>
+          )}
+        </div>
         {!collapsed && (
           <span className="text-[13px] flex-1 overflow-hidden text-ellipsis">{label}</span>
         )}
-        {!collapsed && trailingIcon && <div className="shrink-0">{trailingIcon}</div>}
+        {!collapsed && hasAlert && (
+          <span
+            className="shrink-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-white text-[10px] font-bold leading-none"
+            title={`${overBudgetCount} over-budget ${overBudgetCount === 1 ? "day" : "days"} in the current window`}
+          >
+            {overBudgetCount > 99 ? "99+" : overBudgetCount}
+          </span>
+        )}
+        {!collapsed && !hasAlert && trailingIcon && <div className="shrink-0">{trailingIcon}</div>}
+        {!collapsed && hasAlert && trailingIcon && <div className="shrink-0">{trailingIcon}</div>}
       </div>
     </Link>
   );

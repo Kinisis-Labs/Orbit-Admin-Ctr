@@ -12,7 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Download, ChevronRight, Clipboard, Check } from "lucide-react";
+import { RefreshCw, Download, ChevronRight, Clipboard, Check, AlertTriangle } from "lucide-react";
 import { Link, useSearch, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -20,6 +20,8 @@ import { useScope } from "@/lib/scope-context";
 import { useEffect } from "react";
 import { AuthBadge } from "@/components/auth-badge";
 import { useCsvExport } from "@/hooks/use-csv-export";
+import { useOverBudgetDays } from "@/hooks/use-over-budget-days";
+import { useAuth, COST_READER_GROUP } from "@/lib/auth";
 
 type UserAuthFilter = "all" | "clerk" | "entra" | "none";
 type EnvFilter = "all" | "prod" | "staging" | "dev";
@@ -38,6 +40,9 @@ export default function Home() {
   const { scope, setScope, isGlobal } = useScope();
   const search = useSearch();
   const [, navigate] = useLocation();
+  const { hasGroup } = useAuth();
+  const canSeeCost = hasGroup(COST_READER_GROUP.id);
+  const { overBudgetCount } = useOverBudgetDays(isGlobal && canSeeCost);
 
   const params = new URLSearchParams(search);
   const authFilter = parseAuthFilter(params.get("auth"));
@@ -123,6 +128,7 @@ export default function Home() {
       </div>
 
       {isGlobal ? (
+        <>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <Tile title="Total Applications" value={healthLoading ? null : health?.totalApps ?? 0} sub="Active resources" href="/health" />
           <Tile
@@ -137,6 +143,24 @@ export default function Home() {
             sub="Geographic deployment footprint"
           />
         </div>
+        {canSeeCost && overBudgetCount > 0 && (
+          <Link href="/cost">
+            <div className="flex items-center gap-3 px-3 py-2.5 rounded-sm border border-destructive/40 bg-destructive/8 text-destructive dark:text-red-400 hover:bg-destructive/12 transition-colors cursor-pointer">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span className="text-[13px] font-medium">
+                Cost alert —{" "}
+                <span className="font-semibold">
+                  {overBudgetCount} {overBudgetCount === 1 ? "day has" : "days have"} exceeded the daily budget
+                </span>{" "}
+                in the current window.
+              </span>
+              <span className="ml-auto text-[12px] font-medium flex items-center gap-1 shrink-0">
+                View Cost <ChevronRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </Link>
+        )}
+        </>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <Tile
