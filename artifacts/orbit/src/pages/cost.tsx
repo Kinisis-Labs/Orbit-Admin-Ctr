@@ -341,6 +341,7 @@ function GlobalCost() {
             <DailySpendChart
               daily={cost.daily}
               formatCurrency={(v) => fmt(v, cost.currency)}
+              showAnomalies
               highlightPeak
               colorByTrend
               showLegend
@@ -755,6 +756,7 @@ function AppCost() {
             <DailySpendChart
               daily={data.daily}
               formatCurrency={(v) => fmt(v, data.currency)}
+              showAnomalies
               highlightPeak
             />
           ) : (
