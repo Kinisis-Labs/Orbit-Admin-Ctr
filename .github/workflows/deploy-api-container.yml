@@ -66,3 +66,24 @@ jobs:
               --name ca-orbit-api-prod \
               --resource-group rg-orbit-prod-eus2 \
               --image "${{ steps.image.outputs.name }}:${{ github.sha }}"
+
+      - name: Print Container App FQDN (for Front Door origin config)
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            FQDN=$(az containerapp show \
+              --name ca-orbit-api-prod \
+              --resource-group rg-orbit-prod-eus2 \
+              --query "properties.configuration.ingress.fqdn" -o tsv)
+            echo ""
+            echo "============================================"
+            echo "Container App FQDN: $FQDN"
+            echo ""
+            echo "Front Door API origin group setup:"
+            echo "  Origin group name : api-origin-group (or similar)"
+            echo "  Origin host name  : $FQDN"
+            echo "  Origin host header: $FQDN"
+            echo "  HTTPS port        : 443"
+            echo "  Route pattern     : /api/*  →  api-origin-group"
+            echo "============================================"
