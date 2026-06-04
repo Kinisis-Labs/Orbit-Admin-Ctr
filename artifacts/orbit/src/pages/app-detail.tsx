@@ -21,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { 
-  LineChart, Line, AreaChart, Area, BarChart, Bar,
+  LineChart, Line, AreaChart, Area, BarChart, Bar, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   type TooltipProps,
 } from "recharts";
@@ -650,6 +650,18 @@ function DailySpendTooltip({
   );
 }
 
+const BAR_COLOR_DEFAULT  = "hsl(var(--primary))";
+const BAR_COLOR_UP_MILD  = "hsl(38 92% 50%)";   // amber — 0–15% above last week
+const BAR_COLOR_UP_HIGH  = "hsl(var(--destructive))"; // red  — >15% above last week
+const BAR_COLOR_DOWN     = "hsl(160 84% 39%)";  // emerald — below last week
+
+function getBarFill(vsLastWeek: number | null | undefined): string {
+  if (vsLastWeek == null)  return BAR_COLOR_DEFAULT;
+  if (vsLastWeek > 15)     return BAR_COLOR_UP_HIGH;
+  if (vsLastWeek > 0)      return BAR_COLOR_UP_MILD;
+  return BAR_COLOR_DOWN;
+}
+
 function CostTab({ appId }: { appId: string }) {
   const queryKey = getGetCostQueryKey(appId);
   const { data, isLoading, isFetching } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey } });
@@ -729,9 +741,31 @@ function CostTab({ appId }: { appId: string }) {
                   content={<DailySpendTooltip formatCurrency={formatCurrency} />}
                   cursor={{ fill: 'hsl(var(--muted))' }}
                 />
-                <Bar dataKey="value" fill="hsl(var(--primary))" radius={0} />
+                <Bar dataKey="value" radius={0}>
+                  {data.daily.map((entry, idx) => (
+                    <Cell key={idx} fill={getBarFill(entry.vsLastWeek)} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pb-3 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_DOWN }} />
+              <span>Below last week</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_UP_MILD }} />
+              <span>Up 0–15%</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_UP_HIGH }} />
+              <span>Up &gt;15%</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_DEFAULT }} />
+              <span>No prior data</span>
+            </div>
           </div>
         </div>
 
