@@ -47,6 +47,21 @@ function isGuid(s: string): boolean {
 // Cache: RG name (lowercase) → subscriptionId
 const _rgSubCache = new Map<string, string>();
 
+// Cache: app id → { result, expiresAt }
+const COST_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+type CostCacheEntry = { result: CostResult; expiresAt: number };
+const _costCache = new Map<string, CostCacheEntry>();
+
+/** Evict all cached cost entries (e.g. for a forced refresh). */
+export function clearCostCache(): void {
+  _costCache.clear();
+}
+
+/** Evict the cached cost entry for a single app. */
+export function clearCostCacheForApp(appId: string): void {
+  _costCache.delete(appId);
+}
+
 /**
  * Resolve the Azure subscription ID for an app's resource group.
  *
@@ -101,11 +116,24 @@ async function resolveSubscriptionId(app: AppRecord): Promise<string | null> {
  * Fetch month-to-date cost for the app's resource group from Cost Management.
  * Groups by ServiceName so we can surface a service breakdown.
  * Returns null when not configured or on any error (caller falls back to mock).
+ *
+ * Results are cached in-process for COST_CACHE_TTL_MS (30 min). Pass
+ * `bypassCache: true` to skip the cache and force a fresh API call (the fresh
+ * result is still written back to the cache).
  */
 export async function fetchMonthToDateCost(
   app: AppRecord,
+  { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<CostResult | null> {
   if (!isAzureConfigured()) return null;
+
+  // Return cached result if still fresh.
+  if (!bypassCache) {
+    const entry = _costCache.get(app.id);
+    if (entry && entry.expiresAt > Date.now()) {
+      return entry.result;
+    }
+  }
 
   const subscriptionId = await resolveSubscriptionId(app);
   if (!subscriptionId) return null;
@@ -153,7 +181,9 @@ export async function fetchMonthToDateCost(
 
     byService.sort((a, b) => b.amount - a.amount);
 
-    return { monthToDate: Number(total.toFixed(2)), byService };
+    const costResult: CostResult = { monthToDate: Number(total.toFixed(2)), byService };
+    _costCache.set(app.id, { result: costResult, expiresAt: Date.now() + COST_CACHE_TTL_MS });
+    return costResult;
   } catch {
     return null;
   }

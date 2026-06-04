@@ -450,8 +450,9 @@ router.get("/apps/:appId/cost", async (req, res) => {
     res.status(404).json({ error: "App not found" });
     return;
   }
+  const bypassCache = req.query["refresh"] === "true";
   const apiUsage = apiUsageForApp(app);
-  const liveCost = await fetchMonthToDateCost(app);
+  const liveCost = await fetchMonthToDateCost(app, { bypassCache });
   const mtd = liveCost
     ? liveCost.monthToDate
     : Number((app.monthToDateCost + apiUsage.cost).toFixed(2));
@@ -634,11 +635,12 @@ router.get("/global/alerts", (_req, res) => {
   res.json(data);
 });
 
-router.get("/global/cost-summary", async (_req, res) => {
+router.get("/global/cost-summary", async (req, res) => {
   const apiByApp = new Map(APPS.map((a) => [a.id, apiUsageForApp(a)] as const));
 
+  const bypassCache = req.query["refresh"] === "true";
   // Fetch live Azure cost for every app in parallel; falls back to null (mock) when unconfigured.
-  const liveCostResults = await Promise.all(APPS.map((a) => fetchMonthToDateCost(a)));
+  const liveCostResults = await Promise.all(APPS.map((a) => fetchMonthToDateCost(a, { bypassCache })));
   const liveCostByApp = new Map(APPS.map((a, i) => [a.id, liveCostResults[i]] as const));
 
   const apiCost = APPS.reduce((s, a) => s + (apiByApp.get(a.id)?.cost ?? 0), 0);
