@@ -19,6 +19,7 @@ import { useScope } from "@/lib/scope-context";
 import { useAuth } from "@/lib/auth";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
+import { useCsvExport } from "@/hooks/use-csv-export";
 
 type AlertRow = {
   id: string;
@@ -68,73 +69,24 @@ export default function Alerts() {
       a.appName.toLowerCase().includes(filter.toLowerCase()),
   );
 
-  const [copied, setCopied] = useState(false);
-
-  function buildCsv() {
-    if (!filteredAlerts) return null;
-    const headers = isGlobal
-      ? ["Fired At", "Severity", "Target Resource", "Alert Rule / Title", "Signal Type", "State"]
-      : ["Fired At", "Severity", "Alert Rule / Title", "Signal Type", "State"];
-    const rowData = filteredAlerts.map((a) => {
-      const base = [
-        format(new Date(a.firedAt), "MM/dd/yyyy HH:mm"),
-        a.severity,
-        a.title,
-        a.source,
-        a.status,
-      ];
-      return isGlobal ? [base[0], base[1], a.appName, base[2], base[3], base[4]] : base;
-    });
-    return [headers, ...rowData]
-      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-  }
-
-  function handleExport() {
-    const csv = buildCsv();
-    if (!csv) return;
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `alerts-${new Date().toISOString().slice(0, 10)}.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function fallbackCopy(text: string) {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    try {
-      document.execCommand("copy");
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard unavailable — silently skip
-    } finally {
-      document.body.removeChild(ta);
-    }
-  }
-
-  function handleCopy() {
-    const csv = buildCsv();
-    if (!csv) return;
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(csv).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }).catch(() => {
-        fallbackCopy(csv);
-      });
-    } else {
-      fallbackCopy(csv);
-    }
-  }
+  const csvHeaders = isGlobal
+    ? ["Fired At", "Severity", "Target Resource", "Alert Rule / Title", "Signal Type", "State"]
+    : ["Fired At", "Severity", "Alert Rule / Title", "Signal Type", "State"];
+  const csvRows = filteredAlerts?.map((a) => {
+    const base = [
+      format(new Date(a.firedAt), "MM/dd/yyyy HH:mm"),
+      a.severity,
+      a.title,
+      a.source,
+      a.status,
+    ];
+    return isGlobal ? [base[0], base[1], a.appName, base[2], base[3], base[4]] : base;
+  });
+  const { copied, disabled: csvDisabled, handleExport, handleCopy } = useCsvExport(
+    csvRows ?? null,
+    csvHeaders,
+    "alerts",
+  );
 
   return (
     <div className="space-y-4">
@@ -186,7 +138,7 @@ export default function Alerts() {
               size="sm"
               className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
               onClick={handleExport}
-              disabled={!filteredAlerts || filteredAlerts.length === 0}
+              disabled={csvDisabled}
             >
               <Download className="h-3.5 w-3.5 mr-1.5" />
               Export
@@ -196,7 +148,7 @@ export default function Alerts() {
               size="sm"
               className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
               onClick={handleCopy}
-              disabled={!filteredAlerts || filteredAlerts.length === 0}
+              disabled={csvDisabled}
             >
               {copied ? (
                 <>

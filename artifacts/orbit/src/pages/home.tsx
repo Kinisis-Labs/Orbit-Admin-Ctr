@@ -17,8 +17,9 @@ import { Link, useSearch, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { AuthBadge } from "@/components/auth-badge";
+import { useCsvExport } from "@/hooks/use-csv-export";
 
 type UserAuthFilter = "all" | "clerk" | "entra" | "none";
 type EnvFilter = "all" | "prod" | "staging" | "dev";
@@ -74,69 +75,6 @@ export default function Home() {
     queryClient.invalidateQueries({ queryKey: getListAppsQueryKey() });
   }
 
-  const [copied, setCopied] = useState(false);
-
-  function buildCsv() {
-    if (!filteredApps) return null;
-    const headers = ["Name", "Status", "Identity", "Environment", "Region", "Active Alerts"];
-    const rows = filteredApps.map((a) => [
-      a.name,
-      a.status,
-      a.userAuth,
-      a.environment,
-      a.region,
-      String(a.activeAlerts ?? 0),
-    ]);
-    return [headers, ...rows]
-      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-  }
-
-  function handleExport() {
-    const csv = buildCsv();
-    if (!csv) return;
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `app-services-${new Date().toISOString().slice(0, 10)}.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function handleCopy() {
-    const csv = buildCsv();
-    if (!csv) return;
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(csv).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }).catch(() => {
-        fallbackCopy(csv);
-      });
-    } else {
-      fallbackCopy(csv);
-    }
-  }
-
-  function fallbackCopy(text: string) {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    try {
-      document.execCommand("copy");
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard unavailable — silently skip
-    } finally {
-      document.body.removeChild(ta);
-    }
-  }
   const { data: health, isLoading: healthLoading } = useGetGlobalHealth({
     query: { enabled: isGlobal, queryKey: getGetGlobalHealthQueryKey() },
   });
@@ -155,6 +93,20 @@ export default function Home() {
   );
   const activeRegions = apps ? new Set(apps.map((a) => a.region)).size : 0;
   const selectedApp = apps?.find((a) => a.id === scope);
+
+  const csvRows = filteredApps?.map((a) => [
+    a.name,
+    a.status,
+    a.userAuth,
+    a.environment,
+    a.region,
+    String(a.activeAlerts ?? 0),
+  ]);
+  const { copied, disabled: csvDisabled, handleExport, handleCopy } = useCsvExport(
+    csvRows ?? null,
+    ["Name", "Status", "Identity", "Environment", "Region", "Active Alerts"],
+    "app-services",
+  );
 
   return (
     <div className="space-y-4">
@@ -272,7 +224,7 @@ export default function Home() {
                 size="sm"
                 className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
                 onClick={handleExport}
-                disabled={!filteredApps || filteredApps.length === 0}
+                disabled={csvDisabled}
               >
                 <Download className="h-3.5 w-3.5 mr-1.5" />
                 Export
@@ -282,7 +234,7 @@ export default function Home() {
                 size="sm"
                 className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
                 onClick={handleCopy}
-                disabled={!filteredApps || filteredApps.length === 0}
+                disabled={csvDisabled}
               >
                 {copied ? (
                   <>
