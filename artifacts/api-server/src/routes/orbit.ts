@@ -22,19 +22,11 @@ const router: IRouter = Router();
 type Status = "healthy" | "degraded" | "unhealthy" | "unknown";
 type Severity = "info" | "warning" | "error" | "critical";
 
-export type AppRecord = {
-  id: string;
-  name: string;
-  environment: "prod" | "staging" | "dev";
-  region: string;
-  resourceGroup: string;
-  status: Status;
-  activeAlerts: number;
-  monthToDateCost: number;
-  subscriptionId: string;
-  description: string;
-  tags: Record<string, string>;
-  owners: string[];
+// AppRecord derives its shape from the OpenAPI contract (GetAppResponse) so
+// that adding a required field to the spec causes a compile-time error here
+// rather than a runtime surprise.  The intersection adds the Orbit-internal
+// fields that never appear in the API response itself.
+export type AppRecord = ReturnType<typeof GetAppResponse.parse> & {
   // Which identity system authenticates this app's END USERS. "clerk" =
   // consumer app whose end users sign in via Clerk (activity ingested from
   // Clerk webhooks). "entra" = employee-only internal tool (Orbit itself).
@@ -42,9 +34,6 @@ export type AppRecord = {
   // Google Play package name when this app ships an Android build tracked in the
   // Play Console. Its presence flags the app for the Play subscriptions surface.
   androidPackage?: string;
-  // Optional grouping label for the scope selector (e.g. "Platform"). Apps
-  // without a group render as top-level scope entries.
-  group?: string;
 };
 
 export const APPS: AppRecord[] = [
