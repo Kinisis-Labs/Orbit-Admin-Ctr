@@ -4,8 +4,14 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      recreate_swa:
+        description: "Delete and recreate the SWA resource to reset content service registration"
+        type: boolean
+        default: false
 
 permissions:
+  id-token: write
   contents: read
 
 jobs:
@@ -30,12 +36,51 @@ jobs:
 
       - run: pnpm --filter @workspace/orbit run build
 
-      - name: Deploy to Azure Static Web Apps
-        uses: Azure/static-web-apps-deploy@v1
+      - name: Login to Azure
+        uses: azure/login@v2
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          action: upload
-          app_location: "artifacts/orbit/dist/public"
-          output_location: ""
-          skip_app_build: true
-          skip_api_build: true
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Recreate SWA (reset content service registration)
+        if: ${{ inputs.recreate_swa == true }}
+        run: |
+          echo "=== Deleting old SWA ==="
+          az staticwebapp delete \
+            --name swa-orbit-prod \
+            --resource-group rg-orbit-prod-eus2 \
+            --yes
+
+          echo "=== Creating new SWA (no GitHub source) ==="
+          az staticwebapp create \
+            --name swa-orbit-prod \
+            --resource-group rg-orbit-prod-eus2 \
+            --location "eastus2" \
+            --sku Standard
+
+          NEW_HOST=$(az staticwebapp show \
+            --name swa-orbit-prod \
+            --resource-group rg-orbit-prod-eus2 \
+            --query "defaultHostname" -o tsv)
+          echo "=== New hostname: $NEW_HOST ==="
+          echo "ACTION REQUIRED: Update Front Door SWA origin to: $NEW_HOST"
+
+      - name: Get SWA deployment token
+        id: swa-token
+        run: |
+          TOKEN=$(az staticwebapp secrets list \
+            --name swa-orbit-prod \
+            --resource-group rg-orbit-prod-eus2 \
+            --query "properties.apiKey" -o tsv)
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Install SWA CLI and deploy
+        run: |
+          npm install -g @azure/static-web-apps-cli
+          swa deploy artifacts/orbit/dist/public \
+            --deployment-token "${{ steps.swa-token.outputs.token }}" \
+            --env production \
+            --no-use-keychain \
+            --verbose
