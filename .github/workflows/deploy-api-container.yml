@@ -45,6 +45,14 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Run DB migrations
+        run: |
+          npm install -g pnpm
+          pnpm install --frozen-lockfile
+          pnpm --filter @workspace/db run push-force
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Update Container App image and env vars
         uses: azure/cli@v2
         with:
@@ -59,6 +67,8 @@ jobs:
                 PORT=80 \
                 DATABASE_SSL=true \
                 SESSION_COOKIE_DOMAIN=.kinisislabs.com \
+                DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+                SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
                 ENTRA_TENANT_ID="${{ secrets.ENTRA_TENANT_ID }}" \
                 ENTRA_CLIENT_ID="${{ secrets.ENTRA_CLIENT_ID }}" \
                 ENTRA_CLIENT_SECRET="${{ secrets.ENTRA_CLIENT_SECRET }}" \
@@ -70,7 +80,7 @@ jobs:
               --resource-group rg-orbit-prod-eus2 \
               --target-port 80
 
-      - name: Print Container App FQDN (for Front Door origin config)
+      - name: Print Container App FQDN
         uses: azure/cli@v2
         with:
           azcliversion: latest
@@ -79,14 +89,4 @@ jobs:
               --name ca-orbit-api-prod \
               --resource-group rg-orbit-prod-eus2 \
               --query "properties.configuration.ingress.fqdn" -o tsv)
-            echo ""
-            echo "============================================"
             echo "Container App FQDN: $FQDN"
-            echo ""
-            echo "Front Door API origin group setup:"
-            echo "  Origin group name : api-origin-group (or similar)"
-            echo "  Origin host name  : $FQDN"
-            echo "  Origin host header: $FQDN"
-            echo "  HTTPS port        : 443"
-            echo "  Route pattern     : /api/*  →  api-origin-group"
-            echo "============================================"
