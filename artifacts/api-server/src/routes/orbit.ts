@@ -468,6 +468,7 @@ router.get("/apps/:appId/cost", async (req, res) => {
     byService,
     apiUsage,
     revenue: revenueForApp(app.id),
+    dataSource: liveCost ? "live" : "mock",
   });
   res.json(data);
 });
@@ -702,6 +703,8 @@ router.get("/global/cost-summary", async (req, res) => {
     .map(([service, amount]) => ({ service, amount: Number(amount.toFixed(2)) }))
     .sort((a, b) => b.amount - a.amount);
 
+  const anyLive = liveCostResults.some((r) => r !== null);
+
   const data = GetGlobalCostSummaryResponse.parse({
     currency: "USD",
     monthToDate: Number(mtd.toFixed(2)),
@@ -709,6 +712,7 @@ router.get("/global/cost-summary", async (req, res) => {
     budget: Number((mtd * 2.0).toFixed(2)),
     apiCalls,
     apiCost: Number(apiCost.toFixed(2)),
+    dataSource: anyLive ? "live" : "mock",
     byApp: APPS.map((a) => ({
       appId: a.id,
       appName: a.name,

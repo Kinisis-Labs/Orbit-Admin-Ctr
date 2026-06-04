@@ -7,6 +7,7 @@
  */
 import type { ApiUsage } from './apiUsage';
 import type { CostByService } from './costByService';
+import type { CostReportDataSource } from './costReportDataSource';
 import type { MetricPoint } from './metricPoint';
 import type { Revenue } from './revenue';
 
@@ -19,4 +20,6 @@ export interface CostReport {
   byService: CostByService[];
   apiUsage: ApiUsage;
   revenue: Revenue;
+  /** Indicates whether cost figures come from live Azure Cost Management or built-in mock values. */
+  dataSource: CostReportDataSource;
 }

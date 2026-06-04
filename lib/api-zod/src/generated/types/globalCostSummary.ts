@@ -9,6 +9,7 @@ import type { CostByService } from './costByService';
 import type { GlobalCostSummaryApiByAppItem } from './globalCostSummaryApiByAppItem';
 import type { GlobalCostSummaryApiByNameItem } from './globalCostSummaryApiByNameItem';
 import type { GlobalCostSummaryByAppItem } from './globalCostSummaryByAppItem';
+import type { GlobalCostSummaryDataSource } from './globalCostSummaryDataSource';
 import type { GlobalCostSummaryRevenueByAppItem } from './globalCostSummaryRevenueByAppItem';
 import type { Revenue } from './revenue';
 
@@ -21,6 +22,8 @@ export interface GlobalCostSummary {
   apiCalls: number;
   /** Portion of monthToDate attributable to API usage */
   apiCost: number;
+  /** Indicates whether cost figures come from live Azure Cost Management or built-in mock values. */
+  dataSource: GlobalCostSummaryDataSource;
   byApp: GlobalCostSummaryByAppItem[];
   /** Cost breakdown by Azure resource type, aggregated across all apps. */
   byResource: CostByService[];

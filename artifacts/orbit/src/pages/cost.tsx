@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "wouter";
-import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
+import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
@@ -18,6 +18,24 @@ import { CostTabs } from "@/components/cost-tabs";
 const fmt = (amount: number, currency = "USD") =>
   new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
 const fmtInt = (n: number) => new Intl.NumberFormat("en-US").format(n);
+
+function DataSourceBadge({ dataSource }: { dataSource: "live" | "mock" | undefined }) {
+  if (!dataSource) return null;
+  if (dataSource === "live") {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide select-none">
+        <Wifi className="h-3 w-3" />
+        Live — Azure Cost Management
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide select-none">
+      <WifiOff className="h-3 w-3" />
+      Demo data
+    </span>
+  );
+}
 
 export default function Cost() {
   const { scope, isGlobal } = useScope();
@@ -59,7 +77,11 @@ function GlobalCost() {
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <Tile title="Actual cost (MTD)" value={isLoading ? null : cost ? fmt(cost.monthToDate, cost.currency) : "$0.00"} />
+        <Tile
+          title="Actual cost (MTD)"
+          value={isLoading ? null : cost ? fmt(cost.monthToDate, cost.currency) : "$0.00"}
+          badge={!isLoading && cost ? <DataSourceBadge dataSource={cost.dataSource} /> : undefined}
+        />
         <Tile title="Forecasted cost" value={isLoading ? null : cost ? fmt(cost.forecast, cost.currency) : "$0.00"} />
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">API usage (MTD)</div>
@@ -335,7 +357,11 @@ function AppCost() {
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <Tile title="Actual cost (MTD)" value={isLoading ? null : data ? fmt(data.monthToDate, data.currency) : "$0.00"} />
+        <Tile
+          title="Actual cost (MTD)"
+          value={isLoading ? null : data ? fmt(data.monthToDate, data.currency) : "$0.00"}
+          badge={!isLoading && data ? <DataSourceBadge dataSource={data.dataSource} /> : undefined}
+        />
         <Tile title="Forecasted cost" value={isLoading ? null : data ? fmt(data.forecast, data.currency) : "$0.00"} />
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">API usage (MTD)</div>
@@ -521,10 +547,13 @@ function ToolbarBtn({ icon: Icon, children }: { icon: React.ComponentType<{ clas
   );
 }
 
-function Tile({ title, value }: { title: string; value: React.ReactNode }) {
+function Tile({ title, value, badge }: { title: string; value: React.ReactNode; badge?: React.ReactNode }) {
   return (
     <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-      <div className="text-[12px] text-muted-foreground font-medium mb-1 truncate">{title}</div>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="text-[12px] text-muted-foreground font-medium truncate">{title}</div>
+        {badge}
+      </div>
       {value === null ? (
         <Skeleton className="h-7 w-20 mt-1" />
       ) : (

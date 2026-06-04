@@ -167,6 +167,17 @@ export interface ApiUsage {
   byApi: ApiByName[];
 }
 
+/**
+ * Indicates whether cost figures come from live Azure Cost Management or built-in mock values.
+ */
+export type CostReportDataSource = typeof CostReportDataSource[keyof typeof CostReportDataSource];
+
+
+export const CostReportDataSource = {
+  live: 'live',
+  mock: 'mock',
+} as const;
+
 export type RevenueSource = typeof RevenueSource[keyof typeof RevenueSource];
 
 
@@ -199,6 +210,8 @@ export interface CostReport {
   byService: CostByService[];
   apiUsage: ApiUsage;
   revenue: Revenue;
+  /** Indicates whether cost figures come from live Azure Cost Management or built-in mock values. */
+  dataSource: CostReportDataSource;
 }
 
 export type LedgerAccountType = typeof LedgerAccountType[keyof typeof LedgerAccountType];
@@ -476,6 +489,17 @@ export interface GlobalHealth {
   currency: string;
 }
 
+/**
+ * Indicates whether cost figures come from live Azure Cost Management or built-in mock values.
+ */
+export type GlobalCostSummaryDataSource = typeof GlobalCostSummaryDataSource[keyof typeof GlobalCostSummaryDataSource];
+
+
+export const GlobalCostSummaryDataSource = {
+  live: 'live',
+  mock: 'mock',
+} as const;
+
 export type GlobalCostSummaryByAppItem = {
   appId: string;
   appName: string;
@@ -523,6 +547,8 @@ export interface GlobalCostSummary {
   apiCalls: number;
   /** Portion of monthToDate attributable to API usage */
   apiCost: number;
+  /** Indicates whether cost figures come from live Azure Cost Management or built-in mock values. */
+  dataSource: GlobalCostSummaryDataSource;
   byApp: GlobalCostSummaryByAppItem[];
   /** Cost breakdown by Azure resource type, aggregated across all apps. */
   byResource: CostByService[];

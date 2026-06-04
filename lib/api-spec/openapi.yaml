@@ -460,7 +460,7 @@ components:
           items: { $ref: "#/components/schemas/ApiByName" }
     CostReport:
       type: object
-      required: [currency, monthToDate, forecast, budget, daily, byService, apiUsage, revenue]
+      required: [currency, monthToDate, forecast, budget, daily, byService, apiUsage, revenue, dataSource]
       properties:
         currency: { type: string }
         monthToDate: { type: number }
@@ -474,6 +474,7 @@ components:
           items: { $ref: "#/components/schemas/CostByService" }
         apiUsage: { $ref: "#/components/schemas/ApiUsage" }
         revenue: { $ref: "#/components/schemas/Revenue" }
+        dataSource: { type: string, enum: [live, mock], description: "Indicates whether cost figures come from live Azure Cost Management or built-in mock values." }
     RevenueSource:
       type: string
       enum: [stripe, app_store, play_store]
@@ -683,7 +684,7 @@ components:
         currency: { type: string }
     GlobalCostSummary:
       type: object
-      required: [currency, monthToDate, forecast, budget, apiCalls, apiCost, byApp, byResource, apiByApp, apiByName, revenue, revenueByApp]
+      required: [currency, monthToDate, forecast, budget, apiCalls, apiCost, byApp, byResource, apiByApp, apiByName, revenue, revenueByApp, dataSource]
       properties:
         currency: { type: string }
         monthToDate: { type: number }
@@ -691,6 +692,7 @@ components:
         budget: { type: number }
         apiCalls: { type: integer, description: Total month-to-date API calls across all apps }
         apiCost: { type: number, description: Portion of monthToDate attributable to API usage }
+        dataSource: { type: string, enum: [live, mock], description: "Indicates whether cost figures come from live Azure Cost Management or built-in mock values." }
         byApp:
           type: array
           items:
