@@ -22,6 +22,24 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
 import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone } from "lucide-react";
+
+const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+
+function fmtDataAsOf(iso: string | undefined | null): string | null {
+  if (!iso) return null;
+  try {
+    const d = new Date(iso);
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    }).format(d);
+  } catch {
+    return null;
+  }
+}
 import { Button } from "@/components/ui/button";
 import { useAuth, COST_READER_GROUP } from "@/lib/auth";
 import { AccessDenied } from "@/components/access-denied";
@@ -274,6 +292,9 @@ function DataSourceBadge({
   if (!dataSource) return null;
   if (dataSource === "live") {
     const asOf = fmtDataAsOf(dataAsOf);
+    const isStale = dataAsOf
+      ? Date.now() - new Date(dataAsOf).getTime() > STALE_COST_THRESHOLD_MS
+      : false;
     return (
       <span className="inline-flex items-center gap-1.5 select-none flex-wrap">
         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
@@ -281,7 +302,16 @@ function DataSourceBadge({
           Live — {label}
         </span>
         {asOf && (
-          <span className="text-[10px] text-muted-foreground">as of {asOf}</span>
+          <span
+            className={
+              isStale
+                ? "inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400"
+                : "text-[10px] text-muted-foreground"
+            }
+          >
+            {isStale && <AlertTriangle className="h-3 w-3" />}
+            as of {asOf}
+          </span>
         )}
       </span>
     );
@@ -566,6 +596,10 @@ function CostTab({ appId }: { appId: string }) {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground font-medium">Month-to-date cost breakdown</span>
+        <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Accumulated Cost (MTD)</div>
