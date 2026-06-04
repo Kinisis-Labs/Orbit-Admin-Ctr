@@ -121,6 +121,13 @@ const METRIC_QUERIES: Record<
 // Graph queries when multiple metrics are fetched in parallel for the same app.
 const _appInsightsIdCache = new Map<string, string | null>();
 
+// Shared TTL for all in-process caches (5 minutes).
+const METRICS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+// Cache: "resourceId:metricName:hours" → { result, expiresAt }
+type TimeSeriesCacheEntry = { result: TimeSeriesPoint[]; expiresAt: number };
+const _timeSeriesCache = new Map<string, TimeSeriesCacheEntry>();
+
 /**
  * Resolve the Application Insights component resource ID for the app's RG.
  * Returns null if none found. Result is cached in-process.
@@ -184,11 +191,20 @@ export async function fetchMetricTimeSeries(
   resourceId: string,
   metricName: string,
   hours: number,
+  { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<TimeSeriesPoint[] | null> {
   if (!isMonitorConfigured()) return null;
 
   const queryFn = METRIC_QUERIES[metricName];
   if (!queryFn) return null;
+
+  const cacheKey = `${resourceId}:${metricName}:${hours}`;
+  if (!bypassCache) {
+    const entry = _timeSeriesCache.get(cacheKey);
+    if (entry && entry.expiresAt > Date.now()) {
+      return entry.result;
+    }
+  }
 
   const workspaceId = getLogAnalyticsWorkspaceId()!;
 
@@ -218,6 +234,7 @@ export async function fetchMetricTimeSeries(
     if (points.length === 0) return null;
     if (points.every((p) => !isFinite(p.value))) return null;
 
+    _timeSeriesCache.set(cacheKey, { result: points, expiresAt: Date.now() + METRICS_CACHE_TTL_MS });
     return points;
   } catch {
     return null;
@@ -225,7 +242,6 @@ export async function fetchMetricTimeSeries(
 }
 
 // Cache: app id → { result, expiresAt }
-const METRICS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 type MetricsCacheEntry = { result: TelemetrySummary; expiresAt: number };
 const _metricsCache = new Map<string, MetricsCacheEntry>();
 
@@ -233,6 +249,10 @@ const _metricsCache = new Map<string, MetricsCacheEntry>();
  * Convenience wrapper for route handlers: resolves the App Insights component
  * resource ID for `app` (via Resource Graph), then calls fetchMetricTimeSeries
  * scoped to that component.
+ *
+ * Results are cached in-process for METRICS_CACHE_TTL_MS (5 min). Pass
+ * `bypassCache: true` to skip the cache and force a fresh Log Analytics query
+ * (the fresh result is still written back to the cache).
  *
  * Returns null when monitor is not configured, no App Insights component is
  * found in the app's resource group, or the underlying query fails.
@@ -246,7 +266,7 @@ export async function fetchAppTimeSeries(
   if (!isMonitorConfigured()) return null;
   const resourceId = await resolveAppInsightsResourceId(app, { bypassCache });
   if (!resourceId) return null;
-  return fetchMetricTimeSeries(resourceId, metricName, hours);
+  return fetchMetricTimeSeries(resourceId, metricName, hours, { bypassCache });
 }
 
 /**
