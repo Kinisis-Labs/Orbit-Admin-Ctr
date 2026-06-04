@@ -1,0 +1,63 @@
+06/04/2026, 19:22:18
+
+Started container 'bootstrap-container-pre-deployment'
+06/04/2026, 19:22:17
+
+Created container 'bootstrap-container-pre-deployment'
+06/04/2026, 19:22:15
+
+Successfully pulled image "mcr.microsoft.com/k8se/quickstart:latest" in 3.10s. Image size: 35651584 bytes.
+06/04/2026, 19:22:13
+
+Pulling image 'mcr.microsoft.com/k8se/quickstart:latest'
+06/04/2026, 19:22:11
+
+Scaled apps/v1.Deployment k8se-apps/ca-orbit-api-prod--0000039 from 0 to 1, triggered by
+06/04/2026, 19:22:11
+
+Replica 'ca-orbit-api-prod--0000039-668d9557b4-9nd6p' has been scheduled to run on a node.
+06/04/2026, 19:13:02
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-api-prod
+06/04/2026, 19:12:48
+
+Revision 'ca-orbit-api-prod--0000043' updated. No new revision was provisioned.
+06/04/2026, 19:12:48
+
+Deactivating old revisions for ContainerApp 'ca-orbit-api-prod'
+06/04/2026, 19:12:48
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-api-prod
+06/04/2026, 19:12:48
+
+Setting traffic weight of '100%' for revision 'ca-orbit-api-prod--0000039'
+06/04/2026, 19:12:48
+
+Successfully updated containerApp: ca-orbit-api-prod
+06/04/2026, 19:12:48
+
+Setting traffic weight of '100%' for revision 'ca-orbit-api-prod--0000039'
+06/04/2026, 19:12:47
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-api-prod
+06/04/2026, 19:12:47
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-api-prod
+06/04/2026, 19:06:18
+
+Container 'bootstrap-container-pre-deployment' was terminated with exit code '' and reason 'ManuallyStopped'
+06/04/2026, 19:06:17
+
+Deactivated apps/v1.Deployment k8se-apps/ca-orbit-api-prod--0000039 from 1 to 0
+06/04/2026, 18:59:03
+
+Deactivated apps/v1.Deployment k8se-apps/ca-orbit-api-prod--0000043 from 1 to 0
+06/04/2026, 18:56:52
+
+Container 'bootstrap-container-pre-deployment' was terminated with exit code '1' and reason 'ProcessExited'
+06/04/2026, 18:56:51
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:662b827c51a34004aecfd9d1ebc6c90a5b2b7c35'
+06/04/2026, 18:56:51
+
+Started container 'bootstrap-container-pre-deployment'
