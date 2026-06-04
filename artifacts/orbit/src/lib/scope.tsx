@@ -55,6 +55,8 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
     if (!apps.some((a) => a.id === scope)) setScope(GLOBAL_SCOPE);
   }, [apps, scope, setScope]);
 
+  const selectedApp = scope !== GLOBAL_SCOPE ? (apps ?? []).find((a) => a.id === scope) : undefined;
+
   // Apps without a group render as top-level entries; grouped apps render
   // under a labelled section (e.g. "Platform").
   const collator = new Intl.Collator(undefined, { sensitivity: "base" });
@@ -87,7 +89,14 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
           data-testid="scope-select"
           className="h-8 w-[260px] rounded-sm border-border bg-card text-[13px]"
         >
-          <SelectValue placeholder="Select scope" />
+          <SelectValue placeholder="Select scope">
+            {selectedApp ? (
+              <span className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+                <span className="truncate">{selectedApp.name}</span>
+                <span className="shrink-0 text-muted-foreground">· {selectedApp.environment}</span>
+              </span>
+            ) : undefined}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={GLOBAL_SCOPE}>Global — All Applications</SelectItem>
