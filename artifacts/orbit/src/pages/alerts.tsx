@@ -6,18 +6,19 @@ import {
   getListGlobalAlertsQueryKey,
   getGetAppAlertsQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { Link } from "wouter";
-import { RefreshCw, Filter, Search } from "lucide-react";
+import { Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { useAuth } from "@/lib/auth";
+import { useForceRefresh } from "@/hooks/use-force-refresh";
+import { ForceRefreshButton } from "@/components/force-refresh-button";
 
 type AlertRow = {
   id: string;
@@ -33,9 +34,7 @@ type AlertRow = {
 export default function Alerts() {
   const { scope, isGlobal } = useScope();
   const [filter, setFilter] = useState("");
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const { mode } = useAuth();
-  const queryClient = useQueryClient();
 
   const { data: apps } = useListApps();
   const selectedApp = apps?.find((a) => a.id === scope);
@@ -50,23 +49,9 @@ export default function Alerts() {
     query: { enabled: !isGlobal, queryKey: appQueryKey },
   });
 
-  const handleForceRefresh = async () => {
-    if (isRefreshing) return;
-    setIsRefreshing(true);
-    try {
-      const url = isGlobal
-        ? "/api/global/alerts?refresh=true"
-        : `/api/apps/${scope}/alerts?refresh=true`;
-      const queryKey = isGlobal ? globalQueryKey : appQueryKey;
-      const res = await fetch(url, { credentials: "same-origin" });
-      if (res.ok) {
-        const data: unknown = await res.json();
-        queryClient.setQueryData(queryKey, data);
-      }
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
+  const globalRefresh = useForceRefresh("/api/global/alerts", globalQueryKey);
+  const appRefresh = useForceRefresh(`/api/apps/${scope}/alerts`, appQueryKey);
+  const { isRefreshing, isCoolingDown, forceRefresh } = isGlobal ? globalRefresh : appRefresh;
 
   const isLoading = isGlobal ? globalLoading : appLoading;
   const rows: AlertRow[] | undefined = isGlobal
@@ -103,16 +88,11 @@ export default function Alerts() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2 border-b border-border bg-card gap-2">
           <div className="flex items-center gap-1">
             {mode === "entra" && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                onClick={() => void handleForceRefresh()}
-                disabled={isRefreshing}
-              >
-                <RefreshCw className={`h-3.5 w-3.5 mr-1.5${isRefreshing ? " animate-spin" : ""}`} />
-                {isRefreshing ? "Refreshing…" : "Force refresh"}
-              </Button>
+              <ForceRefreshButton
+                isRefreshing={isRefreshing}
+                isCoolingDown={isCoolingDown}
+                onRefresh={() => void forceRefresh()}
+              />
             )}
             <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
               <Filter className="h-3.5 w-3.5 mr-1.5" />
