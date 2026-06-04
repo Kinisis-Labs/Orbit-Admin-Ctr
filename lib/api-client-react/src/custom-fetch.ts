@@ -286,6 +286,10 @@ function inferResponseType(response: Response): "json" | "text" | "blob" {
   const mediaType = getMediaType(response.headers);
 
   if (isJsonMediaType(mediaType)) return "json";
+  // HTML is never a valid API response — it means a CDN/SWA fallback served
+  // index.html instead of the API. Treat as JSON so parseJsonBody throws a
+  // parse error; React Query catches it and keeps data as undefined (safe).
+  if (mediaType != null && mediaType.startsWith("text/html")) return "json";
   if (isTextMediaType(mediaType) || mediaType == null) return "text";
   return "blob";
 }
