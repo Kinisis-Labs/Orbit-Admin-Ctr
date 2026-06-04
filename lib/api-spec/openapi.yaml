@@ -321,6 +321,28 @@ components:
     Severity:
       type: string
       enum: [info, warning, error, critical]
+    AppTags:
+      type: object
+      description: >-
+        Azure resource tags applied to this application's resource group.
+        The five standard Kinisis tag keys are typed explicitly; any additional
+        tags on the resource group are preserved as free-form string values.
+      properties:
+        workload:
+          type: string
+          description: Workload identifier matching the Azure workload tag (e.g. "GrailBabeProd").
+        environment:
+          type: string
+          description: Deployment environment tag value (e.g. "prod", "staging", "dev").
+        owner:
+          type: string
+          description: Team or individual responsible for this workload.
+        cost-center:
+          type: string
+          description: FinOps cost-center code (e.g. "CC-GrailBabeProd").
+        criticality:
+          type: string
+          description: "Business criticality classification (e.g. mission-critical, high, medium, low)."
     AppSummary:
       type: object
       required: [id, name, environment, region, status, resourceGroup, subscriptionId, tags, activeAlerts, monthToDateCost]
@@ -332,8 +354,7 @@ components:
         resourceGroup: { type: string }
         subscriptionId: { type: string }
         tags:
-          type: object
-          additionalProperties: { type: string }
+          $ref: "#/components/schemas/AppTags"
         status: { $ref: "#/components/schemas/Status" }
         activeAlerts: { type: integer }
         monthToDateCost: { type: number }

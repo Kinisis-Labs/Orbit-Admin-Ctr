@@ -26,7 +26,13 @@ export const ListAppsResponseItem = zod.object({
   "region": zod.string(),
   "resourceGroup": zod.string(),
   "subscriptionId": zod.string(),
-  "tags": zod.record(zod.string(), zod.string()),
+  "tags": zod.object({
+  "workload": zod.string().optional().describe('Workload identifier matching the Azure workload tag (e.g. \"GrailBabeProd\").'),
+  "environment": zod.string().optional().describe('Deployment environment tag value (e.g. \"prod\", \"staging\", \"dev\").'),
+  "owner": zod.string().optional().describe('Team or individual responsible for this workload.'),
+  "cost-center": zod.string().optional().describe('FinOps cost-center code (e.g. \"CC-GrailBabeProd\").'),
+  "criticality": zod.string().optional().describe('Business criticality classification (e.g. mission-critical, high, medium, low).')
+}).describe('Azure resource tags applied to this application\'s resource group. The five standard Kinisis tag keys are typed explicitly; any additional tags on the resource group are preserved as free-form string values.'),
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),
@@ -46,7 +52,13 @@ export const GetAppResponse = zod.object({
   "region": zod.string(),
   "resourceGroup": zod.string(),
   "subscriptionId": zod.string(),
-  "tags": zod.record(zod.string(), zod.string()),
+  "tags": zod.object({
+  "workload": zod.string().optional().describe('Workload identifier matching the Azure workload tag (e.g. \"GrailBabeProd\").'),
+  "environment": zod.string().optional().describe('Deployment environment tag value (e.g. \"prod\", \"staging\", \"dev\").'),
+  "owner": zod.string().optional().describe('Team or individual responsible for this workload.'),
+  "cost-center": zod.string().optional().describe('FinOps cost-center code (e.g. \"CC-GrailBabeProd\").'),
+  "criticality": zod.string().optional().describe('Business criticality classification (e.g. mission-critical, high, medium, low).')
+}).describe('Azure resource tags applied to this application\'s resource group. The five standard Kinisis tag keys are typed explicitly; any additional tags on the resource group are preserved as free-form string values.'),
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),

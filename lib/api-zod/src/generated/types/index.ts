@@ -15,7 +15,7 @@ export * from './appDetail';
 export * from './appDetailUserAuth';
 export * from './appSummary';
 export * from './appSummaryEnvironment';
-export * from './appSummaryTags';
+export * from './appTags';
 export * from './costByService';
 export * from './costReport';
 export * from './costReportDataSource';

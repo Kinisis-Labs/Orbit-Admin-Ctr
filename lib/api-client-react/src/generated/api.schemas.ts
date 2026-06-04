@@ -29,6 +29,22 @@ export const Severity = {
   critical: 'critical',
 } as const;
 
+/**
+ * Azure resource tags applied to this application's resource group. The five standard Kinisis tag keys are typed explicitly; any additional tags on the resource group are preserved as free-form string values.
+ */
+export interface AppTags {
+  /** Workload identifier matching the Azure workload tag (e.g. "GrailBabeProd"). */
+  workload?: string;
+  /** Deployment environment tag value (e.g. "prod", "staging", "dev"). */
+  environment?: string;
+  /** Team or individual responsible for this workload. */
+  owner?: string;
+  /** FinOps cost-center code (e.g. "CC-GrailBabeProd"). */
+  'cost-center'?: string;
+  /** Business criticality classification (e.g. mission-critical, high, medium, low). */
+  criticality?: string;
+}
+
 export type AppSummaryEnvironment = typeof AppSummaryEnvironment[keyof typeof AppSummaryEnvironment];
 
 
@@ -38,8 +54,6 @@ export const AppSummaryEnvironment = {
   dev: 'dev',
 } as const;
 
-export type AppSummaryTags = {[key: string]: string};
-
 export interface AppSummary {
   id: string;
   name: string;
@@ -47,7 +61,7 @@ export interface AppSummary {
   region: string;
   resourceGroup: string;
   subscriptionId: string;
-  tags: AppSummaryTags;
+  tags: AppTags;
   status: Status;
   activeAlerts: number;
   monthToDateCost: number;

@@ -198,9 +198,9 @@ export async function fetchMetricTimeSeries(
     const table = result.tables?.[0];
     if (!table) return null;
 
-    const cols: Array<{ name: string }> = table.columnDescriptors;
-    const tsIdx = cols.findIndex((c: { name: string }) => c.name === "timestamp");
-    const valIdx = cols.findIndex((c: { name: string }) => c.name === "value");
+    const cols = table.columnDescriptors as Array<{ name?: string }>;
+    const tsIdx = cols.findIndex((c) => c.name === "timestamp");
+    const valIdx = cols.findIndex((c) => c.name === "value");
     if (tsIdx === -1 || valIdx === -1) return null;
 
     const points = (table.rows as unknown[][]).map((row) => ({

@@ -52,6 +52,55 @@ const RESOURCES_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 type ResourcesCacheEntry = { result: ResourceEntry[]; expiresAt: number };
 const _resourcesCache = new Map<string, ResourcesCacheEntry>();
 
+// Tag cache: app id → { tags, expiresAt }
+type TagsCacheEntry = { tags: Record<string, string>; expiresAt: number };
+const _tagsCache = new Map<string, TagsCacheEntry>();
+
+/**
+ * Fetch the Azure resource-group-level tags for the app from Resource Graph.
+ * These tags are the authoritative source for the five standard Kinisis tag
+ * keys (workload, environment, owner, cost-center, criticality).
+ *
+ * Results are cached for RESOURCES_CACHE_TTL_MS (15 min). Pass
+ * `bypassCache: true` to force a fresh call.
+ *
+ * Returns null when Azure is not configured or on any error so the caller can
+ * fall back to the APPS inventory tags.
+ */
+export async function fetchResourceGroupTags(
+  app: AppRecord,
+  { bypassCache = false }: { bypassCache?: boolean } = {},
+): Promise<Record<string, string> | null> {
+  if (!isAzureConfigured()) return null;
+
+  if (!bypassCache) {
+    const entry = _tagsCache.get(app.id);
+    if (entry && entry.expiresAt > Date.now()) return entry.tags;
+  }
+
+  const subscriptionIds = getSubscriptionIds();
+  const rg = app.resourceGroup.toLowerCase();
+
+  const query = `
+    resourcecontainers
+    | where type == "microsoft.resources/subscriptions/resourcegroups"
+    | where name =~ '${rg}'
+    | project tags
+    | limit 1
+  `;
+
+  try {
+    const result = await getClient().resources({ query, subscriptions: subscriptionIds });
+    const rows = (result.data as Record<string, unknown>[]) ?? [];
+    if (rows.length === 0) return null;
+    const rawTags = (rows[0]["tags"] as Record<string, string> | null) ?? {};
+    _tagsCache.set(app.id, { tags: rawTags, expiresAt: Date.now() + RESOURCES_CACHE_TTL_MS });
+    return rawTags;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Fetch resources in the app's resource group from Azure Resource Graph.
  * Returns an array of resource entries in the standard dashboard shape.

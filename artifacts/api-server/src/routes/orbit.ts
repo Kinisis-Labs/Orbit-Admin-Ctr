@@ -11,7 +11,7 @@ import {
   ListGlobalAlertsResponse,
   GetGlobalCostSummaryResponse,
 } from "@workspace/api-zod";
-import { fetchResourcesByResourceGroup } from "../lib/azureResources.js";
+import { fetchResourcesByResourceGroup, fetchResourceGroupTags } from "../lib/azureResources.js";
 import { fetchMonthToDateCost } from "../lib/azureCost.js";
 import { fetchAppMetrics, fetchAppTimeSeries } from "../lib/azureMonitor.js";
 import { fetchActiveAlerts } from "../lib/azureAlerts.js";
@@ -200,14 +200,17 @@ router.get("/apps", (_req, res) => {
   res.json(data);
 });
 
-router.get("/apps/:appId", (req, res) => {
+router.get("/apps/:appId", async (req, res) => {
   const app = findApp(req.params.appId);
   if (!app) {
     res.status(404).json({ error: "App not found" });
     return;
   }
+  const bypassCache = req.query["refresh"] === "true";
+  const liveTags = await fetchResourceGroupTags(app, { bypassCache });
   const data = GetAppResponse.parse({
     ...app,
+    tags: liveTags ?? app.tags,
     activeAlerts: activeAlertCount(app),
   });
   res.json(data);
@@ -271,6 +274,7 @@ router.get("/apps/:appId/infrastructure", async (req, res) => {
     res.status(404).json({ error: "App not found" });
     return;
   }
+  const bypassCache = req.query["refresh"] === "true";
   const [liveResources, liveCpuSeries, liveMemSeries] = await Promise.all([
     fetchResourcesByResourceGroup(app, { bypassCache }),
     fetchAppTimeSeries(app, "cpu_pct", 24),
