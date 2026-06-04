@@ -11,6 +11,11 @@ import {
   setSpendThreshold,
   removeSpendThreshold,
   clearSpendThresholds,
+  DEFAULT_BUDGET_THRESHOLD,
+  getBudgetThreshold,
+  setBudgetThreshold,
+  removeBudgetThreshold,
+  clearBudgetThresholds,
 } from "@/lib/spend-threshold";
 
 type Theme = "dark" | "light";
@@ -27,6 +32,10 @@ export default function Preferences() {
     for (const app of ([] as { id: string }[])) all[app.id] = String(getSpendThreshold(app.id));
     return all;
   });
+  const [budgetThresholds, setBudgetThresholds] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {};
+    return {};
+  });
 
   useEffect(() => {
     if (!apps) return;
@@ -34,6 +43,13 @@ export default function Preferences() {
       const next: Record<string, string> = {};
       for (const app of apps) {
         next[app.id] = prev[app.id] !== undefined ? prev[app.id] : String(getSpendThreshold(app.id));
+      }
+      return next;
+    });
+    setBudgetThresholds((prev) => {
+      const next: Record<string, string> = {};
+      for (const app of apps) {
+        next[app.id] = prev[app.id] !== undefined ? prev[app.id] : String(getBudgetThreshold(app.id));
       }
       return next;
     });
@@ -85,15 +101,39 @@ export default function Preferences() {
     }
   };
 
+  const handleBudgetThresholdChange = (appId: string, raw: string) => {
+    setBudgetThresholds((prev) => ({ ...prev, [appId]: raw }));
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 100) return;
+    setBudgetThreshold(appId, parsed);
+    window.dispatchEvent(new Event("orbit-budget-threshold-changed"));
+  };
+
+  const handleBudgetThresholdBlur = (appId: string, raw: string) => {
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 100) {
+      removeBudgetThreshold(appId);
+      setBudgetThresholds((prev) => ({ ...prev, [appId]: String(DEFAULT_BUDGET_THRESHOLD) }));
+      window.dispatchEvent(new Event("orbit-budget-threshold-changed"));
+    }
+  };
+
   const reset = () => {
     setTheme("dark"); setDensity("comfortable"); setScope(GLOBAL_SCOPE);
     localStorage.removeItem("orbit-nav-collapsed");
     clearSpendThresholds();
+    clearBudgetThresholds();
     if (apps) {
       const restored: Record<string, string> = {};
-      for (const app of apps) restored[app.id] = String(DEFAULT_SPEND_THRESHOLD);
+      const budgetRestored: Record<string, string> = {};
+      for (const app of apps) {
+        restored[app.id] = String(DEFAULT_SPEND_THRESHOLD);
+        budgetRestored[app.id] = String(DEFAULT_BUDGET_THRESHOLD);
+      }
       setThresholds(restored);
+      setBudgetThresholds(budgetRestored);
       window.dispatchEvent(new Event("orbit-spend-threshold-changed"));
+      window.dispatchEvent(new Event("orbit-budget-threshold-changed"));
     }
   };
 
@@ -150,6 +190,34 @@ export default function Preferences() {
                   value={thresholds[app.id] ?? String(DEFAULT_SPEND_THRESHOLD)}
                   onChange={(e) => handleThresholdChange(app.id, e.target.value)}
                   onBlur={(e) => handleThresholdBlur(app.id, e.target.value)}
+                  className="h-8 w-[90px] rounded-sm text-[13px] text-right"
+                />
+                <span className="text-[13px] text-muted-foreground">%</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {apps && apps.length > 0 && (
+        <div className="bg-card border border-border shadow-sm">
+          <div className="px-4 py-3 border-b border-border">
+            <div className="text-[13px] font-semibold text-foreground">Budget utilization alert</div>
+            <div className="text-[12px] text-muted-foreground mt-0.5">
+              The budget utilization bar turns amber/red when MTD spend exceeds this percentage of the monthly budget. Default is {DEFAULT_BUDGET_THRESHOLD}%.
+            </div>
+          </div>
+          {apps.map((app) => (
+            <div key={app.id} className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border last:border-b-0">
+              <div className="text-[13px] text-foreground">{app.name}</div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={budgetThresholds[app.id] ?? String(DEFAULT_BUDGET_THRESHOLD)}
+                  onChange={(e) => handleBudgetThresholdChange(app.id, e.target.value)}
+                  onBlur={(e) => handleBudgetThresholdBlur(app.id, e.target.value)}
                   className="h-8 w-[90px] rounded-sm text-[13px] text-right"
                 />
                 <span className="text-[13px] text-muted-foreground">%</span>

@@ -1,4 +1,5 @@
-import { useSpendThreshold, DEFAULT_SPEND_THRESHOLD } from "@/lib/spend-threshold";
+import { useState, useEffect, useCallback } from "react";
+import { useSpendThreshold, useBudgetThreshold, DEFAULT_SPEND_THRESHOLD, DEFAULT_BUDGET_THRESHOLD } from "@/lib/spend-threshold";
 import { useParams } from "wouter";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
@@ -308,6 +309,7 @@ function DataSourceBadge({
 
 function OverviewCostTile({ appId }: { appId: string }) {
   const { data, isLoading } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey: getGetCostQueryKey(appId) } });
+  const budgetThreshold = useBudgetThreshold(appId);
 
   if (isLoading) return <Skeleton className="h-20 w-full" />;
   if (!data) return null;
@@ -316,6 +318,7 @@ function OverviewCostTile({ appId }: { appId: string }) {
     new Intl.NumberFormat("en-US", { style: "currency", currency: data.currency }).format(amount);
 
   const utilPct = Math.min((data.monthToDate / data.budget) * 100, 100);
+  const budgetBarClass = getBudgetBarClass(utilPct, budgetThreshold);
 
   return (
     <div className="bg-card border border-border shadow-sm p-4 text-[13px]">
@@ -339,7 +342,7 @@ function OverviewCostTile({ appId }: { appId: string }) {
               {formatCurrency(data.monthToDate)} <span className="text-muted-foreground font-normal">of {formatCurrency(data.budget)}</span>
             </span>
           </div>
-          <Progress value={utilPct} className="h-1.5 rounded-none bg-muted" />
+          <Progress value={utilPct} className={`h-1.5 rounded-none bg-muted ${budgetBarClass}`} />
           <div className="text-[11px] text-muted-foreground tabular-nums">{utilPct.toFixed(0)}% used</div>
         </div>
       </div>
@@ -611,11 +614,18 @@ function TelemetryTab({ appId }: { appId: string }) {
 }
 
 
+function getBudgetBarClass(utilPct: number, budgetThreshold: number): string {
+  if (utilPct >= 100) return "[&>div]:!bg-red-500";
+  if (utilPct >= budgetThreshold) return "[&>div]:!bg-amber-500";
+  return "";
+}
+
 function CostTab({ appId }: { appId: string }) {
   const queryKey = getGetCostQueryKey(appId);
   const { data, isLoading, isFetching } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey } });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/cost`, queryKey);
   const threshold = useSpendThreshold(appId);
+  const budgetThreshold = useBudgetThreshold(appId);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No cost data available</div>;
@@ -671,7 +681,10 @@ function CostTab({ appId }: { appId: string }) {
               <span className="font-semibold tabular-nums text-foreground">{formatCurrency(data.monthToDate)}</span>
               <span className="text-muted-foreground tabular-nums">of {formatCurrency(data.budget)}</span>
             </div>
-            <Progress value={(data.monthToDate / data.budget) * 100} className="h-1.5 rounded-none bg-muted" />
+            <Progress
+              value={Math.min((data.monthToDate / data.budget) * 100, 100)}
+              className={`h-1.5 rounded-none bg-muted ${getBudgetBarClass(Math.min((data.monthToDate / data.budget) * 100, 100), budgetThreshold)}`}
+            />
           </div>
         </div>
       </div>
