@@ -56,7 +56,10 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
 
   // Apps without a group render as top-level entries; grouped apps render
   // under a labelled section (e.g. "Platform").
-  const ungrouped = (apps ?? []).filter((a) => !a.group);
+  const collator = new Intl.Collator(undefined, { sensitivity: "base" });
+  const ungrouped = (apps ?? [])
+    .filter((a) => !a.group)
+    .sort((a, b) => collator.compare(a.name, b.name));
   const groups = new Map<string, NonNullable<typeof apps>>();
   for (const a of apps ?? []) {
     if (!a.group) continue;
@@ -64,6 +67,12 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
     arr.push(a);
     groups.set(a.group, arr);
   }
+  const sortedGroups = [...groups.entries()]
+    .sort(([a], [b]) => collator.compare(a, b))
+    .map(([label, items]) => [
+      label,
+      [...items].sort((a, b) => collator.compare(a.name, b.name)),
+    ] as const);
 
   return (
     <div className="flex items-center gap-2">
@@ -86,7 +95,7 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
               {a.name}
             </SelectItem>
           ))}
-          {[...groups.entries()].map(([label, items]) => (
+          {sortedGroups.map(([label, items]) => (
             <SelectGroup key={label}>
               <SelectLabel>{label}</SelectLabel>
               {items.map((a) => (
