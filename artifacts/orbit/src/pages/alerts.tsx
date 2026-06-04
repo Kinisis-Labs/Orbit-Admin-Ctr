@@ -6,6 +6,7 @@ import {
   getListGlobalAlertsQueryKey,
   getGetAppAlertsQueryKey,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
+import { useAuth } from "@/lib/auth";
 
 type AlertRow = {
   id: string;
@@ -31,16 +33,40 @@ type AlertRow = {
 export default function Alerts() {
   const { scope, isGlobal } = useScope();
   const [filter, setFilter] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { mode } = useAuth();
+  const queryClient = useQueryClient();
 
   const { data: apps } = useListApps();
   const selectedApp = apps?.find((a) => a.id === scope);
 
-  const { data: globalAlerts, isLoading: globalLoading } = useListGlobalAlerts({
-    query: { enabled: isGlobal, queryKey: getListGlobalAlertsQueryKey() },
+  const globalQueryKey = getListGlobalAlertsQueryKey();
+  const appQueryKey = getGetAppAlertsQueryKey(scope);
+
+  const { data: globalAlerts, isLoading: globalLoading } = useListGlobalAlerts(undefined, {
+    query: { enabled: isGlobal, queryKey: globalQueryKey },
   });
-  const { data: appAlerts, isLoading: appLoading } = useGetAppAlerts(scope, {
-    query: { enabled: !isGlobal, queryKey: getGetAppAlertsQueryKey(scope) },
+  const { data: appAlerts, isLoading: appLoading } = useGetAppAlerts(scope, undefined, {
+    query: { enabled: !isGlobal, queryKey: appQueryKey },
   });
+
+  const handleForceRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      const url = isGlobal
+        ? "/api/global/alerts?refresh=true"
+        : `/api/apps/${scope}/alerts?refresh=true`;
+      const queryKey = isGlobal ? globalQueryKey : appQueryKey;
+      const res = await fetch(url, { credentials: "same-origin" });
+      if (res.ok) {
+        const data: unknown = await res.json();
+        queryClient.setQueryData(queryKey, data);
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const isLoading = isGlobal ? globalLoading : appLoading;
   const rows: AlertRow[] | undefined = isGlobal
@@ -76,10 +102,18 @@ export default function Alerts() {
       <div className="bg-card border border-border shadow-sm flex flex-col">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2 border-b border-border bg-card gap-2">
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
-              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-              Refresh
-            </Button>
+            {mode === "entra" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+                onClick={() => void handleForceRefresh()}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 mr-1.5${isRefreshing ? " animate-spin" : ""}`} />
+                {isRefreshing ? "Refreshing…" : "Force refresh"}
+              </Button>
+            )}
             <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
               <Filter className="h-3.5 w-3.5 mr-1.5" />
               Manage filters

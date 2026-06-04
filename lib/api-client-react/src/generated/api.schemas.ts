@@ -633,3 +633,43 @@ export interface GlobalCostSummary {
   revenueByApp: GlobalCostSummaryRevenueByAppItem[];
 }
 
+/**
+ * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+ */
+export type RefreshParameter = boolean;
+
+export type GetInfrastructureParams = {
+/**
+ * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+ */
+refresh?: RefreshParameter;
+};
+
+export type GetNetworkParams = {
+/**
+ * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+ */
+refresh?: RefreshParameter;
+};
+
+export type GetTelemetryParams = {
+/**
+ * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+ */
+refresh?: RefreshParameter;
+};
+
+export type GetAppAlertsParams = {
+/**
+ * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+ */
+refresh?: RefreshParameter;
+};
+
+export type ListGlobalAlertsParams = {
+/**
+ * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+ */
+refresh?: RefreshParameter;
+};
+

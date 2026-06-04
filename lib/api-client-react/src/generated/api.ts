@@ -24,6 +24,10 @@ import type {
   AppDetail,
   AppSummary,
   CostReport,
+  GetAppAlertsParams,
+  GetInfrastructureParams,
+  GetNetworkParams,
+  GetTelemetryParams,
   GlobalCostSummary,
   GlobalHealth,
   HealthStatus,
@@ -33,6 +37,7 @@ import type {
   LedgerJournalEntry,
   LedgerReconciliation,
   LedgerReport,
+  ListGlobalAlertsParams,
   NetworkReport,
   PlaySubscriptionRow,
   PostLedgerEntryRequest,
@@ -278,17 +283,26 @@ export function useGetApp<TData = Awaited<ReturnType<typeof getApp>>, TError = E
 
 
 
-export const getGetInfrastructureUrl = (appId: string,) => {
+export const getGetInfrastructureUrl = (appId: string,
+    params?: GetInfrastructureParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/apps/${appId}/infrastructure`
+  return stringifiedParams.length > 0 ? `/api/apps/${appId}/infrastructure?${stringifiedParams}` : `/api/apps/${appId}/infrastructure`
 }
 
-export const getInfrastructure = async (appId: string, options?: RequestInit): Promise<InfrastructureReport> => {
+export const getInfrastructure = async (appId: string,
+    params?: GetInfrastructureParams, options?: RequestInit): Promise<InfrastructureReport> => {
 
-  return customFetch<InfrastructureReport>(getGetInfrastructureUrl(appId),
+  return customFetch<InfrastructureReport>(getGetInfrastructureUrl(appId,params),
   {
     ...options,
     method: 'GET'
@@ -301,23 +315,25 @@ export const getInfrastructure = async (appId: string, options?: RequestInit): P
 
 
 
-export const getGetInfrastructureQueryKey = (appId: string,) => {
+export const getGetInfrastructureQueryKey = (appId: string,
+    params?: GetInfrastructureParams,) => {
     return [
-    `/api/apps/${appId}/infrastructure`
+    `/api/apps/${appId}/infrastructure`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetInfrastructureQueryOptions = <TData = Awaited<ReturnType<typeof getInfrastructure>>, TError = ErrorType<unknown>>(appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInfrastructure>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetInfrastructureQueryOptions = <TData = Awaited<ReturnType<typeof getInfrastructure>>, TError = ErrorType<unknown>>(appId: string,
+    params?: GetInfrastructureParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInfrastructure>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetInfrastructureQueryKey(appId);
+  const queryKey =  queryOptions?.queryKey ?? getGetInfrastructureQueryKey(appId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInfrastructure>>> = ({ signal }) => getInfrastructure(appId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInfrastructure>>> = ({ signal }) => getInfrastructure(appId,params, { signal, ...requestOptions });
 
 
 
@@ -332,11 +348,12 @@ export type GetInfrastructureQueryError = ErrorType<unknown>
 
 
 export function useGetInfrastructure<TData = Awaited<ReturnType<typeof getInfrastructure>>, TError = ErrorType<unknown>>(
- appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInfrastructure>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ appId: string,
+    params?: GetInfrastructureParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInfrastructure>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetInfrastructureQueryOptions(appId,options)
+  const queryOptions = getGetInfrastructureQueryOptions(appId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -349,17 +366,26 @@ export function useGetInfrastructure<TData = Awaited<ReturnType<typeof getInfras
 
 
 
-export const getGetNetworkUrl = (appId: string,) => {
+export const getGetNetworkUrl = (appId: string,
+    params?: GetNetworkParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/apps/${appId}/network`
+  return stringifiedParams.length > 0 ? `/api/apps/${appId}/network?${stringifiedParams}` : `/api/apps/${appId}/network`
 }
 
-export const getNetwork = async (appId: string, options?: RequestInit): Promise<NetworkReport> => {
+export const getNetwork = async (appId: string,
+    params?: GetNetworkParams, options?: RequestInit): Promise<NetworkReport> => {
 
-  return customFetch<NetworkReport>(getGetNetworkUrl(appId),
+  return customFetch<NetworkReport>(getGetNetworkUrl(appId,params),
   {
     ...options,
     method: 'GET'
@@ -372,23 +398,25 @@ export const getNetwork = async (appId: string, options?: RequestInit): Promise<
 
 
 
-export const getGetNetworkQueryKey = (appId: string,) => {
+export const getGetNetworkQueryKey = (appId: string,
+    params?: GetNetworkParams,) => {
     return [
-    `/api/apps/${appId}/network`
+    `/api/apps/${appId}/network`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetNetworkQueryOptions = <TData = Awaited<ReturnType<typeof getNetwork>>, TError = ErrorType<unknown>>(appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNetwork>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetNetworkQueryOptions = <TData = Awaited<ReturnType<typeof getNetwork>>, TError = ErrorType<unknown>>(appId: string,
+    params?: GetNetworkParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNetwork>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetNetworkQueryKey(appId);
+  const queryKey =  queryOptions?.queryKey ?? getGetNetworkQueryKey(appId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNetwork>>> = ({ signal }) => getNetwork(appId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNetwork>>> = ({ signal }) => getNetwork(appId,params, { signal, ...requestOptions });
 
 
 
@@ -403,11 +431,12 @@ export type GetNetworkQueryError = ErrorType<unknown>
 
 
 export function useGetNetwork<TData = Awaited<ReturnType<typeof getNetwork>>, TError = ErrorType<unknown>>(
- appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNetwork>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ appId: string,
+    params?: GetNetworkParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNetwork>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetNetworkQueryOptions(appId,options)
+  const queryOptions = getGetNetworkQueryOptions(appId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -491,17 +520,26 @@ export function useGetCost<TData = Awaited<ReturnType<typeof getCost>>, TError =
 
 
 
-export const getGetTelemetryUrl = (appId: string,) => {
+export const getGetTelemetryUrl = (appId: string,
+    params?: GetTelemetryParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/apps/${appId}/telemetry`
+  return stringifiedParams.length > 0 ? `/api/apps/${appId}/telemetry?${stringifiedParams}` : `/api/apps/${appId}/telemetry`
 }
 
-export const getTelemetry = async (appId: string, options?: RequestInit): Promise<TelemetryReport> => {
+export const getTelemetry = async (appId: string,
+    params?: GetTelemetryParams, options?: RequestInit): Promise<TelemetryReport> => {
 
-  return customFetch<TelemetryReport>(getGetTelemetryUrl(appId),
+  return customFetch<TelemetryReport>(getGetTelemetryUrl(appId,params),
   {
     ...options,
     method: 'GET'
@@ -514,23 +552,25 @@ export const getTelemetry = async (appId: string, options?: RequestInit): Promis
 
 
 
-export const getGetTelemetryQueryKey = (appId: string,) => {
+export const getGetTelemetryQueryKey = (appId: string,
+    params?: GetTelemetryParams,) => {
     return [
-    `/api/apps/${appId}/telemetry`
+    `/api/apps/${appId}/telemetry`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetTelemetryQueryOptions = <TData = Awaited<ReturnType<typeof getTelemetry>>, TError = ErrorType<unknown>>(appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTelemetry>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetTelemetryQueryOptions = <TData = Awaited<ReturnType<typeof getTelemetry>>, TError = ErrorType<unknown>>(appId: string,
+    params?: GetTelemetryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTelemetry>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetTelemetryQueryKey(appId);
+  const queryKey =  queryOptions?.queryKey ?? getGetTelemetryQueryKey(appId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTelemetry>>> = ({ signal }) => getTelemetry(appId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTelemetry>>> = ({ signal }) => getTelemetry(appId,params, { signal, ...requestOptions });
 
 
 
@@ -545,11 +585,12 @@ export type GetTelemetryQueryError = ErrorType<unknown>
 
 
 export function useGetTelemetry<TData = Awaited<ReturnType<typeof getTelemetry>>, TError = ErrorType<unknown>>(
- appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTelemetry>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ appId: string,
+    params?: GetTelemetryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTelemetry>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetTelemetryQueryOptions(appId,options)
+  const queryOptions = getGetTelemetryQueryOptions(appId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -562,17 +603,26 @@ export function useGetTelemetry<TData = Awaited<ReturnType<typeof getTelemetry>>
 
 
 
-export const getGetAppAlertsUrl = (appId: string,) => {
+export const getGetAppAlertsUrl = (appId: string,
+    params?: GetAppAlertsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/apps/${appId}/alerts`
+  return stringifiedParams.length > 0 ? `/api/apps/${appId}/alerts?${stringifiedParams}` : `/api/apps/${appId}/alerts`
 }
 
-export const getAppAlerts = async (appId: string, options?: RequestInit): Promise<Alert[]> => {
+export const getAppAlerts = async (appId: string,
+    params?: GetAppAlertsParams, options?: RequestInit): Promise<Alert[]> => {
 
-  return customFetch<Alert[]>(getGetAppAlertsUrl(appId),
+  return customFetch<Alert[]>(getGetAppAlertsUrl(appId,params),
   {
     ...options,
     method: 'GET'
@@ -585,23 +635,25 @@ export const getAppAlerts = async (appId: string, options?: RequestInit): Promis
 
 
 
-export const getGetAppAlertsQueryKey = (appId: string,) => {
+export const getGetAppAlertsQueryKey = (appId: string,
+    params?: GetAppAlertsParams,) => {
     return [
-    `/api/apps/${appId}/alerts`
+    `/api/apps/${appId}/alerts`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetAppAlertsQueryOptions = <TData = Awaited<ReturnType<typeof getAppAlerts>>, TError = ErrorType<unknown>>(appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAppAlerts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetAppAlertsQueryOptions = <TData = Awaited<ReturnType<typeof getAppAlerts>>, TError = ErrorType<unknown>>(appId: string,
+    params?: GetAppAlertsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAppAlerts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetAppAlertsQueryKey(appId);
+  const queryKey =  queryOptions?.queryKey ?? getGetAppAlertsQueryKey(appId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAppAlerts>>> = ({ signal }) => getAppAlerts(appId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAppAlerts>>> = ({ signal }) => getAppAlerts(appId,params, { signal, ...requestOptions });
 
 
 
@@ -616,11 +668,12 @@ export type GetAppAlertsQueryError = ErrorType<unknown>
 
 
 export function useGetAppAlerts<TData = Awaited<ReturnType<typeof getAppAlerts>>, TError = ErrorType<unknown>>(
- appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAppAlerts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ appId: string,
+    params?: GetAppAlertsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAppAlerts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetAppAlertsQueryOptions(appId,options)
+  const queryOptions = getGetAppAlertsQueryOptions(appId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -1150,20 +1203,27 @@ export function useGetGlobalHealth<TData = Awaited<ReturnType<typeof getGlobalHe
 
 
 
-export const getListGlobalAlertsUrl = () => {
+export const getListGlobalAlertsUrl = (params?: ListGlobalAlertsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/global/alerts`
+  return stringifiedParams.length > 0 ? `/api/global/alerts?${stringifiedParams}` : `/api/global/alerts`
 }
 
 /**
  * @summary All alerts across all apps (any status)
  */
-export const listGlobalAlerts = async ( options?: RequestInit): Promise<Alert[]> => {
+export const listGlobalAlerts = async (params?: ListGlobalAlertsParams, options?: RequestInit): Promise<Alert[]> => {
 
-  return customFetch<Alert[]>(getListGlobalAlertsUrl(),
+  return customFetch<Alert[]>(getListGlobalAlertsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -1176,23 +1236,23 @@ export const listGlobalAlerts = async ( options?: RequestInit): Promise<Alert[]>
 
 
 
-export const getListGlobalAlertsQueryKey = () => {
+export const getListGlobalAlertsQueryKey = (params?: ListGlobalAlertsParams,) => {
     return [
-    `/api/global/alerts`
+    `/api/global/alerts`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListGlobalAlertsQueryOptions = <TData = Awaited<ReturnType<typeof listGlobalAlerts>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGlobalAlerts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListGlobalAlertsQueryOptions = <TData = Awaited<ReturnType<typeof listGlobalAlerts>>, TError = ErrorType<unknown>>(params?: ListGlobalAlertsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGlobalAlerts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListGlobalAlertsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListGlobalAlertsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listGlobalAlerts>>> = ({ signal }) => listGlobalAlerts({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listGlobalAlerts>>> = ({ signal }) => listGlobalAlerts(params, { signal, ...requestOptions });
 
 
 
@@ -1210,11 +1270,11 @@ export type ListGlobalAlertsQueryError = ErrorType<unknown>
  */
 
 export function useListGlobalAlerts<TData = Awaited<ReturnType<typeof listGlobalAlerts>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGlobalAlerts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListGlobalAlertsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGlobalAlerts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListGlobalAlertsQueryOptions(options)
+  const queryOptions = getListGlobalAlertsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

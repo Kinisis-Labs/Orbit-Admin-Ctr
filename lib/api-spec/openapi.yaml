@@ -71,6 +71,7 @@ paths:
       tags: [infrastructure]
       parameters:
         - $ref: "#/components/parameters/AppId"
+        - $ref: "#/components/parameters/Refresh"
       responses:
         "200":
           description: OK
@@ -83,6 +84,7 @@ paths:
       tags: [network]
       parameters:
         - $ref: "#/components/parameters/AppId"
+        - $ref: "#/components/parameters/Refresh"
       responses:
         "200":
           description: OK
@@ -107,6 +109,7 @@ paths:
       tags: [telemetry]
       parameters:
         - $ref: "#/components/parameters/AppId"
+        - $ref: "#/components/parameters/Refresh"
       responses:
         "200":
           description: OK
@@ -119,6 +122,7 @@ paths:
       tags: [alerts]
       parameters:
         - $ref: "#/components/parameters/AppId"
+        - $ref: "#/components/parameters/Refresh"
       responses:
         "200":
           description: OK
@@ -257,6 +261,8 @@ paths:
       operationId: listGlobalAlerts
       tags: [global, alerts]
       summary: All alerts across all apps (any status)
+      parameters:
+        - $ref: "#/components/parameters/Refresh"
       responses:
         "200":
           description: OK
@@ -309,6 +315,12 @@ components:
       in: path
       required: true
       schema: { type: string }
+    Refresh:
+      name: refresh
+      in: query
+      required: false
+      description: When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+      schema: { type: boolean }
   schemas:
     HealthStatus:
       type: object

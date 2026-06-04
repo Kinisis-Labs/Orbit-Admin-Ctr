@@ -37,7 +37,7 @@ export default function Home() {
   const { data: health, isLoading: healthLoading } = useGetGlobalHealth({
     query: { enabled: isGlobal, queryKey: getGetGlobalHealthQueryKey() },
   });
-  const { data: alerts, isLoading: alertsLoading } = useListGlobalAlerts({
+  const { data: alerts, isLoading: alertsLoading } = useListGlobalAlerts(undefined, {
     query: { enabled: isGlobal, queryKey: getListGlobalAlertsQueryKey() },
   });
 

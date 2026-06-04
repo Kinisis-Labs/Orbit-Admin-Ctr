@@ -77,6 +77,10 @@ export const GetInfrastructureParams = zod.object({
   "appId": zod.coerce.string()
 })
 
+export const GetInfrastructureQueryParams = zod.object({
+  "refresh": zod.coerce.boolean().optional().describe('When true, bypasses the in-process server-side cache and fetches fresh data from Azure.')
+})
+
 export const GetInfrastructureResponse = zod.object({
   "resources": zod.array(zod.object({
   "id": zod.string(),
@@ -101,6 +105,10 @@ export const GetInfrastructureResponse = zod.object({
 
 export const GetNetworkParams = zod.object({
   "appId": zod.coerce.string()
+})
+
+export const GetNetworkQueryParams = zod.object({
+  "refresh": zod.coerce.boolean().optional().describe('When true, bypasses the in-process server-side cache and fetches fresh data from Azure.')
 })
 
 export const GetNetworkResponse = zod.object({
@@ -167,6 +175,10 @@ export const GetTelemetryParams = zod.object({
   "appId": zod.coerce.string()
 })
 
+export const GetTelemetryQueryParams = zod.object({
+  "refresh": zod.coerce.boolean().optional().describe('When true, bypasses the in-process server-side cache and fetches fresh data from Azure.')
+})
+
 export const GetTelemetryResponse = zod.object({
   "requestsPerMin": zod.number(),
   "p95LatencyMs": zod.number(),
@@ -191,6 +203,10 @@ export const GetTelemetryResponse = zod.object({
 
 export const GetAppAlertsParams = zod.object({
   "appId": zod.coerce.string()
+})
+
+export const GetAppAlertsQueryParams = zod.object({
+  "refresh": zod.coerce.boolean().optional().describe('When true, bypasses the in-process server-side cache and fetches fresh data from Azure.')
 })
 
 export const GetAppAlertsResponseItem = zod.object({
@@ -378,6 +394,10 @@ export const GetGlobalHealthResponse = zod.object({
 /**
  * @summary All alerts across all apps (any status)
  */
+export const ListGlobalAlertsQueryParams = zod.object({
+  "refresh": zod.coerce.boolean().optional().describe('When true, bypasses the in-process server-side cache and fetches fresh data from Azure.')
+})
+
 export const ListGlobalAlertsResponseItem = zod.object({
   "id": zod.string(),
   "appId": zod.string(),

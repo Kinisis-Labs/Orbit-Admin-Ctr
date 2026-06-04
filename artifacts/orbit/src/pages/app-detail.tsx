@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -28,15 +29,8 @@ const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 function fmtDataAsOf(iso: string | undefined | null): string | null {
   if (!iso) return null;
   try {
-    const d = new Date(iso);
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      timeZoneName: "short",
-    }).format(d);
-  } catch {
+    return format(new Date(iso), "MMM d, h:mm a bbb");
+  } catch (e) {
     return null;
   }
 }
@@ -267,13 +261,14 @@ function UserAuthBadge({ userAuth }: { userAuth: string }) {
 function DataSourceBadge({
   dataSource,
   dataAsOf,
-  label = "Azure Monitor",
+  label,
 }: {
   dataSource: "live" | "mock" | undefined;
   dataAsOf?: string | null;
   label?: string;
 }) {
   if (!dataSource) return null;
+
   if (dataSource === "live") {
     const asOf = fmtDataAsOf(dataAsOf);
     const isStale = dataAsOf
@@ -283,7 +278,7 @@ function DataSourceBadge({
       <span className="inline-flex items-center gap-1.5 select-none flex-wrap">
         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
           <Wifi className="h-3 w-3" />
-          Live — {label}
+          Live — {label || "Azure Monitor"}
         </span>
         {asOf && (
           <span
@@ -349,8 +344,56 @@ function OverviewCostTile({ appId }: { appId: string }) {
   );
 }
 
+function ForceRefreshButton({
+  isRefreshing,
+  onRefresh,
+}: {
+  isRefreshing: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-6 px-2 text-[10px] rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted gap-1"
+      onClick={onRefresh}
+      disabled={isRefreshing}
+      title="Bypass cache and fetch latest data from Azure"
+    >
+      <RefreshCw className={`h-3 w-3${isRefreshing ? " animate-spin" : ""}`} />
+      {isRefreshing ? "Refreshing…" : "Force refresh"}
+    </Button>
+  );
+}
+
+function useForceRefresh(url: string, queryKey: readonly unknown[]) {
+  const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const forceRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      const res = await fetch(`${url}?refresh=true`, { credentials: "same-origin" });
+      if (res.ok) {
+        const data: unknown = await res.json();
+        queryClient.setQueryData([...queryKey], data);
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  return { isRefreshing, forceRefresh };
+}
+
+function isLiveMode(mode: string) {
+  return mode === "entra";
+}
 function InfraTab({ appId }: { appId: string }) {
-  const { data, isLoading } = useGetInfrastructure(appId, { query: { enabled: !!appId, queryKey: getGetInfrastructureQueryKey(appId) } });
+  const queryKey = getGetInfrastructureQueryKey(appId);
+  const { data, isLoading } = useGetInfrastructure(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { isRefreshing, forceRefresh } = useForceRefresh(`/api/apps/${appId}/infrastructure`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No infrastructure data available</div>;
@@ -360,7 +403,12 @@ function InfraTab({ appId }: { appId: string }) {
       <div className="lg:col-span-1 bg-card border border-border shadow-sm flex flex-col">
         <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Resources</h2>
-          <DataSourceBadge dataSource={data.dataSource} />
+          <div className="flex items-center gap-2">
+            {data.dataSource === "live" && (
+              <ForceRefreshButton isRefreshing={isRefreshing} onRefresh={forceRefresh} />
+            )}
+            <DataSourceBadge dataSource={data.dataSource} />
+          </div>
         </div>
         <div className="p-0 overflow-y-auto max-h-[500px]">
           <Table className="text-[12px]">
@@ -414,7 +462,10 @@ function InfraTab({ appId }: { appId: string }) {
 }
 
 function NetworkTab({ appId }: { appId: string }) {
-  const { data, isLoading } = useGetNetwork(appId, { query: { enabled: !!appId, queryKey: getGetNetworkQueryKey(appId) } });
+  const { mode } = useAuth();
+  const queryKey = getGetNetworkQueryKey(appId);
+  const { data, isLoading } = useGetNetwork(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { isRefreshing, forceRefresh } = useForceRefresh(`/api/apps/${appId}/network`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No network data available</div>;
@@ -422,8 +473,11 @@ function NetworkTab({ appId }: { appId: string }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <div className="lg:col-span-1 bg-card border border-border shadow-sm flex flex-col">
-        <div className="p-3 border-b border-border bg-card">
+        <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Endpoints</h2>
+          {isLiveMode(mode) && (
+            <ForceRefreshButton isRefreshing={isRefreshing} onRefresh={forceRefresh} />
+          )}
         </div>
         <div className="p-0 overflow-y-auto max-h-[500px]">
           <Table className="text-[12px]">
@@ -485,7 +539,9 @@ function NetworkTab({ appId }: { appId: string }) {
 }
 
 function TelemetryTab({ appId }: { appId: string }) {
-  const { data, isLoading } = useGetTelemetry(appId, { query: { enabled: !!appId, queryKey: getGetTelemetryQueryKey(appId) } });
+  const queryKey = getGetTelemetryQueryKey(appId);
+  const { data, isLoading } = useGetTelemetry(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { isRefreshing, forceRefresh } = useForceRefresh(`/api/apps/${appId}/telemetry`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No telemetry data available</div>;
@@ -494,7 +550,12 @@ function TelemetryTab({ appId }: { appId: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground font-medium">Key metrics (last 24 h)</span>
-        <DataSourceBadge dataSource={data.dataSource} />
+        <div className="flex items-center gap-2">
+          {data.dataSource === "live" && (
+            <ForceRefreshButton isRefreshing={isRefreshing} onRefresh={forceRefresh} />
+          )}
+          <DataSourceBadge dataSource={data.dataSource} />
+        </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
@@ -940,7 +1001,10 @@ function LedgerTab({ appId }: { appId: string }) {
 }
 
 function AlertsTab({ appId }: { appId: string }) {
-  const { data: alerts, isLoading } = useGetAppAlerts(appId, { query: { enabled: !!appId, queryKey: getGetAppAlertsQueryKey(appId) } });
+  const { mode } = useAuth();
+  const queryKey = getGetAppAlertsQueryKey(appId);
+  const { data: alerts, isLoading } = useGetAppAlerts(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { isRefreshing, forceRefresh } = useForceRefresh(`/api/apps/${appId}/alerts`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
 
@@ -948,10 +1012,9 @@ function AlertsTab({ appId }: { appId: string }) {
     <div className="bg-card border border-border shadow-sm flex flex-col">
       <div className="flex items-center justify-between p-2 border-b border-border bg-card">
         <h2 className="text-sm font-semibold px-2">Alert Rules</h2>
-        <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
-          <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-          Refresh
-        </Button>
+        {isLiveMode(mode) && (
+          <ForceRefreshButton isRefreshing={isRefreshing} onRefresh={forceRefresh} />
+        )}
       </div>
       <div className="overflow-x-auto">
         <Table className="text-[13px]">
