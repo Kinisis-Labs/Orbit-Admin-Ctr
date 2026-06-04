@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { MetricSeries } from './metricSeries';
+import type { TelemetryReportDataSource } from './telemetryReportDataSource';
 import type { TopError } from './topError';
 
 export interface TelemetryReport {
@@ -15,4 +16,6 @@ export interface TelemetryReport {
   availabilityPercent: number;
   series: MetricSeries[];
   topErrors: TopError[];
+  /** Indicates whether telemetry comes from live Azure Monitor / Application Insights or built-in mock values. */
+  dataSource: TelemetryReportDataSource;
 }

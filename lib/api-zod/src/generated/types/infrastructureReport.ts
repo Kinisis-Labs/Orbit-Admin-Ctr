@@ -5,10 +5,13 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { InfrastructureReportDataSource } from './infrastructureReportDataSource';
 import type { InfrastructureResource } from './infrastructureResource';
 import type { MetricSeries } from './metricSeries';
 
 export interface InfrastructureReport {
   resources: InfrastructureResource[];
   series: MetricSeries[];
+  /** Indicates whether resource data comes from live Azure Resource Graph or built-in mock values. */
+  dataSource: InfrastructureReportDataSource;
 }

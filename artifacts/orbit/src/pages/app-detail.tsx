@@ -20,7 +20,7 @@ import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock } from "lucide-react";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, COST_READER_GROUP } from "@/lib/auth";
 import { AccessDenied } from "@/components/access-denied";
@@ -200,6 +200,24 @@ export default function AppDetail() {
 // Sub-components for tabs
 // ----------------------------------------------------------------------
 
+function DataSourceBadge({ dataSource }: { dataSource: "live" | "mock" | undefined }) {
+  if (!dataSource) return null;
+  if (dataSource === "live") {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide select-none">
+        <Wifi className="h-3 w-3" />
+        Live — Azure Monitor
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide select-none">
+      <WifiOff className="h-3 w-3" />
+      Demo data
+    </span>
+  );
+}
+
 function InfraTab({ appId }: { appId: string }) {
   const { data, isLoading } = useGetInfrastructure(appId, { query: { enabled: !!appId, queryKey: getGetInfrastructureQueryKey(appId) } });
 
@@ -209,8 +227,9 @@ function InfraTab({ appId }: { appId: string }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <div className="lg:col-span-1 bg-card border border-border shadow-sm flex flex-col">
-        <div className="p-3 border-b border-border bg-card">
+        <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Resources</h2>
+          <DataSourceBadge dataSource={data.dataSource} />
         </div>
         <div className="p-0 overflow-y-auto max-h-[500px]">
           <Table className="text-[12px]">
@@ -342,6 +361,10 @@ function TelemetryTab({ appId }: { appId: string }) {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground font-medium">Key metrics (last 24 h)</span>
+        <DataSourceBadge dataSource={data.dataSource} />
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Requests / Min</div>

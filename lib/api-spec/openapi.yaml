@@ -406,7 +406,7 @@ components:
         memoryPercent: { type: number }
     InfrastructureReport:
       type: object
-      required: [resources, series]
+      required: [resources, series, dataSource]
       properties:
         resources:
           type: array
@@ -414,6 +414,7 @@ components:
         series:
           type: array
           items: { $ref: "#/components/schemas/MetricSeries" }
+        dataSource: { type: string, enum: [live, mock], description: "Indicates whether resource data comes from live Azure Resource Graph or built-in mock values." }
     NetworkEndpoint:
       type: object
       required: [name, status, latencyMs, region]
@@ -639,7 +640,7 @@ components:
         revenue: { $ref: "#/components/schemas/LedgerRevenue" }
     TelemetryReport:
       type: object
-      required: [requestsPerMin, p95LatencyMs, errorRatePercent, availabilityPercent, series, topErrors]
+      required: [requestsPerMin, p95LatencyMs, errorRatePercent, availabilityPercent, series, topErrors, dataSource]
       properties:
         requestsPerMin: { type: number }
         p95LatencyMs: { type: number }
@@ -651,6 +652,7 @@ components:
         topErrors:
           type: array
           items: { $ref: "#/components/schemas/TopError" }
+        dataSource: { type: string, enum: [live, mock], description: "Indicates whether telemetry comes from live Azure Monitor / Application Insights or built-in mock values." }
     TopError:
       type: object
       required: [message, count, lastSeen]

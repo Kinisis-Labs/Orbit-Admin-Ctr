@@ -78,7 +78,8 @@ export const GetInfrastructureResponse = zod.object({
   "timestamp": zod.coerce.date(),
   "value": zod.number()
 }))
-}))
+})),
+  "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether resource data comes from live Azure Resource Graph or built-in mock values.')
 })
 
 
@@ -166,7 +167,8 @@ export const GetTelemetryResponse = zod.object({
   "message": zod.string(),
   "count": zod.number(),
   "lastSeen": zod.coerce.date()
-}))
+})),
+  "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether telemetry comes from live Azure Monitor \/ Application Insights or built-in mock values.')
 })
 
 

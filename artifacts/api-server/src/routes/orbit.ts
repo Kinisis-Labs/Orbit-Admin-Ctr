@@ -296,7 +296,7 @@ router.get("/apps/:appId/infrastructure", async (req, res) => {
     },
     makeSeries(app.id, "Disk IOPS", "ops/s", 24, 1200, 600),
   ];
-  const data = GetInfrastructureResponse.parse({ resources, series });
+  const data = GetInfrastructureResponse.parse({ resources, series, dataSource: liveResources ? "live" : "mock" });
   res.json(data);
 });
 
@@ -541,6 +541,7 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
         lastSeen: new Date(Date.now() - 1000 * 60 * 67).toISOString(),
       },
     ],
+    dataSource: liveMetrics ? "live" : "mock",
   });
   res.json(data);
 });

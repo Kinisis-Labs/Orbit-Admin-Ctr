@@ -123,9 +123,22 @@ export interface InfrastructureResource {
   memoryPercent?: number;
 }
 
+/**
+ * Indicates whether resource data comes from live Azure Resource Graph or built-in mock values.
+ */
+export type InfrastructureReportDataSource = typeof InfrastructureReportDataSource[keyof typeof InfrastructureReportDataSource];
+
+
+export const InfrastructureReportDataSource = {
+  live: 'live',
+  mock: 'mock',
+} as const;
+
 export interface InfrastructureReport {
   resources: InfrastructureResource[];
   series: MetricSeries[];
+  /** Indicates whether resource data comes from live Azure Resource Graph or built-in mock values. */
+  dataSource: InfrastructureReportDataSource;
 }
 
 export interface NetworkEndpoint {
@@ -431,6 +444,17 @@ export interface LedgerReport {
   revenue: LedgerRevenue;
 }
 
+/**
+ * Indicates whether telemetry comes from live Azure Monitor / Application Insights or built-in mock values.
+ */
+export type TelemetryReportDataSource = typeof TelemetryReportDataSource[keyof typeof TelemetryReportDataSource];
+
+
+export const TelemetryReportDataSource = {
+  live: 'live',
+  mock: 'mock',
+} as const;
+
 export interface TopError {
   message: string;
   count: number;
@@ -444,6 +468,8 @@ export interface TelemetryReport {
   availabilityPercent: number;
   series: MetricSeries[];
   topErrors: TopError[];
+  /** Indicates whether telemetry comes from live Azure Monitor / Application Insights or built-in mock values. */
+  dataSource: TelemetryReportDataSource;
 }
 
 export type AlertSource = typeof AlertSource[keyof typeof AlertSource];
