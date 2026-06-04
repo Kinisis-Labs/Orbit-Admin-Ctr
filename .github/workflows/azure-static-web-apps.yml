@@ -156,7 +156,7 @@ jobs:
 
       - name: Install SWA CLI and deploy
         run: |
-          npm install -g @azure/static-web-apps-cli
+          npm install -g @azure/static-web-apps-cli@1.9.4
           swa deploy artifacts/orbit/dist/public \
             --deployment-token "${{ steps.swa-token.outputs.token }}" \
             --env production \
