@@ -65,6 +65,10 @@ jobs:
                 ENTRA_REDIRECT_URI=https://orbit.kinisislabs.com/api/auth/callback \
                 ENTRA_AUTHORIZED_GROUP_ID="${{ secrets.ENTRA_AUTHORIZED_GROUP_ID }}" \
                 ENTRA_COST_READER_GROUP_ID="${{ secrets.ENTRA_COST_READER_GROUP_ID }}"
+            az containerapp ingress update \
+              --name ca-orbit-api-prod \
+              --resource-group rg-orbit-prod-eus2 \
+              --target-port 8080
 
       - name: Print Container App FQDN (for Front Door origin config)
         uses: azure/cli@v2
