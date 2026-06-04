@@ -8,3 +8,4 @@
 - [Webhook ingestion idempotency](webhook-ingestion-idempotency.md) — commit dedupe marker in same tx as mutations; use event-time not ingest-time; GREATEST() guards out-of-order delivery.
 - [connect-pg-simple under esbuild](connect-pg-simple-esbuild.md) — bundled server has no table.sql → createTableIfMissing ENOENT; own user_sessions in schema + disable auto-create.
 - [SWA CI deploy](swa-ci-deploy.md) — portal-linked SWAs reject token-only deploys (OIDC); fix is CLI-recreated SWA + SWA CLI with runtime token + `--env production`.
+- [Azure prod routing gotchas](azure-prod-routing.md) — DNS must CNAME to Front Door (not SWA); port 80 required; PG firewall blocks GH Actions; SESSION_SECRET+DATABASE_URL must be in --set-env-vars.
