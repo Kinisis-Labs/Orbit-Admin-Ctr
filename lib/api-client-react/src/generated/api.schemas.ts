@@ -225,6 +225,8 @@ export interface CostReport {
   revenue: Revenue;
   /** Indicates whether cost figures come from live Azure Cost Management or built-in mock values. */
   dataSource: CostReportDataSource;
+  /** Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live. */
+  dataAsOf?: string;
 }
 
 export type LedgerAccountType = typeof LedgerAccountType[keyof typeof LedgerAccountType];
@@ -575,6 +577,8 @@ export interface GlobalCostSummary {
   apiCost: number;
   /** Indicates whether cost figures come from live Azure Cost Management or built-in mock values. */
   dataSource: GlobalCostSummaryDataSource;
+  /** Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live. */
+  dataAsOf?: string;
   byApp: GlobalCostSummaryByAppItem[];
   /** Cost breakdown by Azure resource type, aggregated across all apps. */
   byResource: CostByService[];

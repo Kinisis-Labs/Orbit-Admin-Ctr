@@ -19,13 +19,41 @@ const fmt = (amount: number, currency = "USD") =>
   new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
 const fmtInt = (n: number) => new Intl.NumberFormat("en-US").format(n);
 
-function DataSourceBadge({ dataSource }: { dataSource: "live" | "mock" | undefined }) {
+function fmtDataAsOf(iso: string | undefined | null): string | null {
+  if (!iso) return null;
+  try {
+    const d = new Date(iso);
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    }).format(d);
+  } catch {
+    return null;
+  }
+}
+
+function DataSourceBadge({
+  dataSource,
+  dataAsOf,
+}: {
+  dataSource: "live" | "mock" | undefined;
+  dataAsOf?: string | null;
+}) {
   if (!dataSource) return null;
   if (dataSource === "live") {
+    const asOf = fmtDataAsOf(dataAsOf);
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide select-none">
-        <Wifi className="h-3 w-3" />
-        Live — Azure Cost Management
+      <span className="inline-flex items-center gap-1.5 select-none flex-wrap">
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
+          <Wifi className="h-3 w-3" />
+          Live — Azure Cost Management
+        </span>
+        {asOf && (
+          <span className="text-[10px] text-muted-foreground">as of {asOf}</span>
+        )}
       </span>
     );
   }
@@ -80,7 +108,7 @@ function GlobalCost() {
         <Tile
           title="Actual cost (MTD)"
           value={isLoading ? null : cost ? fmt(cost.monthToDate, cost.currency) : "$0.00"}
-          badge={!isLoading && cost ? <DataSourceBadge dataSource={cost.dataSource} /> : undefined}
+          badge={!isLoading && cost ? <DataSourceBadge dataSource={cost.dataSource} dataAsOf={cost.dataAsOf} /> : undefined}
         />
         <Tile title="Forecasted cost" value={isLoading ? null : cost ? fmt(cost.forecast, cost.currency) : "$0.00"} />
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
@@ -360,7 +388,7 @@ function AppCost() {
         <Tile
           title="Actual cost (MTD)"
           value={isLoading ? null : data ? fmt(data.monthToDate, data.currency) : "$0.00"}
-          badge={!isLoading && data ? <DataSourceBadge dataSource={data.dataSource} /> : undefined}
+          badge={!isLoading && data ? <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} /> : undefined}
         />
         <Tile title="Forecasted cost" value={isLoading ? null : data ? fmt(data.forecast, data.currency) : "$0.00"} />
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">

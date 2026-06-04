@@ -8,6 +8,7 @@ export type CostByService = { service: string; amount: number };
 export type CostResult = {
   monthToDate: number;
   byService: CostByService[];
+  dataAsOf: string;
 };
 
 let _costClient: CostManagementClient | null = null;
@@ -181,7 +182,11 @@ export async function fetchMonthToDateCost(
 
     byService.sort((a, b) => b.amount - a.amount);
 
-    const costResult: CostResult = { monthToDate: Number(total.toFixed(2)), byService };
+    const costResult: CostResult = {
+      monthToDate: Number(total.toFixed(2)),
+      byService,
+      dataAsOf: new Date().toISOString(),
+    };
     _costCache.set(app.id, { result: costResult, expiresAt: Date.now() + COST_CACHE_TTL_MS });
     return costResult;
   } catch {

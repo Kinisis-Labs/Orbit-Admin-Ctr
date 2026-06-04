@@ -142,7 +142,8 @@ export const GetCostResponse = zod.object({
   "amount": zod.number()
 }))
 }),
-  "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether cost figures come from live Azure Cost Management or built-in mock values.')
+  "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether cost figures come from live Azure Cost Management or built-in mock values.'),
+  "dataAsOf": zod.coerce.date().optional().describe('Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live.')
 })
 
 
@@ -386,6 +387,7 @@ export const GetGlobalCostSummaryResponse = zod.object({
   "apiCalls": zod.number().describe('Total month-to-date API calls across all apps'),
   "apiCost": zod.number().describe('Portion of monthToDate attributable to API usage'),
   "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether cost figures come from live Azure Cost Management or built-in mock values.'),
+  "dataAsOf": zod.coerce.date().optional().describe('Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live.'),
   "byApp": zod.array(zod.object({
   "appId": zod.string(),
   "appName": zod.string(),
