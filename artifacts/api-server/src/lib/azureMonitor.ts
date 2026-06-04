@@ -307,7 +307,9 @@ export async function fetchAppMetrics(
 ): Promise<TelemetrySummary | null> {
   if (!isAzureConfigured()) return null;
 
-  if (!bypassCache) {
+  if (bypassCache) {
+    _metricsCache.delete(app.id);
+  } else {
     const entry = _metricsCache.get(app.id);
     if (entry && entry.expiresAt > Date.now()) {
       return entry.result;
