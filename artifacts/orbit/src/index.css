@@ -209,6 +209,13 @@
   }
 }
 
+/* Background-refresh progress bar */
+@keyframes progress-bar {
+  0%   { transform: translateX(-100%); width: 100%; }
+  50%  { transform: translateX(0%);    width: 60%; }
+  100% { transform: translateX(100%);  width: 100%; }
+}
+
 /* Azure-like scrollbar */
 ::-webkit-scrollbar {
   width: 10px;

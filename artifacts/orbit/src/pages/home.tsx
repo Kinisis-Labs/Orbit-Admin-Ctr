@@ -299,7 +299,13 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {appsFetching && !appsLoading && (
+            <div className="h-0.5 w-full overflow-hidden bg-transparent">
+              <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
+            </div>
+          )}
+
+          <div className={`overflow-x-auto transition-opacity duration-200 ${appsFetching && !appsLoading ? "opacity-60" : "opacity-100"}`}>
             {appsLoading ? (
               <div className="p-4 space-y-2">
                 <Skeleton className="h-8 w-full" />
