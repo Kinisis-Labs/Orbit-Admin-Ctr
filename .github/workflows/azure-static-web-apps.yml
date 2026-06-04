@@ -30,7 +30,6 @@ jobs:
   build-and-deploy:
     if: github.event_name != 'pull_request' || github.event.action != 'closed'
     runs-on: ubuntu-latest
-    environment: OrbitProduction
     env:
       # vite.config.ts requires PORT + BASE_PATH at build time. PORT is unused by
       # `vite build` but must be a valid number; BASE_PATH is the served base.
@@ -64,7 +63,6 @@ jobs:
   close-pull-request:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
-    environment: OrbitProduction
     steps:
       - name: Close stale preview environment
         uses: Azure/static-web-apps-deploy@v1
