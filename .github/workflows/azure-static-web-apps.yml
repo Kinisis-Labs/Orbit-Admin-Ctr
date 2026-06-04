@@ -1,41 +1,22 @@
-name: Deploy Orbit frontend to Azure Static Web Apps
-
-# Frontend (artifacts/orbit) -> swa-orbit-prod.
-# The Static Web App's portal-generated workflow does not understand this pnpm
-# monorepo, so we build here and upload the prebuilt output (skip_app_build).
-#
-# Prerequisite: environment secret AZURE_STATIC_WEB_APPS_API_TOKEN in the OrbitProduction
-#   GitHub environment (Static Web App > Overview > Manage deployment token).
+name: SWA Deploy
 
 on:
   push:
     branches: [main]
-    paths:
-      - "artifacts/orbit/**"
-      - "lib/api-client-react/**"
-      - "lib/api-zod/**"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - ".github/workflows/azure-static-web-apps.yml"
-  pull_request:
-    types: [opened, synchronize, reopened, closed]
-    branches: [main]
   workflow_dispatch:
 
 permissions:
+  id-token: write
   contents: read
-  pull-requests: write
 
 jobs:
-  build-and-deploy:
-    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+  deploy:
     runs-on: ubuntu-latest
+    environment: OrbitProduction
     env:
-      # vite.config.ts requires PORT + BASE_PATH at build time. PORT is unused by
-      # `vite build` but must be a valid number; BASE_PATH is the served base.
       PORT: "3000"
       BASE_PATH: "/"
-      NODE_ENV: "production"
+      NODE_ENV: production
     steps:
       - uses: actions/checkout@v4
 
@@ -50,22 +31,16 @@ jobs:
 
       - run: pnpm --filter @workspace/orbit run build
 
-      - name: Deploy to Azure Static Web Apps
-        uses: Azure/static-web-apps-deploy@v1
+      - uses: azure/login@v2
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          action: upload
-          app_location: "artifacts/orbit/dist/public"
-          output_location: ""
-          skip_app_build: true
-          skip_api_build: true
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-  close-pull-request:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Close stale preview environment
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          action: close
+      - name: Deploy to Static Web App
+        run: |
+          az staticwebapp deploy \
+            --name swa-orbit-prod \
+            --resource-group rg-orbit-prod-eus2 \
+            --source artifacts/orbit/dist/public \
+            --no-wait false
