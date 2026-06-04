@@ -45,18 +45,6 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Set GHCR pull credentials on Container App
-        uses: azure/cli@v2
-        with:
-          azcliversion: latest
-          inlineScript: |
-            az containerapp registry set \
-              --name ca-orbit-api-prod \
-              --resource-group rg-orbit-prod-eus2 \
-              --server ghcr.io \
-              --username "${{ github.actor }}" \
-              --password "${{ secrets.GHCR_PULL_TOKEN }}"
-
       - name: Update Container App image
         uses: azure/cli@v2
         with:
