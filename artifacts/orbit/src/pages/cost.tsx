@@ -684,6 +684,7 @@ function AppCost() {
   const netClass = net >= 0 ? "text-emerald-500" : "text-destructive";
 
   const [copied, setCopied] = useState(false);
+  const [showDailyTable, setShowDailyTable] = useState(false);
 
   const search = useSearch();
   const [, navigate] = useLocation();
@@ -873,8 +874,18 @@ function AppCost() {
       </div>
 
       <div className="bg-card border border-border shadow-sm flex flex-col">
-        <div className="p-3 border-b border-border bg-card">
+        <div className="p-3 border-b border-border bg-card flex items-center justify-between">
           <h2 className="text-sm font-semibold">Daily Spend</h2>
+          {!isLoading && data && data.daily.length > 0 && (
+            <button
+              onClick={() => setShowDailyTable((v) => !v)}
+              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <TableIcon className="h-3.5 w-3.5" />
+              {showDailyTable ? "Hide table" : "Show table"}
+              {showDailyTable ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
+          )}
         </div>
         <div className="p-4 h-72">
           {isLoading ? (
@@ -892,6 +903,49 @@ function AppCost() {
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No daily data available</div>
           )}
         </div>
+        {showDailyTable && data && data.daily.length > 0 && (
+          <div className="border-t border-border overflow-x-auto">
+            <Table className="text-[13px]">
+              <TableHeader className="bg-muted/50 border-b border-border">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-8 font-semibold text-foreground w-[140px]">Date</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground text-right w-[140px]">Spend</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground text-right w-[140px]">vs Last Week</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {([...data.daily] as DailyCostPoint[]).reverse().map((day) => {
+                  const pct = day.vsLastWeek;
+                  const pctClass =
+                    pct == null
+                      ? "text-muted-foreground/50"
+                      : pct > 15
+                        ? "text-destructive"
+                        : pct > 0
+                          ? "text-amber-500 dark:text-amber-400"
+                          : "text-emerald-600 dark:text-emerald-400";
+                  const pctLabel =
+                    pct == null
+                      ? "—"
+                      : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
+                  return (
+                    <TableRow key={day.timestamp as string} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                      <TableCell className="py-1 font-medium tabular-nums text-[12px]">
+                        {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(day.timestamp as string))}
+                      </TableCell>
+                      <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">
+                        {fmt(day.value, data.currency)}
+                      </TableCell>
+                      <TableCell className={`py-1 text-right font-mono text-[12px] tabular-nums font-semibold ${pctClass}`}>
+                        {pctLabel}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
