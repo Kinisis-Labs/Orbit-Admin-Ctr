@@ -39,6 +39,7 @@ function fmtDataAsOf(iso: string | undefined | null): string | null {
   }
 }
 import { Button } from "@/components/ui/button";
+import { Tooltip as UITooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth, COST_READER_GROUP } from "@/lib/auth";
 import { AccessDenied } from "@/components/access-denied";
 import { useToast } from "@/hooks/use-toast";
@@ -318,7 +319,8 @@ function OverviewCostTile({ appId }: { appId: string }) {
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: data.currency }).format(amount);
 
-  const utilPct = Math.min((data.monthToDate / data.budget) * 100, 100);
+  const rawUtilPct = data.budget > 0 ? (data.monthToDate / data.budget) * 100 : 0;
+  const utilPct = Math.min(rawUtilPct, 100);
   const budgetBarClass = getBudgetBarClass(utilPct, budgetThreshold);
 
   return (
@@ -343,7 +345,14 @@ function OverviewCostTile({ appId }: { appId: string }) {
               {formatCurrency(data.monthToDate)} <span className="text-muted-foreground font-normal">of {formatCurrency(data.budget)}</span>
             </span>
           </div>
-          <Progress value={utilPct} className={`h-1.5 rounded-none bg-muted ${budgetBarClass}`} />
+          <TooltipProvider>
+            <UITooltip>
+              <TooltipTrigger asChild>
+                <Progress value={utilPct} className={`h-1.5 rounded-none bg-muted ${budgetBarClass} cursor-default`} />
+              </TooltipTrigger>
+              <TooltipContent>Alert at {budgetThreshold}% · {rawUtilPct.toFixed(0)}% used</TooltipContent>
+            </UITooltip>
+          </TooltipProvider>
           <div className="text-[11px] text-muted-foreground tabular-nums">{utilPct.toFixed(0)}% used</div>
         </div>
       </div>
@@ -635,6 +644,9 @@ function CostTab({ appId }: { appId: string }) {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: data.currency }).format(amount);
   };
 
+  const rawBudgetUtilPct = data.budget > 0 ? (data.monthToDate / data.budget) * 100 : 0;
+  const barBudgetUtilPct = Math.min(rawBudgetUtilPct, 100);
+
   return (
     <>
       {isFetching && !isLoading && (
@@ -682,10 +694,17 @@ function CostTab({ appId }: { appId: string }) {
               <span className="font-semibold tabular-nums text-foreground">{formatCurrency(data.monthToDate)}</span>
               <span className="text-muted-foreground tabular-nums">of {formatCurrency(data.budget)}</span>
             </div>
-            <Progress
-              value={Math.min((data.monthToDate / data.budget) * 100, 100)}
-              className={`h-1.5 rounded-none bg-muted ${getBudgetBarClass(Math.min((data.monthToDate / data.budget) * 100, 100), budgetThreshold)}`}
-            />
+            <TooltipProvider>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <Progress
+                    value={barBudgetUtilPct}
+                    className={`h-1.5 rounded-none bg-muted ${getBudgetBarClass(barBudgetUtilPct, budgetThreshold)} cursor-default`}
+                  />
+                </TooltipTrigger>
+                <TooltipContent>Alert at {budgetThreshold}% · {rawBudgetUtilPct.toFixed(0)}% used</TooltipContent>
+              </UITooltip>
+            </TooltipProvider>
           </div>
         </div>
       </div>
