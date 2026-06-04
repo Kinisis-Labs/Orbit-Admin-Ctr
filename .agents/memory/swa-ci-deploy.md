@@ -1,83 +1,51 @@
 ---
 name: SWA CI deploy
-description: How Azure Static Web Apps CI deployment works in this repo — pitfalls and working approach.
+description: Durable rules for deploying Azure Static Web Apps in this repo without portal/GitHub-App linkage.
 ---
 
-## The working approach
+## Core rule
 
-Deploy via **SWA CLI** (`@azure/static-web-apps-cli`) using a deployment token fetched at runtime from Azure, NOT the `Azure/static-web-apps-deploy@v1` GitHub Action.
+Deploy via **SWA CLI** with a token fetched at runtime — NOT `Azure/static-web-apps-deploy@v1`.
+
+**Why:** Portal-linked SWAs enforce OIDC validation against the Azure Static Web Apps GitHub App. If the GitHub App was never authorized (e.g. the Azure-generated workflow's first run failed before Oryx upload), the content service is unregistered and every deploy returns `BadRequest` regardless of token. Deleting and recreating the SWA without `--source` skips the GitHub App registration entirely.
+
+**How to apply:** Any time the SWA deploy workflow fails with `BadRequest` / "No matching Static Web App found", check whether the SWA was portal-linked. If so, delete+recreate without `--source` and switch to the SWA CLI pattern below.
+
+## Working workflow pattern
 
 ```yaml
-- name: Login to Azure
-  uses: azure/login@v2
-  with:
-    client-id: ${{ secrets.AZURE_CLIENT_ID }}
-    tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-    subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+- uses: azure/login@v2
+  with: { client-id, tenant-id, subscription-id }
 
-- name: Get SWA deployment token
-  id: swa-token
+- id: swa-token
   run: |
-    TOKEN=$(az staticwebapp secrets list \
-      --name swa-orbit-prod \
-      --resource-group rg-orbit-prod-eus2 \
-      --query "properties.apiKey" -o tsv)
+    TOKEN=$(az staticwebapp secrets list --name swa-orbit-prod \
+      --resource-group rg-orbit-prod-eus2 --query "properties.apiKey" -o tsv)
     echo "::add-mask::$TOKEN"
     echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
 
-- name: Deploy
-  run: |
+- run: |
     npm install -g @azure/static-web-apps-cli
     swa deploy artifacts/orbit/dist/public \
       --deployment-token "${{ steps.swa-token.outputs.token }}" \
-      --env production \
-      --no-use-keychain
+      --env production --no-use-keychain
 ```
 
-**Why:** `--env production` is required — in CI, SWA CLI defaults to "preview" environment.
-
-## What failed and why
-
-### `Azure/static-web-apps-deploy@v1` without `github_id_token`
-Returns `BadRequest` / "No matching Static Web App found or api key invalid."
-Portal-linked SWAs enforce OIDC validation — the API token alone isn't enough.
-
-### `github_id_token` via `actions/github-script`
-Returns `InternalServerError` / "unexpected error." Root cause: the Azure Static Web Apps GitHub App was not installed/authorized on the repo, so Azure's backend can't call back to GitHub to validate the OIDC token. The Azure-generated workflow's first run (which would have initialized the GitHub App link) failed at Oryx build before reaching the upload step, leaving the content service unregistered.
-
-### SWA CLI with a portal-linked SWA
-Also returns `BadRequest` — same OIDC requirement applies at the StaticSitesClient level.
+`--env production` is required — SWA CLI defaults to "preview" environment in CI.
 
 ## Recreating a broken SWA
-
-If the content service returns persistent BadRequest/InternalServerError regardless of approach, the SWA resource is in a bad state (management plane created, content service not initialized). Fix: delete and recreate.
 
 ```bash
 az staticwebapp delete --name swa-orbit-prod --resource-group rg-orbit-prod-eus2 --yes
 az staticwebapp create --name swa-orbit-prod --resource-group rg-orbit-prod-eus2 \
   --location "eastus2" --sku Standard
-# No --source flag = no GitHub linkage = no OIDC requirement
+# No --source = no GitHub App link = token-only deploys work
 ```
 
-**After recreation:** hostname changes (new random suffix). Must update Front Door origin to the new `*.7.azurestaticapps.net` hostname.
+After recreation the hostname changes (new random suffix) — update the Front Door SWA origin to match.
 
-**Why:** `az staticwebapp create` without `--source` skips the GitHub App registration, so the SWA accepts deployments with just the API token. The workflow fetches the token at runtime so no GitHub secrets need updating.
+## Front Door + custom domain
 
-## Front Door origin update
+`orbit.kinisislabs.com` requires `orbit.kinisislabs.com` to be associated with Front Door **routes** (not just registered as a domain). Each route (frontend `/*` and API `/api/*`) must list the custom domain alongside the default `.azurefd.net` domain or requests for it won't match.
 
-The deploy workflow auto-discovers and updates the AFD origin on every run, but the Orbit deploy identity lacks `Microsoft.Cdn/profiles/originGroups/origins/write` on the shared RG — so the step has `continue-on-error: true` and prints a warning. Manual fix path when needed:
-
-- **Front Door profile:** `afd-shared-prod` in `rg-kinisislabs-platform-shared-prod-eus2`
-- **Origin group:** `default-origin-group` → **origin:** `default-origin`
-- Update host name to `<new-swa-default-hostname>.7.azurestaticapps.net`
-
-To automate: grant the deploy identity (object id `5428ed38-93f6-42f0-a5b2-9575c19e0d4f`) **CDN Endpoint Contributor** on `afd-shared-prod`, or **Contributor** on `rg-kinisislabs-platform-shared-prod-eus2`.
-
-## Custom domain on SWA
-
-`orbit.kinisislabs.com` registered as SWA custom domain (June 2026). Validation uses TXT record (not CNAME, because the domain is already CNAMEd to Front Door):
-- **Record:** `_dnsauth.orbit.kinisislabs.com` TXT = `_14714r9g5208w9v72sy381n6wxm6vds`
-- Azure auto-validates once the TXT propagates.
-
-## Race condition on simultaneous runs
-If two SWA Deploy runs happen at the same time (push + dispatch), the second gets "Deployment Canceled." Not a real failure — only one push runs at a time in normal operation.
+The SWA also needs the custom domain registered under its Custom Domains blade. Use the "Azure Front Door" type (not "Custom domain" / TXT-record type) so the SWA trusts the `X-Azure-FDID` from `afd-shared-prod`. If the AFD option isn't shown in the portal, re-add from the Front Door side instead.

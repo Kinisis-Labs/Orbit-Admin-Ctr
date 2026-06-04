@@ -7,4 +7,4 @@
 - [Azure deploy build gotchas](azure-deploy.md) — API Docker context = repo root (so .dockerignore must be root-level); runtime stage copies only dist/ (esbuild bundles all deps); vite build needs PORT+BASE_PATH env.
 - [Webhook ingestion idempotency](webhook-ingestion-idempotency.md) — commit dedupe marker in same tx as mutations; use event-time not ingest-time; GREATEST() guards out-of-order delivery.
 - [connect-pg-simple under esbuild](connect-pg-simple-esbuild.md) — bundled server has no table.sql → createTableIfMissing ENOENT; own user_sessions in schema + disable auto-create.
-- [SWA CI deploy](swa-ci-deploy.md) — portal-linked SWAs require github_id_token OIDC which fails if GitHub App isn't installed; bypass by deleting+recreating SWA via CLI (no GitHub source) then use SWA CLI with --env production and token fetched at runtime via az staticwebapp secrets list.
+- [SWA CI deploy](swa-ci-deploy.md) — portal-linked SWAs reject token-only deploys (OIDC); fix is CLI-recreated SWA + SWA CLI with runtime token + `--env production`.
