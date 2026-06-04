@@ -45,13 +45,41 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Run DB migrations
+      - name: Install pnpm and deps
         run: |
           npm install -g pnpm
           pnpm install --frozen-lockfile
-          pnpm --filter @workspace/db run push-force
+
+      - name: Open PostgreSQL firewall for runner
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            RUNNER_IP=$(curl -s https://api.ipify.org)
+            echo "Runner IP: $RUNNER_IP"
+            az postgres flexible-server firewall-rule create \
+              --resource-group rg-orbit-prod-eus2 \
+              --name pg-orbit-prod \
+              --rule-name github-actions-ci \
+              --start-ip-address "$RUNNER_IP" \
+              --end-ip-address "$RUNNER_IP"
+
+      - name: Run DB migrations
+        run: pnpm --filter @workspace/db run push-force
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Close PostgreSQL firewall for runner
+        if: always()
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az postgres flexible-server firewall-rule delete \
+              --resource-group rg-orbit-prod-eus2 \
+              --name pg-orbit-prod \
+              --rule-name github-actions-ci \
+              --yes || true
 
       - name: Update Container App image and env vars
         uses: azure/cli@v2
