@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSpendThreshold, useBudgetThreshold, DEFAULT_SPEND_THRESHOLD, DEFAULT_BUDGET_THRESHOLD } from "@/lib/spend-threshold";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -41,6 +41,7 @@ function fmtDataAsOf(iso: string | undefined | null): string | null {
 import { Button } from "@/components/ui/button";
 import { Tooltip as UITooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth, COST_READER_GROUP } from "@/lib/auth";
+import { useScope } from "@/lib/scope-context";
 import { AccessDenied } from "@/components/access-denied";
 import { useToast } from "@/hooks/use-toast";
 import { BAR_COLOR_DEFAULT, BAR_COLOR_UP_MILD, BAR_COLOR_UP_HIGH, BAR_COLOR_DOWN, getBarFill } from "@/lib/bar-trend";
@@ -636,6 +637,13 @@ function CostTab({ appId }: { appId: string }) {
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/cost`, queryKey);
   const threshold = useSpendThreshold(appId);
   const budgetThreshold = useBudgetThreshold(appId);
+  const { setScope } = useScope();
+  const [, navigate] = useLocation();
+
+  function handleAnomalyClick(date: Date) {
+    setScope(appId);
+    navigate(`/cost?date=${format(date, "yyyy-MM-dd")}`);
+  }
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No cost data available</div>;
@@ -722,6 +730,7 @@ function CostTab({ appId }: { appId: string }) {
               showLegend
               highlightPeak
               threshold={threshold}
+              onAnomalyClick={handleAnomalyClick}
             />
           </div>
         </div>

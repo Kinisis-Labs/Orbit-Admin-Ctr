@@ -10,15 +10,15 @@ import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { Link } from "wouter";
-import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff, AlertTriangle, Clipboard, Check, X, ChevronDown, ChevronUp, TableIcon } from "lucide-react";
+import { Link, useSearch, useLocation } from "wouter";
+import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff, AlertTriangle, Clipboard, Check, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { CostTabs } from "@/components/cost-tabs";
 import { useMemo, useState } from "react";
 import { DailySpendChart, computeAnomalies, type DailyCostPoint } from "@/components/daily-spend-chart";
-import { format } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 
 const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
@@ -645,6 +645,22 @@ function AppCost() {
 
   const [copied, setCopied] = useState(false);
 
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const dateParam = new URLSearchParams(search).get("date");
+  const dateFilter = (() => {
+    if (!dateParam) return null;
+    const parsed = parseISO(dateParam);
+    return isValid(parsed) ? parsed : null;
+  })();
+
+  function dismissDateFilter() {
+    const params = new URLSearchParams(search);
+    params.delete("date");
+    const qs = params.toString();
+    navigate(qs ? `/cost?${qs}` : "/cost", { replace: true });
+  }
+
   function buildBreakdownCsv() {
     if (!data?.byService?.length) return null;
     const resourceGroup = selectedApp?.resourceGroup ?? "";
@@ -709,6 +725,23 @@ function AppCost() {
 
   return (
     <>
+      {dateFilter && (
+        <div className="flex items-center gap-2 px-3 py-2 border border-amber-500/30 bg-amber-500/8 rounded-sm text-[13px]">
+          <CalendarSearch className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <span className="text-foreground font-medium">
+            Drilled in from anomaly on{" "}
+            <span className="font-semibold">{format(dateFilter, "EEEE, MMMM d, yyyy")}</span>
+          </span>
+          <span className="text-muted-foreground text-[11px] ml-1">— service breakdown below shows the full month</span>
+          <button
+            onClick={dismissDateFilter}
+            className="ml-auto flex items-center justify-center h-5 w-5 rounded-sm hover:bg-amber-500/20 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Dismiss date filter"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
       {!isLoading && data && (
         <div className="flex items-center justify-end gap-2">
           {data.dataSource === "live" && (

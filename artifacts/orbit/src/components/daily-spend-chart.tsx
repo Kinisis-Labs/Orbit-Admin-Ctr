@@ -70,6 +70,7 @@ export function DailySpendChart({
   highlightPeak = false,
   threshold = 15,
   anomalySigmas = 2,
+  onAnomalyClick,
 }: {
   daily: DailyCostPoint[];
   formatCurrency: (v: number) => string;
@@ -79,6 +80,7 @@ export function DailySpendChart({
   highlightPeak?: boolean;
   threshold?: number;
   anomalySigmas?: number;
+  onAnomalyClick?: (date: Date) => void;
 }) {
   const maxDays = daily.length;
   const defaultRange: Range = maxDays >= 30 ? 30 : maxDays >= 14 ? 14 : 7;
@@ -157,13 +159,30 @@ export function DailySpendChart({
               cursor={{ fill: "hsl(var(--muted))" }}
             />
             {needsCells ? (
-              <Bar dataKey="value" radius={0}>
-                {visibleDataWithPeak.map((entry, idx) => (
-                  <Cell
-                    key={idx}
-                    fill={entry.isPeak ? BAR_COLOR_PEAK : getCellFill(entry as EnrichedPoint)}
-                  />
-                ))}
+              <Bar
+                dataKey="value"
+                radius={0}
+                onClick={
+                  onAnomalyClick
+                    ? (entry: EnrichedPoint) => {
+                        if (colorByTrend && entry.anomaly?.isAnomaly) {
+                          onAnomalyClick(new Date(entry.timestamp));
+                        }
+                      }
+                    : undefined
+                }
+              >
+                {visibleDataWithPeak.map((entry, idx) => {
+                  const isClickableAnomaly =
+                    colorByTrend && (entry as EnrichedPoint).anomaly?.isAnomaly && !!onAnomalyClick;
+                  return (
+                    <Cell
+                      key={idx}
+                      fill={entry.isPeak ? BAR_COLOR_PEAK : getCellFill(entry as EnrichedPoint)}
+                      style={isClickableAnomaly ? { cursor: "pointer" } : undefined}
+                    />
+                  );
+                })}
               </Bar>
             ) : (
               <Bar dataKey="value" fill={BAR_COLOR_DEFAULT} radius={0} />
