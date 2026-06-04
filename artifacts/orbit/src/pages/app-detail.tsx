@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "wouter";
+import { useForceRefresh } from "@/hooks/use-force-refresh";
+import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   useGetApp, getGetAppQueryKey, 
@@ -342,64 +344,6 @@ function OverviewCostTile({ appId }: { appId: string }) {
       </div>
     </div>
   );
-}
-
-const FORCE_REFRESH_COOLDOWN_MS = 30_000;
-
-function ForceRefreshButton({
-  isRefreshing,
-  isCoolingDown,
-  onRefresh,
-}: {
-  isRefreshing: boolean;
-  isCoolingDown: boolean;
-  onRefresh: () => void;
-}) {
-  const disabled = isRefreshing || isCoolingDown;
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-6 px-2 text-[10px] rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted gap-1"
-      onClick={onRefresh}
-      disabled={disabled}
-      title={isCoolingDown ? "Recently refreshed — wait 30 s before refreshing again" : "Bypass cache and fetch latest data from Azure"}
-    >
-      <RefreshCw className={`h-3 w-3${isRefreshing ? " animate-spin" : ""}`} />
-      {isRefreshing ? "Refreshing…" : isCoolingDown ? "Just refreshed" : "Force refresh"}
-    </Button>
-  );
-}
-
-function useForceRefresh(url: string, queryKey: readonly unknown[]) {
-  const queryClient = useQueryClient();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!lastRefreshedAt) return;
-    const id = setTimeout(() => setLastRefreshedAt(null), FORCE_REFRESH_COOLDOWN_MS);
-    return () => clearTimeout(id);
-  }, [lastRefreshedAt]);
-
-  const isCoolingDown = lastRefreshedAt !== null;
-
-  const forceRefresh = async () => {
-    if (isRefreshing || isCoolingDown) return;
-    setIsRefreshing(true);
-    try {
-      const res = await fetch(`${url}?refresh=true`, { credentials: "same-origin" });
-      if (res.ok) {
-        const data: unknown = await res.json();
-        queryClient.setQueryData([...queryKey], data);
-      }
-    } finally {
-      setIsRefreshing(false);
-      setLastRefreshedAt(Date.now());
-    }
-  };
-
-  return { isRefreshing, isCoolingDown, forceRefresh };
 }
 
 function isLiveMode(mode: string) {
