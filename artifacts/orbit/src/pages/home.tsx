@@ -171,9 +171,17 @@ export default function Home() {
                 ))}
               </div>
               {(authFilter !== "all" || envFilter !== "all") && !appsLoading && (
-                <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                  {filteredApps?.length ?? 0} {(filteredApps?.length ?? 0) === 1 ? "app" : "apps"}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                    {filteredApps?.length ?? 0} {(filteredApps?.length ?? 0) === 1 ? "app" : "apps"}
+                  </span>
+                  <button
+                    onClick={() => { setAuthFilter("all"); setEnvFilter("all"); }}
+                    className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                  >
+                    Clear
+                  </button>
+                </div>
               )}
             </div>
             <div className="flex items-center gap-1">
