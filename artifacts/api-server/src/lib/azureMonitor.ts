@@ -1,4 +1,4 @@
-import { MetricsQueryClient } from "@azure/monitor-query";
+import { MetricsQueryClient, LogsQueryClient } from "@azure/monitor-query";
 import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
 import type { AppRecord } from "../routes/orbit.js";
@@ -10,7 +10,13 @@ export type TelemetrySummary = {
   availabilityPercent: number;
 };
 
+export type TimeSeriesPoint = {
+  timestamp: string;
+  value: number;
+};
+
 let _metricsClient: MetricsQueryClient | null = null;
+let _logsClient: LogsQueryClient | null = null;
 let _graphClient: ResourceGraphClient | null = null;
 
 function getMetricsClient(): MetricsQueryClient {
@@ -18,6 +24,13 @@ function getMetricsClient(): MetricsQueryClient {
     _metricsClient = new MetricsQueryClient(getAzureCredential());
   }
   return _metricsClient;
+}
+
+function getLogsClient(): LogsQueryClient {
+  if (!_logsClient) {
+    _logsClient = new LogsQueryClient(getAzureCredential());
+  }
+  return _logsClient;
 }
 
 function getGraphClient(): ResourceGraphClient {
@@ -28,12 +41,97 @@ function getGraphClient(): ResourceGraphClient {
 }
 
 /**
+ * The Log Analytics workspace customer ID (GUID shown as "Workspace ID" in the
+ * Azure portal). Required for queryWorkspace(); set AZURE_LOG_ANALYTICS_WORKSPACE_ID
+ * on the Container App alongside AZURE_CLIENT_ID / AZURE_TENANT_ID.
+ */
+export function getLogAnalyticsWorkspaceId(): string | null {
+  return process.env.AZURE_LOG_ANALYTICS_WORKSPACE_ID?.trim() || null;
+}
+
+/**
+ * Returns true when both base Azure credentials and the Log Analytics workspace
+ * ID are configured. Controls the live time-series path.
+ */
+export function isMonitorConfigured(): boolean {
+  return isAzureConfigured() && Boolean(getLogAnalyticsWorkspaceId());
+}
+
+/**
+ * KQL query factories by metric name.
+ *
+ * Each factory receives the App Insights component resource ID and the lookback
+ * window (hours), and returns KQL that produces exactly two columns —
+ * `timestamp` (datetime) and `value` (real) — ordered ascending.
+ *
+ * The `_ResourceId =~ resourceId` filter scopes every query to a single App
+ * Insights component even though the query runs against a shared workspace,
+ * ensuring app A and app B never bleed into each other's charts.
+ *
+ * KQL notes:
+ * - requests.duration is a timespan; `duration / 1ms` converts it to a real
+ *   in milliseconds — the idiomatic KQL timespan-to-number idiom.
+ * - performanceCounters category+counter selects percentage values only,
+ *   never raw byte counts.
+ */
+const METRIC_QUERIES: Record<
+  string,
+  (resourceId: string, hours: number) => string
+> = {
+  requests_per_min: (resourceId, hours) => `
+    requests
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(${hours}h)
+    | summarize value = count() / 60.0 by bin(timestamp, 1h)
+    | order by timestamp asc
+  `,
+  p95_latency_ms: (resourceId, hours) => `
+    requests
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(${hours}h)
+    | summarize value = percentile(duration / 1ms, 95) by bin(timestamp, 1h)
+    | order by timestamp asc
+  `,
+  error_rate_pct: (resourceId, hours) => `
+    requests
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(${hours}h)
+    | summarize value = 100.0 * countif(success == false) / count() by bin(timestamp, 1h)
+    | order by timestamp asc
+  `,
+  cpu_pct: (resourceId, hours) => `
+    performanceCounters
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(${hours}h)
+    | where category == "Processor" and counter == "% Processor Time"
+    | summarize value = avg(value) by bin(timestamp, 1h)
+    | order by timestamp asc
+  `,
+  memory_pct: (resourceId, hours) => `
+    performanceCounters
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(${hours}h)
+    | where category == "Memory" and counter == "% Committed Bytes In Use"
+    | summarize value = avg(value) by bin(timestamp, 1h)
+    | order by timestamp asc
+  `,
+};
+
+// Cache resolved App Insights resource IDs per app to avoid repeated Resource
+// Graph queries when multiple metrics are fetched in parallel for the same app.
+const _appInsightsIdCache = new Map<string, string | null>();
+
+/**
  * Resolve the Application Insights component resource ID for the app's RG.
- * Returns null if none found.
+ * Returns null if none found. Result is cached in-process.
  */
 async function resolveAppInsightsResourceId(
   app: AppRecord,
 ): Promise<string | null> {
+  if (_appInsightsIdCache.has(app.id)) {
+    return _appInsightsIdCache.get(app.id) ?? null;
+  }
+
   const subscriptionIds = getSubscriptionIds();
   const rg = app.resourceGroup.toLowerCase();
 
@@ -51,11 +149,93 @@ async function resolveAppInsightsResourceId(
       subscriptions: subscriptionIds,
     });
     const rows = (result.data as Record<string, unknown>[]) ?? [];
-    if (rows.length === 0) return null;
-    return String(rows[0]?.["id"] ?? "");
+    const id = rows.length === 0 ? null : String(rows[0]?.["id"] ?? "");
+    _appInsightsIdCache.set(app.id, id);
+    return id;
+  } catch {
+    _appInsightsIdCache.set(app.id, null);
+    return null;
+  }
+}
+
+/**
+ * Query a single time-series metric from the Log Analytics workspace, scoped
+ * to a specific Application Insights component via a `_ResourceId` filter.
+ *
+ * Runs via LogsQueryClient.queryWorkspace() using AZURE_LOG_ANALYTICS_WORKSPACE_ID.
+ * The `resourceId` parameter is the Azure resource ID of the App Insights component
+ * — this ensures results are app-specific even in a shared workspace.
+ *
+ * @param resourceId - Azure resource ID of the Application Insights component
+ * @param metricName - One of the keys in METRIC_QUERIES
+ * @param hours      - Lookback window in hours (returns hourly buckets)
+ * @returns Array of {timestamp, value} points ordered asc, or null when:
+ *   - Monitor is not configured (workspace ID or Azure creds missing)
+ *   - The metric name is unknown
+ *   - The query returns zero rows or all-NaN values
+ *   - Any error occurs (all errors are suppressed; callers use mock fallback)
+ */
+export async function fetchMetricTimeSeries(
+  resourceId: string,
+  metricName: string,
+  hours: number,
+): Promise<TimeSeriesPoint[] | null> {
+  if (!isMonitorConfigured()) return null;
+
+  const queryFn = METRIC_QUERIES[metricName];
+  if (!queryFn) return null;
+
+  const workspaceId = getLogAnalyticsWorkspaceId()!;
+
+  try {
+    const result = await getLogsClient().queryWorkspace(
+      workspaceId,
+      queryFn(resourceId, hours),
+      { duration: `PT${hours}H` },
+    );
+
+    if (result.status !== "Success") return null;
+    const table = result.tables?.[0];
+    if (!table) return null;
+
+    const cols: Array<{ name: string }> = table.columnDescriptors;
+    const tsIdx = cols.findIndex((c: { name: string }) => c.name === "timestamp");
+    const valIdx = cols.findIndex((c: { name: string }) => c.name === "value");
+    if (tsIdx === -1 || valIdx === -1) return null;
+
+    const points = (table.rows as unknown[][]).map((row) => ({
+      timestamp: String(row[tsIdx]),
+      value: Number(Number(row[valIdx]).toFixed(2)),
+    }));
+
+    // Treat empty results or all-NaN values as unavailable so callers fall back
+    // to seeded mock series rather than rendering empty / broken charts.
+    if (points.length === 0) return null;
+    if (points.every((p) => !isFinite(p.value))) return null;
+
+    return points;
   } catch {
     return null;
   }
+}
+
+/**
+ * Convenience wrapper for route handlers: resolves the App Insights component
+ * resource ID for `app` (via Resource Graph), then calls fetchMetricTimeSeries
+ * scoped to that component.
+ *
+ * Returns null when monitor is not configured, no App Insights component is
+ * found in the app's resource group, or the underlying query fails.
+ */
+export async function fetchAppTimeSeries(
+  app: AppRecord,
+  metricName: string,
+  hours: number,
+): Promise<TimeSeriesPoint[] | null> {
+  if (!isMonitorConfigured()) return null;
+  const resourceId = await resolveAppInsightsResourceId(app);
+  if (!resourceId) return null;
+  return fetchMetricTimeSeries(resourceId, metricName, hours);
 }
 
 /**
@@ -63,7 +243,7 @@ async function resolveAppInsightsResourceId(
  * Looks up the Application Insights component in the app's RG, then queries:
  *   - requests/count (total over 1h → /min)
  *   - requests/failed (for error rate)
- *   - requests/duration (P95 approximated from average — real P95 requires Log Analytics)
+ *   - requests/duration (P95 approximated from average — real P95 via Log Analytics)
  *   - availabilityResults/availabilityPercentage
  *
  * Returns null when not configured, no App Insights found, or on any error.
@@ -117,8 +297,8 @@ export async function fetchAppMetrics(
       totalRequests > 0
         ? Number(((failedRequests / totalRequests) * 100).toFixed(2))
         : 0;
-    // Azure Monitor doesn't expose P95 directly via the Metrics API (it requires
-    // Log Analytics). We use average × 1.4 as a reasonable approximation.
+    // Azure Monitor Metrics API does not expose true percentiles; use average × 1.4
+    // as an approximation. Real P95 is available via fetchMetricTimeSeries.
     const p95LatencyMs = Number((avgDurationMs * 1.4).toFixed(0));
 
     return {

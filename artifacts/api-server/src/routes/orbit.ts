@@ -13,7 +13,7 @@ import {
 } from "@workspace/api-zod";
 import { fetchResourcesByResourceGroup } from "../lib/azureResources.js";
 import { fetchMonthToDateCost } from "../lib/azureCost.js";
-import { fetchAppMetrics } from "../lib/azureMonitor.js";
+import { fetchAppMetrics, fetchAppTimeSeries } from "../lib/azureMonitor.js";
 import { fetchActiveAlerts } from "../lib/azureAlerts.js";
 import { fetchNetworkEndpoints } from "../lib/azureNetwork.js";
 
@@ -290,11 +290,21 @@ router.get("/apps/:appId/infrastructure", async (req, res) => {
     res.status(404).json({ error: "App not found" });
     return;
   }
-  const liveResources = await fetchResourcesByResourceGroup(app);
+  const [liveResources, liveCpuSeries, liveMemSeries] = await Promise.all([
+    fetchResourcesByResourceGroup(app),
+    fetchAppTimeSeries(app, "cpu_pct", 24),
+    fetchAppTimeSeries(app, "memory_pct", 24),
+  ]);
   const resources = liveResources ?? mockInfraResources(app);
   const series = [
-    makeSeries(app.id, "CPU %", "%", 24, 45, 25),
-    makeSeries(app.id, "Memory %", "%", 24, 60, 20),
+    {
+      ...makeSeries(app.id, "CPU %", "%", 24, 45, 25),
+      points: liveCpuSeries ?? makeSeries(app.id, "CPU %", "%", 24, 45, 25).points,
+    },
+    {
+      ...makeSeries(app.id, "Memory %", "%", 24, 60, 20),
+      points: liveMemSeries ?? makeSeries(app.id, "Memory %", "%", 24, 60, 20).points,
+    },
     makeSeries(app.id, "Disk IOPS", "ops/s", 24, 1200, 600),
   ];
   const data = GetInfrastructureResponse.parse({ resources, series });
@@ -496,16 +506,34 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
   }
   const rand = seededRand(app.id + "tel");
   const sick = app.status === "unhealthy";
-  const liveMetrics = await fetchAppMetrics(app);
+
+  // Fetch point-in-time summary and all three time-series in parallel.
+  const [liveMetrics, liveRpmSeries, liveLatenSeries, liveErrSeries] =
+    await Promise.all([
+      fetchAppMetrics(app),
+      fetchAppTimeSeries(app, "requests_per_min", 24),
+      fetchAppTimeSeries(app, "p95_latency_ms", 24),
+      fetchAppTimeSeries(app, "error_rate_pct", 24),
+    ]);
+
   const data = GetTelemetryResponse.parse({
     requestsPerMin: liveMetrics?.requestsPerMin ?? Number((400 + rand() * 1200).toFixed(0)),
     p95LatencyMs: liveMetrics?.p95LatencyMs ?? Number(((sick ? 800 : 220) + rand() * 200).toFixed(0)),
     errorRatePercent: liveMetrics?.errorRatePercent ?? Number(((sick ? 4.2 : 0.3) + rand() * 0.6).toFixed(2)),
     availabilityPercent: liveMetrics?.availabilityPercent ?? Number((sick ? 97.4 : 99.92).toFixed(2)),
     series: [
-      makeSeries(app.id, "Requests / min", "rpm", 24, liveMetrics?.requestsPerMin ?? 800, 300),
-      makeSeries(app.id, "P95 latency (ms)", "ms", 24, liveMetrics?.p95LatencyMs ?? (sick ? 700 : 220), 120),
-      makeSeries(app.id, "Error rate (%)", "%", 24, liveMetrics?.errorRatePercent ?? (sick ? 4 : 0.4), 1.2),
+      {
+        ...makeSeries(app.id, "Requests / min", "rpm", 24, liveMetrics?.requestsPerMin ?? 800, 300),
+        points: liveRpmSeries ?? makeSeries(app.id, "Requests / min", "rpm", 24, liveMetrics?.requestsPerMin ?? 800, 300).points,
+      },
+      {
+        ...makeSeries(app.id, "P95 latency (ms)", "ms", 24, liveMetrics?.p95LatencyMs ?? (sick ? 700 : 220), 120),
+        points: liveLatenSeries ?? makeSeries(app.id, "P95 latency (ms)", "ms", 24, liveMetrics?.p95LatencyMs ?? (sick ? 700 : 220), 120).points,
+      },
+      {
+        ...makeSeries(app.id, "Error rate (%)", "%", 24, liveMetrics?.errorRatePercent ?? (sick ? 4 : 0.4), 1.2),
+        points: liveErrSeries ?? makeSeries(app.id, "Error rate (%)", "%", 24, liveMetrics?.errorRatePercent ?? (sick ? 4 : 0.4), 1.2).points,
+      },
     ],
     topErrors: [
       {
