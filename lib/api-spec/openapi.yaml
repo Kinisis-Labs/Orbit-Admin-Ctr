@@ -493,6 +493,7 @@ components:
       properties:
         service: { type: string }
         amount: { type: number }
+        trend: { type: string, nullable: true, description: "Week-over-week percentage change (e.g. '+8.2%' or '-3.1%'). Omitted when insufficient data." }
     ApiByName:
       type: object
       required: [name, totalCalls, cost]

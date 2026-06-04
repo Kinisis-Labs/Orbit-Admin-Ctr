@@ -149,7 +149,8 @@ export const GetCostResponse = zod.object({
 })),
   "byService": zod.array(zod.object({
   "service": zod.string(),
-  "amount": zod.number()
+  "amount": zod.number(),
+  "trend": zod.string().nullish().describe('Week-over-week percentage change (e.g. \'+8.2%\' or \'-3.1%\'). Omitted when insufficient data.')
 })),
   "apiUsage": zod.object({
   "totalCalls": zod.number().describe('Month-to-date API call count'),
@@ -439,7 +440,8 @@ export const GetGlobalCostSummaryResponse = zod.object({
 })),
   "byResource": zod.array(zod.object({
   "service": zod.string(),
-  "amount": zod.number()
+  "amount": zod.number(),
+  "trend": zod.string().nullish().describe('Week-over-week percentage change (e.g. \'+8.2%\' or \'-3.1%\'). Omitted when insufficient data.')
 })).describe('Cost breakdown by Azure resource type, aggregated across all apps.'),
   "apiByApp": zod.array(zod.object({
   "appId": zod.string(),

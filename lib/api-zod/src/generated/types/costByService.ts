@@ -9,4 +9,6 @@
 export interface CostByService {
   service: string;
   amount: number;
+  /** Week-over-week percentage change (e.g. '+8.2%' or '-3.1%'). Omitted when insufficient data. */
+  trend?: string | null;
 }

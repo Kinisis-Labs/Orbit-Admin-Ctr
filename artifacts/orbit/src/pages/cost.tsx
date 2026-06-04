@@ -432,7 +432,7 @@ function AppCost() {
       environment,
       svc.amount.toFixed(2),
       data.monthToDate > 0 ? ((svc.amount / data.monthToDate) * 100).toFixed(1) + "%" : "0.0%",
-      "N/A",
+      svc.trend ?? "N/A",
     ]);
     return [headers, ...rows]
       .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
@@ -610,21 +610,35 @@ function AppCost() {
             <THead>
               <TableHead className="h-8 font-semibold text-foreground">Service</TableHead>
               <TableHead className="h-8 font-semibold text-foreground text-right w-[130px]">Cost (MTD)</TableHead>
+              <TableHead className="h-8 font-semibold text-foreground text-right w-[80px]">WoW</TableHead>
               <TableHead className="h-8 font-semibold text-foreground w-[160px]"></TableHead>
             </THead>
             <TableBody>
               {isLoading || !data ? (
-                <SkeletonRows cols={3} rows={5} />
+                <SkeletonRows cols={4} rows={5} />
               ) : (
-                data.byService.map((svc, i) => (
-                  <TableRow key={i} className="h-8 border-b border-border/50 hover:bg-muted/40">
-                    <TableCell className="py-1 font-medium">{svc.service}</TableCell>
-                    <TableCell className="py-1 text-right font-mono text-[12px]">{fmt(svc.amount, data.currency)}</TableCell>
-                    <TableCell className="py-1">
-                      <Progress value={(svc.amount / data.monthToDate) * 100} className="h-1.5 rounded-none bg-muted" />
-                    </TableCell>
-                  </TableRow>
-                ))
+                data.byService.map((svc, i) => {
+                  const trend = svc.trend;
+                  const isPos = trend?.startsWith("+");
+                  const isNeg = trend?.startsWith("-");
+                  const trendClass = isPos
+                    ? "text-destructive"
+                    : isNeg
+                      ? "text-emerald-500"
+                      : "text-muted-foreground";
+                  return (
+                    <TableRow key={i} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                      <TableCell className="py-1 font-medium">{svc.service}</TableCell>
+                      <TableCell className="py-1 text-right font-mono text-[12px]">{fmt(svc.amount, data.currency)}</TableCell>
+                      <TableCell className={`py-1 text-right font-mono text-[11px] ${trendClass}`}>
+                        {trend ?? <span className="text-muted-foreground/50">—</span>}
+                      </TableCell>
+                      <TableCell className="py-1">
+                        <Progress value={(svc.amount / data.monthToDate) * 100} className="h-1.5 rounded-none bg-muted" />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

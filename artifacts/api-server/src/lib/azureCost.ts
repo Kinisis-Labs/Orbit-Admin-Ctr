@@ -3,7 +3,7 @@ import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
 import type { AppRecord } from "../routes/orbit.js";
 
-export type CostByService = { service: string; amount: number };
+export type CostByService = { service: string; amount: number; trend?: string };
 
 export type CostResult = {
   monthToDate: number;
@@ -147,7 +147,7 @@ export async function fetchMonthToDateCost(
       timeframe: "Custom",
       timePeriod: { from: new Date(monthStart()), to: new Date(today()) },
       dataset: {
-        granularity: "None",
+        granularity: "Daily",
         aggregation: {
           totalCost: { name: "PreTaxCost", function: "Sum" },
         },
@@ -160,30 +160,59 @@ export async function fetchMonthToDateCost(
     );
     const rows = (result.rows ?? []) as unknown[][];
 
-    const costIdx = columns.findIndex((c) =>
-      c.toLowerCase().includes("cost"),
-    );
-    const svcIdx = columns.findIndex((c) =>
-      c.toLowerCase().includes("service"),
+    const costIdx = columns.findIndex((c) => c.toLowerCase().includes("cost"));
+    const svcIdx = columns.findIndex((c) => c.toLowerCase().includes("service"));
+    const dateIdx = columns.findIndex(
+      (c) => c.toLowerCase().includes("date") || c.toLowerCase() === "usagedate",
     );
 
     if (costIdx === -1) return null;
 
-    let total = 0;
-    const byService: CostByService[] = [];
+    // Compute WoW trend cutoffs as integers (YYYYMMDD).
+    const nowUtc = new Date();
+    const todayInt = parseInt(nowUtc.toISOString().slice(0, 10).replace(/-/g, ""), 10);
+    const d7 = new Date(nowUtc);
+    d7.setUTCDate(d7.getUTCDate() - 7);
+    const d7Int = parseInt(d7.toISOString().slice(0, 10).replace(/-/g, ""), 10);
+    const d14 = new Date(nowUtc);
+    d14.setUTCDate(d14.getUTCDate() - 14);
+    const d14Int = parseInt(d14.toISOString().slice(0, 10).replace(/-/g, ""), 10);
+
+    // Per-service daily buckets: service → { total, recent7, prior7 }
+    const svcBuckets = new Map<string, { total: number; recent7: number; prior7: number }>();
+    let grandTotal = 0;
 
     for (const row of rows) {
       const amount = Number(row[costIdx] ?? 0);
-      const service =
-        svcIdx !== -1 ? String(row[svcIdx] ?? "Other") : "Other";
-      total += amount;
-      byService.push({ service, amount: Number(amount.toFixed(2)) });
+      const service = svcIdx !== -1 ? String(row[svcIdx] ?? "Other") : "Other";
+      const dateInt = dateIdx !== -1 ? Number(row[dateIdx] ?? 0) : 0;
+
+      grandTotal += amount;
+
+      let bucket = svcBuckets.get(service);
+      if (!bucket) {
+        bucket = { total: 0, recent7: 0, prior7: 0 };
+        svcBuckets.set(service, bucket);
+      }
+      bucket.total += amount;
+      if (dateInt >= d7Int && dateInt <= todayInt) bucket.recent7 += amount;
+      else if (dateInt >= d14Int && dateInt < d7Int) bucket.prior7 += amount;
+    }
+
+    const byService: CostByService[] = [];
+    for (const [service, b] of svcBuckets) {
+      let trend: string | undefined;
+      if (b.prior7 > 0.01) {
+        const pct = ((b.recent7 - b.prior7) / b.prior7) * 100;
+        trend = (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%";
+      }
+      byService.push({ service, amount: Number(b.total.toFixed(2)), trend });
     }
 
     byService.sort((a, b) => b.amount - a.amount);
 
     const costResult: CostResult = {
-      monthToDate: Number(total.toFixed(2)),
+      monthToDate: Number(grandTotal.toFixed(2)),
       byService,
       dataAsOf: new Date().toISOString(),
     };

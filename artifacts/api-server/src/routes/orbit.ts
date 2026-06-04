@@ -437,20 +437,31 @@ function apiUsageForApp(app: AppRecord) {
   return { totalCalls, costPerMillion: API_COST_PER_MILLION, cost, byApi };
 }
 
+const MOCK_SERVICE_TRENDS: Record<string, string> = {
+  "App Service":          "+6.3%",
+  "Azure SQL":            "-2.1%",
+  "API Management":       "+11.4%",
+  "Storage":              "+0.8%",
+  "Application Insights": "+3.2%",
+  "Front Door":           "-1.5%",
+  "Redis Cache":          "+5.7%",
+  "Other":                "+2.9%",
+};
+
 function buildByServiceForApp(
   app: AppRecord,
   apiUsage: { cost: number },
-): { service: string; amount: number }[] {
+): { service: string; amount: number; trend?: string }[] {
   const infraBudget = app.monthToDateCost;
   return [
-    { service: "App Service", amount: Number((infraBudget * 0.32).toFixed(2)) },
-    { service: "Azure SQL", amount: Number((infraBudget * 0.24).toFixed(2)) },
-    { service: "API Management", amount: apiUsage.cost },
-    { service: "Storage", amount: Number((infraBudget * 0.08).toFixed(2)) },
-    { service: "Application Insights", amount: Number((infraBudget * 0.11).toFixed(2)) },
-    { service: "Front Door", amount: Number((infraBudget * 0.14).toFixed(2)) },
-    { service: "Redis Cache", amount: Number((infraBudget * 0.07).toFixed(2)) },
-    { service: "Other", amount: Number((infraBudget * 0.04).toFixed(2)) },
+    { service: "App Service",          amount: Number((infraBudget * 0.32).toFixed(2)), trend: MOCK_SERVICE_TRENDS["App Service"] },
+    { service: "Azure SQL",            amount: Number((infraBudget * 0.24).toFixed(2)), trend: MOCK_SERVICE_TRENDS["Azure SQL"] },
+    { service: "API Management",       amount: apiUsage.cost,                           trend: MOCK_SERVICE_TRENDS["API Management"] },
+    { service: "Storage",              amount: Number((infraBudget * 0.08).toFixed(2)), trend: MOCK_SERVICE_TRENDS["Storage"] },
+    { service: "Application Insights", amount: Number((infraBudget * 0.11).toFixed(2)), trend: MOCK_SERVICE_TRENDS["Application Insights"] },
+    { service: "Front Door",           amount: Number((infraBudget * 0.14).toFixed(2)), trend: MOCK_SERVICE_TRENDS["Front Door"] },
+    { service: "Redis Cache",          amount: Number((infraBudget * 0.07).toFixed(2)), trend: MOCK_SERVICE_TRENDS["Redis Cache"] },
+    { service: "Other",                amount: Number((infraBudget * 0.04).toFixed(2)), trend: MOCK_SERVICE_TRENDS["Other"] },
   ];
 }
 
