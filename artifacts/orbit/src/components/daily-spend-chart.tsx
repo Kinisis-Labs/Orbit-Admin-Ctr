@@ -26,6 +26,7 @@ const BAR_COLOR_UP_HIGH = "hsl(var(--destructive))";
 const BAR_COLOR_DOWN = "hsl(160 84% 39%)";
 const BAR_COLOR_ANOMALY = "hsl(32 98% 46%)";
 const BAR_COLOR_PEAK = "hsl(45 100% 51%)";
+const ANOMALY_OUTLINE_COLOR = "hsl(32 98% 46%)";
 
 function getBarFill(vsLastWeek: number | null | undefined, threshold: number): string {
   if (vsLastWeek == null) return BAR_COLOR_DEFAULT;
@@ -167,6 +168,21 @@ export function DailySpendChart({
             ) : (
               <Bar dataKey="value" fill={BAR_COLOR_DEFAULT} radius={0} />
             )}
+            {colorByTrend && showAnomalies && (
+              <Bar dataKey="value" radius={0} fill="transparent" legendType="none">
+                {visibleData.map((entry, idx) => {
+                  const isAnomaly = (entry as EnrichedPoint).anomaly?.isAnomaly;
+                  return (
+                    <Cell
+                      key={idx}
+                      fill="transparent"
+                      stroke={isAnomaly ? ANOMALY_OUTLINE_COLOR : "none"}
+                      strokeWidth={isAnomaly ? 2 : 0}
+                    />
+                  );
+                })}
+              </Bar>
+            )}
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -196,9 +212,18 @@ export function DailySpendChart({
                   <span>Peak day</span>
                 </div>
               )}
+              {hasAnyAnomaly && (
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block w-2.5 h-2.5 shrink-0"
+                    style={{ border: `2px solid ${ANOMALY_OUTLINE_COLOR}`, background: "transparent" }}
+                  />
+                  <span>Spend anomaly (&gt;{anomalySigmas}σ above window average)</span>
+                </div>
+              )}
             </>
           )}
-          {hasAnyAnomaly && (
+          {hasAnyAnomaly && !colorByTrend && (
             <div className="flex items-center gap-1.5">
               <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_ANOMALY }} />
               <span>Spend anomaly (&gt;{anomalySigmas}σ above window average)</span>
