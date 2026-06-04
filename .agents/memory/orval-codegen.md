@@ -42,6 +42,21 @@ When a previously-parameterless endpoint gains a query param, Orval inserts a
 `params?` argument **before** the `options` argument. Every existing call site
 must be updated to pass `undefined` as params: `useGetFoo(undefined, { query: … })`.
 
+## Duplicate YAML key kills codegen with a cryptic error
+A duplicate property key anywhere in `openapi.yaml` (e.g. two `daily:` entries
+under the same schema) causes orval 8.x to fail with **"Failed to resolve input:
+Please provide a valid string value or pass a loader to process the input"** —
+not a helpful YAML parse error. The generated `src/generated/` dirs stay empty,
+leaving stale `dist/` declarations and cascading TS property-missing errors.
+
+**Why:** orval's YAML parser chokes on duplicate mapping keys; the error is
+swallowed and reported as an input resolution failure with no line number.
+
+**How to apply:** when codegen gives that error and the spec path is clearly
+correct, grep `openapi.yaml` for duplicate property keys within the same object
+block before debugging anything else. YAML does not forbid duplicate keys at the
+spec level, so editors won't flag them.
+
 ## Misc
 - Never change OpenAPI `info.title` — it drives generated filenames.
 - `pnpm --filter @workspace/api-spec run codegen` also runs `typecheck:libs`;

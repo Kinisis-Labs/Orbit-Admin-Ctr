@@ -9,7 +9,7 @@ import type { LedgerTransactionStatus } from './ledgerTransactionStatus';
 
 export interface LedgerTransaction {
   id: string;
-  postedAt: Date;
+  postedAt: string;
   description: string;
   /** Chart-of-accounts code debited */
   debitAccount: string;

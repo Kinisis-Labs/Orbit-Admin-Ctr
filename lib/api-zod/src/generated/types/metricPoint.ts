@@ -7,6 +7,6 @@
  */
 
 export interface MetricPoint {
-  timestamp: Date;
+  timestamp: string;
   value: number;
 }

@@ -28,7 +28,7 @@ export interface GlobalCostSummary {
   /** Indicates whether cost figures come from live Azure Cost Management or built-in mock values. */
   dataSource: GlobalCostSummaryDataSource;
   /** Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live. */
-  dataAsOf?: Date;
+  dataAsOf?: string;
   byApp: GlobalCostSummaryByAppItem[];
   /** Cost breakdown by Azure resource type, aggregated across all apps. */
   byResource: CostByService[];

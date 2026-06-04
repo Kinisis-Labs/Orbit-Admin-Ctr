@@ -95,7 +95,7 @@ export const GetInfrastructureResponse = zod.object({
   "name": zod.string(),
   "unit": zod.string(),
   "points": zod.array(zod.object({
-  "timestamp": zod.coerce.date(),
+  "timestamp": zod.string().datetime({"offset":true}),
   "value": zod.number()
 }))
 })),
@@ -123,7 +123,7 @@ export const GetNetworkResponse = zod.object({
   "name": zod.string(),
   "unit": zod.string(),
   "points": zod.array(zod.object({
-  "timestamp": zod.coerce.date(),
+  "timestamp": zod.string().datetime({"offset":true}),
   "value": zod.number()
 }))
 }))
@@ -144,7 +144,7 @@ export const GetCostResponse = zod.object({
   "forecast": zod.number(),
   "budget": zod.number(),
   "daily": zod.array(zod.object({
-  "timestamp": zod.coerce.date(),
+  "timestamp": zod.string().datetime({"offset":true}),
   "value": zod.number(),
   "vsLastWeek": zod.number().nullish().describe('Percentage change vs the same day 7 days ago. Positive = higher spend, negative = lower. Omitted when comparison data is unavailable (first 7 days of the series).')
 })),
@@ -173,7 +173,7 @@ export const GetCostResponse = zod.object({
 }))
 }),
   "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether cost figures come from live Azure Cost Management or built-in mock values.'),
-  "dataAsOf": zod.coerce.date().optional().describe('Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live.')
+  "dataAsOf": zod.string().datetime({"offset":true}).optional().describe('Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live.')
 })
 
 
@@ -194,14 +194,14 @@ export const GetTelemetryResponse = zod.object({
   "name": zod.string(),
   "unit": zod.string(),
   "points": zod.array(zod.object({
-  "timestamp": zod.coerce.date(),
+  "timestamp": zod.string().datetime({"offset":true}),
   "value": zod.number()
 }))
 })),
   "topErrors": zod.array(zod.object({
   "message": zod.string(),
   "count": zod.number(),
-  "lastSeen": zod.coerce.date()
+  "lastSeen": zod.string().datetime({"offset":true})
 })),
   "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether telemetry comes from live Azure Monitor \/ Application Insights or built-in mock values.')
 })
@@ -223,7 +223,7 @@ export const GetAppAlertsResponseItem = zod.object({
   "description": zod.string().optional(),
   "severity": zod.enum(['info', 'warning', 'error', 'critical']),
   "source": zod.enum(['AzureMonitor', 'LogAnalytics', 'NetworkWatcher', 'CostManagement', 'ApplicationInsights', 'WebAppTelemetry']),
-  "firedAt": zod.coerce.date(),
+  "firedAt": zod.string().datetime({"offset":true}),
   "status": zod.enum(['active', 'acknowledged', 'resolved'])
 })
 export const GetAppAlertsResponse = zod.array(GetAppAlertsResponseItem)
@@ -247,13 +247,13 @@ export const GetLedgerResponse = zod.object({
 })),
   "reconciliation": zod.object({
   "status": zod.enum(['reconciled', 'pending', 'discrepancy']),
-  "lastReconciledAt": zod.coerce.date(),
+  "lastReconciledAt": zod.string().datetime({"offset":true}),
   "unreconciledCount": zod.number().describe('Number of journal entries not yet reconciled'),
   "unreconciledAmount": zod.number().describe('Net value of unreconciled entries')
 }),
   "transactions": zod.array(zod.object({
   "id": zod.string(),
-  "postedAt": zod.coerce.date(),
+  "postedAt": zod.string().datetime({"offset":true}),
   "description": zod.string(),
   "debitAccount": zod.string().describe('Chart-of-accounts code debited'),
   "creditAccount": zod.string().describe('Chart-of-accounts code credited'),
@@ -285,7 +285,7 @@ export const ListLedgerEntriesParams = zod.object({
 
 export const ListLedgerEntriesResponseItem = zod.object({
   "id": zod.string(),
-  "postedAt": zod.coerce.date(),
+  "postedAt": zod.string().datetime({"offset":true}),
   "description": zod.string(),
   "debitAccount": zod.string().describe('Chart-of-accounts code debited'),
   "creditAccount": zod.string().describe('Chart-of-accounts code credited'),
@@ -315,7 +315,7 @@ export const PostLedgerEntryBody = zod.object({
   "amount": zod.number().gt(postLedgerEntryBodyAmountExclusiveMin),
   "source": zod.enum(['stripe', 'app_store', 'play_store', 'bank', 'manual']).optional(),
   "status": zod.enum(['posted', 'pending', 'failed']).default(postLedgerEntryBodyStatusDefault),
-  "postedAt": zod.coerce.date().optional()
+  "postedAt": zod.string().datetime({"offset":true}).optional()
 })
 
 
@@ -341,7 +341,7 @@ export const IngestLedgerSaleBody = zod.object({
   "description": zod.string().min(1).optional(),
   "externalRef": zod.string().optional().describe('External transaction id for idempotent ingestion'),
   "status": zod.enum(['posted', 'pending', 'failed']).default(ingestLedgerSaleBodyStatusDefault),
-  "postedAt": zod.coerce.date().optional()
+  "postedAt": zod.string().datetime({"offset":true}).optional()
 })
 
 
@@ -377,7 +377,7 @@ export const ReconcileLedgerParams = zod.object({
 
 export const ReconcileLedgerResponse = zod.object({
   "status": zod.enum(['reconciled', 'pending', 'discrepancy']),
-  "lastReconciledAt": zod.coerce.date(),
+  "lastReconciledAt": zod.string().datetime({"offset":true}),
   "unreconciledCount": zod.number().describe('Number of journal entries not yet reconciled'),
   "unreconciledAmount": zod.number().describe('Net value of unreconciled entries')
 })
@@ -412,7 +412,7 @@ export const ListGlobalAlertsResponseItem = zod.object({
   "description": zod.string().optional(),
   "severity": zod.enum(['info', 'warning', 'error', 'critical']),
   "source": zod.enum(['AzureMonitor', 'LogAnalytics', 'NetworkWatcher', 'CostManagement', 'ApplicationInsights', 'WebAppTelemetry']),
-  "firedAt": zod.coerce.date(),
+  "firedAt": zod.string().datetime({"offset":true}),
   "status": zod.enum(['active', 'acknowledged', 'resolved'])
 })
 export const ListGlobalAlertsResponse = zod.array(ListGlobalAlertsResponseItem)
@@ -431,14 +431,14 @@ export const GetGlobalCostSummaryResponse = zod.object({
   "forecast": zod.number(),
   "budget": zod.number(),
   "daily": zod.array(zod.object({
-  "timestamp": zod.coerce.date(),
+  "timestamp": zod.string().datetime({"offset":true}),
   "value": zod.number(),
   "vsLastWeek": zod.number().nullish().describe('Percentage change vs the same day 7 days ago. Positive = higher spend, negative = lower. Omitted when comparison data is unavailable (first 7 days of the series).')
 })).describe('Day-by-day total spend across all apps for the last 30 days, with vs-last-week comparison.'),
   "apiCalls": zod.number().describe('Total month-to-date API calls across all apps'),
   "apiCost": zod.number().describe('Portion of monthToDate attributable to API usage'),
   "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether cost figures come from live Azure Cost Management or built-in mock values.'),
-  "dataAsOf": zod.coerce.date().optional().describe('Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live.'),
+  "dataAsOf": zod.string().datetime({"offset":true}).optional().describe('Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live.'),
   "byApp": zod.array(zod.object({
   "appId": zod.string(),
   "appName": zod.string(),

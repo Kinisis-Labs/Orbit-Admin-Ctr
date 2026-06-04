@@ -25,5 +25,5 @@ export interface IngestSaleRequest {
   /** External transaction id for idempotent ingestion */
   externalRef?: string;
   status?: IngestSaleRequestStatus;
-  postedAt?: Date;
+  postedAt?: string;
 }

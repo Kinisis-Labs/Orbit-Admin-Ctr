@@ -17,6 +17,6 @@ export interface Alert {
   description?: string;
   severity: Severity;
   source: AlertSource;
-  firedAt: Date;
+  firedAt: string;
   status: AlertStatus;
 }

@@ -7,7 +7,7 @@
  */
 
 export interface DailyCostPoint {
-  timestamp: Date;
+  timestamp: string;
   value: number;
   /** Percentage change vs the same day 7 days ago. Positive = higher spend, negative = lower. Omitted when comparison data is unavailable (first 7 days of the series). */
   vsLastWeek?: number | null;

@@ -19,5 +19,5 @@ export interface PostLedgerEntryRequest {
   amount: number;
   source?: LedgerEntrySource;
   status?: PostLedgerEntryRequestStatus;
-  postedAt?: Date;
+  postedAt?: string;
 }

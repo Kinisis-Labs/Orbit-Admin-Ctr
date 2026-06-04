@@ -9,5 +9,5 @@
 export interface TopError {
   message: string;
   count: number;
-  lastSeen: Date;
+  lastSeen: string;
 }

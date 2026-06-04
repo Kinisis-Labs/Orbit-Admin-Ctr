@@ -17,7 +17,8 @@ import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { CostTabs } from "@/components/cost-tabs";
 import { useMemo, useState } from "react";
-import { DailySpendChart, computeAnomalies, type DailyCostPoint } from "@/components/daily-spend-chart";
+import { DailySpendChart, type DailyCostPoint } from "@/components/daily-spend-chart";
+import { computeAnomalies } from "@/components/daily-spend-utils";
 import { format, parseISO, isValid } from "date-fns";
 
 const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;

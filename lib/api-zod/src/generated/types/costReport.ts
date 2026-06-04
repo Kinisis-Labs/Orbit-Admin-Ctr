@@ -23,5 +23,5 @@ export interface CostReport {
   /** Indicates whether cost figures come from live Azure Cost Management or built-in mock values. */
   dataSource: CostReportDataSource;
   /** Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live. */
-  dataAsOf?: Date;
+  dataAsOf?: string;
 }

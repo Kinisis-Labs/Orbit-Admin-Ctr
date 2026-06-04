@@ -9,7 +9,7 @@ import type { LedgerReconciliationStatus } from './ledgerReconciliationStatus';
 
 export interface LedgerReconciliation {
   status: LedgerReconciliationStatus;
-  lastReconciledAt: Date;
+  lastReconciledAt: string;
   /** Number of journal entries not yet reconciled */
   unreconciledCount: number;
   /** Net value of unreconciled entries */
