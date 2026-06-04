@@ -173,6 +173,7 @@ export default function AppDetail() {
                 </div>
               </div>
             </div>
+            {canSeeCost && <OverviewCostTile appId={appId} />}
           </TabsContent>
           
           <TabsContent value="infrastructure" className="m-0 space-y-4">
@@ -290,6 +291,47 @@ function DataSourceBadge({
       <WifiOff className="h-3 w-3" />
       Demo data
     </span>
+  );
+}
+
+function OverviewCostTile({ appId }: { appId: string }) {
+  const { data, isLoading } = useGetCost(appId, { query: { enabled: !!appId, queryKey: getGetCostQueryKey(appId) } });
+
+  if (isLoading) return <Skeleton className="h-20 w-full" />;
+  if (!data) return null;
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: data.currency }).format(amount);
+
+  const utilPct = Math.min((data.monthToDate / data.budget) * 100, 100);
+
+  return (
+    <div className="bg-card border border-border shadow-sm p-4 text-[13px]">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold text-sm">Cost snapshot</h3>
+        <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="flex flex-col gap-1">
+          <div className="text-[12px] text-muted-foreground font-medium">MTD spend</div>
+          <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.monthToDate)}</div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <div className="text-[12px] text-muted-foreground font-medium">Forecast</div>
+          <div className="text-xl font-semibold tabular-nums text-muted-foreground">{formatCurrency(data.forecast)}</div>
+        </div>
+        <div className="md:col-span-2 flex flex-col justify-center gap-1.5">
+          <div className="flex justify-between text-[12px]">
+            <span className="text-muted-foreground font-medium">Budget utilization</span>
+            <span className="tabular-nums text-foreground font-medium">
+              {formatCurrency(data.monthToDate)} <span className="text-muted-foreground font-normal">of {formatCurrency(data.budget)}</span>
+            </span>
+          </div>
+          <Progress value={utilPct} className="h-1.5 rounded-none bg-muted" />
+          <div className="text-[11px] text-muted-foreground tabular-nums">{utilPct.toFixed(0)}% used</div>
+        </div>
+      </div>
+    </div>
   );
 }
 
