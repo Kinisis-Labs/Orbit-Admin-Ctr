@@ -47,7 +47,7 @@ export type AppRecord = {
   group?: string;
 };
 
-const APPS: AppRecord[] = [
+export const APPS: AppRecord[] = [
   {
     id: "grailbabe",
     name: "GrailBabe",
@@ -114,6 +114,20 @@ const APPS: AppRecord[] = [
     group: "Platform",
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Startup validation: every APPS entry must satisfy the GetAppResponse schema.
+// This ensures the inventory stays consistent with the OpenAPI contract.
+// The server refuses to start if any entry is invalid.
+// ---------------------------------------------------------------------------
+const _appsValidation = GetAppResponse.array().safeParse(APPS);
+if (!_appsValidation.success) {
+  const formatted = _appsValidation.error.format();
+  throw new Error(
+    `APPS inventory validation failed — fix the entries before starting the server:\n` +
+      JSON.stringify(formatted, null, 2),
+  );
+}
 
 // Deterministic pseudo-random so the dashboard feels stable across requests
 // while still varying per app / metric.
