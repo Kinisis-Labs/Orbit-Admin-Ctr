@@ -632,8 +632,15 @@ function CostTab({ appId }: { appId: string }) {
   const refreshThreshold = useCallback(() => setThreshold(getSpendThreshold(appId)), [appId]);
   useEffect(() => {
     refreshThreshold();
+    const onStorageEvent = (e: StorageEvent) => {
+      if (e.key === "orbit-spend-thresholds") refreshThreshold();
+    };
     window.addEventListener("orbit-spend-threshold-changed", refreshThreshold);
-    return () => window.removeEventListener("orbit-spend-threshold-changed", refreshThreshold);
+    window.addEventListener("storage", onStorageEvent);
+    return () => {
+      window.removeEventListener("orbit-spend-threshold-changed", refreshThreshold);
+      window.removeEventListener("storage", onStorageEvent);
+    };
   }, [refreshThreshold]);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
