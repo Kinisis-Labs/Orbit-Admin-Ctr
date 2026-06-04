@@ -225,8 +225,47 @@ function GlobalCost() {
   const net = cost ? cost.revenue.total - cost.monthToDate : 0;
   const marginPct = cost && cost.revenue.total > 0 ? (net / cost.revenue.total) * 100 : null;
 
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const dateParam = new URLSearchParams(search).get("date");
+  const dateFilter = (() => {
+    if (!dateParam) return null;
+    const parsed = parseISO(dateParam);
+    return isValid(parsed) ? parsed : null;
+  })();
+
+  function dismissDateFilter() {
+    const params = new URLSearchParams(search);
+    params.delete("date");
+    const qs = params.toString();
+    navigate(qs ? `/cost?${qs}` : "/cost", { replace: true });
+  }
+
+  function handleAnomalyClick(date: Date) {
+    const params = new URLSearchParams(search);
+    params.set("date", date.toISOString().slice(0, 10));
+    navigate(`/cost?${params.toString()}`);
+  }
+
   return (
     <>
+      {dateFilter && (
+        <div className="flex items-center gap-2 px-3 py-2 border border-amber-500/30 bg-amber-500/8 rounded-sm text-[13px]">
+          <CalendarSearch className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <span className="text-foreground font-medium">
+            Drilled in from anomaly on{" "}
+            <span className="font-semibold">{format(dateFilter, "EEEE, MMMM d, yyyy")}</span>
+          </span>
+          <span className="text-muted-foreground text-[11px] ml-1">— breakdown tables below show the full month</span>
+          <button
+            onClick={dismissDateFilter}
+            className="ml-auto flex items-center justify-center h-5 w-5 rounded-sm hover:bg-amber-500/20 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Dismiss date filter"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
       {!isLoading && cost && (
         <div className="flex items-center justify-end gap-2">
           {cost.dataSource === "live" && (
@@ -356,6 +395,7 @@ function GlobalCost() {
               highlightPeak
               colorByTrend
               showLegend
+              onAnomalyClick={handleAnomalyClick}
             />
           ) : (
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No daily data available</div>
