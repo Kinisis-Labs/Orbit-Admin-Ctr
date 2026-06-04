@@ -9,11 +9,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "wouter";
-import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff } from "lucide-react";
+import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { CostTabs } from "@/components/cost-tabs";
+
+const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 const fmt = (amount: number, currency = "USD") =>
   new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
@@ -45,6 +47,9 @@ function DataSourceBadge({
   if (!dataSource) return null;
   if (dataSource === "live") {
     const asOf = fmtDataAsOf(dataAsOf);
+    const isStale = dataAsOf
+      ? Date.now() - new Date(dataAsOf).getTime() > STALE_COST_THRESHOLD_MS
+      : false;
     return (
       <span className="inline-flex items-center gap-1.5 select-none flex-wrap">
         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
@@ -52,7 +57,16 @@ function DataSourceBadge({
           Live — Azure Cost Management
         </span>
         {asOf && (
-          <span className="text-[10px] text-muted-foreground">as of {asOf}</span>
+          <span
+            className={
+              isStale
+                ? "inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400"
+                : "text-[10px] text-muted-foreground"
+            }
+          >
+            {isStale && <AlertTriangle className="h-3 w-3" />}
+            as of {asOf}
+          </span>
         )}
       </span>
     );
