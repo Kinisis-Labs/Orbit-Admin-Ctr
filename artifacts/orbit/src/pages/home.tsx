@@ -139,6 +139,11 @@ export default function Home() {
                   </button>
                 ))}
               </div>
+              {(authFilter !== "all" || envFilter !== "all") && !appsLoading && (
+                <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                  {filteredApps?.length ?? 0} {(filteredApps?.length ?? 0) === 1 ? "app" : "apps"}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10">
