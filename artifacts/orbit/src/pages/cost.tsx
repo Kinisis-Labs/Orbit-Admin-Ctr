@@ -233,6 +233,7 @@ function GlobalCost() {
             <DailySpendChart
               daily={cost.daily}
               formatCurrency={(v) => fmt(v, cost.currency)}
+              highlightPeak
             />
           ) : (
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No daily data available</div>
@@ -638,6 +639,7 @@ function AppCost() {
             <DailySpendChart
               daily={data.daily}
               formatCurrency={(v) => fmt(v, data.currency)}
+              highlightPeak
             />
           ) : (
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No daily data available</div>

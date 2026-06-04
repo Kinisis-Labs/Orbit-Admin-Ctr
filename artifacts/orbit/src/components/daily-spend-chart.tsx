@@ -7,6 +7,7 @@ type DailyCostPoint = {
   timestamp: string | Date;
   value: number;
   vsLastWeek?: number | null;
+  isPeak?: boolean;
 };
 
 type EnrichedPoint = DailyCostPoint & {
@@ -24,6 +25,7 @@ const BAR_COLOR_UP_MILD = "hsl(38 92% 50%)";
 const BAR_COLOR_UP_HIGH = "hsl(var(--destructive))";
 const BAR_COLOR_DOWN = "hsl(160 84% 39%)";
 const BAR_COLOR_ANOMALY = "hsl(32 98% 46%)";
+const BAR_COLOR_PEAK = "hsl(45 100% 51%)";
 
 function getBarFill(vsLastWeek: number | null | undefined, threshold: number): string {
   if (vsLastWeek == null) return BAR_COLOR_DEFAULT;
@@ -64,6 +66,7 @@ export function DailySpendChart({
   colorByTrend = false,
   showAnomalies = true,
   showLegend = false,
+  highlightPeak = false,
   threshold = 15,
   anomalySigmas = 2,
 }: {
@@ -72,6 +75,7 @@ export function DailySpendChart({
   colorByTrend?: boolean;
   showAnomalies?: boolean;
   showLegend?: boolean;
+  highlightPeak?: boolean;
   threshold?: number;
   anomalySigmas?: number;
 }) {
@@ -89,20 +93,26 @@ export function DailySpendChart({
     [visibleData, showAnomalies],
   );
 
+  const visibleDataWithPeak = useMemo(() => {
+    if (!highlightPeak || !visibleData.length) return visibleData;
+    const max = Math.max(...visibleData.map((d) => d.value));
+    const hasVariance = visibleData.some((d) => d.value !== max);
+    return visibleData.map((d) => ({ ...d, isPeak: hasVariance && d.value === max }));
+  }, [visibleData, highlightPeak]);
+
   const availableRanges = RANGE_OPTIONS.filter((o) => o.days <= Math.max(maxDays, 7));
 
-  function getCellFill(entry: EnrichedPoint, idx: number): string {
-    const anomaly = entry.anomaly;
+  function getCellFill(entry: EnrichedPoint): string {
     if (colorByTrend) {
       return getBarFill(entry.vsLastWeek, threshold);
     }
-    if (showAnomalies && anomaly?.isAnomaly) {
+    if (showAnomalies && entry.anomaly?.isAnomaly) {
       return BAR_COLOR_ANOMALY;
     }
     return BAR_COLOR_DEFAULT;
   }
 
-  const needsCells = colorByTrend || showAnomalies;
+  const needsCells = colorByTrend || showAnomalies || highlightPeak;
 
   return (
     <div className="flex flex-col h-full">
@@ -124,7 +134,7 @@ export function DailySpendChart({
       </div>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={visibleData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+          <BarChart data={visibleDataWithPeak} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="hsl(var(--border))" />
             <XAxis
               dataKey="timestamp"
@@ -147,12 +157,15 @@ export function DailySpendChart({
             />
             {needsCells ? (
               <Bar dataKey="value" radius={0}>
-                {visibleData.map((entry, idx) => (
-                  <Cell key={idx} fill={getCellFill(entry as EnrichedPoint, idx)} />
+                {visibleDataWithPeak.map((entry, idx) => (
+                  <Cell
+                    key={idx}
+                    fill={entry.isPeak ? BAR_COLOR_PEAK : getCellFill(entry as EnrichedPoint)}
+                  />
                 ))}
               </Bar>
             ) : (
-              <Bar dataKey="value" fill="hsl(var(--primary))" radius={0} />
+              <Bar dataKey="value" fill={BAR_COLOR_DEFAULT} radius={0} />
             )}
           </BarChart>
         </ResponsiveContainer>
@@ -177,6 +190,12 @@ export function DailySpendChart({
                 <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_DEFAULT }} />
                 <span>No prior data</span>
               </div>
+              {highlightPeak && (
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_PEAK }} />
+                  <span>Peak day</span>
+                </div>
+              )}
             </>
           )}
           {hasAnyAnomaly && (

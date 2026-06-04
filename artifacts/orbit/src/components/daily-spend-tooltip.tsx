@@ -18,6 +18,7 @@ export function DailySpendTooltip({
     value: number;
     vsLastWeek?: number | null;
     anomaly?: AnomalyInfo;
+    isPeak?: boolean;
   };
   const vsLastWeek = point.vsLastWeek;
   const isUp = vsLastWeek != null && vsLastWeek > 0;
@@ -37,25 +38,52 @@ export function DailySpendTooltip({
         padding: "6px 10px",
       }}
     >
-      <div className="font-medium text-foreground mb-1">
+      <div className="flex items-center gap-1.5 font-medium text-foreground mb-1">
         {label ? format(new Date(label as string), "MMM d, yyyy") : ""}
+        {point.isPeak && (
+          <span
+            style={{
+              fontSize: 10,
+              padding: "1px 5px",
+              borderRadius: 3,
+              background: "hsl(38 92% 50% / 0.15)",
+              color: "hsl(38 92% 40%)",
+              fontWeight: 600,
+              letterSpacing: "0.02em",
+            }}
+          >
+            Peak day
+          </span>
+        )}
+        {showAnomaly && (
+          <span
+            style={{
+              fontSize: 10,
+              padding: "1px 5px",
+              borderRadius: 3,
+              background: "hsl(32 98% 46% / 0.15)",
+              color: "hsl(32 98% 36%)",
+              fontWeight: 600,
+              letterSpacing: "0.02em",
+            }}
+          >
+            Anomaly
+          </span>
+        )}
       </div>
       <div className="text-foreground tabular-nums">
         Cost: {formatCurrency(point.value)}
       </div>
+      {showAnomaly && anomaly && (
+        <div className="tabular-nums mt-0.5" style={{ color: "hsl(32 98% 46%)" }}>
+          {anomaly.vsAvgMultiple.toFixed(1)}× {anomaly.windowLabel} avg
+        </div>
+      )}
       {vsLastWeek != null && (
         <div
           className={`tabular-nums mt-0.5 ${isUp ? "text-destructive" : isDown ? "text-emerald-500" : "text-muted-foreground"}`}
         >
           {isUp ? "↑" : isDown ? "↓" : "—"} {Math.abs(vsLastWeek).toFixed(1)}% vs last week
-        </div>
-      )}
-      {showAnomaly && anomaly && (
-        <div className="mt-1.5 pt-1.5 border-t border-border/60 flex items-center gap-1 text-[11px] font-medium" style={{ color: "hsl(32 98% 46%)" }}>
-          <span>⚠</span>
-          <span>
-            {anomaly.vsAvgMultiple.toFixed(1)}× {anomaly.windowLabel} average
-          </span>
         </div>
       )}
     </div>

@@ -700,6 +700,7 @@ function CostTab({ appId }: { appId: string }) {
               formatCurrency={formatCurrency}
               colorByTrend
               showLegend
+              highlightPeak
               threshold={threshold}
             />
           </div>
