@@ -731,6 +731,7 @@ function CostTab({ appId }: { appId: string }) {
               highlightPeak
               threshold={threshold}
               onAnomalyClick={handleAnomalyClick}
+              budgetLine={data.budget > 0 ? data.budget / 30 : undefined}
             />
           </div>
         </div>

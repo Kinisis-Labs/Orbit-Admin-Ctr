@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { format } from "date-fns";
 import { DailySpendTooltip } from "@/components/daily-spend-tooltip";
 
@@ -61,6 +61,8 @@ export function computeAnomalies(data: DailyCostPoint[], range: Range, sigmas: n
   }));
 }
 
+const BUDGET_LINE_COLOR = "hsl(var(--destructive))";
+
 export function DailySpendChart({
   daily,
   formatCurrency,
@@ -71,6 +73,7 @@ export function DailySpendChart({
   threshold = 15,
   anomalySigmas = 2,
   onAnomalyClick,
+  budgetLine,
 }: {
   daily: DailyCostPoint[];
   formatCurrency: (v: number) => string;
@@ -81,6 +84,7 @@ export function DailySpendChart({
   threshold?: number;
   anomalySigmas?: number;
   onAnomalyClick?: (date: Date) => void;
+  budgetLine?: number;
 }) {
   const maxDays = daily.length;
   const defaultRange: Range = maxDays >= 30 ? 30 : maxDays >= 14 ? 14 : 7;
@@ -201,6 +205,22 @@ export function DailySpendChart({
                   );
                 })}
               </Bar>
+            )}
+            {budgetLine != null && budgetLine > 0 && (
+              <ReferenceLine
+                y={budgetLine}
+                stroke={BUDGET_LINE_COLOR}
+                strokeDasharray="4 3"
+                strokeWidth={1.5}
+                label={{
+                  value: "Daily budget",
+                  position: "insideTopRight",
+                  fill: BUDGET_LINE_COLOR,
+                  fontSize: 10,
+                  fontWeight: 500,
+                  dy: -4,
+                }}
+              />
             )}
           </BarChart>
         </ResponsiveContainer>
