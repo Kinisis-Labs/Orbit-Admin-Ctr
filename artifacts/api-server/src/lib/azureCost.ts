@@ -115,8 +115,9 @@ export async function resolveSubscriptionId(app: AppRecord): Promise<string | nu
       _rgSubCache.set(rgKey, subId);
       return subId;
     }
-  } catch {
-    // fall through
+    logger.warn({ appId: app.id, rg: rgKey, rows }, "Resource Graph RG lookup returned no subscription — using first configured sub");
+  } catch (err) {
+    logger.warn({ err, appId: app.id, rg: rgKey }, "Resource Graph RG lookup failed — using first configured sub");
   }
 
   // Last resort: use the first configured subscription (same-sub deployments).
@@ -228,7 +229,8 @@ export async function fetchMonthToDateCost(
     };
     _costCache.set(app.id, { result: costResult, expiresAt: Date.now() + COST_CACHE_TTL_MS });
     return costResult;
-  } catch {
+  } catch (err) {
+    logger.warn({ err, appId: app.id, scope }, "Azure Cost Management query failed — falling back to cached/mock");
     return null;
   }
 }
