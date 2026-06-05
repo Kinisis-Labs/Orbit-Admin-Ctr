@@ -88,7 +88,9 @@ jobs:
                 AZURE_TENANT_ID="${{ secrets.ENTRA_TENANT_ID }}" \
                 AZURE_SUB_GRAILBABE="${{ secrets.AZURE_SUB_GRAILBABE }}" \
                 AZURE_SUB_ORBIT="${{ secrets.AZURE_SUB_ORBIT }}" \
-                AZURE_SUB_KINISIS_LABS="${{ secrets.AZURE_SUB_KINISIS_LABS }}"
+                AZURE_SUB_KINISIS_LABS="${{ secrets.AZURE_SUB_KINISIS_LABS }}" \
+                AZURE_LOG_ANALYTICS_WORKSPACE_ID="${{ secrets.AZURE_LOG_ANALYTICS_WORKSPACE_ID }}" \
+                GITHUB_TOKEN="${{ secrets.ORBIT_GITHUB_TOKEN }}"
             az containerapp ingress update \
               --name ca-orbit-api-prod \
               --resource-group rg-orbit-prod-eus2 \
