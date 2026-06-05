@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { CostTabs } from "@/components/cost-tabs";
+import { CsvToolbar } from "@/components/csv-toolbar";
+import { useCsvExport } from "@/hooks/use-csv-export";
 import { useMemo, useState } from "react";
 import { DailySpendChart, type DailyCostPoint } from "@/components/daily-spend-chart";
 import { computeAnomalies } from "@/components/daily-spend-utils";
@@ -814,9 +816,30 @@ function AppCost() {
   const marginPct = data && data.revenue.total > 0 ? (net / data.revenue.total) * 100 : null;
   const netClass = net >= 0 ? "text-emerald-500" : "text-destructive";
 
-  const [copied, setCopied] = useState(false);
   const [showDailyTable, setShowDailyTable] = useState(false);
   const [copiedDaily, setCopiedDaily] = useState(false);
+
+  const breakdownHeaders = ["Service", "Resource Group", "Environment", "Cost (USD)", "% of Total", "Trend"];
+  const breakdownRows = useMemo(() => {
+    if (!data?.byService?.length) return null;
+    const resourceGroup = selectedApp?.resourceGroup ?? "";
+    const environment = selectedApp?.environment ?? "";
+    return data.byService.map((svc) => [
+      svc.service,
+      resourceGroup,
+      environment,
+      svc.amount.toFixed(2),
+      data.monthToDate > 0 ? ((svc.amount / data.monthToDate) * 100).toFixed(1) + "%" : "0.0%",
+      svc.trend ?? "N/A",
+    ]);
+  }, [data, selectedApp]);
+
+  const {
+    copied,
+    disabled: breakdownDisabled,
+    handleExport: handleBreakdownExport,
+    handleCopy: handleBreakdownCopy,
+  } = useCsvExport(breakdownRows, breakdownHeaders, `cost-breakdown-${scope}`);
 
   const search = useSearch();
   const [, navigate] = useLocation();
@@ -832,24 +855,6 @@ function AppCost() {
     params.delete("date");
     const qs = params.toString();
     navigate(qs ? `/cost?${qs}` : "/cost", { replace: true });
-  }
-
-  function buildBreakdownCsv() {
-    if (!data?.byService?.length) return null;
-    const resourceGroup = selectedApp?.resourceGroup ?? "";
-    const environment = selectedApp?.environment ?? "";
-    const headers = ["Service", "Resource Group", "Environment", "Cost (USD)", "% of Total", "Trend"];
-    const rows = data.byService.map((svc) => [
-      svc.service,
-      resourceGroup,
-      environment,
-      svc.amount.toFixed(2),
-      data.monthToDate > 0 ? ((svc.amount / data.monthToDate) * 100).toFixed(1) + "%" : "0.0%",
-      svc.trend ?? "N/A",
-    ]);
-    return [headers, ...rows]
-      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
   }
 
   function buildDailyCsv() {
@@ -903,50 +908,6 @@ function AppCost() {
       document.execCommand("copy");
       setCopiedDaily(true);
       setTimeout(() => setCopiedDaily(false), 2000);
-    } catch {
-      // clipboard unavailable — silently skip
-    } finally {
-      document.body.removeChild(ta);
-    }
-  }
-
-  function handleBreakdownExport() {
-    const csv = buildBreakdownCsv();
-    if (!csv) return;
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `cost-breakdown-${scope}-${new Date().toISOString().slice(0, 10)}.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function handleBreakdownCopy() {
-    const csv = buildBreakdownCsv();
-    if (!csv) return;
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(csv).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }).catch(() => fallbackCopy(csv));
-    } else {
-      fallbackCopy(csv);
-    }
-  }
-
-  function fallbackCopy(text: string) {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    try {
-      document.execCommand("copy");
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
       // clipboard unavailable — silently skip
     } finally {
@@ -1179,35 +1140,12 @@ function AppCost() {
           title="Cost by Service"
           toolbar={
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                onClick={handleBreakdownExport}
-                disabled={!data?.byService?.length}
-              >
-                <Download className="h-3.5 w-3.5 mr-1.5" />
-                Export
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                onClick={handleBreakdownCopy}
-                disabled={!data?.byService?.length}
-              >
-                {copied ? (
-                  <>
-                    <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
-                    <span className="text-green-500">Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Clipboard className="h-3.5 w-3.5 mr-1.5" />
-                    Copy
-                  </>
-                )}
-              </Button>
+              <CsvToolbar
+                handleExport={handleBreakdownExport}
+                handleCopy={handleBreakdownCopy}
+                disabled={breakdownDisabled}
+                copied={copied}
+              />
             </div>
           }
         >
