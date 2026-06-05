@@ -26,6 +26,7 @@ import type {
   AppDetail,
   AppSummary,
   AppThresholds,
+  AppThresholdsLogEntry,
   AppleSubscriptionRow,
   BudgetAlertLogEntry,
   CostReport,
@@ -47,6 +48,7 @@ import type {
   LedgerJournalEntry,
   LedgerReconciliation,
   LedgerReport,
+  ListAppThresholdsLog403,
   ListBudgetAlertLogParams,
   ListGlobalAlertsParams,
   ListInfraAlertLogParams,
@@ -450,6 +452,83 @@ export const useUpdateAppThresholds = <TError = ErrorType<UpdateAppThresholds403
       > => {
       return useMutation(getUpdateAppThresholdsMutationOptions(options));
     }
+
+export const getListAppThresholdsLogUrl = (appId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/thresholds/log`
+}
+
+/**
+ * @summary Audit history of threshold changes for an app. Requires Orbit-Admins or Orbit-Engineers.
+ */
+export const listAppThresholdsLog = async (appId: string, options?: RequestInit): Promise<AppThresholdsLogEntry[]> => {
+
+  return customFetch<AppThresholdsLogEntry[]>(getListAppThresholdsLogUrl(appId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAppThresholdsLogQueryKey = (appId: string,) => {
+    return [
+    `/api/apps/${appId}/thresholds/log`
+    ] as const;
+    }
+
+
+export const getListAppThresholdsLogQueryOptions = <TData = Awaited<ReturnType<typeof listAppThresholdsLog>>, TError = ErrorType<ListAppThresholdsLog403 | void>>(appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAppThresholdsLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAppThresholdsLogQueryKey(appId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAppThresholdsLog>>> = ({ signal }) => listAppThresholdsLog(appId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(appId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAppThresholdsLog>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAppThresholdsLogQueryResult = NonNullable<Awaited<ReturnType<typeof listAppThresholdsLog>>>
+export type ListAppThresholdsLogQueryError = ErrorType<ListAppThresholdsLog403 | void>
+
+
+/**
+ * @summary Audit history of threshold changes for an app. Requires Orbit-Admins or Orbit-Engineers.
+ */
+
+export function useListAppThresholdsLog<TData = Awaited<ReturnType<typeof listAppThresholdsLog>>, TError = ErrorType<ListAppThresholdsLog403 | void>>(
+ appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAppThresholdsLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAppThresholdsLogQueryOptions(appId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetInfrastructureUrl = (appId: string,
     params?: GetInfrastructureParams,) => {

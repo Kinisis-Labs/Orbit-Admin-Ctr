@@ -10,3 +10,4 @@ export * from "./budgetAlertLog";
 export * from "./infraAlertLog";
 export * from "./alertThresholdConfig";
 export * from "./appThresholds";
+export * from "./appThresholdsLog";

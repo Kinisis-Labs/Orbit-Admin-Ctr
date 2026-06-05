@@ -984,6 +984,23 @@ export interface UpdateAppThresholdsBody {
   memoryThreshold: number;
 }
 
+export interface AppThresholdsLogEntry {
+  id: number;
+  appId: string;
+  /** CPU threshold before this change (null for the first-ever set) */
+  oldCpuThreshold?: number | null;
+  /** CPU threshold set by this change */
+  newCpuThreshold: number;
+  /** Memory threshold before this change (null for the first-ever set) */
+  oldMemoryThreshold?: number | null;
+  /** Memory threshold set by this change */
+  newMemoryThreshold: number;
+  /** UPN / identifier of the operator who made the change */
+  changedBy: string;
+  /** When the change was recorded */
+  changedAt: string;
+}
+
 export interface InfraAlertLogEntry {
   id: number;
   appId: string;
@@ -1008,6 +1025,11 @@ export interface InfraAlertLogEntry {
 export type RefreshParameter = boolean;
 
 export type UpdateAppThresholds403 = {
+  error?: string;
+  requiredGroup?: string;
+};
+
+export type ListAppThresholdsLog403 = {
   error?: string;
   requiredGroup?: string;
 };

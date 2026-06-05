@@ -18,9 +18,10 @@ import {
   ListGlobalEndpointsResponse,
   GetAppThresholdsResponse,
   UpdateAppThresholdsBody,
+  ListAppThresholdsLogResponse,
 } from "@workspace/api-zod";
-import { db, appThresholdsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, appThresholdsTable, appThresholdsLogTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
 import { requireEngineerOrAdmin } from "../middlewares/auth.js";
 import { fetchResourcesByResourceGroup, fetchResourceGroupTags } from "../lib/azureResources.js";
 import { fetchMonthToDateCost, fetchMonthToDateCostWithFallback } from "../lib/azureCost.js";
@@ -378,23 +379,44 @@ router.put("/apps/:appId/thresholds", requireEngineerOrAdmin, async (req, res) =
   }
   const { cpuThreshold, memoryThreshold } = parsed.data;
   const updatedBy = req.session.user?.userPrincipalName ?? "system";
-  await db
-    .insert(appThresholdsTable)
-    .values({
-      appId: app.id,
-      cpuThreshold: String(cpuThreshold),
-      memoryThreshold: String(memoryThreshold),
-      updatedBy,
-    })
-    .onConflictDoUpdate({
-      target: appThresholdsTable.appId,
-      set: {
+
+  // Read current values for the audit log (null when no row exists yet)
+  const [existing] = await db
+    .select()
+    .from(appThresholdsTable)
+    .where(eq(appThresholdsTable.appId, app.id));
+
+  await db.transaction(async (tx) => {
+    // Upsert the live thresholds
+    await tx
+      .insert(appThresholdsTable)
+      .values({
+        appId: app.id,
         cpuThreshold: String(cpuThreshold),
         memoryThreshold: String(memoryThreshold),
-        updatedAt: new Date(),
         updatedBy,
-      },
+      })
+      .onConflictDoUpdate({
+        target: appThresholdsTable.appId,
+        set: {
+          cpuThreshold: String(cpuThreshold),
+          memoryThreshold: String(memoryThreshold),
+          updatedAt: new Date(),
+          updatedBy,
+        },
+      });
+
+    // Append an immutable audit-log row
+    await tx.insert(appThresholdsLogTable).values({
+      appId: app.id,
+      oldCpuThreshold: existing ? existing.cpuThreshold : null,
+      newCpuThreshold: String(cpuThreshold),
+      oldMemoryThreshold: existing ? existing.memoryThreshold : null,
+      newMemoryThreshold: String(memoryThreshold),
+      changedBy: updatedBy,
     });
+  });
+
   const now = new Date();
   res.json(
     GetAppThresholdsResponse.parse({
@@ -404,6 +426,33 @@ router.put("/apps/:appId/thresholds", requireEngineerOrAdmin, async (req, res) =
       updatedBy,
       updatedAt: now.toISOString(),
     }),
+  );
+});
+
+router.get("/apps/:appId/thresholds/log", requireEngineerOrAdmin, async (req, res) => {
+  const app = findApp(req.params["appId"] as string);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  const rows = await db
+    .select()
+    .from(appThresholdsLogTable)
+    .where(eq(appThresholdsLogTable.appId, app.id))
+    .orderBy(desc(appThresholdsLogTable.changedAt));
+  res.json(
+    ListAppThresholdsLogResponse.parse(
+      rows.map((r) => ({
+        id: r.id,
+        appId: r.appId,
+        oldCpuThreshold: r.oldCpuThreshold !== null ? parseFloat(r.oldCpuThreshold) : null,
+        newCpuThreshold: parseFloat(r.newCpuThreshold),
+        oldMemoryThreshold: r.oldMemoryThreshold !== null ? parseFloat(r.oldMemoryThreshold) : null,
+        newMemoryThreshold: parseFloat(r.newMemoryThreshold),
+        changedBy: r.changedBy,
+        changedAt: r.changedAt.toISOString(),
+      })),
+    ),
   );
 });
 

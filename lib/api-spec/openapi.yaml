@@ -106,6 +106,32 @@ paths:
                 properties:
                   error: { type: string }
                   requiredGroup: { type: string }
+  /apps/{appId}/thresholds/log:
+    get:
+      operationId: listAppThresholdsLog
+      tags: [apps]
+      summary: Audit history of threshold changes for an app. Requires Orbit-Admins or Orbit-Engineers.
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AppThresholdsLogEntry" }
+        "403":
+          description: Forbidden — requires Orbit-Admins or Orbit-Engineers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                  requiredGroup: { type: string }
+        "404":
+          description: App not found
   /apps/{appId}/infrastructure:
     get:
       operationId: getInfrastructure
@@ -1340,6 +1366,18 @@ components:
       properties:
         cpuThreshold: { type: number, minimum: 1, maximum: 100 }
         memoryThreshold: { type: number, minimum: 1, maximum: 100 }
+    AppThresholdsLogEntry:
+      type: object
+      required: [id, appId, newCpuThreshold, newMemoryThreshold, changedBy, changedAt]
+      properties:
+        id: { type: integer }
+        appId: { type: string }
+        oldCpuThreshold: { type: number, nullable: true, description: "CPU threshold before this change (null for the first-ever set)" }
+        newCpuThreshold: { type: number, description: "CPU threshold set by this change" }
+        oldMemoryThreshold: { type: number, nullable: true, description: "Memory threshold before this change (null for the first-ever set)" }
+        newMemoryThreshold: { type: number, description: "Memory threshold set by this change" }
+        changedBy: { type: string, description: "UPN / identifier of the operator who made the change" }
+        changedAt: { type: string, format: date-time, description: "When the change was recorded" }
     InfraAlertLogEntry:
       type: object
       required: [id, appId, appName, metric, value, threshold, channels, sentAt]

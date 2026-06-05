@@ -128,6 +128,26 @@ export const UpdateAppThresholdsResponse = zod.object({
 })
 
 
+/**
+ * @summary Audit history of threshold changes for an app. Requires Orbit-Admins or Orbit-Engineers.
+ */
+export const ListAppThresholdsLogParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const ListAppThresholdsLogResponseItem = zod.object({
+  "id": zod.number(),
+  "appId": zod.string(),
+  "oldCpuThreshold": zod.number().nullish().describe('CPU threshold before this change (null for the first-ever set)'),
+  "newCpuThreshold": zod.number().describe('CPU threshold set by this change'),
+  "oldMemoryThreshold": zod.number().nullish().describe('Memory threshold before this change (null for the first-ever set)'),
+  "newMemoryThreshold": zod.number().describe('Memory threshold set by this change'),
+  "changedBy": zod.string().describe('UPN \/ identifier of the operator who made the change'),
+  "changedAt": zod.string().datetime({"offset":true}).describe('When the change was recorded')
+})
+export const ListAppThresholdsLogResponse = zod.array(ListAppThresholdsLogResponseItem)
+
+
 export const GetInfrastructureParams = zod.object({
   "appId": zod.coerce.string()
 })

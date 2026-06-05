@@ -5,6 +5,7 @@ import {
   useListApps,
   useGetAppThresholds,
   useUpdateAppThresholds,
+  useListAppThresholdsLog,
   getListSlosQueryKey,
 } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +14,14 @@ import { Progress } from "@/components/ui/progress";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi, History } from "lucide-react";
 import {
   AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -188,6 +196,91 @@ const ENGINEER_GROUP = {
   description: "Operational actions on Kinisis applications.",
 };
 
+// Inner content — only mounts when the dialog is open, so the query fires lazily
+function ThresholdHistoryContent({ appId }: { appId: string }) {
+  const { data, isLoading } = useListAppThresholdsLog(appId);
+
+  const fmt = (v: number | null | undefined) =>
+    v != null ? `${v}%` : <span className="text-muted-foreground italic">—</span>;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2 p-2">
+        <Skeleton className="h-7 w-full" />
+        <Skeleton className="h-7 w-full" />
+        <Skeleton className="h-7 w-full" />
+      </div>
+    );
+  }
+  if (!data || data.length === 0) {
+    return (
+      <p className="text-[13px] text-muted-foreground px-2 py-6 text-center">
+        No threshold changes recorded yet.
+      </p>
+    );
+  }
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="text-[12px] py-2">When</TableHead>
+          <TableHead className="text-[12px] py-2">Changed by</TableHead>
+          <TableHead className="text-[12px] py-2 text-right">CPU before</TableHead>
+          <TableHead className="text-[12px] py-2 text-right">CPU after</TableHead>
+          <TableHead className="text-[12px] py-2 text-right">Mem before</TableHead>
+          <TableHead className="text-[12px] py-2 text-right">Mem after</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {data.map((entry) => (
+          <TableRow key={entry.id}>
+            <TableCell className="text-[12px] py-1.5 whitespace-nowrap">
+              {format(new Date(entry.changedAt), "MMM d, yyyy HH:mm")}
+            </TableCell>
+            <TableCell className="text-[12px] py-1.5 max-w-[160px] truncate" title={entry.changedBy}>
+              {entry.changedBy}
+            </TableCell>
+            <TableCell className="text-[12px] py-1.5 text-right">{fmt(entry.oldCpuThreshold)}</TableCell>
+            <TableCell className="text-[12px] py-1.5 text-right font-medium">{fmt(entry.newCpuThreshold)}</TableCell>
+            <TableCell className="text-[12px] py-1.5 text-right">{fmt(entry.oldMemoryThreshold)}</TableCell>
+            <TableCell className="text-[12px] py-1.5 text-right font-medium">{fmt(entry.newMemoryThreshold)}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+// --- Threshold history dialog ---
+function ThresholdHistoryDialog({ appId, appName }: { appId: string; appName: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 rounded-sm text-[12px] px-2 text-muted-foreground hover:text-foreground"
+          title="View change history"
+        >
+          <History className="h-3.5 w-3.5" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-[14px]">
+            Threshold change history — {appName}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="mt-2 max-h-[400px] overflow-y-auto">
+          {open && <ThresholdHistoryContent appId={appId} />}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // --- Per-app threshold row (GET + optimistic PUT) ---
 function ThresholdRow({ appId, appName }: { appId: string; appName: string }) {
   const { data, isLoading } = useGetAppThresholds(appId);
@@ -281,6 +374,7 @@ function ThresholdRow({ appId, appName }: { appId: string; appName: string }) {
             >
               {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : saved ? <><Check className="h-3 w-3 mr-1" />Saved</> : "Save"}
             </Button>
+            <ThresholdHistoryDialog appId={appId} appName={appName} />
           </div>
         )}
       </div>
