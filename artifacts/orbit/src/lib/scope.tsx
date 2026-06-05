@@ -10,7 +10,7 @@ import {
 import { ScopeContext, useScope } from "./scope-context";
 
 const STORAGE_KEY = "orbit-scope";
-const DEFAULT_SCOPE = "grailbabe";
+const DEFAULT_SCOPE = "kinisis-labs";
 
 export function ScopeProvider({ children }: { children: React.ReactNode }) {
   const [scope, setScopeState] = useState<string>(() => {
@@ -74,10 +74,7 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
           className="h-8 w-[260px] rounded-sm border-border bg-card text-[13px]"
         >
           {selectedApp ? (
-            <span className="flex items-center gap-2 min-w-0">
-              <span className="truncate">{selectedApp.name}</span>
-              <span className="shrink-0 text-[11px] text-muted-foreground">{selectedApp.environment}</span>
-            </span>
+            <span className="truncate">{selectedApp.name}</span>
           ) : (
             <SelectValue placeholder="Select scope" />
           )}
@@ -85,10 +82,7 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
         <SelectContent>
           {sortedApps.map((a) => (
             <SelectItem key={a.id} value={a.id}>
-              <span className="flex items-center gap-2 min-w-0">
-                <span className="truncate">{a.name}</span>
-                <span className="shrink-0 text-[11px] text-muted-foreground">{a.environment}</span>
-              </span>
+              {a.name}
             </SelectItem>
           ))}
         </SelectContent>
