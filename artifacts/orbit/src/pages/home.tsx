@@ -20,6 +20,7 @@ import { useScope } from "@/lib/scope-context";
 import { useEffect } from "react";
 import { AuthBadge } from "@/components/auth-badge";
 import { useCsvExport } from "@/hooks/use-csv-export";
+import { useToast } from "@/hooks/use-toast";
 import { useOverBudgetDays } from "@/hooks/use-over-budget-days";
 import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
 import { useAuth, COST_READER_GROUP } from "@/lib/auth";
@@ -40,6 +41,7 @@ function parseEnvFilter(value: string | null): EnvFilter {
 }
 
 export default function Home() {
+  const { toast } = useToast();
   const { scope, setScope, isGlobal } = useScope();
   const search = useSearch();
   const [, navigate] = useLocation();
@@ -115,6 +117,7 @@ export default function Home() {
     csvRows ?? null,
     ["Name", "Status", "Identity", "Environment", "Region", "Active Alerts"],
     "app-services",
+    () => toast({ title: "No apps to export", description: "There are no application rows in the current view." }),
   );
 
   return (

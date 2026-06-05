@@ -8,6 +8,7 @@ import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { Button } from "@/components/ui/button";
 import { useCsvExport } from "@/hooks/use-csv-export";
+import { useToast } from "@/hooks/use-toast";
 import { StaleCacheBanner, STALE_CACHE_MS } from "@/components/stale-cache-banner";
 
 const num = (n: number) => new Intl.NumberFormat("en-US").format(n);
@@ -15,6 +16,7 @@ const usd = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
 export default function PlaySubscriptions() {
+  const { toast } = useToast();
   const { scope, isGlobal } = useScope();
   const { data, isLoading } = useListPlaySubscriptions();
 
@@ -57,6 +59,7 @@ export default function PlaySubscriptions() {
     csvRows,
     ["Application", "Package", "Env", "Active", "Canceled", "Expired", "MRR", "Revenue (30d)", "Active trend %"],
     "play-subscriptions",
+    () => toast({ title: "No data to export", description: "There are no subscription rows in the current view." }),
   );
 
   return (

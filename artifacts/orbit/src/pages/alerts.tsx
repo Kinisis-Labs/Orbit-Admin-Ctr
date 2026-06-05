@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { useCsvExport } from "@/hooks/use-csv-export";
+import { useToast } from "@/hooks/use-toast";
 
 type AlertRow = {
   id: string;
@@ -33,6 +34,7 @@ type AlertRow = {
 };
 
 export default function Alerts() {
+  const { toast } = useToast();
   const { scope, isGlobal } = useScope();
   const [filter, setFilter] = useState("");
   const { mode } = useAuth();
@@ -87,6 +89,7 @@ export default function Alerts() {
     csvRows ?? null,
     csvHeaders,
     "alerts",
+    () => toast({ title: "No alerts to export", description: "There are no alert rows in the current view." }),
   );
 
   return (
