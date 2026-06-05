@@ -480,6 +480,7 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
         </UITooltip>
       </div>
       </TooltipProvider>
+      <StaleCacheBanner dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
     </div>
   );
 }
