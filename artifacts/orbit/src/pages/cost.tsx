@@ -403,10 +403,12 @@ function GlobalCost() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-        <span className="inline-flex items-center px-1.5 py-0.5 border border-border bg-muted/40 text-foreground font-semibold tracking-wide uppercase text-[10px]">Mock</span>
-        Revenue figures below are sample data. Real values would come from Stripe, App Store Connect, and Google Play.
-      </div>
+      {!isLoading && cost && cost.revenue.total === 0 && (
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center px-1.5 py-0.5 border border-border bg-muted/40 text-muted-foreground font-semibold tracking-wide uppercase text-[10px]">No data</span>
+          No revenue recorded this month. Stripe, App Store Connect, and Google Play sources will appear here once active.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
@@ -963,10 +965,12 @@ function AppCost() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-        <span className="inline-flex items-center px-1.5 py-0.5 border border-border bg-muted/40 text-foreground font-semibold tracking-wide uppercase text-[10px]">Mock</span>
-        Revenue figures below are sample data. Real values would come from Stripe, App Store Connect, and Google Play.
-      </div>
+      {!isLoading && data && data.revenue.total === 0 && (
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center px-1.5 py-0.5 border border-border bg-muted/40 text-muted-foreground font-semibold tracking-wide uppercase text-[10px]">No data</span>
+          No revenue recorded this month. Stripe, App Store Connect, and Google Play sources will appear here once active.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Tile title="Revenue (MTD)" value={isLoading || !data ? null : fmt(data.revenue.total, data.revenue.currency)} />
