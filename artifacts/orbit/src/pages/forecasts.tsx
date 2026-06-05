@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { CostTabs } from "@/components/cost-tabs";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp, Wifi } from "lucide-react";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
@@ -81,10 +81,17 @@ export default function Forecasts() {
                     <TableCell className="py-1 font-medium text-primary">{r.appName}</TableCell>
                     <TableCell className="py-1 text-right tabular-nums">{fmt(r.spent)}</TableCell>
                     <TableCell className="py-1 text-right tabular-nums">
-                      {fmt(r.forecast)}
-                      {r.forecastSource === "estimated" && (
-                        <span className="ml-1 text-[10px] text-muted-foreground italic">est.</span>
-                      )}
+                      <span className="inline-flex items-center gap-1.5 justify-end">
+                        <span>{fmt(r.forecast)}</span>
+                        {r.forecastSource === "live" ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
+                            <Wifi className="h-3 w-3" />
+                            Live
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground italic">est.</span>
+                        )}
+                      </span>
                     </TableCell>
                     <TableCell className="py-1 text-right tabular-nums">{fmt(r.budget)}</TableCell>
                     <TableCell className={`py-1 text-right tabular-nums ${v > 0 ? "text-destructive" : "text-emerald-500"}`}>{v >= 0 ? "+" : ""}{fmt(v)}</TableCell>
