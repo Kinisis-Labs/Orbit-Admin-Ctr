@@ -5,6 +5,27 @@ import { Progress } from "@/components/ui/progress";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { Activity } from "lucide-react";
 
+type InfraTone = "ok" | "warn" | "bad";
+
+function infraTone(pct: number, threshold: number): InfraTone {
+  if (pct >= threshold) return "bad";
+  if (pct >= threshold * 0.85) return "warn";
+  return "ok";
+}
+
+function InfraBadge({ pct, threshold }: { pct: number; threshold: number }) {
+  const tone = infraTone(pct, threshold);
+  const label = tone === "bad" ? "Breach" : tone === "warn" ? "Warn" : "OK";
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`tabular-nums ${tone === "bad" ? "text-destructive font-medium" : tone === "warn" ? "text-yellow-600 font-medium" : ""}`}>
+        {pct.toFixed(1)}%
+      </span>
+      <StatusPill tone={tone}>{label}</StatusPill>
+    </div>
+  );
+}
+
 export default function Health() {
   const { data: slos, isLoading } = useListSlos();
   const isEmpty = !isLoading && (slos?.length ?? 0) === 0;
@@ -15,16 +36,20 @@ export default function Health() {
   const avgBudget = slos?.length
     ? slos.reduce((s, r) => s + r.errorBudgetRemainingPct, 0) / slos.length
     : 0;
+  const breachingCpu = (slos ?? []).filter((s) => s.cpuPct >= s.cpuThreshold).length;
+  const breachingMem = (slos ?? []).filter((s) => s.memoryPct >= s.memoryThreshold).length;
 
   return (
     <div className="space-y-4">
       <PageHeader title="Health & SLOs" subtitle="Service-level objectives and error budget burn across all applications" />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         <Tile title="Meeting 99.9% uptime" value={isLoading ? null : `${meetingUptime} / ${slos?.length ?? 0}`} sub="Across tracked applications" />
         <Tile title="Avg error budget left" value={isLoading ? null : `${avgBudget.toFixed(1)}%`} sub="Rolling 30-day window" />
         <Tile title="Breaching P95 latency" value={isLoading ? null : breachingLat.toString()} sub="Target: <500ms" />
         <Tile title="Breaching error rate" value={isLoading ? null : breachingErr.toString()} sub="Target: <1%" />
+        <Tile title="CPU pressure" value={isLoading ? null : breachingCpu.toString()} sub="At or above 80% threshold" />
+        <Tile title="Memory pressure" value={isLoading ? null : breachingMem.toString()} sub="At or above 85% threshold" />
       </div>
 
       <div className="bg-card border border-border shadow-sm">
@@ -54,6 +79,8 @@ export default function Health() {
                 <TableHead className="h-8 font-semibold text-foreground">Error budget remaining</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground text-right">P95 latency</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground text-right">Error rate</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">CPU</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">Memory</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground">Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -61,7 +88,13 @@ export default function Health() {
               {(slos ?? []).map((s) => {
                 const latencyOk = s.p95LatencyMs <= s.p95TargetMs;
                 const errOk = s.errorRatePct <= s.errorTargetPct;
-                const overall = latencyOk && errOk && s.uptimePct >= 99.9 ? "ok" : latencyOk || errOk ? "warn" : "bad";
+                const cpuOk = infraTone(s.cpuPct, s.cpuThreshold) === "ok";
+                const memOk = infraTone(s.memoryPct, s.memoryThreshold) === "ok";
+                const overall = latencyOk && errOk && cpuOk && memOk && s.uptimePct >= 99.9
+                  ? "ok"
+                  : latencyOk && errOk && s.uptimePct >= 99.9
+                    ? "warn"
+                    : "bad";
                 return (
                   <TableRow key={s.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
                     <TableCell className="py-1 font-medium text-primary">{s.appName}</TableCell>
@@ -75,6 +108,8 @@ export default function Health() {
                     </TableCell>
                     <TableCell className={`py-1 text-right tabular-nums ${latencyOk ? "" : "text-destructive font-medium"}`}>{s.p95LatencyMs}ms</TableCell>
                     <TableCell className={`py-1 text-right tabular-nums ${errOk ? "" : "text-destructive font-medium"}`}>{s.errorRatePct}%</TableCell>
+                    <TableCell className="py-1"><InfraBadge pct={s.cpuPct} threshold={s.cpuThreshold} /></TableCell>
+                    <TableCell className="py-1"><InfraBadge pct={s.memoryPct} threshold={s.memoryThreshold} /></TableCell>
                     <TableCell className="py-1"><StatusPill tone={overall as "ok" | "warn" | "bad"}>{overall === "ok" ? "Meeting SLO" : overall === "warn" ? "At risk" : "Breaching"}</StatusPill></TableCell>
                   </TableRow>
                 );

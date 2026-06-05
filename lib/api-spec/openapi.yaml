@@ -1117,7 +1117,7 @@ components:
         resolvedAt: { type: string, format: date-time, nullable: true }
     SloRow:
       type: object
-      required: [appId, appName, environment, uptimePct, errorBudgetRemainingPct, p95LatencyMs, p95TargetMs, errorRatePct, errorTargetPct]
+      required: [appId, appName, environment, uptimePct, errorBudgetRemainingPct, p95LatencyMs, p95TargetMs, errorRatePct, errorTargetPct, cpuPct, cpuThreshold, memoryPct, memoryThreshold]
       properties:
         appId: { type: string }
         appName: { type: string }
@@ -1128,6 +1128,10 @@ components:
         p95TargetMs: { type: number }
         errorRatePct: { type: number }
         errorTargetPct: { type: number }
+        cpuPct: { type: number }
+        cpuThreshold: { type: number }
+        memoryPct: { type: number }
+        memoryThreshold: { type: number }
     GlobalEndpointRow:
       type: object
       required: [id, appId, appName, name, region, status, latencyMs, packetLossPercent]

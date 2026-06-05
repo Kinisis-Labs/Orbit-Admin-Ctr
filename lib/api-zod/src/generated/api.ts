@@ -653,7 +653,11 @@ export const ListSlosResponseItem = zod.object({
   "p95LatencyMs": zod.number(),
   "p95TargetMs": zod.number(),
   "errorRatePct": zod.number(),
-  "errorTargetPct": zod.number()
+  "errorTargetPct": zod.number(),
+  "cpuPct": zod.number(),
+  "cpuThreshold": zod.number(),
+  "memoryPct": zod.number(),
+  "memoryThreshold": zod.number()
 })
 export const ListSlosResponse = zod.array(ListSlosResponseItem)
 

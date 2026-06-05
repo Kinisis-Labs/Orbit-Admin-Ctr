@@ -16,4 +16,8 @@ export interface SloRow {
   p95TargetMs: number;
   errorRatePct: number;
   errorTargetPct: number;
+  cpuPct: number;
+  cpuThreshold: number;
+  memoryPct: number;
+  memoryThreshold: number;
 }

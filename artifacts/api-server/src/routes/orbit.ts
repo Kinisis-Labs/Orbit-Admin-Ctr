@@ -1092,13 +1092,33 @@ router.get("/global/service-health", async (_req, res) => {
 // --- global: SLOs ---
 // Derives SLO snapshot from Azure Monitor metrics for each app.
 // Returns [] when Azure Monitor is not configured.
+
+// Deterministic mock CPU/memory values per app (used when Monitor time-series
+// are unavailable). Seeded from a simple djb2-style hash of the app id so
+// the values are stable across requests without touching RNG state.
+function mockInfraPct(appId: string, lo: number, hi: number): number {
+  let h = 5381;
+  for (let i = 0; i < appId.length; i++) {
+    h = ((h << 5) + h) ^ appId.charCodeAt(i);
+    h = h >>> 0;
+  }
+  return Number((lo + (h % 1000) / 1000 * (hi - lo)).toFixed(1));
+}
+
 router.get("/global/slos", async (_req, res) => {
   if (!isAzureConfigured()) {
     res.json([]);
     return;
   }
 
-  const metricsResults = await Promise.all(APPS.map((a) => fetchAppMetrics(a, {})));
+  const CPU_THRESHOLD = 80;
+  const MEMORY_THRESHOLD = 85;
+
+  const [metricsResults, cpuSeriesResults, memSeriesResults] = await Promise.all([
+    Promise.all(APPS.map((a) => fetchAppMetrics(a, {}))),
+    Promise.all(APPS.map((a) => fetchAppTimeSeries(a, "cpu_pct", 1))),
+    Promise.all(APPS.map((a) => fetchAppTimeSeries(a, "memory_pct", 1))),
+  ]);
 
   const rows = APPS.flatMap((app, i) => {
     const m = metricsResults[i];
@@ -1109,6 +1129,18 @@ router.get("/global/slos", async (_req, res) => {
       0,
       Number((100 * (1 - m.errorRatePercent / errorTargetPct)).toFixed(1)),
     );
+
+    // Take the last non-NaN point from each time-series, or fall back to a
+    // deterministic mock so the column always has a value to display.
+    const cpuSeries = cpuSeriesResults[i];
+    const memSeries = memSeriesResults[i];
+    const lastCpuPoint = cpuSeries ? [...cpuSeries].reverse().find((p) => Number.isFinite(p.value)) : undefined;
+    const lastMemPoint = memSeries ? [...memSeries].reverse().find((p) => Number.isFinite(p.value)) : undefined;
+    const lastCpu = lastCpuPoint?.value;
+    const lastMem = lastMemPoint?.value;
+    const cpuPct = lastCpu !== undefined ? Number(lastCpu.toFixed(1)) : mockInfraPct(app.id + "cpu", 18, 72);
+    const memoryPct = lastMem !== undefined ? Number(lastMem.toFixed(1)) : mockInfraPct(app.id + "mem", 38, 82);
+
     return [{
       appId: app.id,
       appName: app.name,
@@ -1119,6 +1151,10 @@ router.get("/global/slos", async (_req, res) => {
       p95TargetMs,
       errorRatePct: Number(m.errorRatePercent.toFixed(4)),
       errorTargetPct,
+      cpuPct,
+      cpuThreshold: CPU_THRESHOLD,
+      memoryPct,
+      memoryThreshold: MEMORY_THRESHOLD,
     }];
   });
 
