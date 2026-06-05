@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useListAppleSubscriptions } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingDown, TrendingUp, ExternalLink, Download, Clipboard, Check } from "lucide-react";
+import { TrendingDown, TrendingUp, ExternalLink, Download, Clipboard, Check, Clock } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
@@ -15,7 +15,7 @@ const usd = (n: number) =>
 
 export default function AppleSubscriptions() {
   const { scope, isGlobal } = useScope();
-  const { data, isLoading } = useListAppleSubscriptions();
+  const { data, isLoading, dataUpdatedAt } = useListAppleSubscriptions();
 
   const rows = useMemo(() => data ?? [], [data]);
   const scoped = isGlobal ? rows : rows.filter((r) => r.appId === scope);
@@ -57,7 +57,7 @@ export default function AppleSubscriptions() {
         right={<ScopeSelect />}
       />
 
-      <AppleBanner placeholder={isPlaceholder} />
+      <AppleBanner placeholder={isPlaceholder} dataUpdatedAt={dataUpdatedAt} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <Tile title="Active subscribers" value={isLoading ? null : num(totals.active)} sub="Currently paying" />
@@ -162,7 +162,11 @@ export default function AppleSubscriptions() {
   );
 }
 
-function AppleBanner({ placeholder }: { placeholder: boolean }) {
+function AppleBanner({ placeholder, dataUpdatedAt }: { placeholder: boolean; dataUpdatedAt: number }) {
+  const fetchedAt = dataUpdatedAt
+    ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : null;
+
   return (
     <div className="bg-card border border-border shadow-sm p-3 flex items-start gap-3">
       <div className="shrink-0 h-8 w-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center text-[11px] font-semibold">AS</div>
@@ -178,6 +182,12 @@ function AppleBanner({ placeholder }: { placeholder: boolean }) {
           </>
         ) : (
           <>Subscriber states and revenue are pulled live from the App Store Connect API for each tracked iOS app.</>
+        )}
+        {fetchedAt && (
+          <span className="inline-flex items-center gap-1 ml-2 text-muted-foreground/70">
+            <Clock className="h-3 w-3" />
+            {placeholder ? "Generated" : "Fetched"} at {fetchedAt}
+          </span>
         )}
       </div>
       <a
