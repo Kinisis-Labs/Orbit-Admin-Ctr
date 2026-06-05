@@ -14,15 +14,19 @@ type ForecastRow = {
   budget: number;
   spent: number;
   forecast: number;
+  forecastSource: "live" | "estimated";
 };
 
-function buildForecastRows(apps: Array<{ id: string; name: string; monthToDateCost: number }>): ForecastRow[] {
+function buildForecastRows(
+  apps: Array<{ id: string; name: string; monthToDateCost: number; budget?: number; forecast?: number }>,
+): ForecastRow[] {
   return apps.map((app) => ({
     appId: app.id,
     appName: app.name,
     spent: app.monthToDateCost,
-    budget: Number((app.monthToDateCost * 2.0).toFixed(2)),
-    forecast: Number((app.monthToDateCost * 1.7).toFixed(2)),
+    budget: app.budget ?? Number((app.monthToDateCost * 2.0).toFixed(2)),
+    forecast: app.forecast ?? Number((app.monthToDateCost * 1.7).toFixed(2)),
+    forecastSource: app.forecast !== undefined ? "live" : "estimated",
   }));
 }
 
@@ -76,7 +80,12 @@ export default function Forecasts() {
                   <TableRow key={r.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
                     <TableCell className="py-1 font-medium text-primary">{r.appName}</TableCell>
                     <TableCell className="py-1 text-right tabular-nums">{fmt(r.spent)}</TableCell>
-                    <TableCell className="py-1 text-right tabular-nums">{fmt(r.forecast)}</TableCell>
+                    <TableCell className="py-1 text-right tabular-nums">
+                      {fmt(r.forecast)}
+                      {r.forecastSource === "estimated" && (
+                        <span className="ml-1 text-[10px] text-muted-foreground italic">est.</span>
+                      )}
+                    </TableCell>
                     <TableCell className="py-1 text-right tabular-nums">{fmt(r.budget)}</TableCell>
                     <TableCell className={`py-1 text-right tabular-nums ${v > 0 ? "text-destructive" : "text-emerald-500"}`}>{v >= 0 ? "+" : ""}{fmt(v)}</TableCell>
                     <TableCell className="py-1">

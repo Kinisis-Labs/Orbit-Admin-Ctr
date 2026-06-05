@@ -12,18 +12,23 @@ export default function Subscriptions() {
 
   const rows = useMemo(() => {
     if (!apps) return [];
-    const bySubId = new Map<string, { apps: string[]; monthToDateCost: number }>();
+    const bySubId = new Map<string, { name: string; displayName: string; apps: string[]; monthToDateCost: number }>();
     for (const app of apps) {
       const subId = app.subscriptionId ?? "unknown";
-      const entry = bySubId.get(subId) ?? { apps: [], monthToDateCost: 0 };
+      const entry = bySubId.get(subId) ?? {
+        name: subId,
+        displayName: (app as { subscriptionName?: string }).subscriptionName ?? subId,
+        apps: [],
+        monthToDateCost: 0,
+      };
       entry.apps.push(app.name);
       entry.monthToDateCost += app.monthToDateCost;
       bySubId.set(subId, entry);
     }
     return Array.from(bySubId.entries())
-      .map(([id, { apps: appNames, monthToDateCost }]) => ({
+      .map(([id, { displayName, apps: appNames, monthToDateCost }]) => ({
         id,
-        name: id,
+        displayName,
         ownerTeam: "Kinisis Platform",
         appCount: appNames.length,
         apps: appNames,
@@ -45,7 +50,7 @@ export default function Subscriptions() {
           <Table className="text-[13px]">
             <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-8 font-semibold text-foreground">Subscription ID</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">Subscription</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground">Owner team</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground text-right">Applications</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground text-right">MTD cost</TableHead>
@@ -56,7 +61,8 @@ export default function Subscriptions() {
               {rows.map((s) => (
                 <TableRow key={s.id} className="h-8 border-b border-border/50 hover:bg-muted/40 align-top">
                   <TableCell className="py-2">
-                    <div className="font-mono text-[12px] text-muted-foreground">{s.id}</div>
+                    <div className="font-medium">{s.displayName}</div>
+                    <div className="font-mono text-[11px] text-muted-foreground mt-0.5">{s.id}</div>
                     <div className="text-[11px] text-muted-foreground mt-0.5">{s.apps.join(", ")}</div>
                   </TableCell>
                   <TableCell className="py-2 text-muted-foreground">{s.ownerTeam}</TableCell>

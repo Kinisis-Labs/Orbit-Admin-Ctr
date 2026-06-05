@@ -19,6 +19,8 @@ import {
 } from "@workspace/api-zod";
 import { fetchResourcesByResourceGroup, fetchResourceGroupTags } from "../lib/azureResources.js";
 import { fetchMonthToDateCost } from "../lib/azureCost.js";
+import { fetchBudgetForApp } from "../lib/azureBudgets.js";
+import { fetchSubscriptionNames } from "../lib/azureSubscriptions.js";
 import {
   fetchAppMetrics,
   fetchAppTimeSeries,
@@ -234,17 +236,24 @@ function activeAlertCount(app: AppRecord): number {
 
 // --- /apps ---
 router.get("/apps", async (_req, res) => {
-  // Fetch live cost + alert counts for all apps in parallel.
+  // Fetch live cost, alert counts, budgets, and subscription names for all apps in parallel.
   // Falls back to static inventory values when Azure is unconfigured.
-  const [alertResults, costResults] = await Promise.all([
+  const [alertResults, costResults, budgetResults] = await Promise.all([
     Promise.all(APPS.map((a) => fetchActiveAlerts(a, {}))),
     Promise.all(APPS.map((a) => fetchMonthToDateCost(a, {}))),
+    Promise.all(APPS.map((a) => fetchBudgetForApp(a, {}))),
   ]);
+
+  // Resolve subscription names from Azure once (cached; returns empty map in mock mode).
+  const uniqueSubIds = [...new Set(APPS.map((a) => a.subscriptionId))];
+  const subNames = await fetchSubscriptionNames(uniqueSubIds);
 
   const data = ListAppsResponse.parse(
     APPS.map((app, i) => {
       const liveAlerts = alertResults[i];
       const liveCost = costResults[i];
+      const liveBudget = budgetResults[i];
+      const subName = subNames.get(app.subscriptionId.toLowerCase());
       return {
         id: app.id,
         name: app.name,
@@ -252,12 +261,17 @@ router.get("/apps", async (_req, res) => {
         region: app.region,
         resourceGroup: app.resourceGroup,
         subscriptionId: app.subscriptionId,
+        ...(subName ? { subscriptionName: subName } : {}),
         tags: app.tags,
         status: app.status,
         activeAlerts: liveAlerts
           ? liveAlerts.filter((a) => a.status === "active").length
           : activeAlertCount(app),
         monthToDateCost: liveCost ? liveCost.monthToDate : app.monthToDateCost,
+        ...(liveBudget ? { budget: liveBudget.amount } : {}),
+        ...(liveBudget?.forecastAmount !== null && liveBudget?.forecastAmount !== undefined
+          ? { forecast: liveBudget.forecastAmount }
+          : {}),
         group: app.group,
         userAuth: app.userAuth,
       };
@@ -562,8 +576,9 @@ router.get("/apps/:appId/cost", async (req, res) => {
   }
   const bypassCache = req.query["refresh"] === "true";
   const apiUsage = apiUsageForApp(app);
-  const [liveCost, rev] = await Promise.all([
+  const [liveCost, liveBudget, rev] = await Promise.all([
     fetchMonthToDateCost(app, { bypassCache }),
+    fetchBudgetForApp(app, { bypassCache }),
     syncAndReadRevenue(app),
   ]);
   const mtd = liveCost
@@ -572,11 +587,17 @@ router.get("/apps/:appId/cost", async (req, res) => {
   const byService = liveCost
     ? liveCost.byService
     : buildByServiceForApp(app, apiUsage);
+
+  // Budget: prefer real Azure Budget resource; fall back to 2× MTD formula.
+  const budget = liveBudget?.amount ?? Number((mtd * 2.0).toFixed(2));
+  // Forecast: prefer Azure Forecast API result; fall back to 1.7× MTD formula.
+  const forecast = liveBudget?.forecastAmount ?? Number((mtd * 1.7).toFixed(2));
+
   const data = GetCostResponse.parse({
     currency: "USD",
     monthToDate: mtd,
-    forecast: Number((mtd * 1.7).toFixed(2)),
-    budget: Number((mtd * 2.0).toFixed(2)),
+    forecast,
+    budget,
     daily: makeDaily(app.id, 30, mtd / 18),
     byService,
     apiUsage,
@@ -776,12 +797,14 @@ router.get("/global/cost-summary", async (req, res) => {
   const apiByApp = new Map(APPS.map((a) => [a.id, apiUsageForApp(a)] as const));
 
   const bypassCache = req.query["refresh"] === "true";
-  // Fetch live Azure cost + ledger revenue for every app in parallel.
-  const [liveCostResults, revResults] = await Promise.all([
+  // Fetch live Azure cost, budgets, and ledger revenue for every app in parallel.
+  const [liveCostResults, liveBudgetResults, revResults] = await Promise.all([
     Promise.all(APPS.map((a) => fetchMonthToDateCost(a, { bypassCache }))),
+    Promise.all(APPS.map((a) => fetchBudgetForApp(a, { bypassCache }))),
     Promise.all(APPS.map((a) => syncAndReadRevenue(a))),
   ]);
   const liveCostByApp = new Map(APPS.map((a, i) => [a.id, liveCostResults[i]] as const));
+  const liveBudgetByApp = new Map(APPS.map((a, i) => [a.id, liveBudgetResults[i]] as const));
   const revByApp = new Map(APPS.map((a, i) => [a.id, revResults[i]!] as const));
 
   const apiCost = APPS.reduce((s, a) => s + (apiByApp.get(a.id)?.cost ?? 0), 0);
@@ -873,11 +896,30 @@ router.get("/global/cost-summary", async (req, res) => {
     ? liveTimestamps.reduce((min, t) => (t < min ? t : min))
     : undefined;
 
+  // Global budget: sum of per-app Azure Budget amounts; fall back to 2× MTD formula.
+  const anyLiveBudget = APPS.some((a) => liveBudgetByApp.get(a.id) !== null);
+  const globalBudget = anyLiveBudget
+    ? APPS.reduce((s, a) => {
+        const b = liveBudgetByApp.get(a.id);
+        const appCost = infraCostByApp.get(a.id)! + (apiByApp.get(a.id)?.cost ?? 0);
+        return s + (b?.amount ?? appCost * 2.0);
+      }, 0)
+    : mtd * 2.0;
+  // Global forecast: sum of per-app Azure Forecast amounts; fall back to 1.65× MTD formula.
+  const anyLiveForecast = APPS.some((a) => liveBudgetByApp.get(a.id)?.forecastAmount != null);
+  const globalForecast = anyLiveForecast
+    ? APPS.reduce((s, a) => {
+        const b = liveBudgetByApp.get(a.id);
+        const appCost = infraCostByApp.get(a.id)! + (apiByApp.get(a.id)?.cost ?? 0);
+        return s + (b?.forecastAmount ?? appCost * 1.65);
+      }, 0)
+    : mtd * 1.65;
+
   const data = GetGlobalCostSummaryResponse.parse({
     currency: "USD",
     monthToDate: Number(mtd.toFixed(2)),
-    forecast: Number((mtd * 1.65).toFixed(2)),
-    budget: Number((mtd * 2.0).toFixed(2)),
+    forecast: Number(globalForecast.toFixed(2)),
+    budget: Number(globalBudget.toFixed(2)),
     daily: makeDaily("global", 30, mtd / 30),
     apiCalls,
     apiCost: Number(apiCost.toFixed(2)),

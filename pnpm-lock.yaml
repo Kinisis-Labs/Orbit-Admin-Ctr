@@ -166,6 +166,9 @@ importers:
 
   artifacts/api-server:
     dependencies:
+      '@azure/arm-consumption':
+        specifier: ^9.2.0
+        version: 9.2.0
       '@azure/arm-costmanagement':
         specifier: 1.0.0-beta.1
         version: 1.0.0-beta.1
@@ -698,6 +701,10 @@ packages:
   '@azure/abort-controller@2.1.2':
     resolution: {integrity: sha512-nBrLsEWm4J2u5LpAPjxADTlq3trDgVZZXHNKabeXZtpq3d3AbN/KGO82R87rdDz5/lYB024rtEf10/q0urNgsA==}
     engines: {node: '>=18.0.0'}
+
+  '@azure/arm-consumption@9.2.0':
+    resolution: {integrity: sha512-oLAElshfdPwN/vuzMWt5S+68EPH6gR8fTdNndClFMNI3tvYuvWATSLgHpbcXA9h2oX0P0NGU9h/h9fgZIptycQ==}
+    engines: {node: '>=14.0.0'}
 
   '@azure/arm-costmanagement@1.0.0-beta.1':
     resolution: {integrity: sha512-eQh53wwb/rjykGxPl9DI2tBFStOXoW0nwc46DGoRJ8BRdmin+qImOChbwe3HuQEQCACCl1p5aTjUBQHO7SizsA==}
@@ -2802,7 +2809,7 @@ packages:
     resolution: {integrity: sha512-3qT/88Y3FbH/Kx4szpQQ4HzUbVrHPKTLVpVocKiLfoYvw9XSGOX2FmD2d6DrXbVYyAQTF2HeF6My8jmzx7/CRw==}
 
   npm-run-path@6.0.0:
-    resolution: {integrity: sha512-9qny7Z9DsQU8Ou39ERsPU4OZQlSTP47ShQzuKZ6PRXpYLtIFgl/DEBYEXKlvcEa+9tHVcK8CF81Y2V72qaZhWA==}
+    resolution: {integrity: sha512-9qny7Z9DsQU8Ou39ERsPU4OZQlSTP47ShQzuKZ6PRXpYLtIFgl/DEBYEXKlvcEa+9tHVcK8CF81Y2V72qaZhWA==, tarball: https://registry.npmjs.org/npm-run-path/-/npm-run-path-6.0.0.tgz}
     engines: {node: '>=18'}
 
   oauth4webapi@3.8.6:
@@ -3553,6 +3560,16 @@ snapshots:
   '@azure/abort-controller@2.1.2':
     dependencies:
       tslib: 2.8.1
+
+  '@azure/arm-consumption@9.2.0':
+    dependencies:
+      '@azure/core-auth': 1.10.1
+      '@azure/core-client': 1.10.1
+      '@azure/core-paging': 1.6.2
+      '@azure/core-rest-pipeline': 1.23.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
 
   '@azure/arm-costmanagement@1.0.0-beta.1':
     dependencies:

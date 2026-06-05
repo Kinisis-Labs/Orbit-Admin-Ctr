@@ -11,6 +11,7 @@
     "validate-apps": "tsx ./src/validate-apps.ts"
   },
   "dependencies": {
+    "@azure/arm-consumption": "^9.2.0",
     "@azure/arm-costmanagement": "1.0.0-beta.1",
     "@azure/arm-monitor": "^7.0.0",
     "@azure/arm-resourcegraph": "^4.2.1",

@@ -75,7 +75,7 @@ export function clearCostCacheForApp(appId: string): void {
  *      environments regardless of which subscription is listed first in
  *      AZURE_SUBSCRIPTION_IDS.
  */
-async function resolveSubscriptionId(app: AppRecord): Promise<string | null> {
+export async function resolveSubscriptionId(app: AppRecord): Promise<string | null> {
   if (isGuid(app.subscriptionId)) return app.subscriptionId;
 
   const rgKey = app.resourceGroup.toLowerCase();

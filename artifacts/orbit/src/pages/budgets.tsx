@@ -24,16 +24,20 @@ type BudgetRow = {
   spent: number;
   forecast: number;
   status: BudgetStatus;
+  budgetSource: "live" | "estimated";
 };
 
-function buildBudgetRows(apps: Array<{ id: string; name: string; environment: string; monthToDateCost: number }>): BudgetRow[] {
+function buildBudgetRows(
+  apps: Array<{ id: string; name: string; environment: string; monthToDateCost: number; budget?: number; forecast?: number }>,
+): BudgetRow[] {
   return apps.map((app) => {
     const spent = app.monthToDateCost;
-    const budget = Number((spent * 2.0).toFixed(2));
-    const forecast = Number((spent * 1.7).toFixed(2));
+    const budget = app.budget ?? Number((spent * 2.0).toFixed(2));
+    const forecast = app.forecast ?? Number((spent * 1.7).toFixed(2));
+    const budgetSource: "live" | "estimated" = app.budget !== undefined ? "live" : "estimated";
     const status: BudgetStatus =
       forecast > budget ? "Breach" : spent > budget * 0.8 ? "Warning" : "Healthy";
-    return { appId: app.id, appName: app.name, environment: app.environment, budget, spent, forecast, status };
+    return { appId: app.id, appName: app.name, environment: app.environment, budget, spent, forecast, status, budgetSource };
   });
 }
 
@@ -70,7 +74,12 @@ export default function Budgets() {
                   <TableRow key={r.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
                     <TableCell className="py-1 font-medium text-primary">{r.appName}</TableCell>
                     <TableCell className="py-1 text-muted-foreground">{r.environment}</TableCell>
-                    <TableCell className="py-1 text-right tabular-nums">{fmt(r.budget)}</TableCell>
+                    <TableCell className="py-1 text-right tabular-nums">
+                      <span>{fmt(r.budget)}</span>
+                      {r.budgetSource === "estimated" && (
+                        <span className="ml-1 text-[10px] text-muted-foreground italic">est.</span>
+                      )}
+                    </TableCell>
                     <TableCell className="py-1 text-right tabular-nums">{fmt(r.spent)}</TableCell>
                     <TableCell className={`py-1 text-right tabular-nums ${r.forecast > r.budget ? "text-destructive font-medium" : ""}`}>{fmt(r.forecast)}</TableCell>
                     <TableCell className="py-1">

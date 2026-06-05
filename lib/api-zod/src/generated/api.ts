@@ -26,6 +26,7 @@ export const ListAppsResponseItem = zod.object({
   "region": zod.string(),
   "resourceGroup": zod.string(),
   "subscriptionId": zod.string(),
+  "subscriptionName": zod.string().optional().describe('Human-readable Azure subscription display name. Only present when Azure is configured.'),
   "tags": zod.object({
   "workload": zod.string().optional().describe('Workload identifier matching the Azure workload tag (e.g. \"GrailBabeProd\").'),
   "environment": zod.string().optional().describe('Deployment environment tag value (e.g. \"prod\", \"staging\", \"dev\").'),
@@ -36,6 +37,8 @@ export const ListAppsResponseItem = zod.object({
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),
+  "budget": zod.number().optional().describe('Monthly budget cap in USD from Azure Cost Management. Only present when a budget is configured in Azure.'),
+  "forecast": zod.number().optional().describe('Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured.'),
   "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).'),
   "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users. \"clerk\" = consumer app with Clerk-authenticated users (activity ingested via webhooks). \"entra\" = employee-only internal tool authenticated via Entra ID. \"none\" = no end-user authentication (e.g. public marketing site).')
 })
@@ -53,6 +56,7 @@ export const GetAppResponse = zod.object({
   "region": zod.string(),
   "resourceGroup": zod.string(),
   "subscriptionId": zod.string(),
+  "subscriptionName": zod.string().optional().describe('Human-readable Azure subscription display name. Only present when Azure is configured.'),
   "tags": zod.object({
   "workload": zod.string().optional().describe('Workload identifier matching the Azure workload tag (e.g. \"GrailBabeProd\").'),
   "environment": zod.string().optional().describe('Deployment environment tag value (e.g. \"prod\", \"staging\", \"dev\").'),
@@ -63,6 +67,8 @@ export const GetAppResponse = zod.object({
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),
+  "budget": zod.number().optional().describe('Monthly budget cap in USD from Azure Cost Management. Only present when a budget is configured in Azure.'),
+  "forecast": zod.number().optional().describe('Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured.'),
   "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).'),
   "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users. \"clerk\" = consumer app with Clerk-authenticated users (activity ingested via webhooks). \"entra\" = employee-only internal tool authenticated via Entra ID. \"none\" = no end-user authentication (e.g. public marketing site).')
 }).and(zod.object({

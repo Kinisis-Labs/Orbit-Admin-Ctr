@@ -17,10 +17,16 @@ export interface AppSummary {
   region: string;
   resourceGroup: string;
   subscriptionId: string;
+  /** Human-readable Azure subscription display name. Only present when Azure is configured. */
+  subscriptionName?: string;
   tags: AppTags;
   status: Status;
   activeAlerts: number;
   monthToDateCost: number;
+  /** Monthly budget cap in USD from Azure Cost Management. Only present when a budget is configured in Azure. */
+  budget?: number;
+  /** Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured. */
+  forecast?: number;
   /** Optional scope-selector grouping label (e.g. Platform). */
   group?: string;
   userAuth: UserAuthType;

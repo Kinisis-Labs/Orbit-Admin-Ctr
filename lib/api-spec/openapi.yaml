@@ -483,11 +483,14 @@ components:
         region: { type: string }
         resourceGroup: { type: string }
         subscriptionId: { type: string }
+        subscriptionName: { type: string, description: "Human-readable Azure subscription display name. Only present when Azure is configured." }
         tags:
           $ref: "#/components/schemas/AppTags"
         status: { $ref: "#/components/schemas/Status" }
         activeAlerts: { type: integer }
         monthToDateCost: { type: number }
+        budget: { type: number, description: "Monthly budget cap in USD from Azure Cost Management. Only present when a budget is configured in Azure." }
+        forecast: { type: number, description: "Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured." }
         group: { type: string, description: Optional scope-selector grouping label (e.g. Platform). }
         userAuth:
           $ref: "#/components/schemas/UserAuthType"
