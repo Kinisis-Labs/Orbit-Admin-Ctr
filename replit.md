@@ -43,6 +43,7 @@ The Kinisis admin center — an Azure operations dashboard giving operators a un
 - `artifacts/api-server/src/lib/session.ts` — express-session + connect-pg-simple Postgres session store.
 - `artifacts/api-server/src/middlewares/auth.ts` — `requireAuth` / `requireCostReader` (no-ops in mock/dev mode).
 - `artifacts/api-server/src/routes/auth.ts` — `/api/auth/me`, `/login`, `/callback`, `/logout` (auth code + PKCE).
+- `artifacts/api-server/src/lib/budgetAlerts.ts` — Budget overrun alert scheduler: polls all apps hourly, sends Teams Adaptive Card and/or SMTP email when forecast > budget. Opt-in via env vars (see below). Cooldown prevents duplicate alerts. Started automatically from `index.ts` after the server is listening.
 
 ## Architecture decisions
 
@@ -82,6 +83,28 @@ Required env (shared, same in dev & prod): `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`,
 Optional RBAC group env (shared, GUID object ids — only resolve membership when set): `ENTRA_ADMIN_GROUP_ID` (Orbit-Admins), `ENTRA_ENGINEER_GROUP_ID` (Orbit-Engineers), `ENTRA_FINOPS_GROUP_ID` (Orbit-FinOps). All five Orbit-* groups are resolved in `routes/auth.ts` (`resolveOrbitGroups`) and surfaced to the frontend via `/api/auth/me` so `hasGroup()` and the Access page reflect real membership in Entra mode. These three are membership-aware only — no API route is gated on them yet (only `Orbit-Authorized-Users` baseline + `Orbit-Cost-Readers` FinOps gate are enforced).
 
 Entra app registration checklist: register both the dev and prod redirect URIs (Web platform), enable the **groups claim** (Token configuration → add groups claim → Security groups, for ID tokens), and create a client secret. The groups claim emits group **object IDs** (GUIDs) — every `ENTRA_*_GROUP_ID` must be those GUIDs.
+
+### Budget overrun alerts — config-gated, opt-in
+
+A background scheduler (`lib/budgetAlerts.ts`) fires when `forecast > budget` for any tracked app. It starts automatically after server listen; if no channel is configured it logs a single info message and exits. Safe in dev with no env vars set.
+
+**Teams (Adaptive Card via Incoming Webhook):**
+- `ALERT_TEAMS_WEBHOOK_URL` — global incoming-webhook URL (create in a Teams channel → Manage channel → Connectors → Incoming Webhook)
+- `ALERT_TEAMS_WEBHOOK_URL__<APPID>` — per-app override (upper-cased, hyphens → underscores; e.g. `ALERT_TEAMS_WEBHOOK_URL__GRAILBABE`)
+
+**SMTP email:**
+- `ALERT_SMTP_HOST` — SMTP server hostname (e.g. `smtp.office365.com`)
+- `ALERT_SMTP_PORT` — port (default 587 for STARTTLS, 465 for implicit TLS)
+- `ALERT_SMTP_USER` — SMTP username
+- `ALERT_SMTP_PASS` — SMTP password / app password
+- `ALERT_SMTP_FROM` — sender address (e.g. `orbit@kinisislabs.com`)
+- `ALERT_SMTP_SECURE` — `"true"` for implicit TLS; omit or `"false"` for STARTTLS
+- `ALERT_EMAIL_TO` — comma-separated recipient(s) (e.g. `ops@kinisislabs.com,finance@kinisislabs.com`)
+- `ALERT_EMAIL_TO__<APPID>` — per-app recipient override
+
+**Scheduler tuning:**
+- `ALERT_CHECK_INTERVAL_MINUTES` — polling cadence (default `60`)
+- `ALERT_COOLDOWN_HOURS` — minimum hours between repeat alerts per app (default `12`)
 
 ## Product
 
