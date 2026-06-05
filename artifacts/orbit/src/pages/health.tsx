@@ -1,15 +1,26 @@
 import { useState, Fragment } from "react";
-import { useListSlos } from "@workspace/api-client-react";
+import {
+  useListSlos,
+  useListApps,
+  useGetAppThresholds,
+  useUpdateAppThresholds,
+  getListSlosQueryKey,
+} from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader, StatusPill } from "@/components/page-header";
-import { Activity, ChevronDown, ChevronRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2 } from "lucide-react";
 import {
   AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { format } from "date-fns";
+import { useAuth, ADMIN_GROUP } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 type InfraTone = "ok" | "warn" | "bad";
 
@@ -139,11 +150,158 @@ function TrendSparkline({
   );
 }
 
+// --- Engineer group definition (mirrors orbitGroups.ts client-facing id) ---
+const ENGINEER_GROUP = {
+  id: "orbit-engineers",
+  displayName: "Orbit-Engineers",
+  description: "Operational actions on Kinisis applications.",
+};
+
+// --- Per-app threshold row (GET + optimistic PUT) ---
+function ThresholdRow({ appId, appName }: { appId: string; appName: string }) {
+  const { data, isLoading } = useGetAppThresholds(appId);
+  const { mutateAsync, isPending } = useUpdateAppThresholds();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [cpu, setCpu] = useState<string>("");
+  const [mem, setMem] = useState<string>("");
+  const [saved, setSaved] = useState(false);
+
+  const effective = {
+    cpu: cpu !== "" ? cpu : data ? String(data.cpuThreshold) : "",
+    mem: mem !== "" ? mem : data ? String(data.memoryThreshold) : "",
+  };
+
+  const handleSave = async () => {
+    const cpuVal = parseFloat(effective.cpu);
+    const memVal = parseFloat(effective.mem);
+    if (!Number.isFinite(cpuVal) || cpuVal < 1 || cpuVal > 100) {
+      toast({ title: "Invalid CPU threshold", description: "Must be between 1 and 100.", variant: "destructive" });
+      return;
+    }
+    if (!Number.isFinite(memVal) || memVal < 1 || memVal > 100) {
+      toast({ title: "Invalid memory threshold", description: "Must be between 1 and 100.", variant: "destructive" });
+      return;
+    }
+    await mutateAsync(
+      { appId, data: { cpuThreshold: cpuVal, memoryThreshold: memVal } },
+      {
+        onSuccess: () => {
+          void queryClient.invalidateQueries({ queryKey: getListSlosQueryKey() });
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2000);
+          setCpu("");
+          setMem("");
+        },
+        onError: () => {
+          toast({ title: "Save failed", description: "Check your permissions.", variant: "destructive" });
+        },
+      },
+    );
+  };
+
+  const dirty = cpu !== "" || mem !== "";
+
+  return (
+    <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border last:border-b-0">
+      <div className="text-[13px] text-foreground min-w-[120px]">{appName}</div>
+      {isLoading ? (
+        <div className="flex gap-4 flex-1 justify-end"><Skeleton className="h-7 w-[80px]" /><Skeleton className="h-7 w-[80px]" /></div>
+      ) : (
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[12px] text-muted-foreground w-[50px]">CPU</span>
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              placeholder={data ? String(data.cpuThreshold) : "80"}
+              value={cpu}
+              onChange={(e) => { setCpu(e.target.value); setSaved(false); }}
+              className="h-7 w-[70px] rounded-sm text-[13px] text-right"
+            />
+            <span className="text-[12px] text-muted-foreground">%</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[12px] text-muted-foreground w-[60px]">Memory</span>
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              placeholder={data ? String(data.memoryThreshold) : "85"}
+              value={mem}
+              onChange={(e) => { setMem(e.target.value); setSaved(false); }}
+              className="h-7 w-[70px] rounded-sm text-[13px] text-right"
+            />
+            <span className="text-[12px] text-muted-foreground">%</span>
+          </div>
+          <Button
+            size="sm"
+            variant={saved ? "default" : "outline"}
+            className="h-7 rounded-sm text-[12px] min-w-[64px]"
+            disabled={!dirty || isPending}
+            onClick={() => void handleSave()}
+          >
+            {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : saved ? <><Check className="h-3 w-3 mr-1" />Saved</> : "Save"}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Threshold settings panel (collapsed by default) ---
+function ThresholdSettings() {
+  const { data: apps } = useListApps();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="bg-card border border-border shadow-sm">
+      <button
+        type="button"
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <div className="flex items-center gap-2">
+          <Settings2 className="h-4 w-4 text-muted-foreground" />
+          <span className="text-[13px] font-semibold text-foreground">Alert threshold settings</span>
+          <span className="text-[11px] text-muted-foreground ml-1">— Orbit-Admins / Orbit-Engineers only</span>
+        </div>
+        {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+      </button>
+      {open && (
+        <div className="border-t border-border">
+          <div className="px-4 py-3 border-b border-border bg-muted/20">
+            <p className="text-[12px] text-muted-foreground">
+              Set per-app CPU and memory thresholds. Changes persist to the database and are
+              reflected immediately in the SLO badges above. Leave a field blank to keep the
+              current value. Defaults: CPU 80%, Memory 85%.
+            </p>
+          </div>
+          {(apps ?? []).map((app) => (
+            <ThresholdRow key={app.id} appId={app.id} appName={app.name} />
+          ))}
+          {!apps && (
+            <div className="p-4 space-y-2">
+              <Skeleton className="h-8" />
+              <Skeleton className="h-8" />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Health() {
   const { data: slos, isLoading } = useListSlos();
+  const { hasGroup } = useAuth();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   const isEmpty = !isLoading && (slos?.length ?? 0) === 0;
+
+  const canEditThresholds = hasGroup(ADMIN_GROUP.id) || hasGroup(ENGINEER_GROUP.id);
 
   const meetingUptime = (slos ?? []).filter((s) => s.uptimePct >= 99.9).length;
   const breachingErr = (slos ?? []).filter((s) => s.errorRatePct > s.errorTargetPct).length;
@@ -264,6 +422,8 @@ export default function Health() {
           </Table>
         )}
       </div>
+
+      {canEditThresholds && <ThresholdSettings />}
     </div>
   );
 }

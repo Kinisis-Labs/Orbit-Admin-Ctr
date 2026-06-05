@@ -85,6 +85,45 @@ export const GetAppResponse = zod.object({
 }))
 
 
+/**
+ * @summary Get CPU and memory alert thresholds for an app (DB override → app default → global default)
+ */
+export const GetAppThresholdsParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const GetAppThresholdsResponse = zod.object({
+  "appId": zod.string(),
+  "cpuThreshold": zod.number().describe('CPU utilisation % at which the SLO badge turns warning\/critical.'),
+  "memoryThreshold": zod.number().describe('Memory utilisation % at which the SLO badge turns warning\/critical.')
+})
+
+
+/**
+ * @summary Update CPU and memory alert thresholds. Requires Orbit-Admins or Orbit-Engineers.
+ */
+export const UpdateAppThresholdsParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const updateAppThresholdsBodyCpuThresholdMax = 100;
+
+export const updateAppThresholdsBodyMemoryThresholdMax = 100;
+
+
+
+export const UpdateAppThresholdsBody = zod.object({
+  "cpuThreshold": zod.number().min(1).max(updateAppThresholdsBodyCpuThresholdMax),
+  "memoryThreshold": zod.number().min(1).max(updateAppThresholdsBodyMemoryThresholdMax)
+})
+
+export const UpdateAppThresholdsResponse = zod.object({
+  "appId": zod.string(),
+  "cpuThreshold": zod.number().describe('CPU utilisation % at which the SLO badge turns warning\/critical.'),
+  "memoryThreshold": zod.number().describe('Memory utilisation % at which the SLO badge turns warning\/critical.')
+})
+
+
 export const GetInfrastructureParams = zod.object({
   "appId": zod.coerce.string()
 })

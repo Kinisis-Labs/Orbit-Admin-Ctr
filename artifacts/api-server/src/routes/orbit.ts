@@ -16,7 +16,12 @@ import {
   ListServiceHealthResponse,
   ListSlosResponse,
   ListGlobalEndpointsResponse,
+  GetAppThresholdsResponse,
+  UpdateAppThresholdsBody,
 } from "@workspace/api-zod";
+import { db, appThresholdsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { requireEngineerOrAdmin } from "../middlewares/auth.js";
 import { fetchResourcesByResourceGroup, fetchResourceGroupTags } from "../lib/azureResources.js";
 import { fetchMonthToDateCost, fetchMonthToDateCostWithFallback } from "../lib/azureCost.js";
 import { fetchBudgetForAppWithFallback } from "../lib/azureBudgets.js";
@@ -305,6 +310,84 @@ router.get("/apps/:appId", async (req, res) => {
     activeAlerts: activeAlertCount(app),
   });
   res.json(data);
+});
+
+// --- per-app threshold settings ---
+const DEFAULT_CPU_THRESHOLD_GLOBAL = 80;
+const DEFAULT_MEMORY_THRESHOLD_GLOBAL = 85;
+
+/**
+ * Load all DB threshold overrides in one query and return a Map<appId, {cpu, mem}>.
+ * Numeric columns come back as strings from pg; parse them here.
+ */
+async function loadThresholdOverrides(): Promise<Map<string, { cpuThreshold: number; memoryThreshold: number }>> {
+  const rows = await db.select().from(appThresholdsTable);
+  const map = new Map<string, { cpuThreshold: number; memoryThreshold: number }>();
+  for (const r of rows) {
+    map.set(r.appId, {
+      cpuThreshold: parseFloat(r.cpuThreshold),
+      memoryThreshold: parseFloat(r.memoryThreshold),
+    });
+  }
+  return map;
+}
+
+/** Resolve thresholds for an app: DB override → app record → global default. */
+function resolveThresholds(app: AppRecord, override?: { cpuThreshold: number; memoryThreshold: number }) {
+  return {
+    cpuThreshold: override?.cpuThreshold ?? app.cpuThreshold ?? DEFAULT_CPU_THRESHOLD_GLOBAL,
+    memoryThreshold: override?.memoryThreshold ?? app.memoryThreshold ?? DEFAULT_MEMORY_THRESHOLD_GLOBAL,
+  };
+}
+
+router.get("/apps/:appId/thresholds", async (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  const [row] = await db
+    .select()
+    .from(appThresholdsTable)
+    .where(eq(appThresholdsTable.appId, app.id));
+  const override = row
+    ? { cpuThreshold: parseFloat(row.cpuThreshold), memoryThreshold: parseFloat(row.memoryThreshold) }
+    : undefined;
+  const { cpuThreshold, memoryThreshold } = resolveThresholds(app, override);
+  res.json(GetAppThresholdsResponse.parse({ appId: app.id, cpuThreshold, memoryThreshold }));
+});
+
+router.put("/apps/:appId/thresholds", requireEngineerOrAdmin, async (req, res) => {
+  const app = findApp(req.params["appId"] as string);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  const parsed = UpdateAppThresholdsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body", details: parsed.error.format() });
+    return;
+  }
+  const { cpuThreshold, memoryThreshold } = parsed.data;
+  const updatedBy = req.session.user?.userPrincipalName ?? "system";
+  await db
+    .insert(appThresholdsTable)
+    .values({
+      appId: app.id,
+      cpuThreshold: String(cpuThreshold),
+      memoryThreshold: String(memoryThreshold),
+      updatedBy,
+    })
+    .onConflictDoUpdate({
+      target: appThresholdsTable.appId,
+      set: {
+        cpuThreshold: String(cpuThreshold),
+        memoryThreshold: String(memoryThreshold),
+        updatedAt: new Date(),
+        updatedBy,
+      },
+    });
+  res.json(GetAppThresholdsResponse.parse({ appId: app.id, cpuThreshold, memoryThreshold }));
 });
 
 // --- infrastructure ---
@@ -1151,13 +1234,11 @@ router.get("/global/slos", async (_req, res) => {
     return;
   }
 
-  const DEFAULT_CPU_THRESHOLD = 80;
-  const DEFAULT_MEMORY_THRESHOLD = 85;
-
-  const [metricsResults, cpuSeriesResults, memSeriesResults] = await Promise.all([
+  const [metricsResults, cpuSeriesResults, memSeriesResults, thresholdOverrides] = await Promise.all([
     Promise.all(APPS.map((a) => fetchAppMetrics(a, {}))),
     Promise.all(APPS.map((a) => fetchAppTimeSeries(a, "cpu_pct", 24))),
     Promise.all(APPS.map((a) => fetchAppTimeSeries(a, "memory_pct", 24))),
+    loadThresholdOverrides(),
   ]);
 
   const rows = APPS.flatMap((app, i) => {
@@ -1181,8 +1262,7 @@ router.get("/global/slos", async (_req, res) => {
     const cpuPct = lastCpu !== undefined ? Number(lastCpu.toFixed(1)) : mockInfraPct(app.id + "cpu", 18, 72);
     const memoryPct = lastMem !== undefined ? Number(lastMem.toFixed(1)) : mockInfraPct(app.id + "mem", 38, 82);
 
-    const cpuThreshold = app.cpuThreshold ?? DEFAULT_CPU_THRESHOLD;
-    const memoryThreshold = app.memoryThreshold ?? DEFAULT_MEMORY_THRESHOLD;
+    const { cpuThreshold, memoryThreshold } = resolveThresholds(app, thresholdOverrides.get(app.id));
 
     return [{
       appId: app.id,

@@ -14,4 +14,5 @@ export {
   QueryLogsParams,
   UpdateAlertConfigParams,
   UpdateAlertConfigBody,
+  UpdateAppThresholdsBody,
 } from "./generated/api";

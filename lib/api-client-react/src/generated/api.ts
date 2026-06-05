@@ -25,6 +25,7 @@ import type {
   AppAlertConfig,
   AppDetail,
   AppSummary,
+  AppThresholds,
   AppleSubscriptionRow,
   BudgetAlertLogEntry,
   CostReport,
@@ -59,6 +60,8 @@ import type {
   StripeSyncResult,
   TelemetryReport,
   UpdateAlertConfigBody,
+  UpdateAppThresholds403,
+  UpdateAppThresholdsBody,
   UserActivityRow
 } from './api.schemas';
 
@@ -298,6 +301,155 @@ export function useGetApp<TData = Awaited<ReturnType<typeof getApp>>, TError = E
 
 
 
+
+export const getGetAppThresholdsUrl = (appId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/thresholds`
+}
+
+/**
+ * @summary Get CPU and memory alert thresholds for an app (DB override → app default → global default)
+ */
+export const getAppThresholds = async (appId: string, options?: RequestInit): Promise<AppThresholds> => {
+
+  return customFetch<AppThresholds>(getGetAppThresholdsUrl(appId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAppThresholdsQueryKey = (appId: string,) => {
+    return [
+    `/api/apps/${appId}/thresholds`
+    ] as const;
+    }
+
+
+export const getGetAppThresholdsQueryOptions = <TData = Awaited<ReturnType<typeof getAppThresholds>>, TError = ErrorType<unknown>>(appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAppThresholds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAppThresholdsQueryKey(appId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAppThresholds>>> = ({ signal }) => getAppThresholds(appId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(appId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAppThresholds>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAppThresholdsQueryResult = NonNullable<Awaited<ReturnType<typeof getAppThresholds>>>
+export type GetAppThresholdsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get CPU and memory alert thresholds for an app (DB override → app default → global default)
+ */
+
+export function useGetAppThresholds<TData = Awaited<ReturnType<typeof getAppThresholds>>, TError = ErrorType<unknown>>(
+ appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAppThresholds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAppThresholdsQueryOptions(appId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateAppThresholdsUrl = (appId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/thresholds`
+}
+
+/**
+ * @summary Update CPU and memory alert thresholds. Requires Orbit-Admins or Orbit-Engineers.
+ */
+export const updateAppThresholds = async (appId: string,
+    updateAppThresholdsBody: UpdateAppThresholdsBody, options?: RequestInit): Promise<AppThresholds> => {
+
+  return customFetch<AppThresholds>(getUpdateAppThresholdsUrl(appId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateAppThresholdsBody,)
+  }
+);}
+
+
+
+
+export const getUpdateAppThresholdsMutationOptions = <TError = ErrorType<UpdateAppThresholds403>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAppThresholds>>, TError,{appId: string;data: BodyType<UpdateAppThresholdsBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAppThresholds>>, TError,{appId: string;data: BodyType<UpdateAppThresholdsBody>}, TContext> => {
+
+const mutationKey = ['updateAppThresholds'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAppThresholds>>, {appId: string;data: BodyType<UpdateAppThresholdsBody>}> = (props) => {
+          const {appId,data} = props ?? {};
+
+          return  updateAppThresholds(appId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAppThresholdsMutationResult = NonNullable<Awaited<ReturnType<typeof updateAppThresholds>>>
+    export type UpdateAppThresholdsMutationBody = BodyType<UpdateAppThresholdsBody>
+    export type UpdateAppThresholdsMutationError = ErrorType<UpdateAppThresholds403>
+
+    /**
+ * @summary Update CPU and memory alert thresholds. Requires Orbit-Admins or Orbit-Engineers.
+ */
+export const useUpdateAppThresholds = <TError = ErrorType<UpdateAppThresholds403>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAppThresholds>>, TError,{appId: string;data: BodyType<UpdateAppThresholdsBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAppThresholds>>,
+        TError,
+        {appId: string;data: BodyType<UpdateAppThresholdsBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateAppThresholdsMutationOptions(options));
+    }
 
 export const getGetInfrastructureUrl = (appId: string,
     params?: GetInfrastructureParams,) => {

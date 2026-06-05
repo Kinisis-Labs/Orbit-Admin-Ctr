@@ -26,3 +26,11 @@ export const requireAdmin: RequestHandler = (req, res, next) => {
   if (req.session.user?.isAdmin) return next();
   res.status(403).json({ error: "forbidden", requiredGroup: "Orbit-Admins" });
 };
+
+/** Require Orbit-Admins or Orbit-Engineers for operational write actions
+ * (e.g. modifying per-app alert thresholds). */
+export const requireEngineerOrAdmin: RequestHandler = (req, res, next) => {
+  if (!isEntraConfigured()) return next();
+  if (req.session.user?.isAdmin || req.session.user?.isEngineer) return next();
+  res.status(403).json({ error: "forbidden", requiredGroup: "Orbit-Admins or Orbit-Engineers" });
+};

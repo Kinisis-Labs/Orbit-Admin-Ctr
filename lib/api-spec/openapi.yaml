@@ -67,6 +67,45 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AppDetail" }
+  /apps/{appId}/thresholds:
+    get:
+      operationId: getAppThresholds
+      tags: [apps]
+      summary: Get CPU and memory alert thresholds for an app (DB override → app default → global default)
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AppThresholds" }
+    put:
+      operationId: updateAppThresholds
+      tags: [apps]
+      summary: Update CPU and memory alert thresholds. Requires Orbit-Admins or Orbit-Engineers.
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateAppThresholdsBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AppThresholds" }
+        "403":
+          description: Forbidden — requires Orbit-Admins or Orbit-Engineers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                  requiredGroup: { type: string }
   /apps/{appId}/infrastructure:
     get:
       operationId: getInfrastructure
@@ -1279,6 +1318,19 @@ components:
           type: string
           nullable: true
           description: Display name / UPN of the operator who last saved DB overrides
+    AppThresholds:
+      type: object
+      required: [appId, cpuThreshold, memoryThreshold]
+      properties:
+        appId: { type: string }
+        cpuThreshold: { type: number, description: "CPU utilisation % at which the SLO badge turns warning/critical." }
+        memoryThreshold: { type: number, description: "Memory utilisation % at which the SLO badge turns warning/critical." }
+    UpdateAppThresholdsBody:
+      type: object
+      required: [cpuThreshold, memoryThreshold]
+      properties:
+        cpuThreshold: { type: number, minimum: 1, maximum: 100 }
+        memoryThreshold: { type: number, minimum: 1, maximum: 100 }
     InfraAlertLogEntry:
       type: object
       required: [id, appId, appName, metric, value, threshold, channels, sentAt]

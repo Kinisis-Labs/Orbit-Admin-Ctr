@@ -942,6 +942,27 @@ export interface AppAlertConfig {
   updatedBy?: string | null;
 }
 
+export interface AppThresholds {
+  appId: string;
+  /** CPU utilisation % at which the SLO badge turns warning/critical. */
+  cpuThreshold: number;
+  /** Memory utilisation % at which the SLO badge turns warning/critical. */
+  memoryThreshold: number;
+}
+
+export interface UpdateAppThresholdsBody {
+  /**
+     * @minimum 1
+     * @maximum 100
+     */
+  cpuThreshold: number;
+  /**
+     * @minimum 1
+     * @maximum 100
+     */
+  memoryThreshold: number;
+}
+
 export interface InfraAlertLogEntry {
   id: number;
   appId: string;
@@ -964,6 +985,11 @@ export interface InfraAlertLogEntry {
  * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
  */
 export type RefreshParameter = boolean;
+
+export type UpdateAppThresholds403 = {
+  error?: string;
+  requiredGroup?: string;
+};
 
 export type GetInfrastructureParams = {
 /**
