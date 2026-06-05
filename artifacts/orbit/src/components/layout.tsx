@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth, COST_READER_GROUP } from "@/lib/auth";
 import { useOverBudgetDays } from "@/hooks/use-over-budget-days";
+import { useInfraThresholdAlerts } from "@/hooks/use-infra-threshold-alerts";
 
 type Theme = "dark" | "light";
 
@@ -67,6 +68,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   const { overBudgetCount } = useOverBudgetDays(canSeeCost);
+  useInfraThresholdAlerts();
 
   const currentAppId = location.startsWith("/apps/") ? location.split("/")[2] : null;
   const currentApp = apps?.find(a => a.id === currentAppId);
