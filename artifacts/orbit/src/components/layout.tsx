@@ -220,7 +220,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <ChevronRight className="h-3.5 w-3.5 mx-1" />
                   <Link href={`/apps/${currentAppId}`} className="hover:text-primary hover:underline transition-colors">{currentAppName}</Link>
                   <ChevronRight className="h-3.5 w-3.5 mx-1" />
-                  <span className="text-foreground font-semibold">{activeTabLabel}</span>
+                  <Link href={`/apps/${currentAppId}?tab=${activeTab}`} className="text-foreground font-semibold hover:text-primary hover:underline transition-colors">{activeTabLabel}</Link>
                 </>
               ) : location.startsWith("/cost/") ? (
                 <>
