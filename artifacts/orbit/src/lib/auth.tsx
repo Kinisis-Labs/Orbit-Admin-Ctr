@@ -118,7 +118,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data.mode === "entra" && "authenticated" in data && data.authenticated) {
           setEntra({ user: data.user, groups: data.groups });
           setMode("entra");
+        } else if (data.mode === "entra") {
+          // Entra is configured but the session is absent or expired.
+          // Treat exactly like a 401: redirect to login (or show the
+          // callback-error notice if we just came back from a failed flow).
+          if (postCallbackError) {
+            setAuthError(postCallbackError);
+            setMode("entra");
+            return;
+          }
+          const returnTo = window.location.pathname + window.location.search;
+          window.location.assign(`${AUTH_LOGIN}?returnTo=${encodeURIComponent(returnTo)}`);
         } else {
+          // mode === "mock" — dev/no-auth environment, render normally.
           setMode("mock");
         }
       } catch {
