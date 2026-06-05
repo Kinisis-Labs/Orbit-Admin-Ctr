@@ -65,6 +65,40 @@ function envVar(name: string): string {
   return `✓ ${val.length > 80 ? val.slice(0, 80) + "…" : val}`;
 }
 
+function isGuid(s: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+}
+
+/** Check per-app subscription GUID configuration. */
+function checkSubscriptionConfig(): Record<string, string> {
+  const subIds = getSubscriptionIds();
+  const apps: Record<string, string> = {};
+
+  const appVars: Array<{ appId: string; envKey: string }> = [
+    { appId: "grailbabe", envKey: "AZURE_SUB_GRAILBABE" },
+    { appId: "orbit", envKey: "AZURE_SUB_ORBIT" },
+    { appId: "kinisis-labs", envKey: "AZURE_SUB_KINISIS_LABS" },
+  ];
+
+  for (const { appId, envKey } of appVars) {
+    const val = process.env[envKey];
+    if (!val) {
+      apps[appId] = `⚠️  ${envKey} not set — subscription resolved via Resource Graph (only searches AZURE_SUBSCRIPTION_IDS)`;
+      continue;
+    }
+    if (!isGuid(val)) {
+      apps[appId] = `❌ ${envKey}="${val}" is not a valid GUID — cost queries will fall back to Resource Graph lookup`;
+      continue;
+    }
+    const inMainList = subIds.includes(val);
+    apps[appId] = inMainList
+      ? `✓ ${val} (also in AZURE_SUBSCRIPTION_IDS)`
+      : `✓ ${val} — not in AZURE_SUBSCRIPTION_IDS (cost queries work; Resource Graph queries may miss this sub)`;
+  }
+
+  return apps;
+}
+
 router.get("/diagnostics", async (_req, res) => {
   logger.info("diagnostics endpoint called");
 
@@ -112,6 +146,7 @@ router.get("/diagnostics", async (_req, res) => {
       azure_resource_graph: azureCheck,
       github_token: githubCheck,
     },
+    subscription_config: checkSubscriptionConfig(),
   };
 
   res.json(report);

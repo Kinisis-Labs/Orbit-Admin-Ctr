@@ -115,13 +115,15 @@ export async function resolveSubscriptionId(app: AppRecord): Promise<string | nu
       _rgSubCache.set(rgKey, subId);
       return subId;
     }
-    logger.warn({ appId: app.id, rg: rgKey, rows }, "Resource Graph RG lookup returned no subscription — using first configured sub");
+    logger.warn(
+      { appId: app.id, rg: rgKey, searchedSubs: subscriptionIds },
+      "Resource Graph could not locate RG in any configured subscription — set AZURE_SUB_<APPID> or add the subscription to AZURE_SUBSCRIPTION_IDS",
+    );
   } catch (err) {
-    logger.warn({ err, appId: app.id, rg: rgKey }, "Resource Graph RG lookup failed — using first configured sub");
+    logger.warn({ err, appId: app.id, rg: rgKey }, "Resource Graph RG lookup failed");
   }
 
-  // Last resort: use the first configured subscription (same-sub deployments).
-  return subscriptionIds[0] ?? null;
+  return null;
 }
 
 /**
