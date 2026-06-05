@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { ResourceGraphClient } from "@azure/arm-resourcegraph";
+import { ResourceGraphClient } from "../lib/resourceGraph.js";
 import {
   getAzureCredential,
   getSubscriptionIds,
@@ -36,16 +36,20 @@ async function checkGitHubToken(): Promise<CheckResult> {
   const token = process.env.GITHUB_TOKEN;
   if (!token) return { status: "not_configured", detail: "GITHUB_TOKEN not set" };
   try {
-    const res = await fetch("https://api.github.com/repos/Kinisis-Labs/Orbit-Admin-Ctr", {
-      headers: { Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": "2022-11-28" },
-    });
+    // Use the Actions runs endpoint — the PAT is fine-grained with Actions: Read
+    // (not repo metadata read), so hitting /repos/{org}/{repo} returns 403.
+    const res = await fetch(
+      "https://api.github.com/repos/Kinisis-Labs/Orbit-Admin-Ctr/actions/runs?per_page=1",
+      { headers: { Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": "2022-11-28" } },
+    );
     if (res.status === 401 || res.status === 403) {
-      return { status: "error", detail: `GitHub returned ${res.status} — token invalid or insufficient permissions` };
+      return { status: "error", detail: `GitHub returned ${res.status} — token invalid or missing Actions:Read permission` };
     }
     if (!res.ok) {
       return { status: "error", detail: `GitHub returned ${res.status}` };
     }
-    return { status: "ok", detail: "Token valid, repo accessible" };
+    const body = (await res.json()) as { total_count?: number };
+    return { status: "ok", detail: `Token valid — ${body.total_count ?? "?"} workflow runs accessible` };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return { status: "error", detail: msg };

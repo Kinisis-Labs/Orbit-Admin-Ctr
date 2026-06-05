@@ -1,4 +1,4 @@
-import { ResourceGraphClient } from "@azure/arm-resourcegraph";
+import { ResourceGraphClient } from "./resourceGraph.js";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
 import type { AppRecord } from "../routes/orbit.js";
 

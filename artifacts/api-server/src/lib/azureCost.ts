@@ -1,5 +1,5 @@
 import { CostManagementClient } from "@azure/arm-costmanagement";
-import { ResourceGraphClient } from "@azure/arm-resourcegraph";
+import { ResourceGraphClient } from "./resourceGraph.js";
 import { eq } from "drizzle-orm";
 import { db, costSnapshotsTable } from "@workspace/db";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
