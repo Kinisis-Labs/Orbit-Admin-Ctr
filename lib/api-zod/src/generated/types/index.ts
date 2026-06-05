@@ -93,6 +93,8 @@ export * from './revenueSource';
 export * from './serviceHealthEvent';
 export * from './serviceHealthEventSeverity';
 export * from './serviceHealthEventStatus';
+export * from './serviceHealthResponse';
+export * from './serviceHealthResponseDataSource';
 export * from './severity';
 export * from './sloRow';
 export * from './slosResponse';

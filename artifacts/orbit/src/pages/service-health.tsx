@@ -18,9 +18,12 @@ const SEV_TONE: Record<ServiceHealthEvent["severity"], "ok" | "warn" | "bad"> = 
 };
 
 export default function ServiceHealth() {
-  const { data: events, isLoading } = useListServiceHealth();
-  const active = (events ?? []).filter((e) => e.status === "Active");
-  const isEmpty = !isLoading && (events?.length ?? 0) === 0;
+  const { data, isLoading } = useListServiceHealth();
+  const events = data?.events ?? [];
+  const liveEnabled = data?.liveEnabled ?? false;
+  const active = events.filter((e) => e.status === "Active");
+  const notConnected = !isLoading && !liveEnabled;
+  const isEmpty = !isLoading && liveEnabled && events.length === 0;
 
   return (
     <div className="space-y-4">

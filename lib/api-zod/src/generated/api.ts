@@ -706,9 +706,10 @@ export const QueryLogsResponse = zod.array(QueryLogsResponseItem)
 
 
 /**
- * @summary Azure Service Health events for all monitored subscriptions. Returns [] when Azure is unconfigured.
+ * @summary Azure Service Health events for all monitored subscriptions.
  */
-export const ListServiceHealthResponseItem = zod.object({
+export const ListServiceHealthResponse = zod.object({
+  "events": zod.array(zod.object({
   "id": zod.string(),
   "service": zod.string(),
   "region": zod.string(),
@@ -717,8 +718,10 @@ export const ListServiceHealthResponseItem = zod.object({
   "title": zod.string(),
   "startedAt": zod.string().datetime({"offset":true}),
   "resolvedAt": zod.string().datetime({"offset":true}).nullish()
+})),
+  "liveEnabled": zod.boolean().describe('True when Azure is configured and the query ran against live data.'),
+  "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether events come from live Azure Service Health or mock data.')
 })
-export const ListServiceHealthResponse = zod.array(ListServiceHealthResponseItem)
 
 
 /**

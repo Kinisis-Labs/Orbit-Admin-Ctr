@@ -59,7 +59,7 @@ import type {
   PlaySubscriptionRow,
   PostLedgerEntryRequest,
   QueryLogsParams,
-  ServiceHealthEvent,
+  ServiceHealthResponse,
   SlosResponse,
   StripeSyncResult,
   TelemetryReport,
@@ -2127,11 +2127,11 @@ export const getListServiceHealthUrl = () => {
 }
 
 /**
- * @summary Azure Service Health events for all monitored subscriptions. Returns [] when Azure is unconfigured.
+ * @summary Azure Service Health events for all monitored subscriptions.
  */
-export const listServiceHealth = async ( options?: RequestInit): Promise<ServiceHealthEvent[]> => {
+export const listServiceHealth = async ( options?: RequestInit): Promise<ServiceHealthResponse> => {
 
-  return customFetch<ServiceHealthEvent[]>(getListServiceHealthUrl(),
+  return customFetch<ServiceHealthResponse>(getListServiceHealthUrl(),
   {
     ...options,
     method: 'GET'
@@ -2174,7 +2174,7 @@ export type ListServiceHealthQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Azure Service Health events for all monitored subscriptions. Returns [] when Azure is unconfigured.
+ * @summary Azure Service Health events for all monitored subscriptions.
  */
 
 export function useListServiceHealth<TData = Awaited<ReturnType<typeof listServiceHealth>>, TError = ErrorType<unknown>>(

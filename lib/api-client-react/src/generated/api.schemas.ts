@@ -778,6 +778,17 @@ export interface LogLine {
   message: string;
 }
 
+/**
+ * Indicates whether events come from live Azure Service Health or mock data.
+ */
+export type ServiceHealthResponseDataSource = typeof ServiceHealthResponseDataSource[keyof typeof ServiceHealthResponseDataSource];
+
+
+export const ServiceHealthResponseDataSource = {
+  live: 'live',
+  mock: 'mock',
+} as const;
+
 export type ServiceHealthEventStatus = typeof ServiceHealthEventStatus[keyof typeof ServiceHealthEventStatus];
 
 
@@ -805,6 +816,14 @@ export interface ServiceHealthEvent {
   title: string;
   startedAt: string;
   resolvedAt?: string | null;
+}
+
+export interface ServiceHealthResponse {
+  events: ServiceHealthEvent[];
+  /** True when Azure is configured and the query ran against live data. */
+  liveEnabled: boolean;
+  /** Indicates whether events come from live Azure Service Health or mock data. */
+  dataSource: ServiceHealthResponseDataSource;
 }
 
 export interface SloRow {

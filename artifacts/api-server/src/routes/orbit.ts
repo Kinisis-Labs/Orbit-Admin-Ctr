@@ -801,7 +801,12 @@ router.get("/apps/:appId/logs", async (req, res) => {
 // --- global: service health ---
 router.get("/global/service-health", async (_req, res) => {
   const events = await fetchServiceHealth();
-  const data = ListServiceHealthResponse.parse(events);
+  const liveEnabled = isAzureConfigured();
+  const data = ListServiceHealthResponse.parse({
+    events,
+    liveEnabled,
+    dataSource: liveEnabled ? "live" : "mock",
+  });
   res.json(data);
 });
 

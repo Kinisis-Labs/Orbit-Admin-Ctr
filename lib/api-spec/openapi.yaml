@@ -456,15 +456,13 @@ paths:
     get:
       operationId: listServiceHealth
       tags: [global]
-      summary: Azure Service Health events for all monitored subscriptions. Returns [] when Azure is unconfigured.
+      summary: Azure Service Health events for all monitored subscriptions.
       responses:
         "200":
           description: OK
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/ServiceHealthEvent" }
+              schema: { $ref: "#/components/schemas/ServiceHealthResponse" }
   /global/slos:
     get:
       operationId: listSlos
@@ -1237,6 +1235,20 @@ components:
         appId: { type: string }
         level: { type: string, enum: [INFO, WARN, ERROR] }
         message: { type: string }
+    ServiceHealthResponse:
+      type: object
+      required: [events, liveEnabled, dataSource]
+      properties:
+        events:
+          type: array
+          items: { $ref: "#/components/schemas/ServiceHealthEvent" }
+        liveEnabled:
+          type: boolean
+          description: True when Azure is configured and the query ran against live data.
+        dataSource:
+          type: string
+          enum: [live, mock]
+          description: Indicates whether events come from live Azure Service Health or mock data.
     ServiceHealthEvent:
       type: object
       required: [id, service, region, status, severity, title, startedAt]
