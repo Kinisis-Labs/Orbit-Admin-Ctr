@@ -212,7 +212,7 @@ export default function AppDetail() {
                 </div>
               </div>
             </div>
-            {canSeeCost && <OverviewCostTile appId={appId} onGoToCost={() => setActiveTab("cost")} />}
+            {canSeeCost && <OverviewCostTile appId={appId} onGoToCost={() => { setActiveTab("cost"); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
           </TabsContent>
           
           <TabsContent value="infrastructure" className="m-0 space-y-4">
