@@ -114,7 +114,7 @@ async function checkNetworkResourceGraph(): Promise<CheckResult> {
       query: `
         resources
         | where type in~ (
-            'microsoft.app/containerapp',
+            'microsoft.app/containerapps',
             'microsoft.app/managedenvironments',
             'microsoft.network/frontdoors',
             'microsoft.cdn/profiles',
