@@ -18,4 +18,8 @@ export type AppDetail = AppSummary & {
   iosBundle?: string;
   /** GitHub repository name (under the Kinisis-Labs org) used to fetch deployment history from GitHub Actions. Absent for apps without a tracked CI/CD pipeline. */
   appRepo?: string;
+  /** CPU utilisation percentage at which the SLO badge turns warning/critical. Overrides the global default (80%) for this app. Optional. */
+  cpuThreshold?: number;
+  /** Memory utilisation percentage at which the SLO badge turns warning/critical. Overrides the global default (85%) for this app. Optional. */
+  memoryThreshold?: number;
 };

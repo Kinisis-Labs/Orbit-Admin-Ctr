@@ -627,6 +627,16 @@ components:
                 GitHub repository name (under the Kinisis-Labs org) used to fetch
                 deployment history from GitHub Actions. Absent for apps without a
                 tracked CI/CD pipeline.
+            cpuThreshold:
+              type: number
+              description: >-
+                CPU utilisation percentage at which the SLO badge turns warning/critical.
+                Overrides the global default (80%) for this app. Optional.
+            memoryThreshold:
+              type: number
+              description: >-
+                Memory utilisation percentage at which the SLO badge turns warning/critical.
+                Overrides the global default (85%) for this app. Optional.
     UserActivityRow:
       type: object
       required: [appId, appName, environment, totalMembers, dau, wau, mau, inactive30d, newLast7d, dauTrendPct]

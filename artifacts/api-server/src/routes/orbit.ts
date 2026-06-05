@@ -74,6 +74,8 @@ export const APPS: AppRecord[] = [
     androidPackage: "com.grailbabe.app",
     iosBundle: "com.kinisislabs.grailbabe",
     appRepo: "GrailBabe",
+    cpuThreshold: 75,
+    memoryThreshold: 80,
   },
   {
     id: "orbit",
@@ -1111,8 +1113,8 @@ router.get("/global/slos", async (_req, res) => {
     return;
   }
 
-  const CPU_THRESHOLD = 80;
-  const MEMORY_THRESHOLD = 85;
+  const DEFAULT_CPU_THRESHOLD = 80;
+  const DEFAULT_MEMORY_THRESHOLD = 85;
 
   const [metricsResults, cpuSeriesResults, memSeriesResults] = await Promise.all([
     Promise.all(APPS.map((a) => fetchAppMetrics(a, {}))),
@@ -1141,6 +1143,9 @@ router.get("/global/slos", async (_req, res) => {
     const cpuPct = lastCpu !== undefined ? Number(lastCpu.toFixed(1)) : mockInfraPct(app.id + "cpu", 18, 72);
     const memoryPct = lastMem !== undefined ? Number(lastMem.toFixed(1)) : mockInfraPct(app.id + "mem", 38, 82);
 
+    const cpuThreshold = app.cpuThreshold ?? DEFAULT_CPU_THRESHOLD;
+    const memoryThreshold = app.memoryThreshold ?? DEFAULT_MEMORY_THRESHOLD;
+
     return [{
       appId: app.id,
       appName: app.name,
@@ -1152,9 +1157,9 @@ router.get("/global/slos", async (_req, res) => {
       errorRatePct: Number(m.errorRatePercent.toFixed(4)),
       errorTargetPct,
       cpuPct,
-      cpuThreshold: CPU_THRESHOLD,
+      cpuThreshold,
       memoryPct,
-      memoryThreshold: MEMORY_THRESHOLD,
+      memoryThreshold,
     }];
   });
 
