@@ -12,6 +12,7 @@ export function useCsvExport(
   rows: CsvRow[] | undefined | null,
   headers: string[],
   filename: string,
+  onEmpty?: () => void,
 ) {
   const [copied, setCopied] = useState(false);
 
@@ -37,7 +38,10 @@ export function useCsvExport(
   }
 
   function handleExport() {
-    if (disabled) return;
+    if (disabled) {
+      onEmpty?.();
+      return;
+    }
     const csv = buildCsvString(headers, rows!);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -49,7 +53,10 @@ export function useCsvExport(
   }
 
   function handleCopy() {
-    if (disabled) return;
+    if (disabled) {
+      onEmpty?.();
+      return;
+    }
     const csv = buildCsvString(headers, rows!);
     if (navigator.clipboard?.writeText) {
       navigator.clipboard

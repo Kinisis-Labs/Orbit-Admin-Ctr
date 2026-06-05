@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCsvExport } from "@/hooks/use-csv-export";
+import { useToast } from "@/hooks/use-toast";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n);
@@ -55,6 +56,7 @@ interface Props {
 export function BudgetAlertHistory({ appId }: Props) {
   const [unacknowledgedOnly, setUnacknowledgedOnly] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const params = {
     ...(appId ? { appId } : {}),
@@ -96,6 +98,7 @@ export function BudgetAlertHistory({ appId }: Props) {
     csvRows,
     csvHeaders,
     "budget-alert-history",
+    () => toast({ title: "No alerts to export", description: "There are no alert records in the current view." }),
   );
 
   return (
@@ -120,14 +123,13 @@ export function BudgetAlertHistory({ appId }: Props) {
           <Filter className="h-3 w-3" />
           {unacknowledgedOnly ? "Unacknowledged only" : "All"}
         </button>
-        {!isLoading && entries && entries.length > 0 && (
+        {!isLoading && entries !== undefined && (
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+              className={`h-7 text-xs px-2 rounded-sm hover:bg-primary/10 ${csvDisabled ? "text-muted-foreground opacity-50 cursor-default" : "text-primary hover:text-primary"}`}
               onClick={handleExport}
-              disabled={csvDisabled}
             >
               <Download className="h-3.5 w-3.5 mr-1.5" />
               Export CSV
@@ -135,9 +137,8 @@ export function BudgetAlertHistory({ appId }: Props) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+              className={`h-7 text-xs px-2 rounded-sm hover:bg-primary/10 ${csvDisabled ? "text-muted-foreground opacity-50 cursor-default" : "text-primary hover:text-primary"}`}
               onClick={handleCopy}
-              disabled={csvDisabled}
             >
               {copied ? (
                 <>
@@ -244,11 +245,10 @@ export function BudgetAlertHistory({ appId }: Props) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                          disabled={isAcknowledging}
+                          className="h-6 text-[11px] px-2 rounded-sm text-muted-foreground hover:text-foreground"
                           onClick={() => acknowledge({ id: entry.id })}
+                          disabled={isAcknowledging}
                         >
-                          <Check className="h-3 w-3 mr-1" />
                           Acknowledge
                         </Button>
                       )}
