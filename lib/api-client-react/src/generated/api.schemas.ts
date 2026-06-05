@@ -827,6 +827,23 @@ export interface SloRow {
   memorySeries?: MetricPoint[];
 }
 
+/**
+ * Indicates whether SLO metrics come from live Azure Monitor or built-in mock values.
+ */
+export type SlosResponseDataSource = typeof SlosResponseDataSource[keyof typeof SlosResponseDataSource];
+
+
+export const SlosResponseDataSource = {
+  live: 'live',
+  mock: 'mock',
+} as const;
+
+export interface SlosResponse {
+  rows: SloRow[];
+  /** Indicates whether SLO metrics come from live Azure Monitor or built-in mock values. */
+  dataSource: SlosResponseDataSource;
+}
+
 export interface GlobalEndpointRow {
   id: string;
   appId: string;

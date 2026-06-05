@@ -90,6 +90,8 @@ export * from './serviceHealthEventSeverity';
 export * from './serviceHealthEventStatus';
 export * from './severity';
 export * from './sloRow';
+export * from './slosResponse';
+export * from './slosResponseDataSource';
 export * from './status';
 export * from './stripeSyncResult';
 export * from './stripeSyncSkip';

@@ -56,7 +56,7 @@ import type {
   PostLedgerEntryRequest,
   QueryLogsParams,
   ServiceHealthEvent,
-  SloRow,
+  SlosResponse,
   StripeSyncResult,
   TelemetryReport,
   UpdateAlertConfigBody,
@@ -2111,11 +2111,11 @@ export const getListSlosUrl = () => {
 }
 
 /**
- * @summary Per-application SLO snapshot derived from Azure Monitor. Returns [] when Azure is unconfigured.
+ * @summary Per-application SLO snapshot derived from Azure Monitor. Returns mock rows when Azure is unconfigured.
  */
-export const listSlos = async ( options?: RequestInit): Promise<SloRow[]> => {
+export const listSlos = async ( options?: RequestInit): Promise<SlosResponse> => {
 
-  return customFetch<SloRow[]>(getListSlosUrl(),
+  return customFetch<SlosResponse>(getListSlosUrl(),
   {
     ...options,
     method: 'GET'
@@ -2158,7 +2158,7 @@ export type ListSlosQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Per-application SLO snapshot derived from Azure Monitor. Returns [] when Azure is unconfigured.
+ * @summary Per-application SLO snapshot derived from Azure Monitor. Returns mock rows when Azure is unconfigured.
  */
 
 export function useListSlos<TData = Awaited<ReturnType<typeof listSlos>>, TError = ErrorType<unknown>>(

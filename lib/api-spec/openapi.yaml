@@ -435,15 +435,14 @@ paths:
     get:
       operationId: listSlos
       tags: [global]
-      summary: Per-application SLO snapshot derived from Azure Monitor. Returns [] when Azure is unconfigured.
+      summary: Per-application SLO snapshot derived from Azure Monitor. Returns mock rows when Azure is unconfigured.
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                type: array
-                items: { $ref: "#/components/schemas/SloRow" }
+                $ref: "#/components/schemas/SlosResponse"
   /global/endpoints:
     get:
       operationId: listGlobalEndpoints
@@ -1224,6 +1223,14 @@ components:
           type: array
           items: { $ref: "#/components/schemas/MetricPoint" }
           description: "24-hour memory % time-series (live from Monitor or mock). Omitted when data is unavailable."
+    SlosResponse:
+      type: object
+      required: [rows, dataSource]
+      properties:
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/SloRow" }
+        dataSource: { type: string, enum: [live, mock], description: "Indicates whether SLO metrics come from live Azure Monitor or built-in mock values." }
     GlobalEndpointRow:
       type: object
       required: [id, appId, appName, name, region, status, latencyMs, packetLossPercent]

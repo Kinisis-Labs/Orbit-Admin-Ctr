@@ -683,9 +683,10 @@ export const ListServiceHealthResponse = zod.array(ListServiceHealthResponseItem
 
 
 /**
- * @summary Per-application SLO snapshot derived from Azure Monitor. Returns [] when Azure is unconfigured.
+ * @summary Per-application SLO snapshot derived from Azure Monitor. Returns mock rows when Azure is unconfigured.
  */
-export const ListSlosResponseItem = zod.object({
+export const ListSlosResponse = zod.object({
+  "rows": zod.array(zod.object({
   "appId": zod.string(),
   "appName": zod.string(),
   "environment": zod.string(),
@@ -707,8 +708,9 @@ export const ListSlosResponseItem = zod.object({
   "timestamp": zod.string().datetime({"offset":true}),
   "value": zod.number()
 })).optional().describe('24-hour memory % time-series (live from Monitor or mock). Omitted when data is unavailable.')
+})),
+  "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether SLO metrics come from live Azure Monitor or built-in mock values.')
 })
-export const ListSlosResponse = zod.array(ListSlosResponseItem)
 
 
 /**

@@ -1230,7 +1230,7 @@ function mockSloRows() {
 
 router.get("/global/slos", async (_req, res) => {
   if (!isAzureConfigured()) {
-    res.json(ListSlosResponse.parse(mockSloRows()));
+    res.json(ListSlosResponse.parse({ rows: mockSloRows(), dataSource: "mock" }));
     return;
   }
 
@@ -1283,7 +1283,7 @@ router.get("/global/slos", async (_req, res) => {
     }];
   });
 
-  res.json(ListSlosResponse.parse(rows));
+  res.json(ListSlosResponse.parse({ rows, dataSource: isMonitorConfigured() ? "live" : "mock" }));
 });
 
 // --- global: network endpoints ---

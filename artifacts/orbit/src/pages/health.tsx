@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink } from "lucide-react";
+import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi } from "lucide-react";
 import {
   AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -22,6 +22,22 @@ import { format } from "date-fns";
 import { useAuth, ADMIN_GROUP } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+
+function DataSourceBadge({ dataSource }: { dataSource: "live" | "mock" | undefined }) {
+  if (dataSource === "live") {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide select-none">
+        <Wifi className="h-3 w-3" />
+        Live — Azure Monitor
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted text-muted-foreground text-[10px] font-semibold uppercase tracking-wide select-none">
+      Demo data
+    </span>
+  );
+}
 
 type InfraTone = "ok" | "warn" | "bad";
 
@@ -310,7 +326,9 @@ function ThresholdSettings() {
 }
 
 export default function Health() {
-  const { data: slos, isLoading } = useListSlos();
+  const { data, isLoading } = useListSlos();
+  const slos = data?.rows;
+  const dataSource = data?.dataSource;
   const { hasGroup } = useAuth();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
@@ -345,8 +363,9 @@ export default function Health() {
       </div>
 
       <div className="bg-card border border-border shadow-sm">
-        <div className="p-2 border-b border-border">
+        <div className="p-2 border-b border-border flex items-center justify-between">
           <h2 className="text-sm font-semibold px-2">Per-application SLOs</h2>
+          {!isLoading && <div className="pr-2"><DataSourceBadge dataSource={dataSource} /></div>}
         </div>
         {isLoading ? (
           <div className="p-4 space-y-2"><Skeleton className="h-8" /><Skeleton className="h-8" /></div>
