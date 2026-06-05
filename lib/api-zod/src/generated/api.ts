@@ -856,6 +856,28 @@ export const UpdateAlertConfigResponse = zod.object({
 
 
 /**
+ * @summary Audit log of all threshold changes for a specific app, newest first (max 200, newest first)
+ */
+export const GetAlertConfigHistoryParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const GetAlertConfigHistoryResponseItem = zod.object({
+  "id": zod.number(),
+  "appId": zod.string(),
+  "oldCpuThresholdPct": zod.number().nullish().describe('CPU threshold before this change (null = no prior DB override)'),
+  "newCpuThresholdPct": zod.number().nullish().describe('CPU threshold set by this change (null = override was cleared)'),
+  "oldMemoryThresholdPct": zod.number().nullish().describe('Memory threshold before this change (null = no prior DB override)'),
+  "newMemoryThresholdPct": zod.number().nullish().describe('Memory threshold set by this change (null = override was cleared)'),
+  "oldConsecutiveChecks": zod.number().nullish().describe('Consecutive-checks before this change (null = no prior DB override)'),
+  "newConsecutiveChecks": zod.number().nullish().describe('Consecutive-checks set by this change (null = override was cleared)'),
+  "changedBy": zod.string().describe('Display name \/ UPN of the operator who made the change'),
+  "changedAt": zod.string().datetime({"offset":true}).describe('When the change was recorded')
+})
+export const GetAlertConfigHistoryResponse = zod.array(GetAlertConfigHistoryResponseItem)
+
+
+/**
  * @summary Recent infra-pressure notifications (CPU / memory threshold breaches) dispatched by the scheduler
  */
 export const ListInfraAlertLogQueryParams = zod.object({

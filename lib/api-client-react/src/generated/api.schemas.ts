@@ -1001,6 +1001,27 @@ export interface AppThresholdsLogEntry {
   changedAt: string;
 }
 
+export interface AlertThresholdConfigLogEntry {
+  id: number;
+  appId: string;
+  /** CPU threshold before this change (null = no prior DB override) */
+  oldCpuThresholdPct?: number | null;
+  /** CPU threshold set by this change (null = override was cleared) */
+  newCpuThresholdPct?: number | null;
+  /** Memory threshold before this change (null = no prior DB override) */
+  oldMemoryThresholdPct?: number | null;
+  /** Memory threshold set by this change (null = override was cleared) */
+  newMemoryThresholdPct?: number | null;
+  /** Consecutive-checks before this change (null = no prior DB override) */
+  oldConsecutiveChecks?: number | null;
+  /** Consecutive-checks set by this change (null = override was cleared) */
+  newConsecutiveChecks?: number | null;
+  /** Display name / UPN of the operator who made the change */
+  changedBy: string;
+  /** When the change was recorded */
+  changedAt: string;
+}
+
 export interface InfraAlertLogEntry {
   id: number;
   appId: string;

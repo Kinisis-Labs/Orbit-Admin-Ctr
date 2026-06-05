@@ -569,6 +569,23 @@ paths:
           description: Validation error
         "403":
           description: Caller is not a member of Orbit-Admins
+  /alerts/config/{appId}/history:
+    get:
+      operationId: getAlertConfigHistory
+      tags: [alerts]
+      summary: Audit log of all threshold changes for a specific app, newest first (max 200, newest first)
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AlertThresholdConfigLogEntry" }
+        "404":
+          description: App not found
   /infra-alerts/log:
     get:
       operationId: listInfraAlertLog
@@ -1378,6 +1395,43 @@ components:
         newMemoryThreshold: { type: number, description: "Memory threshold set by this change" }
         changedBy: { type: string, description: "UPN / identifier of the operator who made the change" }
         changedAt: { type: string, format: date-time, description: "When the change was recorded" }
+    AlertThresholdConfigLogEntry:
+      type: object
+      required: [id, appId, changedBy, changedAt]
+      properties:
+        id: { type: integer }
+        appId: { type: string }
+        oldCpuThresholdPct:
+          type: integer
+          nullable: true
+          description: CPU threshold before this change (null = no prior DB override)
+        newCpuThresholdPct:
+          type: integer
+          nullable: true
+          description: CPU threshold set by this change (null = override was cleared)
+        oldMemoryThresholdPct:
+          type: integer
+          nullable: true
+          description: Memory threshold before this change (null = no prior DB override)
+        newMemoryThresholdPct:
+          type: integer
+          nullable: true
+          description: Memory threshold set by this change (null = override was cleared)
+        oldConsecutiveChecks:
+          type: integer
+          nullable: true
+          description: Consecutive-checks before this change (null = no prior DB override)
+        newConsecutiveChecks:
+          type: integer
+          nullable: true
+          description: Consecutive-checks set by this change (null = override was cleared)
+        changedBy:
+          type: string
+          description: Display name / UPN of the operator who made the change
+        changedAt:
+          type: string
+          format: date-time
+          description: When the change was recorded
     InfraAlertLogEntry:
       type: object
       required: [id, appId, appName, metric, value, threshold, channels, sentAt]

@@ -22,6 +22,7 @@ import type {
 import type {
   ActivityEntry,
   Alert,
+  AlertThresholdConfigLogEntry,
   AppAlertConfig,
   AppDetail,
   AppSummary,
@@ -2637,6 +2638,83 @@ export const useUpdateAlertConfig = <TError = ErrorType<void>,
       > => {
       return useMutation(getUpdateAlertConfigMutationOptions(options));
     }
+
+export const getGetAlertConfigHistoryUrl = (appId: string,) => {
+
+
+
+
+  return `/api/alerts/config/${appId}/history`
+}
+
+/**
+ * @summary Audit log of all threshold changes for a specific app, newest first (max 200, newest first)
+ */
+export const getAlertConfigHistory = async (appId: string, options?: RequestInit): Promise<AlertThresholdConfigLogEntry[]> => {
+
+  return customFetch<AlertThresholdConfigLogEntry[]>(getGetAlertConfigHistoryUrl(appId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAlertConfigHistoryQueryKey = (appId: string,) => {
+    return [
+    `/api/alerts/config/${appId}/history`
+    ] as const;
+    }
+
+
+export const getGetAlertConfigHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getAlertConfigHistory>>, TError = ErrorType<void>>(appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAlertConfigHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAlertConfigHistoryQueryKey(appId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAlertConfigHistory>>> = ({ signal }) => getAlertConfigHistory(appId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(appId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAlertConfigHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAlertConfigHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getAlertConfigHistory>>>
+export type GetAlertConfigHistoryQueryError = ErrorType<void>
+
+
+/**
+ * @summary Audit log of all threshold changes for a specific app, newest first (max 200, newest first)
+ */
+
+export function useGetAlertConfigHistory<TData = Awaited<ReturnType<typeof getAlertConfigHistory>>, TError = ErrorType<void>>(
+ appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAlertConfigHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAlertConfigHistoryQueryOptions(appId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getListInfraAlertLogUrl = (params?: ListInfraAlertLogParams,) => {
   const normalizedParams = new URLSearchParams();

@@ -1,16 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   useListAlertConfig,
   useUpdateAlertConfig,
+  useGetAlertConfigHistory,
   getListAlertConfigQueryKey,
   getGetInfrastructureQueryOptions,
 } from "@workspace/api-client-react";
-import type { AppAlertConfig, InfrastructureReport, MetricSeries } from "@workspace/api-client-react";
+import type { AppAlertConfig, AlertThresholdConfigLogEntry, InfrastructureReport, MetricSeries } from "@workspace/api-client-react";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, Pencil, RefreshCw, RotateCcw, Settings2, X, ArrowRight } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, History, Pencil, RefreshCw, RotateCcw, Settings2, X, ArrowRight } from "lucide-react";
 import { useAuth, ADMIN_GROUP } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -279,6 +280,148 @@ function EditableCell({ appId, field, value, source, isPercent = false, canEdit,
 }
 
 // ---------------------------------------------------------------------------
+// History panel
+// ---------------------------------------------------------------------------
+
+function formatDt(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+function DiffValue({
+  oldVal,
+  newVal,
+  suffix = "",
+}: {
+  oldVal: number | null | undefined;
+  newVal: number | null | undefined;
+  suffix?: string;
+}) {
+  const hasOld = oldVal !== null && oldVal !== undefined;
+  const hasNew = newVal !== null && newVal !== undefined;
+
+  if (!hasOld && !hasNew) return <span className="opacity-40">—</span>;
+
+  if (!hasOld) {
+    return (
+      <span className="text-emerald-600 dark:text-emerald-400 font-mono text-[11px]">
+        {newVal}{suffix} <span className="opacity-50 font-sans">(new)</span>
+      </span>
+    );
+  }
+
+  if (!hasNew) {
+    return (
+      <span className="text-amber-600 dark:text-amber-400 font-mono text-[11px] line-through opacity-60">
+        {oldVal}{suffix}
+      </span>
+    );
+  }
+
+  if (oldVal === newVal) {
+    return (
+      <span className="font-mono text-[11px] text-muted-foreground">
+        {newVal}{suffix}
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 font-mono text-[11px]">
+      <span className="text-muted-foreground line-through opacity-60">{oldVal}{suffix}</span>
+      <ArrowRight className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0" />
+      <span className="text-foreground font-semibold">{newVal}{suffix}</span>
+    </span>
+  );
+}
+
+function HistoryPanel({ appId, colSpan }: { appId: string; colSpan: number }) {
+  const { data, isLoading, isError } = useGetAlertConfigHistory(appId);
+
+  return (
+    <TableRow className="bg-muted/30 hover:bg-muted/30">
+      <TableCell colSpan={colSpan} className="py-0">
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-2 mb-2">
+            <History className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+              Threshold change history
+            </span>
+            {!isLoading && data && (
+              <span className="text-[10px] text-muted-foreground opacity-60">
+                {data.length} {data.length === 1 ? "entry" : "entries"}
+              </span>
+            )}
+          </div>
+
+          {isLoading && (
+            <div className="space-y-1.5">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-6 w-full" />
+              ))}
+            </div>
+          )}
+
+          {isError && (
+            <p className="text-[11px] text-destructive">Failed to load history.</p>
+          )}
+
+          {!isLoading && !isError && data?.length === 0 && (
+            <p className="text-[11px] text-muted-foreground opacity-60">
+              No changes recorded yet. Changes made through the Orbit UI will appear here.
+            </p>
+          )}
+
+          {!isLoading && !isError && data && data.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="border-b border-border/50">
+                    <th className="text-left py-1 pr-4 font-semibold text-muted-foreground w-[160px]">When</th>
+                    <th className="text-left py-1 pr-4 font-semibold text-muted-foreground w-[120px]">By</th>
+                    <th className="text-left py-1 pr-4 font-semibold text-muted-foreground w-[160px]">CPU threshold</th>
+                    <th className="text-left py-1 pr-4 font-semibold text-muted-foreground w-[160px]">Memory threshold</th>
+                    <th className="text-left py-1 font-semibold text-muted-foreground w-[140px]">Consecutive checks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((entry: AlertThresholdConfigLogEntry) => (
+                    <tr key={entry.id} className="border-b border-border/30 last:border-0">
+                      <td className="py-1.5 pr-4 text-muted-foreground whitespace-nowrap">
+                        {formatDt(entry.changedAt)}
+                      </td>
+                      <td className="py-1.5 pr-4 text-muted-foreground max-w-[120px] truncate" title={entry.changedBy}>
+                        {entry.changedBy}
+                      </td>
+                      <td className="py-1.5 pr-4">
+                        <DiffValue oldVal={entry.oldCpuThresholdPct} newVal={entry.newCpuThresholdPct} suffix="%" />
+                      </td>
+                      <td className="py-1.5 pr-4">
+                        <DiffValue oldVal={entry.oldMemoryThresholdPct} newVal={entry.newMemoryThresholdPct} suffix="%" />
+                      </td>
+                      <td className="py-1.5">
+                        <DiffValue oldVal={entry.oldConsecutiveChecks} newVal={entry.newConsecutiveChecks} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main table
 // ---------------------------------------------------------------------------
 
@@ -304,6 +447,7 @@ export function AlertConfigTable({ appId }: Props) {
   const { hasGroup } = useAuth();
   const canEdit = hasGroup(ADMIN_GROUP.id);
   const [, navigate] = useLocation();
+  const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
 
   const rows = appId ? data?.filter((r) => r.appId === appId) : data;
 
@@ -353,6 +497,8 @@ export function AlertConfigTable({ appId }: Props) {
       ? formatSecondsAgo(Date.now() - latestUpdateAt)
       : null;
 
+  const colCount = (appId ? 0 : 1) + 7;
+
   return (
     <div className="bg-card border border-border shadow-sm flex flex-col">
       <div className="flex items-center gap-2 p-3 border-b border-border">
@@ -400,7 +546,7 @@ export function AlertConfigTable({ appId }: Props) {
                 <TableHead className="h-8 font-semibold text-foreground w-[200px]">Current memory</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground w-[200px]">Consecutive checks</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground">Last updated</TableHead>
-                <TableHead className="h-8 w-8" />
+                <TableHead className="h-8 w-16" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -409,53 +555,80 @@ export function AlertConfigTable({ appId }: Props) {
                 const infraLoading = infraQueries[i]?.isLoading ?? false;
                 const currentCpu = getLatestValue(infraData, "CPU %");
                 const currentMem = getLatestValue(infraData, "Memory %");
+                const historyOpen = expandedHistory === row.appId;
 
                 return (
-                  <TableRow
-                    key={row.appId}
-                    className="h-12 border-b border-border/50 hover:bg-muted/40 cursor-pointer group"
-                    onClick={() => navigate(`/apps/${row.appId}?tab=infrastructure`)}
-                  >
-                    {!appId && (
-                      <TableCell className="py-1 font-medium">{row.appName}</TableCell>
-                    )}
-                    <TableCell className="py-1">
-                      {renderThresholdCell(row, "cpuThresholdPct")}
-                    </TableCell>
-                    <TableCell className="py-1.5">
-                      <UtilizationIndicator
-                        current={currentCpu}
-                        threshold={row.cpuThresholdPct}
-                        loading={infraLoading}
-                      />
-                    </TableCell>
-                    <TableCell className="py-1">
-                      {renderThresholdCell(row, "memoryThresholdPct")}
-                    </TableCell>
-                    <TableCell className="py-1.5">
-                      <UtilizationIndicator
-                        current={currentMem}
-                        threshold={row.memoryThresholdPct}
-                        loading={infraLoading}
-                      />
-                    </TableCell>
-                    <TableCell className="py-1">
-                      {renderThresholdCell(row, "consecutiveChecks")}
-                    </TableCell>
-                    <TableCell className="py-1 text-[11px] text-muted-foreground">
-                      {row.updatedAt ? (
-                        <span title={row.updatedAt ?? undefined}>
-                          {formatUpdatedAt(row.updatedAt)}
-                          {row.updatedBy && <span className="ml-1 opacity-70">by {row.updatedBy}</span>}
-                        </span>
-                      ) : (
-                        <span className="opacity-40">—</span>
+                  <Fragment key={row.appId}>
+                    <TableRow
+                      className="h-12 border-b border-border/50 hover:bg-muted/40 cursor-pointer group"
+                      onClick={() => navigate(`/apps/${row.appId}?tab=infrastructure`)}
+                    >
+                      {!appId && (
+                        <TableCell className="py-1 font-medium">{row.appName}</TableCell>
                       )}
-                    </TableCell>
-                    <TableCell className="py-1 w-8 text-right pr-3">
-                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
-                    </TableCell>
-                  </TableRow>
+                      <TableCell className="py-1">
+                        {renderThresholdCell(row, "cpuThresholdPct")}
+                      </TableCell>
+                      <TableCell className="py-1.5">
+                        <UtilizationIndicator
+                          current={currentCpu}
+                          threshold={row.cpuThresholdPct}
+                          loading={infraLoading}
+                        />
+                      </TableCell>
+                      <TableCell className="py-1">
+                        {renderThresholdCell(row, "memoryThresholdPct")}
+                      </TableCell>
+                      <TableCell className="py-1.5">
+                        <UtilizationIndicator
+                          current={currentMem}
+                          threshold={row.memoryThresholdPct}
+                          loading={infraLoading}
+                        />
+                      </TableCell>
+                      <TableCell className="py-1">
+                        {renderThresholdCell(row, "consecutiveChecks")}
+                      </TableCell>
+                      <TableCell className="py-1 text-[11px] text-muted-foreground">
+                        {row.updatedAt ? (
+                          <span title={row.updatedAt ?? undefined}>
+                            {formatUpdatedAt(row.updatedAt)}
+                            {row.updatedBy && <span className="ml-1 opacity-70">by {row.updatedBy}</span>}
+                          </span>
+                        ) : (
+                          <span className="opacity-40">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-1 w-16 text-right pr-3">
+                        <span className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedHistory(historyOpen ? null : row.appId);
+                            }}
+                            className={cn(
+                              "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-colors",
+                              historyOpen
+                                ? "border-primary/40 bg-primary/10 text-primary"
+                                : "border-border bg-muted/40 text-muted-foreground hover:text-foreground hover:border-border/80",
+                            )}
+                            title={historyOpen ? "Hide change history" : "Show change history"}
+                            aria-label={historyOpen ? "Hide history" : "Show history"}
+                          >
+                            <History className="h-2.5 w-2.5" />
+                            {historyOpen
+                              ? <ChevronUp className="h-2.5 w-2.5" />
+                              : <ChevronDown className="h-2.5 w-2.5" />}
+                          </button>
+                          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                    {historyOpen && (
+                      <HistoryPanel appId={row.appId} colSpan={colCount} />
+                    )}
+                  </Fragment>
                 );
               })}
             </TableBody>

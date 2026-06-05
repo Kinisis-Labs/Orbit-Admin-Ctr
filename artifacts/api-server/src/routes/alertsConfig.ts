@@ -1,8 +1,8 @@
 import { Router, type IRouter } from "express";
 import { APPS } from "./orbit.js";
 import { resolveThresholdsBulk, resolveThresholds } from "../lib/alertThresholds.js";
-import { db, alertThresholdConfigTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, alertThresholdConfigTable, alertThresholdConfigLogTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth.js";
 
 const router: IRouter = Router();
@@ -86,6 +86,13 @@ router.put("/alerts/config/:appId", requireAdmin, async (req, res) => {
     req.session.user?.userPrincipalName ??
     "mock-admin";
 
+  const existing = await db
+    .select()
+    .from(alertThresholdConfigTable)
+    .where(eq(alertThresholdConfigTable.appId, appId))
+    .limit(1);
+  const prev = existing[0] ?? null;
+
   await db
     .insert(alertThresholdConfigTable)
     .values({
@@ -106,6 +113,17 @@ router.put("/alerts/config/:appId", requireAdmin, async (req, res) => {
       },
     });
 
+  await db.insert(alertThresholdConfigLogTable).values({
+    appId,
+    oldCpuThresholdPct: prev?.cpuThresholdPct ?? null,
+    newCpuThresholdPct: cpu.value,
+    oldMemoryThresholdPct: prev?.memoryThresholdPct ?? null,
+    newMemoryThresholdPct: mem.value,
+    oldConsecutiveChecks: prev?.consecutiveChecks ?? null,
+    newConsecutiveChecks: consec.value,
+    changedBy: updatedBy,
+  });
+
   const t = await resolveThresholds(appId);
 
   res.json({
@@ -123,6 +141,42 @@ router.put("/alerts/config/:appId", requireAdmin, async (req, res) => {
     updatedAt: t.updatedAt,
     updatedBy: t.updatedBy,
   });
+});
+
+router.get("/alerts/config/:appId/history", async (req, res) => {
+  const appId = req.params["appId"] as string;
+  const app = APPS.find((a) => a.id === appId);
+  if (!app) {
+    res.status(404).json({ error: "app not found" });
+    return;
+  }
+
+  const rawLimit = Number(req.query["limit"]);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0
+    ? Math.min(Math.round(rawLimit), 200)
+    : 50;
+
+  const rows = await db
+    .select()
+    .from(alertThresholdConfigLogTable)
+    .where(eq(alertThresholdConfigLogTable.appId, appId))
+    .orderBy(desc(alertThresholdConfigLogTable.changedAt))
+    .limit(limit);
+
+  res.json(
+    rows.map((r) => ({
+      id: r.id,
+      appId: r.appId,
+      oldCpuThresholdPct: r.oldCpuThresholdPct,
+      newCpuThresholdPct: r.newCpuThresholdPct,
+      oldMemoryThresholdPct: r.oldMemoryThresholdPct,
+      newMemoryThresholdPct: r.newMemoryThresholdPct,
+      oldConsecutiveChecks: r.oldConsecutiveChecks,
+      newConsecutiveChecks: r.newConsecutiveChecks,
+      changedBy: r.changedBy,
+      changedAt: r.changedAt,
+    })),
+  );
 });
 
 export default router;

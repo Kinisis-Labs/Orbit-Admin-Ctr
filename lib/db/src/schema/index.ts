@@ -9,5 +9,6 @@ export * from "./costSnapshots";
 export * from "./budgetAlertLog";
 export * from "./infraAlertLog";
 export * from "./alertThresholdConfig";
+export * from "./alertThresholdConfigLog";
 export * from "./appThresholds";
 export * from "./appThresholdsLog";

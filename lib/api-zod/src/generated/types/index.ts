@@ -11,6 +11,7 @@ export * from './activityEntryStatus';
 export * from './alert';
 export * from './alertSource';
 export * from './alertStatus';
+export * from './alertThresholdConfigLogEntry';
 export * from './apiByName';
 export * from './apiUsage';
 export * from './appAlertConfig';
