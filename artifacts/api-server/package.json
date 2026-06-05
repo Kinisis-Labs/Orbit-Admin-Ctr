@@ -8,7 +8,8 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "validate-apps": "tsx ./src/validate-apps.ts"
+    "validate-apps": "tsx ./src/validate-apps.ts",
+    "test": "node --import tsx/esm --test src/**/*.test.ts"
   },
   "dependencies": {
     "@azure/arm-consumption": "^9.2.0",
