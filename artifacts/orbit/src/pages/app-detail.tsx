@@ -62,8 +62,13 @@ export default function AppDetail() {
   const appId = params.appId!;
   const { hasGroup } = useAuth();
   const canSeeCost = hasGroup(COST_READER_GROUP.id);
+  const [location, setLocation] = useLocation();
   const search = useSearch();
-  const [activeTab, setActiveTab] = useState(() => parseTabParam(search));
+  const activeTab = parseTabParam(search);
+
+  function handleTabChange(tab: string) {
+    setLocation(`${location}?tab=${tab}`);
+  }
 
   const recentAlerts = useRecentBudgetAlerts(canSeeCost, appId);
   const recentAlertDate = recentAlerts.get(appId);
@@ -139,7 +144,7 @@ export default function AppDetail() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         {/* Azure Pivot / Tab Strip */}
         <TabsList className="flex h-10 w-full justify-start rounded-none border-b border-border bg-transparent p-0">
           <TabsTrigger value="overview" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">Overview</TabsTrigger>
@@ -241,7 +246,7 @@ export default function AppDetail() {
                 </div>
               </div>
             </div>
-            {canSeeCost && <OverviewCostTile appId={appId} onGoToCost={() => { setActiveTab("cost"); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
+            {canSeeCost && <OverviewCostTile appId={appId} onGoToCost={() => { handleTabChange("cost"); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
           </TabsContent>
           
           <TabsContent value="infrastructure" className="m-0 space-y-4">
