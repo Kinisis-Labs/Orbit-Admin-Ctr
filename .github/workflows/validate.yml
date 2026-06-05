@@ -27,3 +27,5 @@ jobs:
 
       - name: Validate APPS inventory against OpenAPI schema
         run: pnpm --filter @workspace/api-server run validate-apps
+        env:
+          DATABASE_URL: postgresql://localhost/placeholder
