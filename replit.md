@@ -115,6 +115,7 @@ A background scheduler (`lib/budgetAlerts.ts`) fires when `forecast > budget` fo
 **Scheduler tuning:**
 - `ALERT_CHECK_INTERVAL_MINUTES` — polling cadence (default `60`)
 - `ALERT_COOLDOWN_HOURS` — minimum hours between repeat alerts per app (default `12`)
+- `ALERT_COOLDOWN_HOURS__<APPID>` — per-app override (upper-cased, hyphens → underscores; e.g. `ALERT_COOLDOWN_HOURS__GRAILBABE=24`)
 
 **Infra thresholds (global + per-app overrides):**
 - `ALERT_CPU_THRESHOLD_PCT` — CPU % above which an alert fires (default `80`)

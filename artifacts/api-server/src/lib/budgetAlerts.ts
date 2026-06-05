@@ -30,6 +30,8 @@
  * Scheduler:
  *   ALERT_CHECK_INTERVAL_MINUTES         — polling cadence (default 60)
  *   ALERT_COOLDOWN_HOURS                 — min hours between repeat alerts per app (default 12)
+ *   ALERT_COOLDOWN_HOURS__<APPID>        — per-app override (upper-cased, hyphens → underscores)
+ *                                          e.g. ALERT_COOLDOWN_HOURS__GRAILBABE=24
  *
  * Infra thresholds:
  *   ALERT_CPU_THRESHOLD_PCT              — CPU % above which an alert fires (default 80)
@@ -156,20 +158,24 @@ const _lastInfraAlertSentAt = new Map<string, number>();
  */
 const _infraConsecutiveCounts = new Map<string, number>();
 
-function cooldownMs(): number {
-  const hours = Number(process.env["ALERT_COOLDOWN_HOURS"] ?? 12);
+function cooldownMs(appId?: string): number {
+  const raw =
+    (appId ? process.env[`ALERT_COOLDOWN_HOURS__${appEnvKey(appId)}`] : undefined) ??
+    process.env["ALERT_COOLDOWN_HOURS"] ??
+    "12";
+  const hours = Number(raw);
   return (Number.isFinite(hours) && hours > 0 ? hours : 12) * 60 * 60 * 1000;
 }
 
 function isBudgetOnCooldown(appId: string): boolean {
   const last = _lastBudgetAlertSentAt.get(appId);
-  return last !== undefined && Date.now() - last < cooldownMs();
+  return last !== undefined && Date.now() - last < cooldownMs(appId);
 }
 
 function isInfraOnCooldown(appId: string, metric: string): boolean {
   const key = `${appId}:${metric}`;
   const last = _lastInfraAlertSentAt.get(key);
-  return last !== undefined && Date.now() - last < cooldownMs();
+  return last !== undefined && Date.now() - last < cooldownMs(appId);
 }
 
 function markBudgetAlertSent(
@@ -444,7 +450,7 @@ async function sendEmailBudgetAlert(
 </table>
 <br>
 <p><a href="https://orbit.kinisislabs.com/apps/${app.id}/cost">View cost details in Orbit →</a></p>
-<p style="color:#888;font-size:12px;">This alert fires when forecast &gt; budget. It will not repeat for ${Math.round(cooldownMs() / 3_600_000)} hours.</p>
+<p style="color:#888;font-size:12px;">This alert fires when forecast &gt; budget. It will not repeat for ${Math.round(cooldownMs(app.id) / 3_600_000)} hours.</p>
 `;
 
   const text =
@@ -482,7 +488,7 @@ async function sendEmailInfraAlert(
 </table>
 <br>
 <p><a href="https://orbit.kinisislabs.com/apps/${app.id}/telemetry">View telemetry in Orbit →</a></p>
-<p style="color:#888;font-size:12px;">This alert fires when ${label} stays above ${threshold.toFixed(1)}${unit} for ${infraConsecutiveChecksRequired(app.id)} consecutive check${infraConsecutiveChecksRequired(app.id) === 1 ? "" : "s"}. It will not repeat for ${Math.round(cooldownMs() / 3_600_000)} hours.</p>
+<p style="color:#888;font-size:12px;">This alert fires when ${label} stays above ${threshold.toFixed(1)}${unit} for ${infraConsecutiveChecksRequired(app.id)} consecutive check${infraConsecutiveChecksRequired(app.id) === 1 ? "" : "s"}. It will not repeat for ${Math.round(cooldownMs(app.id) / 3_600_000)} hours.</p>
 `;
 
   const text =
