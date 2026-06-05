@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, budgetAlertLogTable } from "@workspace/db";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, gte, isNull } from "drizzle-orm";
 import { APPS } from "./orbit.js";
 
 const router: IRouter = Router();
@@ -21,6 +21,8 @@ function toEntry(r: typeof budgetAlertLogTable.$inferSelect, appMap: Map<string,
 
 router.get("/budget-alerts/log", async (req, res) => {
   const appId = typeof req.query["appId"] === "string" ? req.query["appId"] : undefined;
+  const sinceRaw = typeof req.query["since"] === "string" ? req.query["since"] : undefined;
+  const sinceDate = sinceRaw ? new Date(sinceRaw) : undefined;
   const rawLimit = Number(req.query["limit"]);
   const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(Math.ceil(rawLimit), 200) : 50;
   const unacknowledgedOnly = req.query["unacknowledgedOnly"] === "true";
@@ -30,6 +32,7 @@ router.get("/budget-alerts/log", async (req, res) => {
   const whereClause = and(
     appId ? eq(budgetAlertLogTable.appId, appId) : undefined,
     unacknowledgedOnly ? isNull(budgetAlertLogTable.acknowledgedAt) : undefined,
+    sinceDate && !isNaN(sinceDate.getTime()) ? gte(budgetAlertLogTable.sentAt, sinceDate) : undefined,
   );
 
   const rows = await db

@@ -678,7 +678,8 @@ export const ListGlobalEndpointsResponse = zod.array(ListGlobalEndpointsResponse
 export const ListBudgetAlertLogQueryParams = zod.object({
   "appId": zod.coerce.string().optional().describe('Filter to a specific app. Omit to return entries for all apps.'),
   "limit": zod.coerce.number().optional().describe('Maximum number of entries to return (default 50, max 200).'),
-  "unacknowledgedOnly": zod.coerce.boolean().optional().describe('When true, only return entries that have not yet been acknowledged.')
+  "unacknowledgedOnly": zod.coerce.boolean().optional().describe('When true, only return entries that have not yet been acknowledged.'),
+  "since": zod.coerce.string().datetime({"offset":true}).optional().describe('ISO 8601 datetime. When set, only return entries with sentAt >= since.')
 })
 
 export const ListBudgetAlertLogResponseItem = zod.object({

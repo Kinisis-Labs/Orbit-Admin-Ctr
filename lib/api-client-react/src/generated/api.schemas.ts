@@ -908,9 +908,13 @@ appId?: string;
  * Maximum number of entries to return (default 50, max 200).
  */
 limit?: number;
-/**
- * When true, only return entries that have not yet been acknowledged.
- */
-unacknowledgedOnly?: boolean;
+  /**
+   * When true, only return entries that have not yet been acknowledged.
+   */
+  unacknowledgedOnly?: boolean;
+  /**
+   * ISO 8601 datetime. When set, only return entries with sentAt >= since.
+   */
+  since?: string;
 };
 

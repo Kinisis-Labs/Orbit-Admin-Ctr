@@ -12,7 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Download, ChevronRight, Clipboard, Check, AlertTriangle, TriangleAlert } from "lucide-react";
+import { RefreshCw, Download, ChevronRight, Clipboard, Check, AlertTriangle, TriangleAlert, Bell } from "lucide-react";
 import { Link, useSearch, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -21,8 +21,10 @@ import { useEffect } from "react";
 import { AuthBadge } from "@/components/auth-badge";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useOverBudgetDays } from "@/hooks/use-over-budget-days";
+import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
 import { useAuth, COST_READER_GROUP } from "@/lib/auth";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatDistanceToNow } from "date-fns";
 
 type UserAuthFilter = "all" | "clerk" | "entra" | "none";
 type EnvFilter = "all" | "prod" | "staging" | "dev";
@@ -44,6 +46,7 @@ export default function Home() {
   const { hasGroup } = useAuth();
   const canSeeCost = hasGroup(COST_READER_GROUP.id);
   const { overBudgetCount } = useOverBudgetDays(isGlobal && canSeeCost);
+  const recentAlerts = useRecentBudgetAlerts(canSeeCost);
 
   const params = new URLSearchParams(search);
   const authFilter = parseAuthFilter(params.get("auth"));
@@ -325,6 +328,21 @@ export default function Home() {
                               </Tooltip>
                             </TooltipProvider>
                           )}
+                          {canSeeCost && recentAlerts.has(app.id) && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center">
+                                    <Bell className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Budget alert sent{" "}
+                                  {formatDistanceToNow(recentAlerts.get(app.id)!, { addSuffix: true })}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="py-1">
@@ -353,7 +371,24 @@ export default function Home() {
       ) : (
         <div className="bg-card border border-border shadow-sm flex flex-col">
           <div className="flex items-center justify-between p-2 border-b border-border bg-card">
-            <h2 className="text-sm font-semibold px-2">Application Details — {selectedApp?.name ?? ""}</h2>
+            <div className="flex items-center gap-2 px-2">
+              <h2 className="text-sm font-semibold">Application Details — {selectedApp?.name ?? ""}</h2>
+              {canSeeCost && scope && recentAlerts.has(scope) && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex items-center">
+                        <Bell className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Budget alert sent{" "}
+                      {formatDistanceToNow(recentAlerts.get(scope)!, { addSuffix: true })}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
             <Link href={`/apps/${scope}`} className="text-[12px] text-primary hover:underline pr-2">
               Open application →
             </Link>

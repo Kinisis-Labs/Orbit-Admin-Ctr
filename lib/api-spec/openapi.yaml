@@ -439,6 +439,11 @@ paths:
           required: false
           description: When true, only return entries that have not yet been acknowledged.
           schema: { type: boolean }
+        - name: since
+          in: query
+          required: false
+          description: ISO 8601 datetime. When set, only return entries with sentAt >= since.
+          schema: { type: string, format: date-time }
       responses:
         "200":
           description: OK
