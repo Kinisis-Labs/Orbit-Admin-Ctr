@@ -37,7 +37,7 @@ export default function ServiceHealth() {
           <Skeleton className="h-5 w-64" />
           <Skeleton className="h-4 w-96" />
         </div>
-      ) : isEmpty ? (
+      ) : notConnected ? (
         <div className="border shadow-sm p-4 flex items-start gap-3 bg-muted/30 border-border">
           <Wifi className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
           <div>

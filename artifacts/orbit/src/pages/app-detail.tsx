@@ -516,7 +516,15 @@ function InfraTab({ appId }: { appId: string }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.resources.map(res => (
+              {data.resources.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={2} className="py-8 text-center text-[12px] text-muted-foreground">
+                    {data.dataSource === "live"
+                      ? "No resources found in resource group"
+                      : "Infrastructure data unavailable — Azure not configured"}
+                  </TableCell>
+                </TableRow>
+              ) : data.resources.map(res => (
                 <TableRow key={res.id} className="h-8 hover:bg-muted/40">
                   <TableCell className="py-2">
                     <div className="font-medium text-primary hover:underline cursor-pointer">{res.name}</div>
@@ -535,6 +543,13 @@ function InfraTab({ appId }: { appId: string }) {
           <h2 className="text-sm font-semibold">Metrics</h2>
         </div>
         <div className="p-4 space-y-6">
+          {data.series.length === 0 && (
+            <div className="py-8 text-center text-[12px] text-muted-foreground">
+              {data.dataSource === "live"
+                ? "No metric data in the last 24 hours"
+                : "Metrics unavailable — Azure Monitor not configured"}
+            </div>
+          )}
           {data.series.map((s, i) => (
             <div key={i} className="h-56">
               <h4 className="text-xs font-semibold mb-2 text-foreground">{s.name} ({s.unit})</h4>
