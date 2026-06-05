@@ -16,7 +16,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
-import { CostTabs } from "@/components/cost-tabs";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useMemo, useState } from "react";
@@ -219,8 +218,6 @@ export default function Cost() {
         </div>
         <ScopeSelect />
       </div>
-
-      <CostTabs />
 
       <AppCost />
     </div>

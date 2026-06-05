@@ -27,8 +27,6 @@ const ROUTE_LABELS: Record<string, string> = {
   "/service-health": "Service health",
   "/users": "Users & activity",
   "/cost": "Cost Management",
-  "/cost/budgets": "Budgets",
-  "/cost/forecasts": "Forecasts",
   "/play-subscriptions": "Play subscriptions",
   "/apple-subscriptions": "App Store subscriptions",
   "/subscriptions": "Subscriptions",
@@ -92,7 +90,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     query: { enabled: !!currentAppId && !currentApp, queryKey: getGetAppQueryKey(currentAppId ?? "") },
   });
   const currentAppName = currentApp?.name ?? currentAppDetail?.name ?? currentAppId;
-  const isCostRoute = location === "/cost" || location.startsWith("/cost/");
+  const isCostRoute = location === "/cost";
 
   return (
     <div className="h-screen flex flex-col bg-background text-foreground font-sans overflow-hidden">
@@ -221,12 +219,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <Link href={`/apps/${currentAppId}?tab=overview`} className="hover:text-primary hover:underline transition-colors">{currentAppName}</Link>
                   <ChevronRight className="h-3.5 w-3.5 mx-1" />
                   <Link href={`/apps/${currentAppId}?tab=${activeTab}`} className="text-foreground font-semibold hover:text-primary hover:underline transition-colors">{activeTabLabel}</Link>
-                </>
-              ) : location.startsWith("/cost/") ? (
-                <>
-                  <Link href="/cost" className="hover:text-primary hover:underline transition-colors">Cost Management</Link>
-                  <ChevronRight className="h-3.5 w-3.5 mx-1" />
-                  <span className="text-foreground font-semibold">{ROUTE_LABELS[location] ?? "Cost"}</span>
                 </>
               ) : (
                 <span className="text-foreground font-semibold">{ROUTE_LABELS[location] ?? "Dashboard"}</span>

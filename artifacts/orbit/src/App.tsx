@@ -11,8 +11,6 @@ import { COST_READER_GROUP } from "@/lib/auth";
 import Home from "@/pages/home";
 import Alerts from "@/pages/alerts";
 import Cost from "@/pages/cost";
-import Budgets from "@/pages/budgets";
-import Forecasts from "@/pages/forecasts";
 import AppDetail from "@/pages/app-detail";
 import Deployments from "@/pages/deployments";
 import Incidents from "@/pages/incidents";
@@ -57,8 +55,6 @@ function Router() {
         <Route path="/service-health" component={ServiceHealth} />
         <Route path="/users" component={Users} />
         <Route path="/cost"><Gated><Cost /></Gated></Route>
-        <Route path="/cost/budgets"><Gated><Budgets /></Gated></Route>
-        <Route path="/cost/forecasts"><Gated><Forecasts /></Gated></Route>
         <Route path="/play-subscriptions"><Gated><PlaySubscriptions /></Gated></Route>
         <Route path="/apple-subscriptions"><Gated><AppleSubscriptions /></Gated></Route>
         <Route path="/subscriptions" component={Subscriptions} />
