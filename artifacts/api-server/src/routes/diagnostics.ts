@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { ResourceGraphClient } from "@azure/arm-resourcegraph";
+import { CostManagementClient } from "@azure/arm-costmanagement";
 import {
   getAzureCredential,
   getSubscriptionIds,
@@ -99,12 +100,60 @@ function checkSubscriptionConfig(): Record<string, string> {
   return apps;
 }
 
+/** Probe Cost Management Reader access on each configured subscription. */
+async function checkCostManagementAccess(): Promise<Record<string, CheckResult>> {
+  if (!isAzureConfigured()) {
+    return { _: { status: "not_configured", detail: "AZURE_SUBSCRIPTION_IDS not set" } };
+  }
+
+  const appSubs: Array<{ label: string; subId: string }> = [
+    { label: "grailbabe", subId: process.env.AZURE_SUB_GRAILBABE ?? "" },
+    { label: "orbit", subId: process.env.AZURE_SUB_ORBIT ?? "" },
+    { label: "kinisis-labs", subId: process.env.AZURE_SUB_KINISIS_LABS ?? "" },
+  ].filter((a) => isGuid(a.subId));
+
+  const client = new CostManagementClient(getAzureCredential());
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const results: Record<string, CheckResult> = {};
+
+  await Promise.all(
+    appSubs.map(async ({ label, subId }) => {
+      try {
+        await client.query.usage(`/subscriptions/${subId}`, {
+          type: "Usage",
+          timeframe: "Custom",
+          timePeriod: { from, to: now },
+          dataset: {
+            granularity: "None",
+            aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } },
+          },
+        });
+        results[label] = { status: "ok", detail: `Cost Management Reader confirmed on ${subId}` };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const isAuthError = msg.includes("AuthorizationFailed") || msg.includes("does not have authorization");
+        results[label] = {
+          status: "error",
+          detail: isAuthError
+            ? `Missing 'Cost Management Reader' role on subscription ${subId} for managed identity id-orbit-api-prod`
+            : msg,
+        };
+      }
+    }),
+  );
+
+  return results;
+}
+
 router.get("/diagnostics", async (_req, res) => {
   logger.info("diagnostics endpoint called");
 
-  const [azureCheck, githubCheck] = await Promise.all([
+  const [azureCheck, githubCheck, costCheck] = await Promise.all([
     checkAzureCredential(),
     checkGitHubToken(),
+    checkCostManagementAccess(),
   ]);
 
   const report = {
@@ -145,6 +194,7 @@ router.get("/diagnostics", async (_req, res) => {
     checks: {
       azure_resource_graph: azureCheck,
       github_token: githubCheck,
+      cost_management_access: costCheck,
     },
     subscription_config: checkSubscriptionConfig(),
   };
