@@ -6,13 +6,13 @@ import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { StaleCacheBanner } from "@/components/stale-cache-banner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApp } from "@/hooks/use-app";
+import { useAppAlerts } from "@/hooks/use-app-alerts";
 import { 
   useGetInfrastructure, getGetInfrastructureQueryKey, 
   useGetNetwork, getGetNetworkQueryKey, 
   useGetCost, getGetCostQueryKey, 
   useGetLedger, getGetLedgerQueryKey, 
   useGetTelemetry, getGetTelemetryQueryKey, 
-  useGetAppAlerts, getGetAppAlertsQueryKey,
   useSyncStripeSales,
   UserAuthType,
 } from "@workspace/api-client-react";
@@ -1224,8 +1224,7 @@ function LedgerTab({ appId }: { appId: string }) {
 
 function AlertsTab({ appId }: { appId: string }) {
   const { mode } = useAuth();
-  const queryKey = getGetAppAlertsQueryKey(appId);
-  const { data: alerts, isLoading, isFetching } = useGetAppAlerts(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { data: alerts, isLoading, isFetching, queryKey } = useAppAlerts(appId);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/alerts`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;

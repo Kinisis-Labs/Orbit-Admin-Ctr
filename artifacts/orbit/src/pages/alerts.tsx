@@ -1,8 +1,5 @@
 import { useState } from "react";
-import {
-  useGetAppAlerts,
-  getGetAppAlertsQueryKey,
-} from "@workspace/api-client-react";
+import { useAppAlerts } from "@/hooks/use-app-alerts";
 import { useApps } from "@/hooks/use-apps";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
@@ -42,11 +39,7 @@ export default function Alerts() {
   const { data: apps } = useApps();
   const selectedApp = apps?.find((a) => a.id === scope);
 
-  const appQueryKey = getGetAppAlertsQueryKey(scope);
-
-  const { data: appAlerts, isLoading, isFetching } = useGetAppAlerts(scope, undefined, {
-    query: { enabled: !!scope, queryKey: appQueryKey },
-  });
+  const { data: appAlerts, isLoading, isFetching, queryKey: appQueryKey } = useAppAlerts(scope);
 
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${scope}/alerts`, appQueryKey);
 
