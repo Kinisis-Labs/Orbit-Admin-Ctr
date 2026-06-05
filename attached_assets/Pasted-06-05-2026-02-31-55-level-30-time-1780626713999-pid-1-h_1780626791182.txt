@@ -1,0 +1,108 @@
+06/05/2026, 02:31:55
+
+{"level":30,"time":1780626713999,"pid":1,"hostname":"ca-orbit-api-prod--0000059-64f5675468-ngnnp","port":80,"msg":"Server listening"}
+06/05/2026, 02:26:14
+}
+06/05/2026, 02:26:14
+at moduleResolve (node:internal/modules/esm/resolve:859:18)
+06/05/2026, 02:26:14
+at defaultResolve (node:internal/modules/esm/resolve:992:11)
+06/05/2026, 02:26:14
+at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+06/05/2026, 02:26:14
+at packageResolve (node:internal/modules/esm/resolve:768:81)
+06/05/2026, 02:26:14
+throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+06/05/2026, 02:26:14
+at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+06/05/2026, 02:26:14
+at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+06/05/2026, 02:26:14
+at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+06/05/2026, 02:26:14
+at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+06/05/2026, 02:26:14
+^
+06/05/2026, 02:26:14
+node:internal/modules/package_json_reader:301
+06/05/2026, 02:26:14
+at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+06/05/2026, 02:26:14
+at #resolve (node:internal/modules/esm/loader:673:17)
+06/05/2026, 02:26:14
+Node.js v24.16.0
+06/05/2026, 02:26:14
+06/05/2026, 02:26:14
+code: 'ERR_MODULE_NOT_FOUND'
+06/05/2026, 02:26:14
+06/05/2026, 02:26:14
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+06/05/2026, 02:24:54
+at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+06/05/2026, 02:24:54
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+06/05/2026, 02:24:54
+at moduleResolve (node:internal/modules/esm/resolve:859:18)
+06/05/2026, 02:24:54
+at packageResolve (node:internal/modules/esm/resolve:768:81)
+06/05/2026, 02:24:54
+at #resolve (node:internal/modules/esm/loader:673:17)
+06/05/2026, 02:24:54
+06/05/2026, 02:24:54
+at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+06/05/2026, 02:24:54
+at defaultResolve (node:internal/modules/esm/resolve:992:11)
+06/05/2026, 02:24:54
+at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+06/05/2026, 02:24:54
+at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+06/05/2026, 02:24:54
+06/05/2026, 02:24:54
+node:internal/modules/package_json_reader:301
+06/05/2026, 02:24:54
+throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+06/05/2026, 02:24:54
+}
+06/05/2026, 02:24:54
+Node.js v24.16.0
+06/05/2026, 02:24:54
+code: 'ERR_MODULE_NOT_FOUND'
+06/05/2026, 02:24:54
+at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+06/05/2026, 02:24:54
+^
+06/05/2026, 02:24:54
+at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+06/05/2026, 02:24:13
+code: 'ERR_MODULE_NOT_FOUND'
+06/05/2026, 02:24:13
+at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+06/05/2026, 02:24:13
+at moduleResolve (node:internal/modules/esm/resolve:859:18)
+06/05/2026, 02:24:13
+06/05/2026, 02:24:13
+at defaultResolve (node:internal/modules/esm/resolve:992:11)
+06/05/2026, 02:24:13
+at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+06/05/2026, 02:24:13
+node:internal/modules/package_json_reader:301
+06/05/2026, 02:24:13
+^
+06/05/2026, 02:24:13
+at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+06/05/2026, 02:24:13
+Node.js v24.16.0
+06/05/2026, 02:24:13
+at packageResolve (node:internal/modules/esm/resolve:768:81)
+06/05/2026, 02:23:42
+^
+06/05/2026, 02:23:42
+at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+06/05/2026, 02:23:42
+at packageResolve (node:internal/modules/esm/resolve:768:81)
+06/05/2026, 02:23:42
+at moduleResolve (node:internal/modules/esm/resolve:859:18)
+06/05/2026, 02:23:42
+at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+06/05/2026, 02:23:42
+at defaultResolve (node:internal/modules/esm/resolve:992:11)
