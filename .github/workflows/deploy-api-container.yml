@@ -67,6 +67,7 @@ jobs:
               --name ca-orbit-api-prod \
               --resource-group rg-orbit-prod-eus2 \
               --image "${{ steps.image.outputs.name }}:${{ github.sha }}" \
+              --min-replicas 1 \
               --set-env-vars \
                 NODE_ENV=production \
                 PORT=80 \
