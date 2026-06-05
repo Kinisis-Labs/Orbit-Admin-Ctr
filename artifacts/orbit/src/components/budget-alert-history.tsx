@@ -1,8 +1,10 @@
 import { useListBudgetAlertLog } from "@workspace/api-client-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, Download, Clipboard, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { useCsvExport } from "@/hooks/use-csv-export";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n);
@@ -44,6 +46,31 @@ export function BudgetAlertHistory({ appId }: Props) {
     appId ? { appId, limit: 50 } : { limit: 50 },
   );
 
+  const csvHeaders = appId
+    ? ["Sent At", "MTD Spend", "Forecast", "Budget Cap", "Overage %", "Channels"]
+    : ["App", "Sent At", "MTD Spend", "Forecast", "Budget Cap", "Overage %", "Channels"];
+
+  const csvRows = entries?.map((entry) => {
+    const overage = entry.budget > 0 ? (((entry.forecast - entry.budget) / entry.budget) * 100).toFixed(1) + "%" : "N/A";
+    const sentAt = format(new Date(entry.sentAt), "MMM d, yyyy HH:mm");
+    const channels = entry.channels.map((ch) => CHANNEL_LABELS[ch] ?? ch).join("; ");
+    const base = [
+      sentAt,
+      entry.mtd.toFixed(2),
+      entry.forecast.toFixed(2),
+      entry.budget.toFixed(2),
+      overage,
+      channels,
+    ];
+    return appId ? base : [entry.appName, ...base];
+  }) ?? null;
+
+  const { copied, disabled: csvDisabled, handleExport, handleCopy } = useCsvExport(
+    csvRows,
+    csvHeaders,
+    "budget-alert-history",
+  );
+
   return (
     <div className="bg-card border border-border shadow-sm flex flex-col">
       <div className="flex items-center gap-2 p-3 border-b border-border">
@@ -53,6 +80,39 @@ export function BudgetAlertHistory({ appId }: Props) {
           <span className="ml-auto text-[11px] text-muted-foreground">
             {entries.length === 0 ? "No alerts on record" : `${entries.length} notification${entries.length === 1 ? "" : "s"}`}
           </span>
+        )}
+        {!isLoading && entries && entries.length > 0 && (
+          <div className="flex items-center gap-1 ml-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+              onClick={handleExport}
+              disabled={csvDisabled}
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Export CSV
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+              onClick={handleCopy}
+              disabled={csvDisabled}
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
+                  <span className="text-green-500">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Clipboard className="h-3.5 w-3.5 mr-1.5" />
+                  Copy
+                </>
+              )}
+            </Button>
+          </div>
         )}
       </div>
 
