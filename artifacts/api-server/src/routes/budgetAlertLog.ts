@@ -1,25 +1,12 @@
 import { Router, type IRouter } from "express";
 import { db, budgetAlertLogTable } from "@workspace/db";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { APPS } from "./orbit.js";
 
 const router: IRouter = Router();
 
-router.get("/budget-alerts/log", async (req, res) => {
-  const appId = typeof req.query["appId"] === "string" ? req.query["appId"] : undefined;
-  const rawLimit = Number(req.query["limit"]);
-  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(Math.ceil(rawLimit), 200) : 50;
-
-  const appMap = new Map(APPS.map((a) => [a.id, a.name]));
-
-  const rows = await db
-    .select()
-    .from(budgetAlertLogTable)
-    .where(appId ? eq(budgetAlertLogTable.appId, appId) : undefined)
-    .orderBy(desc(budgetAlertLogTable.sentAt))
-    .limit(limit);
-
-  const entries = rows.map((r) => ({
+function toEntry(r: typeof budgetAlertLogTable.$inferSelect, appMap: Map<string, string>) {
+  return {
     id: r.id,
     appId: r.appId,
     appName: appMap.get(r.appId) ?? r.appId,
@@ -28,9 +15,54 @@ router.get("/budget-alerts/log", async (req, res) => {
     budget: Number(r.budget),
     channels: r.channels.split(",").filter(Boolean),
     sentAt: r.sentAt.toISOString(),
-  }));
+    acknowledgedAt: r.acknowledgedAt ? r.acknowledgedAt.toISOString() : null,
+  };
+}
 
-  res.json(entries);
+router.get("/budget-alerts/log", async (req, res) => {
+  const appId = typeof req.query["appId"] === "string" ? req.query["appId"] : undefined;
+  const rawLimit = Number(req.query["limit"]);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(Math.ceil(rawLimit), 200) : 50;
+  const unacknowledgedOnly = req.query["unacknowledgedOnly"] === "true";
+
+  const appMap = new Map(APPS.map((a) => [a.id, a.name]));
+
+  const whereClause = and(
+    appId ? eq(budgetAlertLogTable.appId, appId) : undefined,
+    unacknowledgedOnly ? isNull(budgetAlertLogTable.acknowledgedAt) : undefined,
+  );
+
+  const rows = await db
+    .select()
+    .from(budgetAlertLogTable)
+    .where(whereClause)
+    .orderBy(desc(budgetAlertLogTable.sentAt))
+    .limit(limit);
+
+  res.json(rows.map((r) => toEntry(r, appMap)));
+});
+
+router.patch("/budget-alerts/log/:id/acknowledge", async (req, res) => {
+  const id = parseInt(req.params["id"] ?? "", 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  const appMap = new Map(APPS.map((a) => [a.id, a.name]));
+
+  const updated = await db
+    .update(budgetAlertLogTable)
+    .set({ acknowledgedAt: new Date() })
+    .where(eq(budgetAlertLogTable.id, id))
+    .returning();
+
+  if (updated.length === 0) {
+    res.status(404).json({ error: "Entry not found" });
+    return;
+  }
+
+  res.json(toEntry(updated[0]!, appMap));
 });
 
 export default router;

@@ -13,6 +13,7 @@ export const budgetAlertLogTable = pgTable("budget_alert_log", {
   budget: numeric("budget", { precision: 14, scale: 2 }).notNull(),
   channels: text("channels").notNull(),
   sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
 });
 
 export type BudgetAlertLogRow = typeof budgetAlertLogTable.$inferSelect;

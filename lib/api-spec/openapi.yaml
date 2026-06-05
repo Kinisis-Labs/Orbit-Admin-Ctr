@@ -434,6 +434,11 @@ paths:
           required: false
           description: Maximum number of entries to return (default 50, max 200).
           schema: { type: integer }
+        - name: unacknowledgedOnly
+          in: query
+          required: false
+          description: When true, only return entries that have not yet been acknowledged.
+          schema: { type: boolean }
       responses:
         "200":
           description: OK
@@ -442,6 +447,24 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/BudgetAlertLogEntry" }
+  /budget-alerts/log/{id}/acknowledge:
+    patch:
+      operationId: acknowledgeBudgetAlertLogEntry
+      tags: [alerts, cost]
+      summary: Acknowledge (dismiss) a budget-overrun alert log entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BudgetAlertLogEntry" }
+        "404":
+          description: Entry not found
 components:
   parameters:
     AppId:
@@ -1071,3 +1094,4 @@ components:
           items: { type: string }
           description: Notification channels that fired (e.g. "teams", "email")
         sentAt: { type: string, format: date-time, description: When the notification was dispatched }
+        acknowledgedAt: { type: string, format: date-time, nullable: true, description: When the entry was acknowledged by an operator. Null if not yet acknowledged. }

@@ -20,4 +20,6 @@ export interface BudgetAlertLogEntry {
   channels: string[];
   /** When the notification was dispatched */
   sentAt: string;
+  /** When the entry was acknowledged by an operator. Null if not yet acknowledged. */
+  acknowledgedAt?: string | null;
 }

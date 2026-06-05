@@ -1,9 +1,11 @@
-import { useListBudgetAlertLog } from "@workspace/api-client-react";
+import { useListBudgetAlertLog, useAcknowledgeBudgetAlertLogEntry, getListBudgetAlertLogQueryKey } from "@workspace/api-client-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell, BellOff, Download, Clipboard, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Bell, BellOff, Download, Clipboard, Check, Filter } from "lucide-react";
 import { format } from "date-fns";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCsvExport } from "@/hooks/use-csv-export";
 
 const fmt = (n: number) =>
@@ -37,14 +39,39 @@ function OveragePill({ forecast, budget }: { forecast: number; budget: number })
   );
 }
 
+function AcknowledgedBadge({ at }: { at: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/30 text-muted-foreground text-[10px] font-medium">
+      <Check className="h-2.5 w-2.5" />
+      Acknowledged {format(new Date(at), "MMM d")}
+    </span>
+  );
+}
+
 interface Props {
   appId?: string;
 }
 
 export function BudgetAlertHistory({ appId }: Props) {
-  const { data: entries, isLoading } = useListBudgetAlertLog(
-    appId ? { appId, limit: 50 } : { limit: 50 },
-  );
+  const [unacknowledgedOnly, setUnacknowledgedOnly] = useState(false);
+  const queryClient = useQueryClient();
+
+  const params = {
+    ...(appId ? { appId } : {}),
+    limit: 50,
+    ...(unacknowledgedOnly ? { unacknowledgedOnly: true } : {}),
+  };
+
+  const { data: entries, isLoading } = useListBudgetAlertLog(params);
+  const { mutate: acknowledge, isPending: isAcknowledging } = useAcknowledgeBudgetAlertLogEntry({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getListBudgetAlertLogQueryKey() });
+      },
+    },
+  });
+
+  const totalCount = entries?.length ?? 0;
 
   const csvHeaders = appId
     ? ["Sent At", "MTD Spend", "Forecast", "Budget Cap", "Overage %", "Channels"]
@@ -78,11 +105,23 @@ export function BudgetAlertHistory({ appId }: Props) {
         <h2 className="text-sm font-semibold">Alerts sent</h2>
         {!isLoading && entries !== undefined && (
           <span className="ml-auto text-[11px] text-muted-foreground">
-            {entries.length === 0 ? "No alerts on record" : `${entries.length} notification${entries.length === 1 ? "" : "s"}`}
+            {totalCount === 0 ? "No alerts on record" : `${totalCount} notification${totalCount === 1 ? "" : "s"}`}
           </span>
         )}
+        <button
+          onClick={() => setUnacknowledgedOnly((v) => !v)}
+          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-sm border text-[11px] font-medium transition-colors ${
+            unacknowledgedOnly
+              ? "border-primary/40 bg-primary/10 text-primary"
+              : "border-border bg-transparent text-muted-foreground hover:text-foreground hover:border-border/80"
+          }`}
+          title={unacknowledgedOnly ? "Showing unacknowledged only — click to show all" : "Click to show only unacknowledged"}
+        >
+          <Filter className="h-3 w-3" />
+          {unacknowledgedOnly ? "Unacknowledged only" : "All"}
+        </button>
         {!isLoading && entries && entries.length > 0 && (
-          <div className="flex items-center gap-1 ml-2">
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
@@ -125,12 +164,26 @@ export function BudgetAlertHistory({ appId }: Props) {
       ) : !entries || entries.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
           <BellOff className="h-6 w-6 opacity-40" />
-          <p className="text-sm">No budget-overrun notifications have been dispatched yet.</p>
-          <p className="text-[11px] opacity-70">
-            Alerts fire when the end-of-month forecast exceeds the budget cap.
-            Configure <code className="font-mono">ALERT_TEAMS_WEBHOOK_URL</code> or{" "}
-            <code className="font-mono">ALERT_SMTP_*</code> env vars to enable them.
-          </p>
+          {unacknowledgedOnly ? (
+            <>
+              <p className="text-sm">All alerts have been acknowledged.</p>
+              <button
+                onClick={() => setUnacknowledgedOnly(false)}
+                className="text-[11px] text-primary hover:underline"
+              >
+                Show all alerts
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm">No budget-overrun notifications have been dispatched yet.</p>
+              <p className="text-[11px] opacity-70">
+                Alerts fire when the end-of-month forecast exceeds the budget cap.
+                Configure <code className="font-mono">ALERT_TEAMS_WEBHOOK_URL</code> or{" "}
+                <code className="font-mono">ALERT_SMTP_*</code> env vars to enable them.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -146,38 +199,63 @@ export function BudgetAlertHistory({ appId }: Props) {
                 <TableHead className="h-8 font-semibold text-foreground text-right w-[120px]">Budget cap</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground w-[200px]">Overage</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground w-[160px]">Channels</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground w-[120px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries.map((entry) => (
-                <TableRow key={entry.id} className="h-9 border-b border-border/50 hover:bg-muted/40">
-                  {!appId && (
-                    <TableCell className="py-1 font-medium truncate max-w-[160px]">{entry.appName}</TableCell>
-                  )}
-                  <TableCell className="py-1 tabular-nums text-[12px] text-muted-foreground whitespace-nowrap">
-                    {format(new Date(entry.sentAt), "MMM d, yyyy HH:mm")}
-                  </TableCell>
-                  <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">
-                    {fmt(entry.mtd)}
-                  </TableCell>
-                  <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-amber-600 dark:text-amber-400 font-semibold">
-                    {fmt(entry.forecast)}
-                  </TableCell>
-                  <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
-                    {fmt(entry.budget)}
-                  </TableCell>
-                  <TableCell className="py-1">
-                    <OveragePill forecast={entry.forecast} budget={entry.budget} />
-                  </TableCell>
-                  <TableCell className="py-1">
-                    <div className="flex flex-wrap gap-1">
-                      {entry.channels.map((ch) => (
-                        <ChannelBadge key={ch} channel={ch} />
-                      ))}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {entries.map((entry) => {
+                const isAcked = !!entry.acknowledgedAt;
+                return (
+                  <TableRow
+                    key={entry.id}
+                    className={`h-9 border-b border-border/50 hover:bg-muted/40 ${isAcked ? "opacity-50" : ""}`}
+                  >
+                    {!appId && (
+                      <TableCell className="py-1 font-medium truncate max-w-[160px]">{entry.appName}</TableCell>
+                    )}
+                    <TableCell className="py-1 tabular-nums text-[12px] text-muted-foreground whitespace-nowrap">
+                      {format(new Date(entry.sentAt), "MMM d, yyyy HH:mm")}
+                    </TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">
+                      {fmt(entry.mtd)}
+                    </TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-amber-600 dark:text-amber-400 font-semibold">
+                      {fmt(entry.forecast)}
+                    </TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
+                      {fmt(entry.budget)}
+                    </TableCell>
+                    <TableCell className="py-1">
+                      {isAcked ? (
+                        <AcknowledgedBadge at={entry.acknowledgedAt!} />
+                      ) : (
+                        <OveragePill forecast={entry.forecast} budget={entry.budget} />
+                      )}
+                    </TableCell>
+                    <TableCell className="py-1">
+                      <div className="flex flex-wrap gap-1">
+                        {entry.channels.map((ch) => (
+                          <ChannelBadge key={ch} channel={ch} />
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-1 text-right">
+                      {isAcked ? null : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                          disabled={isAcknowledging}
+                          onClick={() => acknowledge({ id: entry.id })}
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          Acknowledge
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

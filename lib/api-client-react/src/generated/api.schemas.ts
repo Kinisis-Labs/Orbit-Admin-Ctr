@@ -830,6 +830,8 @@ export interface BudgetAlertLogEntry {
   channels: string[];
   /** When the notification was dispatched */
   sentAt: string;
+  /** When the entry was acknowledged by an operator. Null if not yet acknowledged. */
+  acknowledgedAt?: string | null;
 }
 
 /**
@@ -900,5 +902,9 @@ appId?: string;
  * Maximum number of entries to return (default 50, max 200).
  */
 limit?: number;
+/**
+ * When true, only return entries that have not yet been acknowledged.
+ */
+unacknowledgedOnly?: boolean;
 };
 
