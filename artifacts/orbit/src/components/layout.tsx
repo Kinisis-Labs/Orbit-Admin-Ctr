@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useListApps } from "@workspace/api-client-react";
+import { useListApps, useGetApp, getGetAppQueryKey } from "@workspace/api-client-react";
 import {
   Cloud, Search, Settings as SettingsIcon, Home, Bell, DollarSign, LayoutDashboard,
   ChevronRight, Menu, Sun, Moon, Lock, Rocket, AlertOctagon, Activity,
@@ -72,6 +72,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const currentAppId = location.startsWith("/apps/") ? location.split("/")[2] : null;
   const currentApp = apps?.find(a => a.id === currentAppId);
+  const { data: currentAppDetail } = useGetApp(currentAppId ?? "", {
+    query: { enabled: !!currentAppId && !currentApp, queryKey: getGetAppQueryKey(currentAppId ?? "") },
+  });
+  const currentAppName = currentApp?.name ?? currentAppDetail?.name ?? currentAppId;
   const isCostRoute = location === "/cost" || location.startsWith("/cost/");
 
   return (
@@ -198,7 +202,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <>
                   <Link href="/" className="hover:text-primary hover:underline transition-colors">App Services</Link>
                   <ChevronRight className="h-3.5 w-3.5 mx-1" />
-                  <span className="text-foreground font-semibold">{currentApp?.name || currentAppId}</span>
+                  <span className="text-foreground font-semibold">{currentAppName}</span>
                 </>
               ) : location.startsWith("/cost/") ? (
                 <>
