@@ -443,7 +443,14 @@ export default function Health() {
                       <TableCell className={`py-1 text-right tabular-nums ${errOk ? "" : "text-destructive font-medium"}`}>{s.errorRatePct}%</TableCell>
                       <TableCell className="py-1"><InfraBadge pct={s.cpuPct} threshold={s.cpuThreshold} /></TableCell>
                       <TableCell className="py-1"><InfraBadge pct={s.memoryPct} threshold={s.memoryThreshold} /></TableCell>
-                      <TableCell className="py-1"><StatusPill tone={overall as "ok" | "warn" | "bad"}>{overall === "ok" ? "Meeting SLO" : overall === "warn" ? "At risk" : "Breaching"}</StatusPill></TableCell>
+                      <TableCell className="py-1">
+                        <Link
+                          href={`/apps/${s.appId}?tab=infrastructure`}
+                          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                        >
+                          <StatusPill tone={overall as "ok" | "warn" | "bad"}>{overall === "ok" ? "Meeting SLO" : overall === "warn" ? "At risk" : "Breaching"}</StatusPill>
+                        </Link>
+                      </TableCell>
                     </TableRow>
                     {isExpanded && hasSeries && (
                       <tr className="border-b border-border/50">
