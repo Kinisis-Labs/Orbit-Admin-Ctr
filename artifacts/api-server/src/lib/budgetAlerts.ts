@@ -33,7 +33,11 @@
  *
  * Infra thresholds:
  *   ALERT_CPU_THRESHOLD_PCT              — CPU % above which an alert fires (default 80)
+ *   ALERT_CPU_THRESHOLD_PCT__<APPID>     — per-app override (upper-cased, hyphens → underscores)
+ *                                          e.g. ALERT_CPU_THRESHOLD_PCT__GRAILBABE=90
  *   ALERT_MEMORY_THRESHOLD_PCT           — Memory % above which an alert fires (default 85)
+ *   ALERT_MEMORY_THRESHOLD_PCT__<APPID>  — per-app override
+ *                                          e.g. ALERT_MEMORY_THRESHOLD_PCT__ORBIT=70
  *   ALERT_INFRA_CONSECUTIVE_CHECKS       — number of consecutive over-threshold checks required
  *                                          before a notification is dispatched (default 2)
  */
@@ -98,15 +102,23 @@ export function isBudgetAlertsConfigured(): boolean {
   return isSmtpConfigured() || hasAnyTeamsConfig();
 }
 
-/** CPU threshold percent (default 80). */
-function cpuThresholdPct(): number {
-  const v = Number(process.env["ALERT_CPU_THRESHOLD_PCT"] ?? 80);
+/** CPU threshold percent for an app: per-app override → global (default 80). */
+function cpuThresholdPct(appId?: string): number {
+  const raw =
+    (appId ? process.env[`ALERT_CPU_THRESHOLD_PCT__${appEnvKey(appId)}`] : undefined) ??
+    process.env["ALERT_CPU_THRESHOLD_PCT"] ??
+    "80";
+  const v = Number(raw);
   return Number.isFinite(v) && v > 0 && v <= 100 ? v : 80;
 }
 
-/** Memory threshold percent (default 85). */
-function memoryThresholdPct(): number {
-  const v = Number(process.env["ALERT_MEMORY_THRESHOLD_PCT"] ?? 85);
+/** Memory threshold percent for an app: per-app override → global (default 85). */
+function memoryThresholdPct(appId?: string): number {
+  const raw =
+    (appId ? process.env[`ALERT_MEMORY_THRESHOLD_PCT__${appEnvKey(appId)}`] : undefined) ??
+    process.env["ALERT_MEMORY_THRESHOLD_PCT"] ??
+    "85";
+  const v = Number(raw);
   return Number.isFinite(v) && v > 0 && v <= 100 ? v : 85;
 }
 
@@ -622,8 +634,6 @@ export async function checkInfraThresholds(): Promise<{
   alertsSent: number;
   errors: number;
 }> {
-  const cpuThreshold = cpuThresholdPct();
-  const memThreshold = memoryThresholdPct();
   const requiredConsecutive = infraConsecutiveChecksRequired();
 
   let breaches = 0;
@@ -636,12 +646,12 @@ export async function checkInfraThresholds(): Promise<{
     threshold: number;
   };
 
-  const metrics: MetricSpec[] = [
-    { name: "cpu_pct", kind: "cpu", threshold: cpuThreshold },
-    { name: "memory_pct", kind: "memory", threshold: memThreshold },
-  ];
-
   for (const app of APPS) {
+    const metrics: MetricSpec[] = [
+      { name: "cpu_pct", kind: "cpu", threshold: cpuThresholdPct(app.id) },
+      { name: "memory_pct", kind: "memory", threshold: memoryThresholdPct(app.id) },
+    ];
+
     for (const { name, kind, threshold } of metrics) {
       const counterKey = `${app.id}:${kind}`;
 
@@ -773,11 +783,11 @@ export function startBudgetAlertScheduler(): void {
     {
       intervalMinutes: intervalMs / 60_000,
       cooldownHours: cooldownMs() / 3_600_000,
-      cpuThresholdPct: cpuThresholdPct(),
-      memoryThresholdPct: memoryThresholdPct(),
+      cpuThresholdPctDefault: cpuThresholdPct(),
+      memoryThresholdPctDefault: memoryThresholdPct(),
       infraConsecutiveChecks: infraConsecutiveChecksRequired(),
     },
-    "budget-alert: scheduler started (budget + infra checks)",
+    "budget-alert: scheduler started (budget + infra checks; per-app threshold overrides apply at check time)",
   );
 
   const run = async (): Promise<void> => {

@@ -116,6 +116,13 @@ A background scheduler (`lib/budgetAlerts.ts`) fires when `forecast > budget` fo
 - `ALERT_CHECK_INTERVAL_MINUTES` — polling cadence (default `60`)
 - `ALERT_COOLDOWN_HOURS` — minimum hours between repeat alerts per app (default `12`)
 
+**Infra thresholds (global + per-app overrides):**
+- `ALERT_CPU_THRESHOLD_PCT` — CPU % above which an alert fires (default `80`)
+- `ALERT_CPU_THRESHOLD_PCT__<APPID>` — per-app override (upper-cased, hyphens → underscores; e.g. `ALERT_CPU_THRESHOLD_PCT__GRAILBABE=90`)
+- `ALERT_MEMORY_THRESHOLD_PCT` — Memory % above which an alert fires (default `85`)
+- `ALERT_MEMORY_THRESHOLD_PCT__<APPID>` — per-app override (e.g. `ALERT_MEMORY_THRESHOLD_PCT__ORBIT=70`)
+- `ALERT_INFRA_CONSECUTIVE_CHECKS` — consecutive over-threshold checks required before a notification fires (default `2`)
+
 ## Product
 
 _Describe the high-level user-facing capabilities of this app once they exist._
