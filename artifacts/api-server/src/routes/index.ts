@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import authRouter from "./auth";
+import diagnosticsRouter from "./diagnostics";
 import orbitRouter from "./orbit";
 import ledgerRouter from "./ledger";
 import usersRouter from "./users";
@@ -16,6 +17,7 @@ const router: IRouter = Router();
 // Public: health + the auth handshake endpoints.
 router.use(healthRouter);
 router.use(authRouter);
+router.use(requireAuth, diagnosticsRouter);
 
 // Protected data routes. In mock mode (no Entra config) requireAuth is a no-op,
 // so the dev preview keeps working without sign-in.
