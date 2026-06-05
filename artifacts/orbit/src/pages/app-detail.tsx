@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSpendThreshold, useBudgetThreshold, DEFAULT_SPEND_THRESHOLD, DEFAULT_BUDGET_THRESHOLD } from "@/lib/spend-threshold";
-import { useParams, useLocation } from "wouter";
+import { useParams, useLocation, useSearch } from "wouter";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { StaleCacheBanner } from "@/components/stale-cache-banner";
@@ -50,12 +50,20 @@ import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
 import { InfraAlertHistory } from "@/components/infra-alert-history";
 import { AlertConfigTable } from "@/components/alert-config-table";
 
+const VALID_TABS = ["overview", "infrastructure", "network", "telemetry", "cost", "ledger", "alerts"] as const;
+
+function parseTabParam(search: string): string {
+  const tab = new URLSearchParams(search).get("tab") ?? "";
+  return (VALID_TABS as readonly string[]).includes(tab) ? tab : "overview";
+}
+
 export default function AppDetail() {
   const params = useParams();
   const appId = params.appId!;
   const { hasGroup } = useAuth();
   const canSeeCost = hasGroup(COST_READER_GROUP.id);
-  const [activeTab, setActiveTab] = useState("overview");
+  const search = useSearch();
+  const [activeTab, setActiveTab] = useState(() => parseTabParam(search));
 
   const recentAlerts = useRecentBudgetAlerts(canSeeCost, appId);
   const recentAlertDate = recentAlerts.get(appId);

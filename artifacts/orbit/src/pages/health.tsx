@@ -1,4 +1,5 @@
 import { useState, Fragment } from "react";
+import { Link } from "wouter";
 import {
   useListSlos,
   useListApps,
@@ -12,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2 } from "lucide-react";
+import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink } from "lucide-react";
 import {
   AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -46,18 +47,31 @@ function InfraBadge({ pct, threshold }: { pct: number; threshold: number }) {
 type MetricPoint = { timestamp: string; value: number };
 
 function TrendSparkline({
+  appId,
   cpuSeries,
   memorySeries,
   cpuThreshold,
   memoryThreshold,
 }: {
+  appId: string;
   cpuSeries: MetricPoint[];
   memorySeries: MetricPoint[];
   cpuThreshold: number;
   memoryThreshold: number;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4 px-4 py-3 bg-muted/30 border-t border-border/50">
+    <div className="bg-muted/30 border-t border-border/50">
+      <div className="flex justify-end px-4 pt-2">
+        <Link
+          href={`/apps/${appId}?tab=infrastructure`}
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+        >
+          <ExternalLink className="h-3 w-3" />
+          View infrastructure
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 gap-4 px-4 py-3">
       <div>
         <div className="text-[11px] font-semibold text-muted-foreground mb-1.5">
           CPU % — last 24h
@@ -145,6 +159,7 @@ function TrendSparkline({
             </AreaChart>
           </ResponsiveContainer>
         </div>
+      </div>
       </div>
     </div>
   );
@@ -388,7 +403,15 @@ export default function Health() {
                             : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                         ) : null}
                       </TableCell>
-                      <TableCell className="py-1 font-medium text-primary">{s.appName}</TableCell>
+                      <TableCell className="py-1 font-medium">
+                        <Link
+                          href={`/apps/${s.appId}?tab=infrastructure`}
+                          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                          className="text-primary hover:underline"
+                        >
+                          {s.appName}
+                        </Link>
+                      </TableCell>
                       <TableCell className="py-1 text-muted-foreground">{s.environment}</TableCell>
                       <TableCell className="py-1 text-right tabular-nums">{s.uptimePct}%</TableCell>
                       <TableCell className="py-1">
@@ -407,6 +430,7 @@ export default function Health() {
                       <tr className="border-b border-border/50">
                         <td colSpan={10} className="p-0">
                           <TrendSparkline
+                            appId={s.appId}
                             cpuSeries={(s.cpuSeries ?? []) as MetricPoint[]}
                             memorySeries={(s.memorySeries ?? []) as MetricPoint[]}
                             cpuThreshold={s.cpuThreshold}
