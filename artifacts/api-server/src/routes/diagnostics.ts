@@ -90,6 +90,19 @@ router.get("/diagnostics", async (_req, res) => {
       SESSION_SECRET: process.env.SESSION_SECRET ? `✓ set (${process.env.SESSION_SECRET.length} chars)` : "❌ not set",
       DATABASE_URL: process.env.DATABASE_URL ? "✓ set" : "❌ not set",
       DATABASE_SSL: envVar("DATABASE_SSL"),
+      // Container Apps managed-identity runtime injection — set by the platform
+      // when a managed identity is attached; absent = identity not attached/effective
+      IDENTITY_ENDPOINT: envVar("IDENTITY_ENDPOINT"),
+      IDENTITY_HEADER: process.env.IDENTITY_HEADER ? "✓ set" : "❌ not set",
+      MSI_ENDPOINT: envVar("MSI_ENDPOINT"),
+    },
+    warnings: {
+      azure_client_id_matches_entra_client_id:
+        process.env.AZURE_CLIENT_ID &&
+        process.env.ENTRA_CLIENT_ID &&
+        process.env.AZURE_CLIENT_ID === process.env.ENTRA_CLIENT_ID
+          ? "⚠️  AZURE_CLIENT_ID equals ENTRA_CLIENT_ID — AZURE_MANAGED_IDENTITY_CLIENT_ID secret is probably set to the Entra app registration ID instead of the managed identity id-orbit-api-prod client ID"
+          : "ok",
     },
     checks: {
       azure_resource_graph: azureCheck,
