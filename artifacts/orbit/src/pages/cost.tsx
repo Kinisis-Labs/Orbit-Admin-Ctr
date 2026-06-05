@@ -99,12 +99,7 @@ function DataSourceBadge({
       </span>
     );
   }
-  return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide select-none">
-      <WifiOff className="h-3 w-3" />
-      Demo data
-    </span>
-  );
+  return null;
 }
 
 const ANOMALY_SIGMAS = 2;

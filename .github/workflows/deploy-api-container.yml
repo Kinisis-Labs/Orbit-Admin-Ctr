@@ -90,7 +90,7 @@ jobs:
                 AZURE_SUB_ORBIT="${{ secrets.AZURE_SUB_ORBIT }}" \
                 AZURE_SUB_KINISIS_LABS="${{ secrets.AZURE_SUB_KINISIS_LABS }}" \
                 AZURE_LOG_ANALYTICS_WORKSPACE_ID="${{ secrets.AZURE_LOG_ANALYTICS_WORKSPACE_ID }}" \
-                GITHUB_TOKEN="${{ secrets.ORBIT_DEPLOY_ID }}" \
+                GITHUB_TOKEN="${{ secrets.ORBIT_DEPLOYMENT_ID }}" \
                 STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}"
             az containerapp ingress update \
               --name ca-orbit-api-prod \

@@ -373,12 +373,7 @@ function DataSourceBadge({
       </span>
     );
   }
-  return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide select-none">
-      <WifiOff className="h-3 w-3" />
-      Demo data
-    </span>
-  );
+  return null;
 }
 
 function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: () => void }) {
@@ -395,7 +390,6 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
   const barUtilPct = Math.min(rawUtilPct, 100);
   const budgetBarClass = getBudgetBarClass(barUtilPct, budgetThreshold);
   const headroom = data.budget - data.forecast;
-  const isEstimated = data.dataSource === "mock";
   const forecastOverBudget = data.forecast > data.budget;
 
   const tileClass =
@@ -427,7 +421,6 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
               <div className="text-[12px] text-muted-foreground font-medium">Budget Cap</div>
               <div className="text-xl font-semibold tabular-nums">
                 {formatCurrency(data.budget)}
-                {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
               </div>
               <div className="space-y-1 mt-0.5">
                 <TooltipProvider>
@@ -452,7 +445,6 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
               <div className="text-[12px] text-muted-foreground font-medium">Forecast EOM</div>
               <div className={`text-xl font-semibold tabular-nums ${forecastOverBudget ? "text-destructive" : "text-muted-foreground"}`}>
                 {formatCurrency(data.forecast)}
-                {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
               </div>
               <div className="text-[11px] mt-0.5">
                 {forecastOverBudget
@@ -471,7 +463,6 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
               <div className="text-[12px] text-muted-foreground font-medium">Headroom</div>
               <div className={`text-xl font-semibold tabular-nums ${headroom < 0 ? "text-destructive" : "text-emerald-500"}`}>
                 {formatCurrency(headroom)}
-                {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
               </div>
               <div className="text-[11px] text-muted-foreground mt-0.5">
                 {headroom >= 0 ? "Remaining vs forecast" : "Overrun vs budget"}
@@ -494,12 +485,8 @@ function InfraTab({ appId }: { appId: string }) {
   const queryKey = getGetInfrastructureQueryKey(appId);
   const { data, isLoading, isFetching } = useGetInfrastructure(appId, undefined, { query: { enabled: !!appId, queryKey } });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/infrastructure`, queryKey);
-  const [infraCalloutDismissed, setInfraCalloutDismissed] = useState(false);
-
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No infrastructure data available</div>;
-
-  const showInfraCallout = data.dataSource === "mock" && !infraCalloutDismissed;
 
   return (
     <>
@@ -509,32 +496,6 @@ function InfraTab({ appId }: { appId: string }) {
         </div>
       )}
     <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
-      {showInfraCallout && (
-        <div className="flex items-start gap-3 rounded-none border border-blue-500/30 bg-blue-500/5 px-4 py-3 text-[13px]">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
-          <div className="flex-1 space-y-1">
-            <p className="font-medium text-foreground">Showing demo data — Azure not configured</p>
-            <p className="text-muted-foreground">
-              To stream live infrastructure data, set these environment variables on the API Container App:
-            </p>
-            <ul className="mt-1 space-y-0.5 text-muted-foreground">
-              <li><code className="bg-muted px-1 rounded text-[12px]">AZURE_SUBSCRIPTION_IDS</code> — comma-separated subscription GUIDs</li>
-              <li><code className="bg-muted px-1 rounded text-[12px]">AZURE_CLIENT_ID</code> — managed identity client ID (<code className="bg-muted px-1 rounded text-[12px]">id-orbit-api-prod</code>)</li>
-              <li><code className="bg-muted px-1 rounded text-[12px]">AZURE_TENANT_ID</code> — Entra tenant GUID</li>
-            </ul>
-            <p className="text-muted-foreground">
-              The managed identity also needs <strong>Reader</strong> on each subscription (for Resource Graph queries). See <code className="bg-muted px-1 rounded text-[12px]">replit.md</code> for the full setup guide.
-            </p>
-          </div>
-          <button
-            onClick={() => setInfraCalloutDismissed(true)}
-            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Dismiss"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <div className="lg:col-span-1 bg-card border border-border shadow-sm flex flex-col">
         <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
@@ -687,12 +648,8 @@ function TelemetryTab({ appId }: { appId: string }) {
   const queryKey = getGetTelemetryQueryKey(appId);
   const { data, isLoading, isFetching } = useGetTelemetry(appId, undefined, { query: { enabled: !!appId, queryKey } });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/telemetry`, queryKey);
-  const [monitorCalloutDismissed, setMonitorCalloutDismissed] = useState(false);
-
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No telemetry data available</div>;
-
-  const showMonitorCallout = data.dataSource === "mock" && !monitorCalloutDismissed;
 
   return (
     <>
@@ -711,33 +668,6 @@ function TelemetryTab({ appId }: { appId: string }) {
           <DataSourceBadge dataSource={data.dataSource} />
         </div>
       </div>
-      {showMonitorCallout && (
-        <div className="flex items-start gap-3 rounded-none border border-blue-500/30 bg-blue-500/5 px-4 py-3 text-[13px]">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
-          <div className="flex-1 space-y-1">
-            <p className="font-medium text-foreground">Showing demo data — Azure Monitor not configured</p>
-            <p className="text-muted-foreground">
-              To stream live telemetry, set these environment variables on the API Container App:
-            </p>
-            <ul className="mt-1 space-y-0.5 text-muted-foreground">
-              <li><code className="bg-muted px-1 rounded text-[12px]">AZURE_SUBSCRIPTION_IDS</code> — comma-separated subscription GUIDs</li>
-              <li><code className="bg-muted px-1 rounded text-[12px]">AZURE_CLIENT_ID</code> — managed identity client ID (<code className="bg-muted px-1 rounded text-[12px]">id-orbit-api-prod</code>)</li>
-              <li><code className="bg-muted px-1 rounded text-[12px]">AZURE_TENANT_ID</code> — Entra tenant GUID</li>
-              <li><code className="bg-muted px-1 rounded text-[12px]">AZURE_LOG_ANALYTICS_WORKSPACE_ID</code> — Log Analytics workspace ID (customer GUID, not resource ID)</li>
-            </ul>
-            <p className="text-muted-foreground">
-              The managed identity also needs <strong>Log Analytics Reader</strong> on the workspace. See <code className="bg-muted px-1 rounded text-[12px]">replit.md</code> for the full setup guide.
-            </p>
-          </div>
-          <button
-            onClick={() => setMonitorCalloutDismissed(true)}
-            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Dismiss"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Requests / Min</div>
@@ -864,7 +794,6 @@ function CostTab({ appId }: { appId: string }) {
   const rawBudgetUtilPct = data.budget > 0 ? (data.monthToDate / data.budget) * 100 : 0;
   const barBudgetUtilPct = Math.min(rawBudgetUtilPct, 100);
   const headroom = data.budget - data.forecast;
-  const isEstimated = data.dataSource === "mock";
   const forecastOverBudget = data.forecast > data.budget;
 
   return (
@@ -880,8 +809,7 @@ function CostTab({ appId }: { appId: string }) {
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
           <span>
             Forecast of <span className="font-semibold tabular-nums">{formatCurrency(data.forecast)}</span> exceeds the{" "}
-            <span className="font-semibold tabular-nums">{formatCurrency(data.budget)}</span> budget cap
-            {isEstimated ? <span className="text-amber-600/70 dark:text-amber-400/70"> (estimated)</span> : null}.
+            <span className="font-semibold tabular-nums">{formatCurrency(data.budget)}</span> budget cap.
             {" "}Headroom is <span className="font-semibold tabular-nums">{formatCurrency(headroom)}</span>.
           </span>
         </div>
@@ -913,7 +841,6 @@ function CostTab({ appId }: { appId: string }) {
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Budget Cap</div>
           <div className="text-xl font-semibold tabular-nums">
             {formatCurrency(data.budget)}
-            {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
           </div>
           <div className="space-y-1 mt-1.5">
             <TooltipProvider>
@@ -936,7 +863,6 @@ function CostTab({ appId }: { appId: string }) {
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Forecast EOM</div>
           <div className={`text-xl font-semibold tabular-nums ${forecastOverBudget ? "text-destructive" : "text-muted-foreground"}`}>
             {formatCurrency(data.forecast)}
-            {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
           </div>
           <div className="text-[11px] mt-0.5">
             {forecastOverBudget
@@ -950,7 +876,6 @@ function CostTab({ appId }: { appId: string }) {
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Headroom</div>
           <div className={`text-xl font-semibold tabular-nums ${headroom < 0 ? "text-destructive" : "text-emerald-500"}`}>
             {formatCurrency(headroom)}
-            {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
           </div>
           <div className="text-[11px] text-muted-foreground mt-0.5">
             {headroom >= 0 ? "Remaining vs forecast" : "Overrun vs budget"}
