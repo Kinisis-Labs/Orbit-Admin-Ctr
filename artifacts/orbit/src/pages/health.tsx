@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { Link } from "wouter";
 import {
   useListSlos,
@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi, WifiOff, History, Info } from "lucide-react";
+import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi, WifiOff, History, Info, Search, X } from "lucide-react";
 import {
   AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -205,6 +205,9 @@ const HISTORY_PAGE_SIZE = 50;
 function ThresholdHistoryContent({ appId }: { appId: string }) {
   const [offset, setOffset] = useState(0);
   const [allItems, setAllItems] = useState<AppThresholdsLogEntry[]>([]);
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const { data, isLoading, isFetching } = useListAppThresholdsLog(
     appId,
@@ -226,6 +229,21 @@ function ThresholdHistoryContent({ appId }: { appId: string }) {
 
   const total = data?.total ?? 0;
   const hasMore = allItems.length < total;
+
+  const filtersActive = search.trim() !== "" || dateFrom !== "" || dateTo !== "";
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const from = dateFrom ? new Date(dateFrom).getTime() : null;
+    const to = dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : null;
+    return allItems.filter((entry) => {
+      if (q && !entry.changedBy.toLowerCase().includes(q)) return false;
+      const t = new Date(entry.changedAt).getTime();
+      if (from !== null && t < from) return false;
+      if (to !== null && t > to) return false;
+      return true;
+    });
+  }, [allItems, search, dateFrom, dateTo]);
 
   const fmt = (v: number | null | undefined) =>
     v != null ? `${v}%` : <span className="text-muted-foreground italic">—</span>;
@@ -261,37 +279,99 @@ function ThresholdHistoryContent({ appId }: { appId: string }) {
   }
   return (
     <div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="text-[12px] py-2">When</TableHead>
-            <TableHead className="text-[12px] py-2">Changed by</TableHead>
-            <TableHead className="text-[12px] py-2 text-right">CPU before</TableHead>
-            <TableHead className="text-[12px] py-2 text-right">CPU after</TableHead>
-            <TableHead className="text-[12px] py-2 text-right">Mem before</TableHead>
-            <TableHead className="text-[12px] py-2 text-right">Mem after</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {allItems.map((entry) => (
-            <TableRow key={entry.id}>
-              <TableCell className="text-[12px] py-1.5 whitespace-nowrap">
-                {format(new Date(entry.changedAt), "MMM d, yyyy HH:mm")}
-              </TableCell>
-              <TableCell className="text-[12px] py-1.5 max-w-[160px] truncate" title={entry.changedBy}>
-                {entry.changedBy}
-              </TableCell>
-              <TableCell className="text-[12px] py-1.5 text-right">{fmt(entry.oldCpuThreshold)}</TableCell>
-              <TableCell className="text-[12px] py-1.5 text-right font-medium">{fmt(entry.newCpuThreshold)}</TableCell>
-              <TableCell className="text-[12px] py-1.5 text-right">{fmt(entry.oldMemoryThreshold)}</TableCell>
-              <TableCell className="text-[12px] py-1.5 text-right font-medium">{fmt(entry.newMemoryThreshold)}</TableCell>
+      <div className="flex flex-wrap items-center gap-2 px-1 pb-3">
+        <div className="relative flex-1 min-w-[160px]">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Filter by changed by…"
+            className="h-7 text-[12px] pl-7 pr-6"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          <span className="shrink-0">From</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            max={dateTo || undefined}
+            className="h-7 rounded-md border border-input bg-background px-2 text-[12px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          <span className="shrink-0">To</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            min={dateFrom || undefined}
+            className="h-7 rounded-md border border-input bg-background px-2 text-[12px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+        {filtersActive && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-[12px] px-2 text-muted-foreground"
+            onClick={() => { setSearch(""); setDateFrom(""); setDateTo(""); }}
+          >
+            <X className="h-3 w-3 mr-1" />
+            Clear
+          </Button>
+        )}
+      </div>
+      {filteredItems.length === 0 ? (
+        <p className="text-[13px] text-muted-foreground px-2 py-6 text-center">
+          No entries match the current filters.
+        </p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-[12px] py-2">When</TableHead>
+              <TableHead className="text-[12px] py-2">Changed by</TableHead>
+              <TableHead className="text-[12px] py-2 text-right">CPU before</TableHead>
+              <TableHead className="text-[12px] py-2 text-right">CPU after</TableHead>
+              <TableHead className="text-[12px] py-2 text-right">Mem before</TableHead>
+              <TableHead className="text-[12px] py-2 text-right">Mem after</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {filteredItems.map((entry) => (
+              <TableRow key={entry.id}>
+                <TableCell className="text-[12px] py-1.5 whitespace-nowrap">
+                  {format(new Date(entry.changedAt), "MMM d, yyyy HH:mm")}
+                </TableCell>
+                <TableCell className="text-[12px] py-1.5 max-w-[160px] truncate" title={entry.changedBy}>
+                  {entry.changedBy}
+                </TableCell>
+                <TableCell className="text-[12px] py-1.5 text-right">{fmt(entry.oldCpuThreshold)}</TableCell>
+                <TableCell className="text-[12px] py-1.5 text-right font-medium">{fmt(entry.newCpuThreshold)}</TableCell>
+                <TableCell className="text-[12px] py-1.5 text-right">{fmt(entry.oldMemoryThreshold)}</TableCell>
+                <TableCell className="text-[12px] py-1.5 text-right font-medium">{fmt(entry.newMemoryThreshold)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+      {filtersActive && allItems.length < total && (
+        <p className="px-2 pt-2 text-[11px] text-muted-foreground text-center">
+          Filters apply to the {allItems.length} loaded entries — load more to search further.
+        </p>
+      )}
       {hasMore && (
         <div className="flex items-center justify-between px-2 py-2 border-t text-[12px] text-muted-foreground">
-          <span>Showing {allItems.length} of {total}</span>
+          <span>Showing {allItems.length} of {total} loaded</span>
           <Button
             size="sm"
             variant="ghost"
