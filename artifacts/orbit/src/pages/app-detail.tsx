@@ -21,13 +21,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { 
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { DailySpendChart } from "@/components/daily-spend-chart";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone, Database } from "lucide-react";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone, Database, Bell } from "lucide-react";
 
 const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
@@ -46,6 +46,7 @@ import { useScope } from "@/lib/scope-context";
 import { AccessDenied } from "@/components/access-denied";
 import { useToast } from "@/hooks/use-toast";
 import { BAR_COLOR_DEFAULT, BAR_COLOR_UP_MILD, BAR_COLOR_UP_HIGH, BAR_COLOR_DOWN, getBarFill } from "@/lib/bar-trend";
+import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
 
 export default function AppDetail() {
   const params = useParams();
@@ -53,6 +54,9 @@ export default function AppDetail() {
   const { hasGroup } = useAuth();
   const canSeeCost = hasGroup(COST_READER_GROUP.id);
   const [activeTab, setActiveTab] = useState("overview");
+
+  const recentAlerts = useRecentBudgetAlerts(canSeeCost, appId);
+  const recentAlertDate = recentAlerts.get(appId);
 
   const { data: app, isLoading: appLoading } = useGetApp(appId, { query: { enabled: !!appId, queryKey: getGetAppQueryKey(appId) } });
 
@@ -90,6 +94,20 @@ export default function AppDetail() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-semibold tracking-tight">{app.name}</h1>
+            {canSeeCost && recentAlertDate && (
+              <TooltipProvider>
+                <UITooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex items-center">
+                      <Bell className="h-4 w-4 text-amber-500 shrink-0" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Budget alert sent {formatDistanceToNow(recentAlertDate, { addSuffix: true })}
+                  </TooltipContent>
+                </UITooltip>
+              </TooltipProvider>
+            )}
           </div>
         </div>
 
