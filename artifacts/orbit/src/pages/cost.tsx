@@ -604,10 +604,10 @@ function GlobalCost() {
           <TableBody>
             {isLoading ? (
               <SkeletonRows cols={3} rows={3} />
-            ) : cost?.byApp.length === 0 ? (
+            ) : cost?.byApp?.length === 0 ? (
               <TableRow><TableCell colSpan={3} className="text-center py-6 text-muted-foreground">No cost data available</TableCell></TableRow>
             ) : (
-              cost?.byApp.map((item) => (
+              cost?.byApp?.map((item) => (
                 <TableRow key={item.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
                   <TableCell className="py-1 font-medium">
                     <div className="flex items-center gap-1.5">

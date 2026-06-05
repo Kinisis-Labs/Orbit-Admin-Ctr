@@ -460,7 +460,12 @@ async function syncAndReadRevenue(app: AppRecord): Promise<{ stripe: number; app
       }
     }
   }
-  return getLedgerMonthRevenue(app.id);
+  try {
+    return await getLedgerMonthRevenue(app.id);
+  } catch {
+    // Non-fatal: ledger table may not exist yet in a fresh environment.
+    return { stripe: 0, appStore: 0, playStore: 0 };
+  }
 }
 
 function buildRevenueDto(r: { stripe: number; appStore: number; playStore: number }) {
