@@ -632,21 +632,39 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
   const rand = seededRand(app.id + "tel");
   const sick = app.status === "unhealthy";
 
-  // Fetch point-in-time summary and all three time-series in parallel.
-  const [liveMetrics, liveRpmSeries, liveLatenSeries, liveErrSeries] =
+  // Fetch point-in-time summary and all five time-series in parallel.
+  // CPU and memory come only from Log Analytics (performanceCounters); they are
+  // not available through the Azure Monitor Metrics API used by fetchAppMetrics.
+  const [liveMetrics, liveRpmSeries, liveLatenSeries, liveErrSeries, liveCpuSeries, liveMemSeries] =
     await Promise.all([
       fetchAppMetrics(app, { bypassCache }),
       fetchAppTimeSeries(app, "requests_per_min", 24, { bypassCache }),
       fetchAppTimeSeries(app, "p95_latency_ms", 24, { bypassCache }),
       fetchAppTimeSeries(app, "error_rate_pct", 24, { bypassCache }),
+      fetchAppTimeSeries(app, "cpu_pct", 24, { bypassCache }),
+      fetchAppTimeSeries(app, "memory_pct", 24, { bypassCache }),
     ]);
 
+  // Derive current CPU / memory scalars from the last live series point.
+  // When Monitor is not configured these remain undefined (optional fields).
+  const lastPoint = (series: typeof liveCpuSeries) =>
+    series && series.length > 0 ? series[series.length - 1]!.value : undefined;
+  const liveCpuPct = lastPoint(liveCpuSeries);
+  const liveMemPct = lastPoint(liveMemSeries);
+
+  // Mock scalars (seeded, stable per-app) used as fallback when Monitor is off.
+  const mockCpuPct = Number((20 + rand() * 60).toFixed(1));
+  const mockMemPct = Number((30 + rand() * 50).toFixed(1));
+
+  const isLive = Boolean(liveMetrics || liveCpuSeries || liveMemSeries);
 
   const data = GetTelemetryResponse.parse({
     requestsPerMin: liveMetrics?.requestsPerMin ?? Number((400 + rand() * 1200).toFixed(0)),
     p95LatencyMs: liveMetrics?.p95LatencyMs ?? Number(((sick ? 800 : 220) + rand() * 200).toFixed(0)),
     errorRatePercent: liveMetrics?.errorRatePercent ?? Number(((sick ? 4.2 : 0.3) + rand() * 0.6).toFixed(2)),
     availabilityPercent: liveMetrics?.availabilityPercent ?? Number((sick ? 97.4 : 99.92).toFixed(2)),
+    cpuPercent: liveCpuPct ?? (isLive ? undefined : mockCpuPct),
+    memoryPercent: liveMemPct ?? (isLive ? undefined : mockMemPct),
     series: [
       {
         ...makeSeries(app.id, "Requests / min", "rpm", 24, liveMetrics?.requestsPerMin ?? 800, 300),
@@ -659,6 +677,14 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
       {
         ...makeSeries(app.id, "Error rate (%)", "%", 24, liveMetrics?.errorRatePercent ?? (sick ? 4 : 0.4), 1.2),
         points: liveErrSeries ?? makeSeries(app.id, "Error rate (%)", "%", 24, liveMetrics?.errorRatePercent ?? (sick ? 4 : 0.4), 1.2).points,
+      },
+      {
+        ...makeSeries(app.id, "CPU %", "%", 24, sick ? 85 : 45, 25),
+        points: liveCpuSeries ?? makeSeries(app.id, "CPU %", "%", 24, sick ? 85 : 45, 25).points,
+      },
+      {
+        ...makeSeries(app.id, "Memory %", "%", 24, sick ? 88 : 60, 20),
+        points: liveMemSeries ?? makeSeries(app.id, "Memory %", "%", 24, sick ? 88 : 60, 20).points,
       },
     ],
     topErrors: [
@@ -678,7 +704,7 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
         lastSeen: new Date(Date.now() - 1000 * 60 * 67).toISOString(),
       },
     ],
-    dataSource: liveMetrics ? "live" : "mock",
+    dataSource: isLive ? "live" : "mock",
   });
   res.json(data);
 });

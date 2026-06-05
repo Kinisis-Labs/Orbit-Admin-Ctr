@@ -201,6 +201,8 @@ export const GetTelemetryResponse = zod.object({
   "p95LatencyMs": zod.number(),
   "errorRatePercent": zod.number(),
   "availabilityPercent": zod.number(),
+  "cpuPercent": zod.number().optional().describe('Current CPU utilisation % derived from the last Log Analytics time-series point. Absent when Monitor is not configured.'),
+  "memoryPercent": zod.number().optional().describe('Current memory utilisation % derived from the last Log Analytics time-series point. Absent when Monitor is not configured.'),
   "series": zod.array(zod.object({
   "name": zod.string(),
   "unit": zod.string(),

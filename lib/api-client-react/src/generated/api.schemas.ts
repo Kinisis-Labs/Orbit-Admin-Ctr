@@ -569,6 +569,10 @@ export interface TelemetryReport {
   p95LatencyMs: number;
   errorRatePercent: number;
   availabilityPercent: number;
+  /** Current CPU utilisation % derived from the last Log Analytics time-series point. Absent when Monitor is not configured. */
+  cpuPercent?: number;
+  /** Current memory utilisation % derived from the last Log Analytics time-series point. Absent when Monitor is not configured. */
+  memoryPercent?: number;
   series: MetricSeries[];
   topErrors: TopError[];
   /** Indicates whether telemetry comes from live Azure Monitor / Application Insights or built-in mock values. */
@@ -908,13 +912,13 @@ appId?: string;
  * Maximum number of entries to return (default 50, max 200).
  */
 limit?: number;
-  /**
-   * When true, only return entries that have not yet been acknowledged.
-   */
-  unacknowledgedOnly?: boolean;
-  /**
-   * ISO 8601 datetime. When set, only return entries with sentAt >= since.
-   */
-  since?: string;
+/**
+ * When true, only return entries that have not yet been acknowledged.
+ */
+unacknowledgedOnly?: boolean;
+/**
+ * ISO 8601 datetime. When set, only return entries with sentAt >= since.
+ */
+since?: string;
 };
 

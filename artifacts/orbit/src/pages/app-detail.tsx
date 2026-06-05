@@ -662,7 +662,7 @@ function TelemetryTab({ appId }: { appId: string }) {
           <DataSourceBadge dataSource={data.dataSource} />
         </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Requests / Min</div>
           <div className="text-xl font-semibold tabular-nums">{data.requestsPerMin.toLocaleString()}</div>
@@ -678,6 +678,26 @@ function TelemetryTab({ appId }: { appId: string }) {
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Availability</div>
           <div className="text-xl font-semibold tabular-nums text-[#7FBA00]">{data.availabilityPercent}%</div>
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">CPU %</div>
+          {data.cpuPercent != null ? (
+            <div className={`text-xl font-semibold tabular-nums ${data.cpuPercent >= 80 ? "text-destructive" : data.cpuPercent >= 60 ? "text-amber-500" : ""}`}>
+              {data.cpuPercent}%
+            </div>
+          ) : (
+            <div className="text-xl font-semibold tabular-nums text-muted-foreground">—</div>
+          )}
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Memory %</div>
+          {data.memoryPercent != null ? (
+            <div className={`text-xl font-semibold tabular-nums ${data.memoryPercent >= 85 ? "text-destructive" : data.memoryPercent >= 70 ? "text-amber-500" : ""}`}>
+              {data.memoryPercent}%
+            </div>
+          ) : (
+            <div className="text-xl font-semibold tabular-nums text-muted-foreground">—</div>
+          )}
         </div>
       </div>
 

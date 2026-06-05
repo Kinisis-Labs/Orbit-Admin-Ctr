@@ -901,6 +901,8 @@ components:
         p95LatencyMs: { type: number }
         errorRatePercent: { type: number }
         availabilityPercent: { type: number }
+        cpuPercent: { type: number, description: "Current CPU utilisation % derived from the last Log Analytics time-series point. Absent when Monitor is not configured." }
+        memoryPercent: { type: number, description: "Current memory utilisation % derived from the last Log Analytics time-series point. Absent when Monitor is not configured." }
         series:
           type: array
           items: { $ref: "#/components/schemas/MetricSeries" }
