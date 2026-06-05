@@ -654,6 +654,9 @@ function CostTab({ appId }: { appId: string }) {
 
   const rawBudgetUtilPct = data.budget > 0 ? (data.monthToDate / data.budget) * 100 : 0;
   const barBudgetUtilPct = Math.min(rawBudgetUtilPct, 100);
+  const headroom = data.budget - data.forecast;
+  const isEstimated = data.dataSource === "mock";
+  const forecastOverBudget = data.forecast > data.budget;
 
   return (
     <>
@@ -673,8 +676,9 @@ function CostTab({ appId }: { appId: string }) {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+        {/* MTD Spend */}
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-          <div className="text-[12px] text-muted-foreground font-medium mb-1">Accumulated Cost (MTD)</div>
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">MTD Spend</div>
           <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.monthToDate)}</div>
           {data.dataSource && (
             <div className="mt-2">
@@ -682,26 +686,15 @@ function CostTab({ appId }: { appId: string }) {
             </div>
           )}
         </div>
+
+        {/* Budget Cap */}
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-          <div className="text-[12px] text-muted-foreground font-medium mb-1">Forecast</div>
-          <div className="text-xl font-semibold tabular-nums text-muted-foreground">{formatCurrency(data.forecast)}</div>
-        </div>
-        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-          <div className="text-[12px] text-muted-foreground font-medium mb-1">API usage (MTD)</div>
-          <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.apiUsage.cost)}</div>
-          <div className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
-            {new Intl.NumberFormat("en-US").format(data.apiUsage.totalCalls)} calls
-            <span className="mx-1">·</span>
-            {formatCurrency(data.apiUsage.costPerMillion)}/M
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Budget Cap</div>
+          <div className="text-xl font-semibold tabular-nums">
+            {formatCurrency(data.budget)}
+            {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
           </div>
-        </div>
-        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-          <div className="text-[12px] text-muted-foreground font-medium mb-1">Budget Tracking</div>
-          <div className="space-y-1 mt-1">
-            <div className="flex justify-between text-[11px]">
-              <span className="font-semibold tabular-nums text-foreground">{formatCurrency(data.monthToDate)}</span>
-              <span className="text-muted-foreground tabular-nums">of {formatCurrency(data.budget)}</span>
-            </div>
+          <div className="space-y-1 mt-1.5">
             <TooltipProvider>
               <UITooltip>
                 <TooltipTrigger asChild>
@@ -710,9 +703,36 @@ function CostTab({ appId }: { appId: string }) {
                     className={`h-1.5 rounded-none bg-muted ${getBudgetBarClass(barBudgetUtilPct, budgetThreshold)} cursor-default`}
                   />
                 </TooltipTrigger>
-                <TooltipContent>Alert at {budgetThreshold}% · {rawBudgetUtilPct.toFixed(0)}% used</TooltipContent>
+                <TooltipContent>Alert at {budgetThreshold}% · {rawBudgetUtilPct.toFixed(0)}% utilized</TooltipContent>
               </UITooltip>
             </TooltipProvider>
+            <div className="text-[11px] text-muted-foreground tabular-nums">{rawBudgetUtilPct.toFixed(0)}% of cap used MTD</div>
+          </div>
+        </div>
+
+        {/* Forecast EOM */}
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Forecast EOM</div>
+          <div className={`text-xl font-semibold tabular-nums ${forecastOverBudget ? "text-destructive" : "text-muted-foreground"}`}>
+            {formatCurrency(data.forecast)}
+            {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
+          </div>
+          <div className="text-[11px] mt-0.5">
+            {forecastOverBudget
+              ? <span className="text-destructive">Projected to exceed cap</span>
+              : <span className="text-muted-foreground">Projected end-of-month</span>}
+          </div>
+        </div>
+
+        {/* Headroom */}
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Headroom</div>
+          <div className={`text-xl font-semibold tabular-nums ${headroom < 0 ? "text-destructive" : "text-emerald-500"}`}>
+            {formatCurrency(headroom)}
+            {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
+          </div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">
+            {headroom >= 0 ? "Remaining vs forecast" : "Overrun vs budget"}
           </div>
         </div>
       </div>
