@@ -113,17 +113,21 @@ async function checkNetworkResourceGraph(): Promise<CheckResult> {
       query: `
         resources
         | where type in~ (
+            'microsoft.app/containerapp',
+            'microsoft.app/managedenvironments',
             'microsoft.network/frontdoors',
             'microsoft.cdn/profiles',
             'microsoft.network/applicationgateways',
-            'microsoft.network/virtualnetworks',
+            'microsoft.network/networksecuritygroups',
+            'microsoft.network/publicipaddresses',
+            'microsoft.network/loadbalancers',
+            'microsoft.network/networkwatchers',
             'microsoft.network/privatednszones',
-            'microsoft.network/dnszones',
-            'microsoft.network/networkwatchers'
+            'microsoft.network/dnszones'
           )
         | project id, name, type, resourceGroup, location
         | order by type asc
-        | limit 50
+        | limit 100
       `,
     });
     const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];

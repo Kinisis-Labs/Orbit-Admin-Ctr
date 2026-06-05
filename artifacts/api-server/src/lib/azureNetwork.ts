@@ -44,22 +44,19 @@ type NetworkCacheEntry = { result: NetworkEndpoint[]; expiresAt: number };
 const _networkCache = new Map<string, NetworkCacheEntry>();
 
 /**
- * Fetch networking resource health for the subscriptions via Resource Graph.
- * Queries subscription-wide (not scoped to the app's compute RG) because shared
- * resources like Front Door and DNS zones live in different RGs. Includes:
- *   - Azure Front Door / CDN profiles (microsoft.cdn/profiles)
- *   - Classic Front Door (microsoft.network/frontdoors)
- *   - Application Gateways
- *   - Virtual Networks
- *   - Private DNS zones / Public DNS zones
- *   - Network Watchers  ← requires Network Watcher Reader
+ * Fetch network-relevant endpoint data for the subscriptions via Resource Graph.
  *
- * Returns null when not configured or on any error (caller falls back to mock).
- * Returns [] when configured but no matching resources found.
+ * Covers the Container Apps topology (no customer-owned VNets):
+ *   - Container Apps with external ingress  → these ARE the exposed endpoints
+ *   - Container Apps Environments           → network boundary / managed env health
+ *   - Azure Front Door / CDN profiles       → global entry point (if in these subs)
+ *   - Application Gateways, Network Watchers (if any)
+ *   - NSGs, Public IPs, Load Balancers      → optional infra-level resources
  *
  * Results are cached in-process for NETWORK_CACHE_TTL_MS (10 min). Pass
- * `bypassCache: true` to skip the cache and force a fresh API call (the fresh
- * result is still written back to the cache).
+ * `bypassCache: true` to force a fresh API call.
+ *
+ * Returns null on error, [] when configured but no matching resources found.
  */
 export async function fetchNetworkEndpoints(
   app: AppRecord,
@@ -76,19 +73,23 @@ export async function fetchNetworkEndpoints(
 
   const subscriptionIds = getSubscriptionIds();
 
-  // Query networking resources subscription-wide (not scoped to the app's compute RG)
-  // because shared resources like Front Door and DNS zones live in different RGs.
-  // Includes Network Watchers — requires Network Watcher Reader role.
+  // Query subscription-wide — shared resources (Front Door, Container Apps Envs) live
+  // in different RGs from the compute RG.  Container Apps is the primary source of truth
+  // here since these deployments use managed networking (no customer-owned VNets).
   const query = `
     resources
     | where type in~ (
+        'microsoft.app/containerapp',
+        'microsoft.app/managedenvironments',
         'microsoft.network/frontdoors',
         'microsoft.cdn/profiles',
         'microsoft.network/applicationgateways',
-        'microsoft.network/virtualnetworks',
+        'microsoft.network/networksecuritygroups',
+        'microsoft.network/publicipaddresses',
+        'microsoft.network/loadbalancers',
+        'microsoft.network/networkwatchers',
         'microsoft.network/privatednszones',
-        'microsoft.network/dnszones',
-        'microsoft.network/networkwatchers'
+        'microsoft.network/dnszones'
       )
     | project
         id,
@@ -98,9 +99,12 @@ export async function fetchNetworkEndpoints(
         location,
         resourceGroup,
         provisioningState = tostring(properties.provisioningState),
-        operationalState  = tostring(properties.operationalState)
+        operationalState  = tostring(properties.operationalState),
+        fqdn              = tostring(properties.configuration.ingress.fqdn),
+        ingressExternal   = tobool(properties.configuration.ingress.external),
+        staticIp          = tostring(properties.staticIp)
     | order by type asc
-    | limit 50
+    | limit 100
   `;
 
   try {
@@ -118,7 +122,7 @@ export async function fetchNetworkEndpoints(
 
     if (rows.length === 0) return [];
 
-    const endpoints: NetworkEndpoint[] = rows.map((row) => {
+    const endpoints: NetworkEndpoint[] = rows.flatMap((row) => {
       const type = String(row["type"] ?? "").toLowerCase();
       const kind = String(row["kind"] ?? "").toLowerCase();
       const provisioningState = String(row["provisioningState"] ?? "");
@@ -126,41 +130,56 @@ export async function fetchNetworkEndpoints(
       const status = mapNetworkStatus(provisioningState, operationalState);
       const location = String(row["location"] ?? app.region);
       const resourceName = String(row["name"] ?? "");
+      const fqdn = String(row["fqdn"] ?? "");
+      const ingressExternal = row["ingressExternal"] === true;
 
-      // Derive a friendly name and typical latency range by resource type.
-      let displayName: string;
-      let baseLatency: number;
-
-      if (type.includes("frontdoor") || (type.includes("cdn/profiles") && kind.includes("frontdoor"))) {
-        displayName = `Front Door — ${resourceName}`;
-        baseLatency = 35;
-      } else if (type.includes("cdn/profiles")) {
-        displayName = `CDN — ${resourceName}`;
-        baseLatency = 30;
-      } else if (type.includes("applicationgateway")) {
-        displayName = `App Gateway — ${resourceName}`;
-        baseLatency = 12;
-      } else if (type.includes("virtualnetwork")) {
-        displayName = `VNet — ${resourceName}`;
-        baseLatency = 4;
-      } else if (type.includes("privatednszones") || type.includes("dnszones")) {
-        displayName = `DNS — ${resourceName}`;
-        baseLatency = 1;
-      } else if (type.includes("networkwatchers")) {
-        displayName = `Network Watcher — ${resourceName}`;
-        baseLatency = 0;
-      } else {
-        displayName = resourceName || "Network Resource";
-        baseLatency = 10;
+      if (type === "microsoft.app/containerapp") {
+        // Only surface Container Apps with external ingress — internal ones have no
+        // public endpoint to probe.
+        if (!ingressExternal && !fqdn) return [];
+        const label = fqdn ? `${resourceName} (${fqdn})` : resourceName;
+        return [{ name: `Container App — ${label}`, status, latencyMs: 8, packetLossPercent: 0, region: location }];
       }
 
-      return {
-        name: displayName,
-        status,
-        latencyMs: baseLatency,
-        packetLossPercent: status === "healthy" ? 0 : 0.5,
-        region: location,
-      };
+      if (type === "microsoft.app/managedenvironments") {
+        return [{ name: `Container Apps Env — ${resourceName}`, status, latencyMs: 0, packetLossPercent: 0, region: location }];
+      }
+
+      if (type.includes("frontdoor") || (type.includes("cdn/profiles") && kind.includes("frontdoor"))) {
+        return [{ name: `Front Door — ${resourceName}`, status, latencyMs: 35, packetLossPercent: 0, region: location }];
+      }
+
+      if (type.includes("cdn/profiles")) {
+        return [{ name: `CDN — ${resourceName}`, status, latencyMs: 30, packetLossPercent: 0, region: location }];
+      }
+
+      if (type.includes("applicationgateway")) {
+        return [{ name: `App Gateway — ${resourceName}`, status, latencyMs: 12, packetLossPercent: 0, region: location }];
+      }
+
+      if (type.includes("networksecuritygroups")) {
+        return [{ name: `NSG — ${resourceName}`, status, latencyMs: 0, packetLossPercent: 0, region: location }];
+      }
+
+      if (type.includes("publicipaddresses")) {
+        const ip = String(row["staticIp"] ?? "");
+        const label = ip ? `${resourceName} (${ip})` : resourceName;
+        return [{ name: `Public IP — ${label}`, status, latencyMs: 0, packetLossPercent: 0, region: location }];
+      }
+
+      if (type.includes("loadbalancers")) {
+        return [{ name: `Load Balancer — ${resourceName}`, status, latencyMs: 2, packetLossPercent: 0, region: location }];
+      }
+
+      if (type.includes("networkwatchers")) {
+        return [{ name: `Network Watcher — ${resourceName}`, status, latencyMs: 0, packetLossPercent: 0, region: location }];
+      }
+
+      if (type.includes("dnszones") || type.includes("privatednszones")) {
+        return [{ name: `DNS — ${resourceName}`, status, latencyMs: 1, packetLossPercent: 0, region: location }];
+      }
+
+      return [{ name: resourceName, status, latencyMs: 0, packetLossPercent: 0, region: location }];
     });
 
     _networkCache.set(app.id, { result: endpoints, expiresAt: Date.now() + NETWORK_CACHE_TTL_MS });
