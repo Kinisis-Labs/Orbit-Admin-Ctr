@@ -20,7 +20,8 @@ export type PlaySubscriptionRow = {
   revenueLast30d: number;
   currency: string;
   activeTrendPct: number;
-  dataSource: "placeholder" | "live";
+  dataSource: "placeholder" | "live" | "cached";
+  dataAsOf?: string;
 };
 
 // The real Google Play connection activates only when all of these are present,

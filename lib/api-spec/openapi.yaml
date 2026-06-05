@@ -599,7 +599,8 @@ components:
         revenueLast30d: { type: number, description: Subscription revenue over the trailing 30 days }
         currency: { type: string }
         activeTrendPct: { type: number, description: Active-subscriber change vs the prior period }
-        dataSource: { type: string, enum: [placeholder, live] }
+        dataSource: { type: string, enum: [placeholder, live, cached] }
+        dataAsOf: { type: string, format: date-time, description: "Timestamp of when subscription data was last fetched from Google Play. Only present when dataSource is live or cached." }
     AppleSubscriptionRow:
       type: object
       required: [appId, appName, environment, bundleId, activeSubscribers, canceledSubscribers, expiredSubscribers, mrr, revenueLast30d, currency, activeTrendPct, dataSource]

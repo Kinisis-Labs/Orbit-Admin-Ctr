@@ -121,6 +121,7 @@ export type PlaySubscriptionRowDataSource = typeof PlaySubscriptionRowDataSource
 export const PlaySubscriptionRowDataSource = {
   placeholder: 'placeholder',
   live: 'live',
+  cached: 'cached',
 } as const;
 
 export interface PlaySubscriptionRow {
@@ -142,6 +143,8 @@ export interface PlaySubscriptionRow {
   /** Active-subscriber change vs the prior period */
   activeTrendPct: number;
   dataSource: PlaySubscriptionRowDataSource;
+  /** Timestamp of when subscription data was last fetched from Google Play. Only present when dataSource is live or cached. */
+  dataAsOf?: string;
 }
 
 export type AppleSubscriptionRowDataSource = typeof AppleSubscriptionRowDataSource[keyof typeof AppleSubscriptionRowDataSource];

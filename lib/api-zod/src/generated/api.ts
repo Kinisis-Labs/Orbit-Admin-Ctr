@@ -531,7 +531,8 @@ export const ListPlaySubscriptionsResponseItem = zod.object({
   "revenueLast30d": zod.number().describe('Subscription revenue over the trailing 30 days'),
   "currency": zod.string(),
   "activeTrendPct": zod.number().describe('Active-subscriber change vs the prior period'),
-  "dataSource": zod.enum(['placeholder', 'live'])
+  "dataSource": zod.enum(['placeholder', 'live', 'cached']),
+  "dataAsOf": zod.string().datetime({"offset":true}).optional().describe('Timestamp of when subscription data was last fetched from Google Play. Only present when dataSource is live or cached.')
 })
 export const ListPlaySubscriptionsResponse = zod.array(ListPlaySubscriptionsResponseItem)
 

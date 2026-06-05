@@ -26,4 +26,6 @@ export interface PlaySubscriptionRow {
   /** Active-subscriber change vs the prior period */
   activeTrendPct: number;
   dataSource: PlaySubscriptionRowDataSource;
+  /** Timestamp of when subscription data was last fetched from Google Play. Only present when dataSource is live or cached. */
+  dataAsOf?: string;
 }

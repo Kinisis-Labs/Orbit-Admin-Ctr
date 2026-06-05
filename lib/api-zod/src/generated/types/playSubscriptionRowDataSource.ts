@@ -12,4 +12,5 @@ export type PlaySubscriptionRowDataSource = typeof PlaySubscriptionRowDataSource
 export const PlaySubscriptionRowDataSource = {
   placeholder: 'placeholder',
   live: 'live',
+  cached: 'cached',
 } as const;
