@@ -591,7 +591,9 @@ router.get("/apps/:appId/cost", async (req, res) => {
   // Budget: prefer real Azure Budget resource or DB snapshot; fall back to 2× MTD formula.
   const budget = budgetWithSource?.result.amount ?? Number((mtd * 2.0).toFixed(2));
   // Forecast: prefer Azure Forecast API result or DB snapshot; fall back to 1.7× MTD formula.
-  const forecast = budgetWithSource?.result.forecastAmount ?? Number((mtd * 1.7).toFixed(2));
+  // In demo mode the Orbit app itself uses 2.3× to illustrate a budget-overrun warning.
+  const forecastMultiplier = !budgetWithSource && app.id === "orbit" ? 2.3 : 1.7;
+  const forecast = budgetWithSource?.result.forecastAmount ?? Number((mtd * forecastMultiplier).toFixed(2));
   const budgetDataSource = budgetWithSource?.source ?? "estimated";
 
   const data = GetCostResponse.parse({

@@ -54,6 +54,13 @@ export default function AppDetail() {
 
   const { data: app, isLoading: appLoading } = useGetApp(appId, { query: { enabled: !!appId, queryKey: getGetAppQueryKey(appId) } });
 
+  // Fetch cost data here so the tab trigger can show a warning badge without an extra network request
+  // (React Query serves the same cache key used inside CostTab, so no duplicate fetch)
+  const { data: costData } = useGetCost(appId, undefined, {
+    query: { enabled: !!appId && canSeeCost, queryKey: getGetCostQueryKey(appId) },
+  });
+  const forecastOverBudget = costData ? costData.forecast > costData.budget : false;
+
   if (appLoading) {
     return (
       <div className="space-y-4">
@@ -113,6 +120,18 @@ export default function AppDetail() {
             <span className="inline-flex items-center gap-1.5">
               Cost
               {!canSeeCost && <Lock className="h-3 w-3" />}
+              {canSeeCost && forecastOverBudget && (
+                <TooltipProvider>
+                  <UITooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-amber-500/15 border border-amber-500/40">
+                        <AlertTriangle className="h-2.5 w-2.5 text-amber-500" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Forecast exceeds budget cap</TooltipContent>
+                  </UITooltip>
+                </TooltipProvider>
+              )}
             </span>
           </TabsTrigger>
           <TabsTrigger value="ledger" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">
@@ -695,6 +714,17 @@ function CostTab({ appId }: { appId: string }) {
         </div>
       )}
     <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
+      {forecastOverBudget && (
+        <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-sm border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[12px]">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
+          <span>
+            Forecast of <span className="font-semibold tabular-nums">{formatCurrency(data.forecast)}</span> exceeds the{" "}
+            <span className="font-semibold tabular-nums">{formatCurrency(data.budget)}</span> budget cap
+            {isEstimated ? <span className="text-amber-600/70 dark:text-amber-400/70"> (estimated)</span> : null}.
+            {" "}Headroom is <span className="font-semibold tabular-nums">{formatCurrency(headroom)}</span>.
+          </span>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground font-medium">Month-to-date cost breakdown</span>
         <div className="flex items-center gap-2">
