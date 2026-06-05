@@ -34,9 +34,16 @@
  *                                          e.g. ALERT_COOLDOWN_HOURS__GRAILBABE=24
  *
  * Infra thresholds:
+ *   Resolution order (highest → lowest priority) for CPU and memory thresholds:
+ *     1. ALERT_CPU_THRESHOLD_PCT__<APPID>  — per-app env-var override
+ *     2. app.cpuThreshold                  — APPS inventory baseline (set per app in orbit.ts)
+ *     3. ALERT_CPU_THRESHOLD_PCT           — global env var (default 80)
+ *
  *   ALERT_CPU_THRESHOLD_PCT              — CPU % above which an alert fires (default 80)
  *   ALERT_CPU_THRESHOLD_PCT__<APPID>     — per-app override (upper-cased, hyphens → underscores)
  *                                          e.g. ALERT_CPU_THRESHOLD_PCT__GRAILBABE=90
+ *
+ *   Resolution order for memory thresholds mirrors CPU (same three tiers):
  *   ALERT_MEMORY_THRESHOLD_PCT           — Memory % above which an alert fires (default 85)
  *   ALERT_MEMORY_THRESHOLD_PCT__<APPID>  — per-app override
  *                                          e.g. ALERT_MEMORY_THRESHOLD_PCT__ORBIT=70
@@ -106,22 +113,50 @@ export function isBudgetAlertsConfigured(): boolean {
   return isSmtpConfigured() || hasAnyTeamsConfig();
 }
 
-/** CPU threshold percent for an app: per-app override → global (default 80). */
+/**
+ * CPU threshold percent for an app.
+ *
+ * Resolution order (highest → lowest priority):
+ *   1. ALERT_CPU_THRESHOLD_PCT__<APPID>  per-app env-var override
+ *   2. app.cpuThreshold                  APPS inventory baseline
+ *   3. ALERT_CPU_THRESHOLD_PCT           global env var
+ *   4. 80                                hardcoded default
+ */
 function cpuThresholdPct(appId?: string): number {
-  const raw =
-    (appId ? process.env[`ALERT_CPU_THRESHOLD_PCT__${appEnvKey(appId)}`] : undefined) ??
-    process.env["ALERT_CPU_THRESHOLD_PCT"] ??
-    "80";
+  if (appId) {
+    const perAppEnv = process.env[`ALERT_CPU_THRESHOLD_PCT__${appEnvKey(appId)}`];
+    if (perAppEnv !== undefined) {
+      const v = Number(perAppEnv);
+      if (Number.isFinite(v) && v > 0 && v <= 100) return v;
+    }
+    const inventoryThreshold = APPS.find((a) => a.id === appId)?.cpuThreshold;
+    if (inventoryThreshold !== undefined) return inventoryThreshold;
+  }
+  const raw = process.env["ALERT_CPU_THRESHOLD_PCT"] ?? "80";
   const v = Number(raw);
   return Number.isFinite(v) && v > 0 && v <= 100 ? v : 80;
 }
 
-/** Memory threshold percent for an app: per-app override → global (default 85). */
+/**
+ * Memory threshold percent for an app.
+ *
+ * Resolution order (highest → lowest priority):
+ *   1. ALERT_MEMORY_THRESHOLD_PCT__<APPID>  per-app env-var override
+ *   2. app.memoryThreshold                  APPS inventory baseline
+ *   3. ALERT_MEMORY_THRESHOLD_PCT           global env var
+ *   4. 85                                   hardcoded default
+ */
 function memoryThresholdPct(appId?: string): number {
-  const raw =
-    (appId ? process.env[`ALERT_MEMORY_THRESHOLD_PCT__${appEnvKey(appId)}`] : undefined) ??
-    process.env["ALERT_MEMORY_THRESHOLD_PCT"] ??
-    "85";
+  if (appId) {
+    const perAppEnv = process.env[`ALERT_MEMORY_THRESHOLD_PCT__${appEnvKey(appId)}`];
+    if (perAppEnv !== undefined) {
+      const v = Number(perAppEnv);
+      if (Number.isFinite(v) && v > 0 && v <= 100) return v;
+    }
+    const inventoryThreshold = APPS.find((a) => a.id === appId)?.memoryThreshold;
+    if (inventoryThreshold !== undefined) return inventoryThreshold;
+  }
+  const raw = process.env["ALERT_MEMORY_THRESHOLD_PCT"] ?? "85";
   const v = Number(raw);
   return Number.isFinite(v) && v > 0 && v <= 100 ? v : 85;
 }
