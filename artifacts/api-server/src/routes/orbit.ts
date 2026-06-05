@@ -50,6 +50,7 @@ export const APPS: AppRecord[] = [
     owners: ["Ryan Gutridge"],
     userAuth: "clerk",
     androidPackage: "com.grailbabe.app",
+    iosBundle: "com.grailbabe.app",
   },
   {
     id: "orbit",
@@ -198,6 +199,12 @@ export function clerkApps(): AppRecord[] {
 // the Play subscriptions surface reports subscriber states + revenue for.
 export function playApps(): AppRecord[] {
   return APPS.filter((a) => Boolean(a.androidPackage));
+}
+
+// Apps that ship an iOS build tracked in the Apple App Store — the ones
+// the App Store subscriptions surface reports subscriber states + revenue for.
+export function appStoreApps(): AppRecord[] {
+  return APPS.filter((a) => Boolean(a.iosBundle));
 }
 
 function activeAlertCount(app: AppRecord): number {

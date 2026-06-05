@@ -5,6 +5,7 @@ import orbitRouter from "./orbit";
 import ledgerRouter from "./ledger";
 import usersRouter from "./users";
 import playSubscriptionsRouter from "./playSubscriptions";
+import appleSubscriptionsRouter from "./appleSubscriptions";
 import { requireAuth, requireCostReader } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -18,8 +19,9 @@ router.use(authRouter);
 router.use(requireAuth, orbitRouter);
 router.use(requireAuth, ledgerRouter);
 router.use(requireAuth, usersRouter);
-// Financial surface — gated by the Orbit-Cost-Readers group (FinOps boundary),
+// Financial surfaces — gated by the Orbit-Cost-Readers group (FinOps boundary),
 // not just UI gating. No-op in mock mode so the dev preview keeps working.
 router.use(requireAuth, requireCostReader, playSubscriptionsRouter);
+router.use(requireAuth, requireCostReader, appleSubscriptionsRouter);
 
 export default router;

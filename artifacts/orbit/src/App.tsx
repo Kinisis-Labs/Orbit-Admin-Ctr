@@ -23,6 +23,7 @@ import Logs from "@/pages/logs";
 import ServiceHealth from "@/pages/service-health";
 import Subscriptions from "@/pages/subscriptions";
 import PlaySubscriptions from "@/pages/play-subscriptions";
+import AppleSubscriptions from "@/pages/apple-subscriptions";
 import Tags from "@/pages/tags";
 import Access from "@/pages/access";
 import Users from "@/pages/users";
@@ -59,6 +60,7 @@ function Router() {
         <Route path="/cost/budgets"><Gated><Budgets /></Gated></Route>
         <Route path="/cost/forecasts"><Gated><Forecasts /></Gated></Route>
         <Route path="/play-subscriptions"><Gated><PlaySubscriptions /></Gated></Route>
+        <Route path="/apple-subscriptions"><Gated><AppleSubscriptions /></Gated></Route>
         <Route path="/subscriptions" component={Subscriptions} />
         <Route path="/tags" component={Tags} />
         <Route path="/access" component={Access} />

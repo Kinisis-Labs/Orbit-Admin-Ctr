@@ -14,4 +14,6 @@ export type AppDetail = AppSummary & {
   userAuth: UserAuthType;
   /** Google Play package name when this app ships a tracked Android build. Presence flags the app for the Play subscriptions surface. */
   androidPackage?: string;
+  /** Apple App Store bundle identifier when this app ships a tracked iOS build. Presence flags the app for the App Store subscriptions surface. */
+  iosBundle?: string;
 };

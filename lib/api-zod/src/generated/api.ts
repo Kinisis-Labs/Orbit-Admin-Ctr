@@ -69,7 +69,8 @@ export const GetAppResponse = zod.object({
   "description": zod.string().optional(),
   "owners": zod.array(zod.string()),
   "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users. \"clerk\" = consumer app with Clerk-authenticated users (activity ingested via webhooks). \"entra\" = employee-only internal tool authenticated via Entra ID. \"none\" = no end-user authentication (e.g. public marketing site).'),
-  "androidPackage": zod.string().optional().describe('Google Play package name when this app ships a tracked Android build. Presence flags the app for the Play subscriptions surface.')
+  "androidPackage": zod.string().optional().describe('Google Play package name when this app ships a tracked Android build. Presence flags the app for the Play subscriptions surface.'),
+  "iosBundle": zod.string().optional().describe('Apple App Store bundle identifier when this app ships a tracked iOS build. Presence flags the app for the App Store subscriptions surface.')
 }))
 
 
@@ -522,5 +523,25 @@ export const ListPlaySubscriptionsResponseItem = zod.object({
   "dataSource": zod.enum(['placeholder', 'live'])
 })
 export const ListPlaySubscriptionsResponse = zod.array(ListPlaySubscriptionsResponseItem)
+
+
+/**
+ * @summary Per-app Apple App Store subscription states + revenue (placeholder until credentials are provisioned)
+ */
+export const ListAppleSubscriptionsResponseItem = zod.object({
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "environment": zod.string(),
+  "bundleId": zod.string(),
+  "activeSubscribers": zod.number().describe('Currently active\/paying subscribers'),
+  "canceledSubscribers": zod.number().describe('Auto-renew turned off but still within the paid term'),
+  "expiredSubscribers": zod.number().describe('Lapsed\/churned subscribers (inactive)'),
+  "mrr": zod.number().describe('Monthly recurring revenue in the reported currency'),
+  "revenueLast30d": zod.number().describe('Subscription revenue over the trailing 30 days'),
+  "currency": zod.string(),
+  "activeTrendPct": zod.number().describe('Active-subscriber change vs the prior period'),
+  "dataSource": zod.enum(['placeholder', 'live'])
+})
+export const ListAppleSubscriptionsResponse = zod.array(ListAppleSubscriptionsResponseItem)
 
 

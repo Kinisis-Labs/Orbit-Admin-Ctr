@@ -88,6 +88,8 @@ export type AppDetail = AppSummary & {
   userAuth: UserAuthType;
   /** Google Play package name when this app ships a tracked Android build. Presence flags the app for the Play subscriptions surface. */
   androidPackage?: string;
+  /** Apple App Store bundle identifier when this app ships a tracked iOS build. Presence flags the app for the App Store subscriptions surface. */
+  iosBundle?: string;
 };
 
 export interface UserActivityRow {
@@ -130,6 +132,35 @@ export interface PlaySubscriptionRow {
   /** Active-subscriber change vs the prior period */
   activeTrendPct: number;
   dataSource: PlaySubscriptionRowDataSource;
+}
+
+export type AppleSubscriptionRowDataSource = typeof AppleSubscriptionRowDataSource[keyof typeof AppleSubscriptionRowDataSource];
+
+
+export const AppleSubscriptionRowDataSource = {
+  placeholder: 'placeholder',
+  live: 'live',
+} as const;
+
+export interface AppleSubscriptionRow {
+  appId: string;
+  appName: string;
+  environment: string;
+  bundleId: string;
+  /** Currently active/paying subscribers */
+  activeSubscribers: number;
+  /** Auto-renew turned off but still within the paid term */
+  canceledSubscribers: number;
+  /** Lapsed/churned subscribers (inactive) */
+  expiredSubscribers: number;
+  /** Monthly recurring revenue in the reported currency */
+  mrr: number;
+  /** Subscription revenue over the trailing 30 days */
+  revenueLast30d: number;
+  currency: string;
+  /** Active-subscriber change vs the prior period */
+  activeTrendPct: number;
+  dataSource: AppleSubscriptionRowDataSource;
 }
 
 export interface MetricPoint {

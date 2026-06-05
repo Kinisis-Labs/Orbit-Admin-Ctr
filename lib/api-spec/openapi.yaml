@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: apps
     description: Monitored applications
+  - name: subscriptions
+    description: App store subscription financials
   - name: infrastructure
     description: Azure infrastructure metrics
   - name: network
@@ -311,6 +313,19 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/PlaySubscriptionRow" }
+  /apple/subscriptions:
+    get:
+      operationId: listAppleSubscriptions
+      tags: [subscriptions]
+      summary: Per-app Apple App Store subscription states + revenue (placeholder until credentials are provisioned)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AppleSubscriptionRow" }
 components:
   parameters:
     AppId:
@@ -401,6 +416,11 @@ components:
               description: >-
                 Google Play package name when this app ships a tracked Android build.
                 Presence flags the app for the Play subscriptions surface.
+            iosBundle:
+              type: string
+              description: >-
+                Apple App Store bundle identifier when this app ships a tracked iOS build.
+                Presence flags the app for the App Store subscriptions surface.
     UserActivityRow:
       type: object
       required: [appId, appName, environment, totalMembers, dau, wau, mau, inactive30d, newLast7d, dauTrendPct]
@@ -423,6 +443,22 @@ components:
         appName: { type: string }
         environment: { type: string }
         packageName: { type: string }
+        activeSubscribers: { type: integer, description: Currently active/paying subscribers }
+        canceledSubscribers: { type: integer, description: Auto-renew turned off but still within the paid term }
+        expiredSubscribers: { type: integer, description: Lapsed/churned subscribers (inactive) }
+        mrr: { type: number, description: Monthly recurring revenue in the reported currency }
+        revenueLast30d: { type: number, description: Subscription revenue over the trailing 30 days }
+        currency: { type: string }
+        activeTrendPct: { type: number, description: Active-subscriber change vs the prior period }
+        dataSource: { type: string, enum: [placeholder, live] }
+    AppleSubscriptionRow:
+      type: object
+      required: [appId, appName, environment, bundleId, activeSubscribers, canceledSubscribers, expiredSubscribers, mrr, revenueLast30d, currency, activeTrendPct, dataSource]
+      properties:
+        appId: { type: string }
+        appName: { type: string }
+        environment: { type: string }
+        bundleId: { type: string }
         activeSubscribers: { type: integer, description: Currently active/paying subscribers }
         canceledSubscribers: { type: integer, description: Auto-renew turned off but still within the paid term }
         expiredSubscribers: { type: integer, description: Lapsed/churned subscribers (inactive) }

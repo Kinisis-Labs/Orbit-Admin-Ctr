@@ -29,6 +29,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/cost/budgets": "Budgets",
   "/cost/forecasts": "Forecasts",
   "/play-subscriptions": "Play subscriptions",
+  "/apple-subscriptions": "App Store subscriptions",
   "/subscriptions": "Subscriptions",
   "/tags": "Tags",
   "/access": "Identity & access",
@@ -156,6 +157,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
               icon={<Smartphone className="h-[18px] w-[18px]" />}
               label="Play subscriptions"
               active={location === "/play-subscriptions"}
+              collapsed={navCollapsed}
+              trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
+              trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}
+            />
+            <NavItem
+              href="/apple-subscriptions"
+              icon={<Smartphone className="h-[18px] w-[18px]" />}
+              label="App Store subscriptions"
+              active={location === "/apple-subscriptions"}
               collapsed={navCollapsed}
               trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
               trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}

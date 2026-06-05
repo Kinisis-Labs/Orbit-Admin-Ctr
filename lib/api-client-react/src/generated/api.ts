@@ -23,6 +23,7 @@ import type {
   Alert,
   AppDetail,
   AppSummary,
+  AppleSubscriptionRow,
   CostReport,
   GetAppAlertsParams,
   GetCostParams,
@@ -1527,6 +1528,83 @@ export function useListPlaySubscriptions<TData = Awaited<ReturnType<typeof listP
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListPlaySubscriptionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListAppleSubscriptionsUrl = () => {
+
+
+
+
+  return `/api/apple/subscriptions`
+}
+
+/**
+ * @summary Per-app Apple App Store subscription states + revenue (placeholder until credentials are provisioned)
+ */
+export const listAppleSubscriptions = async ( options?: RequestInit): Promise<AppleSubscriptionRow[]> => {
+
+  return customFetch<AppleSubscriptionRow[]>(getListAppleSubscriptionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAppleSubscriptionsQueryKey = () => {
+    return [
+    `/api/apple/subscriptions`
+    ] as const;
+    }
+
+
+export const getListAppleSubscriptionsQueryOptions = <TData = Awaited<ReturnType<typeof listAppleSubscriptions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAppleSubscriptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAppleSubscriptionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAppleSubscriptions>>> = ({ signal }) => listAppleSubscriptions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAppleSubscriptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAppleSubscriptionsQueryResult = NonNullable<Awaited<ReturnType<typeof listAppleSubscriptions>>>
+export type ListAppleSubscriptionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Per-app Apple App Store subscription states + revenue (placeholder until credentials are provisioned)
+ */
+
+export function useListAppleSubscriptions<TData = Awaited<ReturnType<typeof listAppleSubscriptions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAppleSubscriptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAppleSubscriptionsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
