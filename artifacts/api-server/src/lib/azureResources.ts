@@ -1,5 +1,7 @@
 import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
+import { normalizeResourceGraphRows } from "./azureNetwork.js";
+import { logger } from "./logger.js";
 import type { AppRecord } from "../routes/orbit.js";
 
 export type ResourceEntry = {
@@ -91,12 +93,13 @@ export async function fetchResourceGroupTags(
 
   try {
     const result = await getClient().resources({ query, subscriptions: subscriptionIds });
-    const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
+    const rows = normalizeResourceGraphRows(result.data);
     if (rows.length === 0) return null;
     const rawTags = (rows[0]["tags"] as Record<string, string> | null) ?? {};
     _tagsCache.set(app.id, { tags: rawTags, expiresAt: Date.now() + RESOURCES_CACHE_TTL_MS });
     return rawTags;
-  } catch {
+  } catch (err: unknown) {
+    logger.error({ err, appId: app.id }, "fetchResourceGroupTags failed");
     return null;
   }
 }
@@ -144,7 +147,8 @@ export async function fetchResourcesByResourceGroup(
       subscriptions: subscriptionIds,
     });
 
-    const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
+    const rows = normalizeResourceGraphRows(result.data);
+    logger.info({ appId: app.id, rowCount: rows.length }, "fetchResourcesByResourceGroup returned");
     const resources = rows.map((row) => ({
       id: String(row["id"] ?? ""),
       name: String(row["name"] ?? ""),
@@ -158,7 +162,8 @@ export async function fetchResourcesByResourceGroup(
 
     _resourcesCache.set(app.id, { result: resources, expiresAt: Date.now() + RESOURCES_CACHE_TTL_MS });
     return resources;
-  } catch {
+  } catch (err: unknown) {
+    logger.error({ err, appId: app.id }, "fetchResourcesByResourceGroup failed");
     return null;
   }
 }
