@@ -11,7 +11,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { Link } from "wouter";
-import { Filter, Search, Download, Clipboard, Check } from "lucide-react";
+import { Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScopeSelect } from "@/lib/scope";
@@ -21,7 +21,7 @@ import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CsvToolbar } from "@/components/csv-toolbar";
 
 type AlertRow = {
   id: string;
@@ -138,55 +138,12 @@ export default function Alerts() {
                 className="h-7 pl-7 text-xs rounded-sm focus-visible:ring-1 focus-visible:ring-primary border-muted-foreground/30"
               />
             </div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                      onClick={handleExport}
-                      disabled={csvDisabled}
-                      style={csvDisabled ? { pointerEvents: "none" } : undefined}
-                    >
-                      <Download className="h-3.5 w-3.5 mr-1.5" />
-                      Export
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {csvDisabled && <TooltipContent>No rows to export</TooltipContent>}
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                      onClick={handleCopy}
-                      disabled={csvDisabled}
-                      style={csvDisabled ? { pointerEvents: "none" } : undefined}
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
-                          <span className="text-green-500">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Clipboard className="h-3.5 w-3.5 mr-1.5" />
-                          Copy
-                        </>
-                      )}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {csvDisabled && <TooltipContent>No rows to export</TooltipContent>}
-              </Tooltip>
-            </TooltipProvider>
+            <CsvToolbar
+              handleExport={handleExport}
+              handleCopy={handleCopy}
+              disabled={csvDisabled}
+              copied={copied}
+            />
           </div>
         </div>
 

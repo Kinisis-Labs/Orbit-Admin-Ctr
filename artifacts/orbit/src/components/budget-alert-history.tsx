@@ -2,13 +2,13 @@ import { useListBudgetAlertLog, useAcknowledgeBudgetAlertLogEntry, getListBudget
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Bell, BellOff, Download, Clipboard, Check, Filter, X, CalendarRange } from "lucide-react";
+import { Bell, BellOff, Check, Filter, X, CalendarRange } from "lucide-react";
 import { format, parseISO, isValid, startOfDay, endOfDay } from "date-fns";
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CsvToolbar } from "@/components/csv-toolbar";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n);
@@ -204,55 +204,12 @@ export function BudgetAlertHistory({ appId }: Props) {
 
           {!isLoading && (
             <div className="flex items-center gap-1">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                        onClick={handleExport}
-                        disabled={csvDisabled}
-                        style={csvDisabled ? { pointerEvents: "none" } : undefined}
-                      >
-                        <Download className="h-3.5 w-3.5 mr-1.5" />
-                        Export CSV
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  {csvDisabled && <TooltipContent>No rows to export</TooltipContent>}
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                        onClick={handleCopy}
-                        disabled={csvDisabled}
-                        style={csvDisabled ? { pointerEvents: "none" } : undefined}
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
-                            <span className="text-green-500">Copied!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Clipboard className="h-3.5 w-3.5 mr-1.5" />
-                            Copy
-                          </>
-                        )}
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  {csvDisabled && <TooltipContent>No rows to export</TooltipContent>}
-                </Tooltip>
-              </TooltipProvider>
+              <CsvToolbar
+                handleExport={handleExport}
+                handleCopy={handleCopy}
+                disabled={csvDisabled}
+                copied={copied}
+              />
             </div>
           )}
         </div>

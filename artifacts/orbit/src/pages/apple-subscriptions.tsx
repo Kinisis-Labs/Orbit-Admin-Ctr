@@ -2,14 +2,14 @@ import { useMemo } from "react";
 import { useListAppleSubscriptions } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingDown, TrendingUp, ExternalLink, Download, Clipboard, Check, Clock, AlertTriangle } from "lucide-react";
+import { TrendingDown, TrendingUp, ExternalLink, Clock, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { Button } from "@/components/ui/button";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CsvToolbar } from "@/components/csv-toolbar";
 import { format } from "date-fns";
 
 const num = (n: number) => new Intl.NumberFormat("en-US").format(n);
@@ -85,55 +85,12 @@ export default function AppleSubscriptions() {
         <div className="flex items-center justify-between p-2 border-b border-border">
           <h2 className="text-sm font-semibold px-2">Subscriptions by application</h2>
           <div className="flex items-center gap-1">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                      onClick={handleExport}
-                      disabled={csvDisabled}
-                      style={csvDisabled ? { pointerEvents: "none" } : undefined}
-                    >
-                      <Download className="h-3.5 w-3.5 mr-1.5" />
-                      Export
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {csvDisabled && <TooltipContent>No rows to export</TooltipContent>}
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                      onClick={handleCopy}
-                      disabled={csvDisabled}
-                      style={csvDisabled ? { pointerEvents: "none" } : undefined}
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
-                          <span className="text-green-500">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Clipboard className="h-3.5 w-3.5 mr-1.5" />
-                          Copy
-                        </>
-                      )}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {csvDisabled && <TooltipContent>No rows to export</TooltipContent>}
-              </Tooltip>
-            </TooltipProvider>
+            <CsvToolbar
+              handleExport={handleExport}
+              handleCopy={handleCopy}
+              disabled={csvDisabled}
+              copied={copied}
+            />
           </div>
         </div>
         {isLoading ? (
