@@ -1,14 +1,24 @@
 import { ConsumptionManagementClient } from "@azure/arm-consumption";
 import { CostManagementClient } from "@azure/arm-costmanagement";
+import { eq } from "drizzle-orm";
+import { db, budgetSnapshotsTable } from "@workspace/db";
 import { getAzureCredential, isAzureConfigured } from "./azure.js";
 import { resolveSubscriptionId } from "./azureCost.js";
 import type { AppRecord } from "../routes/orbit.js";
+import { logger } from "./logger.js";
 
 export type BudgetResult = {
   /** Configured monthly budget cap, USD. */
   amount: number;
   /** Projected end-of-month spend, USD. Null if Azure couldn't compute it. */
   forecastAmount: number | null;
+};
+
+export type BudgetSource = "live" | "cached" | "estimated";
+
+export type BudgetWithSource = {
+  result: BudgetResult;
+  source: BudgetSource;
 };
 
 // Cache: appId → { result, expiresAt }
@@ -159,4 +169,83 @@ export async function fetchBudgetForApp(
 
   _budgetCache.set(app.id, { result, expiresAt: Date.now() + BUDGET_CACHE_TTL_MS });
   return result;
+}
+
+/**
+ * Persist a successfully-fetched budget snapshot to the database.
+ * Write failures are non-fatal — the live result is already in hand.
+ */
+async function writeBudgetSnapshot(appId: string, result: BudgetResult): Promise<void> {
+  try {
+    const now = new Date();
+    await db
+      .insert(budgetSnapshotsTable)
+      .values({
+        appId,
+        amount: result.amount.toFixed(2),
+        forecastAmount: result.forecastAmount !== null ? result.forecastAmount.toFixed(2) : null,
+        fetchedAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: budgetSnapshotsTable.appId,
+        set: {
+          amount: result.amount.toFixed(2),
+          forecastAmount: result.forecastAmount !== null ? result.forecastAmount.toFixed(2) : null,
+          fetchedAt: now,
+          updatedAt: now,
+        },
+      });
+  } catch (err) {
+    logger.warn({ err, appId }, "budget snapshot write failed (non-fatal)");
+  }
+}
+
+/**
+ * Read the last persisted budget snapshot for an app from the database.
+ * Returns null if no snapshot exists or the DB is unavailable.
+ */
+async function readBudgetSnapshot(appId: string): Promise<BudgetResult | null> {
+  try {
+    const row = await db.query.budgetSnapshotsTable.findFirst({
+      where: eq(budgetSnapshotsTable.appId, appId),
+    });
+    if (!row) return null;
+    return {
+      amount: Number(row.amount),
+      forecastAmount: row.forecastAmount !== null ? Number(row.forecastAmount) : null,
+    };
+  } catch (err) {
+    logger.warn({ err, appId }, "budget snapshot read failed (non-fatal)");
+    return null;
+  }
+}
+
+/**
+ * Fetch the budget for an app with a three-tier fallback strategy:
+ *
+ *   1. **live**      — Azure Budgets API succeeded; result is written through to DB.
+ *   2. **cached**    — Azure unavailable; last-known value from the DB snapshot is used.
+ *   3. (returns null) — No DB snapshot; caller should apply formula estimates and report
+ *                       budgetDataSource = "estimated".
+ *
+ * Use this in routes that need to surface the budget data source to the client.
+ */
+export async function fetchBudgetForAppWithFallback(
+  app: AppRecord,
+  opts: { bypassCache?: boolean } = {},
+): Promise<BudgetWithSource | null> {
+  const live = await fetchBudgetForApp(app, opts);
+
+  if (live !== null) {
+    await writeBudgetSnapshot(app.id, live);
+    return { result: live, source: "live" };
+  }
+
+  const snapshot = await readBudgetSnapshot(app.id);
+  if (snapshot !== null) {
+    return { result: snapshot, source: "cached" };
+  }
+
+  return null;
 }

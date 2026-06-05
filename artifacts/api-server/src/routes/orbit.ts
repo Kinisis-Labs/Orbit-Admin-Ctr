@@ -19,7 +19,7 @@ import {
 } from "@workspace/api-zod";
 import { fetchResourcesByResourceGroup, fetchResourceGroupTags } from "../lib/azureResources.js";
 import { fetchMonthToDateCost } from "../lib/azureCost.js";
-import { fetchBudgetForApp } from "../lib/azureBudgets.js";
+import { fetchBudgetForAppWithFallback } from "../lib/azureBudgets.js";
 import { fetchSubscriptionNames } from "../lib/azureSubscriptions.js";
 import {
   fetchAppMetrics,
@@ -238,10 +238,10 @@ function activeAlertCount(app: AppRecord): number {
 router.get("/apps", async (_req, res) => {
   // Fetch live cost, alert counts, budgets, and subscription names for all apps in parallel.
   // Falls back to static inventory values when Azure is unconfigured.
-  const [alertResults, costResults, budgetResults] = await Promise.all([
+  const [alertResults, costResults, budgetWithSourceResults] = await Promise.all([
     Promise.all(APPS.map((a) => fetchActiveAlerts(a, {}))),
     Promise.all(APPS.map((a) => fetchMonthToDateCost(a, {}))),
-    Promise.all(APPS.map((a) => fetchBudgetForApp(a, {}))),
+    Promise.all(APPS.map((a) => fetchBudgetForAppWithFallback(a, {}))),
   ]);
 
   // Resolve subscription names from Azure once (cached; returns empty map in mock mode).
@@ -252,7 +252,7 @@ router.get("/apps", async (_req, res) => {
     APPS.map((app, i) => {
       const liveAlerts = alertResults[i];
       const liveCost = costResults[i];
-      const liveBudget = budgetResults[i];
+      const budgetWS = budgetWithSourceResults[i];
       const subName = subNames.get(app.subscriptionId.toLowerCase());
       return {
         id: app.id,
@@ -268,9 +268,9 @@ router.get("/apps", async (_req, res) => {
           ? liveAlerts.filter((a) => a.status === "active").length
           : activeAlertCount(app),
         monthToDateCost: liveCost ? liveCost.monthToDate : app.monthToDateCost,
-        ...(liveBudget ? { budget: liveBudget.amount } : {}),
-        ...(liveBudget?.forecastAmount !== null && liveBudget?.forecastAmount !== undefined
-          ? { forecast: liveBudget.forecastAmount }
+        ...(budgetWS ? { budget: budgetWS.result.amount } : {}),
+        ...(budgetWS?.result.forecastAmount !== null && budgetWS?.result.forecastAmount !== undefined
+          ? { forecast: budgetWS.result.forecastAmount }
           : {}),
         group: app.group,
         userAuth: app.userAuth,
@@ -576,9 +576,9 @@ router.get("/apps/:appId/cost", async (req, res) => {
   }
   const bypassCache = req.query["refresh"] === "true";
   const apiUsage = apiUsageForApp(app);
-  const [liveCost, liveBudget, rev] = await Promise.all([
+  const [liveCost, budgetWithSource, rev] = await Promise.all([
     fetchMonthToDateCost(app, { bypassCache }),
-    fetchBudgetForApp(app, { bypassCache }),
+    fetchBudgetForAppWithFallback(app, { bypassCache }),
     syncAndReadRevenue(app),
   ]);
   const mtd = liveCost
@@ -588,10 +588,11 @@ router.get("/apps/:appId/cost", async (req, res) => {
     ? liveCost.byService
     : buildByServiceForApp(app, apiUsage);
 
-  // Budget: prefer real Azure Budget resource; fall back to 2× MTD formula.
-  const budget = liveBudget?.amount ?? Number((mtd * 2.0).toFixed(2));
-  // Forecast: prefer Azure Forecast API result; fall back to 1.7× MTD formula.
-  const forecast = liveBudget?.forecastAmount ?? Number((mtd * 1.7).toFixed(2));
+  // Budget: prefer real Azure Budget resource or DB snapshot; fall back to 2× MTD formula.
+  const budget = budgetWithSource?.result.amount ?? Number((mtd * 2.0).toFixed(2));
+  // Forecast: prefer Azure Forecast API result or DB snapshot; fall back to 1.7× MTD formula.
+  const forecast = budgetWithSource?.result.forecastAmount ?? Number((mtd * 1.7).toFixed(2));
+  const budgetDataSource = budgetWithSource?.source ?? "estimated";
 
   const data = GetCostResponse.parse({
     currency: "USD",
@@ -604,6 +605,7 @@ router.get("/apps/:appId/cost", async (req, res) => {
     revenue: buildRevenueDto(rev),
     dataSource: liveCost ? "live" : "mock",
     ...(liveCost ? { dataAsOf: liveCost.dataAsOf } : {}),
+    budgetDataSource,
   });
   res.json(data);
 });
@@ -798,13 +800,13 @@ router.get("/global/cost-summary", async (req, res) => {
 
   const bypassCache = req.query["refresh"] === "true";
   // Fetch live Azure cost, budgets, and ledger revenue for every app in parallel.
-  const [liveCostResults, liveBudgetResults, revResults] = await Promise.all([
+  const [liveCostResults, budgetWithSourceResults, revResults] = await Promise.all([
     Promise.all(APPS.map((a) => fetchMonthToDateCost(a, { bypassCache }))),
-    Promise.all(APPS.map((a) => fetchBudgetForApp(a, { bypassCache }))),
+    Promise.all(APPS.map((a) => fetchBudgetForAppWithFallback(a, { bypassCache }))),
     Promise.all(APPS.map((a) => syncAndReadRevenue(a))),
   ]);
   const liveCostByApp = new Map(APPS.map((a, i) => [a.id, liveCostResults[i]] as const));
-  const liveBudgetByApp = new Map(APPS.map((a, i) => [a.id, liveBudgetResults[i]] as const));
+  const liveBudgetByApp = new Map(APPS.map((a, i) => [a.id, budgetWithSourceResults[i]?.result ?? null] as const));
   const revByApp = new Map(APPS.map((a, i) => [a.id, revResults[i]!] as const));
 
   const apiCost = APPS.reduce((s, a) => s + (apiByApp.get(a.id)?.cost ?? 0), 0);
@@ -896,24 +898,32 @@ router.get("/global/cost-summary", async (req, res) => {
     ? liveTimestamps.reduce((min, t) => (t < min ? t : min))
     : undefined;
 
-  // Global budget: sum of per-app Azure Budget amounts; fall back to 2× MTD formula.
-  const anyLiveBudget = APPS.some((a) => liveBudgetByApp.get(a.id) !== null);
-  const globalBudget = anyLiveBudget
+  // Global budget: sum of per-app Azure Budget amounts (live or DB snapshot); fall back to 2× MTD formula.
+  const anyRealBudget = APPS.some((a) => liveBudgetByApp.get(a.id) !== null);
+  const globalBudget = anyRealBudget
     ? APPS.reduce((s, a) => {
         const b = liveBudgetByApp.get(a.id);
         const appCost = infraCostByApp.get(a.id)! + (apiByApp.get(a.id)?.cost ?? 0);
         return s + (b?.amount ?? appCost * 2.0);
       }, 0)
     : mtd * 2.0;
-  // Global forecast: sum of per-app Azure Forecast amounts; fall back to 1.65× MTD formula.
-  const anyLiveForecast = APPS.some((a) => liveBudgetByApp.get(a.id)?.forecastAmount != null);
-  const globalForecast = anyLiveForecast
+  // Global forecast: sum of per-app Azure Forecast amounts (live or DB snapshot); fall back to 1.65× MTD formula.
+  const anyRealForecast = APPS.some((a) => liveBudgetByApp.get(a.id)?.forecastAmount != null);
+  const globalForecast = anyRealForecast
     ? APPS.reduce((s, a) => {
         const b = liveBudgetByApp.get(a.id);
         const appCost = infraCostByApp.get(a.id)! + (apiByApp.get(a.id)?.cost ?? 0);
         return s + (b?.forecastAmount ?? appCost * 1.65);
       }, 0)
     : mtd * 1.65;
+
+  // Determine the overall budget data source: if any app has a live result → "live";
+  // else if any app fell back to a DB snapshot → "cached"; else → "estimated".
+  const globalBudgetDataSource = (() => {
+    if (budgetWithSourceResults.some((b) => b?.source === "live")) return "live" as const;
+    if (budgetWithSourceResults.some((b) => b?.source === "cached")) return "cached" as const;
+    return "estimated" as const;
+  })();
 
   const data = GetGlobalCostSummaryResponse.parse({
     currency: "USD",
@@ -925,6 +935,7 @@ router.get("/global/cost-summary", async (req, res) => {
     apiCost: Number(apiCost.toFixed(2)),
     dataSource: anyLive ? "live" : "mock",
     ...(earliestDataAsOf ? { dataAsOf: earliestDataAsOf } : {}),
+    budgetDataSource: globalBudgetDataSource,
     byApp: APPS.map((a) => ({
       appId: a.id,
       appName: a.name,

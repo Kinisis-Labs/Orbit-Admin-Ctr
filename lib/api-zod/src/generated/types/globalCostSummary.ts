@@ -9,6 +9,7 @@ import type { CostByService } from './costByService';
 import type { DailyCostPoint } from './dailyCostPoint';
 import type { GlobalCostSummaryApiByAppItem } from './globalCostSummaryApiByAppItem';
 import type { GlobalCostSummaryApiByNameItem } from './globalCostSummaryApiByNameItem';
+import type { GlobalCostSummaryBudgetDataSource } from './globalCostSummaryBudgetDataSource';
 import type { GlobalCostSummaryByAppItem } from './globalCostSummaryByAppItem';
 import type { GlobalCostSummaryDataSource } from './globalCostSummaryDataSource';
 import type { GlobalCostSummaryRevenueByAppItem } from './globalCostSummaryRevenueByAppItem';
@@ -29,6 +30,8 @@ export interface GlobalCostSummary {
   dataSource: GlobalCostSummaryDataSource;
   /** Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live. */
   dataAsOf?: string;
+  /** Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback. */
+  budgetDataSource?: GlobalCostSummaryBudgetDataSource;
   byApp: GlobalCostSummaryByAppItem[];
   /** Cost breakdown by Azure resource type, aggregated across all apps. */
   byResource: CostByService[];

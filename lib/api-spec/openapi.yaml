@@ -675,6 +675,7 @@ components:
         revenue: { $ref: "#/components/schemas/Revenue" }
         dataSource: { type: string, enum: [live, mock], description: "Indicates whether cost figures come from live Azure Cost Management or built-in mock values." }
         dataAsOf: { type: string, format: date-time, description: "Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live." }
+        budgetDataSource: { type: string, enum: [live, cached, estimated], description: "Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback." }
     RevenueSource:
       type: string
       enum: [stripe, app_store, play_store]
@@ -899,6 +900,7 @@ components:
         apiCost: { type: number, description: Portion of monthToDate attributable to API usage }
         dataSource: { type: string, enum: [live, mock], description: "Indicates whether cost figures come from live Azure Cost Management or built-in mock values." }
         dataAsOf: { type: string, format: date-time, description: "Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live." }
+        budgetDataSource: { type: string, enum: [live, cached, estimated], description: "Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback." }
         byApp:
           type: array
           items:

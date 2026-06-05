@@ -7,6 +7,7 @@
  */
 import type { ApiUsage } from './apiUsage';
 import type { CostByService } from './costByService';
+import type { CostReportBudgetDataSource } from './costReportBudgetDataSource';
 import type { CostReportDataSource } from './costReportDataSource';
 import type { DailyCostPoint } from './dailyCostPoint';
 import type { Revenue } from './revenue';
@@ -24,4 +25,6 @@ export interface CostReport {
   dataSource: CostReportDataSource;
   /** Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live. */
   dataAsOf?: string;
+  /** Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback. */
+  budgetDataSource?: CostReportBudgetDataSource;
 }

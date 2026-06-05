@@ -269,6 +269,18 @@ export const CostReportDataSource = {
   mock: 'mock',
 } as const;
 
+/**
+ * Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback.
+ */
+export type CostReportBudgetDataSource = typeof CostReportBudgetDataSource[keyof typeof CostReportBudgetDataSource];
+
+
+export const CostReportBudgetDataSource = {
+  live: 'live',
+  cached: 'cached',
+  estimated: 'estimated',
+} as const;
+
 export type RevenueSource = typeof RevenueSource[keyof typeof RevenueSource];
 
 
@@ -305,6 +317,8 @@ export interface CostReport {
   dataSource: CostReportDataSource;
   /** Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live. */
   dataAsOf?: string;
+  /** Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback. */
+  budgetDataSource?: CostReportBudgetDataSource;
 }
 
 export type LedgerAccountType = typeof LedgerAccountType[keyof typeof LedgerAccountType];
@@ -606,6 +620,18 @@ export const GlobalCostSummaryDataSource = {
   mock: 'mock',
 } as const;
 
+/**
+ * Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback.
+ */
+export type GlobalCostSummaryBudgetDataSource = typeof GlobalCostSummaryBudgetDataSource[keyof typeof GlobalCostSummaryBudgetDataSource];
+
+
+export const GlobalCostSummaryBudgetDataSource = {
+  live: 'live',
+  cached: 'cached',
+  estimated: 'estimated',
+} as const;
+
 export type GlobalCostSummaryByAppItem = {
   appId: string;
   appName: string;
@@ -659,6 +685,8 @@ export interface GlobalCostSummary {
   dataSource: GlobalCostSummaryDataSource;
   /** Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live. */
   dataAsOf?: string;
+  /** Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback. */
+  budgetDataSource?: GlobalCostSummaryBudgetDataSource;
   byApp: GlobalCostSummaryByAppItem[];
   /** Cost breakdown by Azure resource type, aggregated across all apps. */
   byResource: CostByService[];
