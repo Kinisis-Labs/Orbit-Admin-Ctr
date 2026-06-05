@@ -13,7 +13,7 @@ import { StaleCacheBanner } from "@/components/stale-cache-banner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link, useSearch, useLocation } from "wouter";
-import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff, AlertTriangle, Clipboard, Check, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, Database, TriangleAlert } from "lucide-react";
+import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff, AlertTriangle, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, Database, TriangleAlert } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -460,35 +460,12 @@ function GlobalCost() {
           {!isLoading && cost && cost.daily.length > 0 && (
             <div className="flex items-center gap-1">
               {showDailyTable && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                    onClick={handleDailyExport}
-                  >
-                    <Download className="h-3.5 w-3.5 mr-1.5" />
-                    Export
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                    onClick={handleDailyCopy}
-                  >
-                    {copiedDaily ? (
-                      <>
-                        <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
-                        <span className="text-green-500">Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Clipboard className="h-3.5 w-3.5 mr-1.5" />
-                        Copy
-                      </>
-                    )}
-                  </Button>
-                </>
+                <CsvToolbar
+                  handleExport={handleDailyExport}
+                  handleCopy={handleDailyCopy}
+                  disabled={false}
+                  copied={copiedDaily}
+                />
               )}
               <button
                 onClick={() => setShowDailyTable((v) => !v)}
@@ -1033,35 +1010,12 @@ function AppCost() {
           {!isLoading && data && data.daily.length > 0 && (
             <div className="flex items-center gap-1">
               {showDailyTable && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                    onClick={handleDailyExport}
-                  >
-                    <Download className="h-3.5 w-3.5 mr-1.5" />
-                    Export
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                    onClick={handleDailyCopy}
-                  >
-                    {copiedDaily ? (
-                      <>
-                        <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
-                        <span className="text-green-500">Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Clipboard className="h-3.5 w-3.5 mr-1.5" />
-                        Copy
-                      </>
-                    )}
-                  </Button>
-                </>
+                <CsvToolbar
+                  handleExport={handleDailyExport}
+                  handleCopy={handleDailyCopy}
+                  disabled={false}
+                  copied={copiedDaily}
+                />
               )}
               <button
                 onClick={() => setShowDailyTable((v) => !v)}
