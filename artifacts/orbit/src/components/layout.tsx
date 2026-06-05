@@ -272,7 +272,7 @@ function NavItem({
   return (
     <Link href={href}>
       <div
-        title={collapsed ? (hasAlert ? `${label} — ${overBudgetCount} over-budget ${overBudgetCount === 1 ? "day" : "days"}` : label) : trailingTitle}
+        title={collapsed ? (hasAlert ? `${label} — ${overBudgetCount} over-budget ${overBudgetCount === 1 ? "app" : "apps"}` : label) : trailingTitle}
         className={`flex items-center gap-3 px-2.5 py-2 rounded-sm cursor-pointer whitespace-nowrap transition-colors
         ${active
           ? "bg-primary/10 text-primary border-l-2 border-primary"
@@ -294,7 +294,7 @@ function NavItem({
         {!collapsed && hasAlert && (
           <span
             className="shrink-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-white text-[10px] font-bold leading-none"
-            title={`${overBudgetCount} over-budget ${overBudgetCount === 1 ? "day" : "days"} in the current window`}
+            title={`${overBudgetCount} over-budget ${overBudgetCount === 1 ? "app" : "apps"} in the current window`}
           >
             {overBudgetCount > 99 ? "99+" : overBudgetCount}
           </span>
