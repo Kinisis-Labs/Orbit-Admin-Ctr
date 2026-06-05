@@ -6,6 +6,7 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "seed-clerk-activity": "tsx ./src/seed-clerk-activity.ts",
+    "backfill-threshold-history": "tsx ./src/backfill-threshold-history.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
