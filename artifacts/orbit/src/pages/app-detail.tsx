@@ -27,7 +27,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { DailySpendChart } from "@/components/daily-spend-chart";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone, Database, Bell } from "lucide-react";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone, Database, Bell, Info, X } from "lucide-react";
 
 const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
@@ -641,9 +641,12 @@ function TelemetryTab({ appId }: { appId: string }) {
   const queryKey = getGetTelemetryQueryKey(appId);
   const { data, isLoading, isFetching } = useGetTelemetry(appId, undefined, { query: { enabled: !!appId, queryKey } });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/telemetry`, queryKey);
+  const [monitorCalloutDismissed, setMonitorCalloutDismissed] = useState(false);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No telemetry data available</div>;
+
+  const showMonitorCallout = data.dataSource === "mock" && !monitorCalloutDismissed;
 
   return (
     <>
@@ -662,6 +665,33 @@ function TelemetryTab({ appId }: { appId: string }) {
           <DataSourceBadge dataSource={data.dataSource} />
         </div>
       </div>
+      {showMonitorCallout && (
+        <div className="flex items-start gap-3 rounded-none border border-blue-500/30 bg-blue-500/5 px-4 py-3 text-[13px]">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+          <div className="flex-1 space-y-1">
+            <p className="font-medium text-foreground">Showing demo data — Azure Monitor not configured</p>
+            <p className="text-muted-foreground">
+              To stream live telemetry, set these environment variables on the API Container App:
+            </p>
+            <ul className="mt-1 space-y-0.5 text-muted-foreground">
+              <li><code className="bg-muted px-1 rounded text-[12px]">AZURE_SUBSCRIPTION_IDS</code> — comma-separated subscription GUIDs</li>
+              <li><code className="bg-muted px-1 rounded text-[12px]">AZURE_CLIENT_ID</code> — managed identity client ID (<code className="bg-muted px-1 rounded text-[12px]">id-orbit-api-prod</code>)</li>
+              <li><code className="bg-muted px-1 rounded text-[12px]">AZURE_TENANT_ID</code> — Entra tenant GUID</li>
+              <li><code className="bg-muted px-1 rounded text-[12px]">AZURE_LOG_ANALYTICS_WORKSPACE_ID</code> — Log Analytics workspace ID (customer GUID, not resource ID)</li>
+            </ul>
+            <p className="text-muted-foreground">
+              The managed identity also needs <strong>Log Analytics Reader</strong> on the workspace. See <code className="bg-muted px-1 rounded text-[12px]">replit.md</code> for the full setup guide.
+            </p>
+          </div>
+          <button
+            onClick={() => setMonitorCalloutDismissed(true)}
+            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Dismiss"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Requests / Min</div>
