@@ -12,4 +12,5 @@ export type AppleSubscriptionRowDataSource = typeof AppleSubscriptionRowDataSour
 export const AppleSubscriptionRowDataSource = {
   placeholder: 'placeholder',
   live: 'live',
+  cached: 'cached',
 } as const;

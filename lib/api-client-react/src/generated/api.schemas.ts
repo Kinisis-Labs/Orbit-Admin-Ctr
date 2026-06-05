@@ -153,6 +153,7 @@ export type AppleSubscriptionRowDataSource = typeof AppleSubscriptionRowDataSour
 export const AppleSubscriptionRowDataSource = {
   placeholder: 'placeholder',
   live: 'live',
+  cached: 'cached',
 } as const;
 
 export interface AppleSubscriptionRow {
@@ -174,6 +175,8 @@ export interface AppleSubscriptionRow {
   /** Active-subscriber change vs the prior period */
   activeTrendPct: number;
   dataSource: AppleSubscriptionRowDataSource;
+  /** Timestamp of when subscription data was last fetched from Apple App Store Connect. Only present when dataSource is live or cached. */
+  dataAsOf?: string;
 }
 
 export interface MetricPoint {

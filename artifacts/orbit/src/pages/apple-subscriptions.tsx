@@ -2,12 +2,13 @@ import { useMemo } from "react";
 import { useListAppleSubscriptions } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingDown, TrendingUp, ExternalLink, Download, Clipboard, Check, Clock } from "lucide-react";
+import { TrendingDown, TrendingUp, ExternalLink, Download, Clipboard, Check, Clock, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { Button } from "@/components/ui/button";
 import { useCsvExport } from "@/hooks/use-csv-export";
+import { format } from "date-fns";
 
 const num = (n: number) => new Intl.NumberFormat("en-US").format(n);
 const usd = (n: number) =>
@@ -31,6 +32,14 @@ export default function AppleSubscriptions() {
     { active: 0, canceled: 0, expired: 0, mrr: 0, revenue: 0 },
   );
   const isPlaceholder = scoped.some((r) => r.dataSource === "placeholder");
+
+  const staleCachedRow = useMemo(() => {
+    const cached = scoped.filter((r) => r.dataSource === "cached" && !!r.dataAsOf);
+    if (cached.length === 0) return null;
+    return cached.reduce((oldest, r) =>
+      new Date(r.dataAsOf!).getTime() < new Date(oldest.dataAsOf!).getTime() ? r : oldest,
+    );
+  }, [scoped]);
 
   const csvRows = scoped.map((r) => [
     r.appName,
@@ -58,6 +67,7 @@ export default function AppleSubscriptions() {
       />
 
       <AppleBanner placeholder={isPlaceholder} dataUpdatedAt={dataUpdatedAt} />
+      <StaleCacheBanner dataAsOf={staleCachedRow?.dataAsOf} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <Tile title="Active subscribers" value={isLoading ? null : num(totals.active)} sub="Currently paying" />
@@ -198,6 +208,24 @@ function AppleBanner({ placeholder, dataUpdatedAt }: { placeholder: boolean; dat
       >
         Open App Store Connect <ExternalLink className="h-3 w-3" />
       </a>
+    </div>
+  );
+}
+
+function StaleCacheBanner({ dataAsOf }: { dataAsOf?: string | null }) {
+  if (!dataAsOf) return null;
+  const ageMs = Date.now() - new Date(dataAsOf).getTime();
+  if (ageMs < 4 * 60 * 60 * 1000) return null;
+  let asOf = dataAsOf;
+  try { asOf = format(new Date(dataAsOf), "MMM d, h:mm a bbb"); } catch { /* noop */ }
+  return (
+    <div className="flex items-start gap-2 rounded-sm border border-orange-300 bg-orange-50 dark:border-orange-700 dark:bg-orange-950/40 px-3 py-2 text-[12px] text-orange-800 dark:text-orange-300">
+      <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+      <span>
+        <span className="font-semibold">Cached data —</span> App Store subscriber figures were last fetched on{" "}
+        <span className="font-medium">{asOf}</span>. The live App Store Connect feed may be unavailable.
+        Figures shown may not reflect the current state.
+      </span>
     </div>
   );
 }
