@@ -1,4 +1,4 @@
-import { ResourceGraphClient } from "./resourceGraph.js";
+import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
 
 // Cache: subscriptionId (lowercase) → display name
@@ -62,7 +62,7 @@ export async function fetchSubscriptionNames(
       subscriptions: missing,
     });
 
-    const rows = (response.data as Record<string, unknown>[]) ?? [];
+    const rows = (response.data as unknown as Record<string, unknown>[]) ?? [];
     for (const row of rows) {
       const subId = (row["subscriptionId"] as string | undefined) ?? "";
       const name = (row["name"] as string | undefined) ?? "";

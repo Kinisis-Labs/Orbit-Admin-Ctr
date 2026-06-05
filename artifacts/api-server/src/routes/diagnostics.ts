@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { ResourceGraphClient } from "../lib/resourceGraph.js";
+import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import {
   getAzureCredential,
   getSubscriptionIds,
@@ -21,10 +21,10 @@ async function checkAzureCredential(): Promise<CheckResult> {
   const subs = getSubscriptionIds();
   try {
     const client = new ResourceGraphClient(getAzureCredential());
-    await client.resources(
-      { subscriptions: subs.slice(0, 1), query: "Resources | limit 1 | project id" },
-      { $top: 1 },
-    );
+    await client.resources({
+      subscriptions: subs.slice(0, 1),
+      query: "Resources | limit 1 | project id",
+    });
     return { status: "ok", detail: `Queried ${subs.length} subscription(s) via Resource Graph` };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

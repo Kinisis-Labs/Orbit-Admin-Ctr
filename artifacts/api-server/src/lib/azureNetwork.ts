@@ -1,4 +1,4 @@
-import { ResourceGraphClient } from "./resourceGraph.js";
+import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
 import type { AppRecord } from "../routes/orbit.js";
 
@@ -97,7 +97,7 @@ export async function fetchNetworkEndpoints(
       subscriptions: subscriptionIds,
     });
 
-    const rows = (result.data as Record<string, unknown>[]) ?? [];
+    const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
 
     if (rows.length === 0) return null;
 

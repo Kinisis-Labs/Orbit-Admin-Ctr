@@ -1,4 +1,4 @@
-import { ResourceGraphClient } from "./resourceGraph.js";
+import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
 import type { AppRecord } from "../routes/orbit.js";
 
@@ -91,7 +91,7 @@ export async function fetchResourceGroupTags(
 
   try {
     const result = await getClient().resources({ query, subscriptions: subscriptionIds });
-    const rows = (result.data as Record<string, unknown>[]) ?? [];
+    const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
     if (rows.length === 0) return null;
     const rawTags = (rows[0]["tags"] as Record<string, string> | null) ?? {};
     _tagsCache.set(app.id, { tags: rawTags, expiresAt: Date.now() + RESOURCES_CACHE_TTL_MS });
@@ -144,7 +144,7 @@ export async function fetchResourcesByResourceGroup(
       subscriptions: subscriptionIds,
     });
 
-    const rows = (result.data as Record<string, unknown>[]) ?? [];
+    const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
     const resources = rows.map((row) => ({
       id: String(row["id"] ?? ""),
       name: String(row["name"] ?? ""),

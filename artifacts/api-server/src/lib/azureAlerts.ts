@@ -1,4 +1,4 @@
-import { ResourceGraphClient } from "./resourceGraph.js";
+import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
 import type { AppRecord } from "../routes/orbit.js";
 
@@ -125,7 +125,7 @@ export async function fetchActiveAlerts(
       subscriptions: subscriptionIds,
     });
 
-    const rows = (result.data as Record<string, unknown>[]) ?? [];
+    const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
 
     const alerts = rows.map((row, i) => {
       const sev = String(row["severity"] ?? "Sev4").replace(/sev/i, "");

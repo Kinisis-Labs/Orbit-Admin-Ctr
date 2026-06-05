@@ -1,5 +1,5 @@
 import { CostManagementClient } from "@azure/arm-costmanagement";
-import { ResourceGraphClient } from "./resourceGraph.js";
+import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { eq } from "drizzle-orm";
 import { db, costSnapshotsTable } from "@workspace/db";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
@@ -109,7 +109,7 @@ export async function resolveSubscriptionId(app: AppRecord): Promise<string | nu
       query,
       subscriptions: subscriptionIds,
     });
-    const rows = (result.data as Record<string, unknown>[]) ?? [];
+    const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
     const subId = rows[0]?.["subscriptionId"] as string | undefined;
     if (subId && isGuid(subId)) {
       _rgSubCache.set(rgKey, subId);
