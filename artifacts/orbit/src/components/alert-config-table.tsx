@@ -442,7 +442,7 @@ function formatUpdatedAt(iso: string | null | undefined): string | null {
 }
 
 export function AlertConfigTable({ appId }: Props) {
-  const { data, isLoading } = useListAlertConfig();
+  const { data, isLoading } = useListAlertConfig({ query: { queryKey: getListAlertConfigQueryKey(), staleTime: 5 * 60 * 1000 } });
   const queryClient = useQueryClient();
   const { hasGroup } = useAuth();
   const canEdit = hasGroup(ADMIN_GROUP.id);

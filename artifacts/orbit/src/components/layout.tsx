@@ -88,7 +88,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const activeTabLabel = TAB_LABELS[activeTab];
   const currentApp = apps?.find(a => a.id === currentAppId);
   const { data: currentAppDetail } = useGetApp(currentAppId ?? "", {
-    query: { enabled: !!currentAppId && !currentApp, queryKey: getGetAppQueryKey(currentAppId ?? "") },
+    query: { enabled: !!currentAppId && !currentApp, queryKey: getGetAppQueryKey(currentAppId ?? ""), staleTime: 3 * 60 * 1000 },
   });
   const currentAppName = currentApp?.name ?? currentAppDetail?.name ?? currentAppId;
   const isCostRoute = location === "/cost";

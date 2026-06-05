@@ -30,7 +30,7 @@ export default function Home() {
   const { data: apps, isFetching: appsFetching } = useApps();
 
   const { data: appDetail, isLoading: appDetailLoading } = useGetApp(scope, {
-    query: { enabled: !!scope, queryKey: getGetAppQueryKey(scope) },
+    query: { enabled: !!scope, queryKey: getGetAppQueryKey(scope), staleTime: 3 * 60 * 1000 },
   });
 
   const selectedApp = apps?.find((a) => a.id === scope);

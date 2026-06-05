@@ -231,7 +231,7 @@ function AppCost() {
   const selectedApp = apps?.find((a) => a.id === scope);
   const queryKey = getGetCostQueryKey(scope);
   const { data, isLoading, isFetching } = useGetCost(scope, undefined, {
-    query: { queryKey },
+    query: { queryKey, staleTime: 5 * 60 * 1000 },
   });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${scope}/cost`, queryKey);
   const budgetPercent = data ? (data.monthToDate / data.budget) * 100 : 0;
