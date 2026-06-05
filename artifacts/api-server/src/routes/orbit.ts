@@ -50,7 +50,7 @@ export const APPS: AppRecord[] = [
     owners: ["Ryan Gutridge"],
     userAuth: "clerk",
     androidPackage: "com.grailbabe.app",
-    iosBundle: "com.grailbabe.app",
+    iosBundle: "com.kinisislabs.grailbabe",
   },
   {
     id: "orbit",
