@@ -5,6 +5,7 @@ import {
   getGetGlobalCostSummaryQueryKey,
   getGetCostQueryKey,
 } from "@workspace/api-client-react";
+import { BudgetAlertHistory } from "@/components/budget-alert-history";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
@@ -792,6 +793,8 @@ function GlobalCost() {
           </TableBody>
         </Table>
       </Panel>
+
+      <BudgetAlertHistory />
       </div>
     </>
   );
@@ -1278,6 +1281,8 @@ function AppCost() {
             </TableBody>
           </Table>
         </Panel>
+
+      <BudgetAlertHistory appId={scope} />
       </div>
       </div>
     </>

@@ -25,6 +25,7 @@ import type {
   AppDetail,
   AppSummary,
   AppleSubscriptionRow,
+  BudgetAlertLogEntry,
   CostReport,
   Deployment,
   GetAppAlertsParams,
@@ -43,6 +44,7 @@ import type {
   LedgerJournalEntry,
   LedgerReconciliation,
   LedgerReport,
+  ListBudgetAlertLogParams,
   ListGlobalAlertsParams,
   LogLine,
   NetworkReport,
@@ -2086,6 +2088,90 @@ export function useListGlobalEndpoints<TData = Awaited<ReturnType<typeof listGlo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListGlobalEndpointsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListBudgetAlertLogUrl = (params?: ListBudgetAlertLogParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/budget-alerts/log?${stringifiedParams}` : `/api/budget-alerts/log`
+}
+
+/**
+ * @summary Recent budget-overrun notifications that were dispatched by the scheduler
+ */
+export const listBudgetAlertLog = async (params?: ListBudgetAlertLogParams, options?: RequestInit): Promise<BudgetAlertLogEntry[]> => {
+
+  return customFetch<BudgetAlertLogEntry[]>(getListBudgetAlertLogUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBudgetAlertLogQueryKey = (params?: ListBudgetAlertLogParams,) => {
+    return [
+    `/api/budget-alerts/log`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListBudgetAlertLogQueryOptions = <TData = Awaited<ReturnType<typeof listBudgetAlertLog>>, TError = ErrorType<unknown>>(params?: ListBudgetAlertLogParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBudgetAlertLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBudgetAlertLogQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBudgetAlertLog>>> = ({ signal }) => listBudgetAlertLog(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBudgetAlertLog>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBudgetAlertLogQueryResult = NonNullable<Awaited<ReturnType<typeof listBudgetAlertLog>>>
+export type ListBudgetAlertLogQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Recent budget-overrun notifications that were dispatched by the scheduler
+ */
+
+export function useListBudgetAlertLog<TData = Awaited<ReturnType<typeof listBudgetAlertLog>>, TError = ErrorType<unknown>>(
+ params?: ListBudgetAlertLogParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBudgetAlertLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBudgetAlertLogQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

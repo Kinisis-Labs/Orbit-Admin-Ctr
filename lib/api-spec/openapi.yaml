@@ -418,6 +418,30 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/GlobalEndpointRow" }
+  /budget-alerts/log:
+    get:
+      operationId: listBudgetAlertLog
+      tags: [alerts, cost]
+      summary: Recent budget-overrun notifications that were dispatched by the scheduler
+      parameters:
+        - name: appId
+          in: query
+          required: false
+          description: Filter to a specific app. Omit to return entries for all apps.
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of entries to return (default 50, max 200).
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/BudgetAlertLogEntry" }
 components:
   parameters:
     AppId:
@@ -1032,3 +1056,18 @@ components:
         status: { $ref: "#/components/schemas/Status" }
         latencyMs: { type: number }
         packetLossPercent: { type: number }
+    BudgetAlertLogEntry:
+      type: object
+      required: [id, appId, appName, mtd, forecast, budget, channels, sentAt]
+      properties:
+        id: { type: integer }
+        appId: { type: string }
+        appName: { type: string }
+        mtd: { type: number, description: Month-to-date spend at alert time }
+        forecast: { type: number, description: End-of-month cost forecast at alert time }
+        budget: { type: number, description: Budget cap at alert time }
+        channels:
+          type: array
+          items: { type: string }
+          description: Notification channels that fired (e.g. "teams", "email")
+        sentAt: { type: string, format: date-time, description: When the notification was dispatched }

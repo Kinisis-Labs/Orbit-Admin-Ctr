@@ -36,6 +36,7 @@ import { APPS } from "../routes/orbit.js";
 import { fetchMonthToDateCost } from "./azureCost.js";
 import { fetchBudgetForAppWithFallback } from "./azureBudgets.js";
 import { logger } from "./logger.js";
+import { db, budgetAlertLogTable } from "@workspace/db";
 
 // ---------------------------------------------------------------------------
 // Config helpers
@@ -104,8 +105,26 @@ function isOnCooldown(appId: string): boolean {
   return last !== undefined && Date.now() - last < cooldownMs();
 }
 
-function markAlertSent(appId: string): void {
+function markAlertSent(
+  appId: string,
+  alert: OverrunAlert,
+  channels: string[],
+): void {
   _lastAlertSentAt.set(appId, Date.now());
+
+  // Persist to DB asynchronously — fire and forget so a DB failure never
+  // blocks or disrupts the alert delivery path.
+  db.insert(budgetAlertLogTable)
+    .values({
+      appId,
+      mtd: String(alert.mtd),
+      forecast: String(alert.forecast),
+      budget: String(alert.budget),
+      channels: channels.join(","),
+    })
+    .catch((err: unknown) => {
+      logger.error({ err, appId }, "budget-alert: failed to persist alert log row");
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -341,7 +360,7 @@ export async function checkBudgetForecasts(): Promise<{
       continue;
     }
 
-    let sentAny = false;
+    const firedChannels: string[] = [];
 
     // --- Teams ---
     const teamsUrl = teamsWebhookUrl(app.id);
@@ -350,7 +369,7 @@ export async function checkBudgetForecasts(): Promise<{
         await sendTeamsAlert(teamsUrl, alert);
         logger.info({ appId: app.id }, "budget-alert: Teams notification sent");
         alertsSent++;
-        sentAny = true;
+        firedChannels.push("teams");
       } catch (err) {
         logger.error({ err, appId: app.id }, "budget-alert: Teams notification failed");
         errors++;
@@ -364,14 +383,14 @@ export async function checkBudgetForecasts(): Promise<{
         await sendEmailAlert(recipients, alert);
         logger.info({ appId: app.id, recipients }, "budget-alert: email notification sent");
         alertsSent++;
-        sentAny = true;
+        firedChannels.push("email");
       } catch (err) {
         logger.error({ err, appId: app.id }, "budget-alert: email notification failed");
         errors++;
       }
     }
 
-    if (sentAny) markAlertSent(app.id);
+    if (firedChannels.length > 0) markAlertSent(app.id, alert, firedChannels);
   }
 
   return { checked: APPS.length, overruns, alertsSent, errors };

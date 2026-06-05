@@ -6,6 +6,7 @@ import ledgerRouter from "./ledger";
 import usersRouter from "./users";
 import playSubscriptionsRouter from "./playSubscriptions";
 import appleSubscriptionsRouter from "./appleSubscriptions";
+import budgetAlertLogRouter from "./budgetAlertLog";
 import { requireAuth, requireCostReader } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -23,5 +24,6 @@ router.use(requireAuth, usersRouter);
 // not just UI gating. No-op in mock mode so the dev preview keeps working.
 router.use(requireAuth, requireCostReader, playSubscriptionsRouter);
 router.use(requireAuth, requireCostReader, appleSubscriptionsRouter);
+router.use(requireAuth, requireCostReader, budgetAlertLogRouter);
 
 export default router;

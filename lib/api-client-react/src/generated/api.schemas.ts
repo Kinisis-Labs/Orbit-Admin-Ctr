@@ -816,6 +816,22 @@ export interface GlobalEndpointRow {
   packetLossPercent: number;
 }
 
+export interface BudgetAlertLogEntry {
+  id: number;
+  appId: string;
+  appName: string;
+  /** Month-to-date spend at alert time */
+  mtd: number;
+  /** End-of-month cost forecast at alert time */
+  forecast: number;
+  /** Budget cap at alert time */
+  budget: number;
+  /** Notification channels that fired (e.g. "teams", "email") */
+  channels: string[];
+  /** When the notification was dispatched */
+  sentAt: string;
+}
+
 /**
  * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
  */
@@ -872,6 +888,17 @@ refresh?: RefreshParameter;
 
 export type QueryLogsParams = {
 q?: string;
+limit?: number;
+};
+
+export type ListBudgetAlertLogParams = {
+/**
+ * Filter to a specific app. Omit to return entries for all apps.
+ */
+appId?: string;
+/**
+ * Maximum number of entries to return (default 50, max 200).
+ */
 limit?: number;
 };
 

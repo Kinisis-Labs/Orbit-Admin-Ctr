@@ -670,3 +670,24 @@ export const ListGlobalEndpointsResponseItem = zod.object({
 export const ListGlobalEndpointsResponse = zod.array(ListGlobalEndpointsResponseItem)
 
 
+/**
+ * @summary Recent budget-overrun notifications that were dispatched by the scheduler
+ */
+export const ListBudgetAlertLogQueryParams = zod.object({
+  "appId": zod.coerce.string().optional().describe('Filter to a specific app. Omit to return entries for all apps.'),
+  "limit": zod.coerce.number().optional().describe('Maximum number of entries to return (default 50, max 200).')
+})
+
+export const ListBudgetAlertLogResponseItem = zod.object({
+  "id": zod.number(),
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "mtd": zod.number().describe('Month-to-date spend at alert time'),
+  "forecast": zod.number().describe('End-of-month cost forecast at alert time'),
+  "budget": zod.number().describe('Budget cap at alert time'),
+  "channels": zod.array(zod.string()).describe('Notification channels that fired (e.g. \"teams\", \"email\")'),
+  "sentAt": zod.string().datetime({"offset":true}).describe('When the notification was dispatched')
+})
+export const ListBudgetAlertLogResponse = zod.array(ListBudgetAlertLogResponseItem)
+
+
