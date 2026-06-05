@@ -12,6 +12,7 @@ export interface SessionUser {
   jobTitle: string;
   groupIds: string[];
   isCostReader: boolean;
+  isAdmin: boolean;
 }
 
 declare module "express-session" {

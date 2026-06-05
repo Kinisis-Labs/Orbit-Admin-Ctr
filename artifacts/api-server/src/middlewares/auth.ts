@@ -11,9 +11,10 @@ export const requireAuth: RequestHandler = (req, res, next) => {
   res.status(401).json({ error: "unauthorized" });
 };
 
-/** Require membership in the Orbit-Cost-Readers group for FinOps surfaces. */
+/** Require membership in the Orbit-Cost-Readers group for FinOps surfaces.
+ * Orbit-Admins implicitly satisfy this requirement. */
 export const requireCostReader: RequestHandler = (req, res, next) => {
   if (!isEntraConfigured()) return next();
-  if (req.session.user?.isCostReader) return next();
+  if (req.session.user?.isCostReader || req.session.user?.isAdmin) return next();
   res.status(403).json({ error: "forbidden", requiredGroup: "Orbit-Cost-Readers" });
 };

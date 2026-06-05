@@ -1,6 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, StatusPill } from "@/components/page-header";
-import { useAuth, COST_READER_GROUP } from "@/lib/auth";
+import { useAuth, COST_READER_GROUP, ADMIN_GROUP } from "@/lib/auth";
 import { CheckCircle2, XCircle } from "lucide-react";
 
 type GroupDef = {
@@ -87,7 +87,7 @@ export default function Access() {
           <TableBody>
             {ORBIT_GROUPS.map((g) => {
               const isMember = hasGroup(g.id);
-              const toggleable = g.id === COST_READER_GROUP.id;
+              const toggleable = g.id === COST_READER_GROUP.id || g.id === ADMIN_GROUP.id;
               return (
                 <TableRow key={g.id} className="border-b border-border/50 hover:bg-muted/40 align-top">
                   <TableCell className="py-2">
@@ -110,7 +110,13 @@ export default function Access() {
                         <button
                           type="button"
                           className="text-primary hover:underline text-[12px]"
-                          onClick={() => (isMember ? revokeGroup(g.id) : grantGroup(COST_READER_GROUP))}
+                          onClick={() => {
+                            if (isMember) {
+                              revokeGroup(g.id);
+                            } else {
+                              grantGroup({ id: g.id, displayName: g.displayName, description: g.description });
+                            }
+                          }}
                         >
                           {isMember ? "Revoke" : "Grant"}
                         </button>

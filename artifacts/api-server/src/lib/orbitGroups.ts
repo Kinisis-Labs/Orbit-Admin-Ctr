@@ -72,7 +72,23 @@ export function resolveOrbitGroups(
     },
   ];
   const member = new Set(memberGroupIds);
-  return registry
+  const resolved = registry
     .filter((r) => r.objectId !== undefined && member.has(r.objectId))
     .map((r) => r.group);
+
+  // Admins get implicit cost-reader access: inject the cost-reader group entry
+  // if the admin group resolved for this user but cost-reader did not (e.g.
+  // they are only in Orbit-Admins, not also in Orbit-Cost-Readers in Entra).
+  const isAdmin =
+    cfg.adminGroupId !== undefined && member.has(cfg.adminGroupId);
+  const hasCostReader = resolved.some((g) => g.id === COST_READER_CLIENT_ID);
+  if (isAdmin && !hasCostReader) {
+    resolved.push({
+      id: COST_READER_CLIENT_ID,
+      displayName: "Orbit-Cost-Readers",
+      description: "Allowed to view cost, billing, and revenue data in Orbit.",
+    });
+  }
+
+  return resolved;
 }

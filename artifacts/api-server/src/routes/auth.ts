@@ -147,6 +147,7 @@ router.get("/auth/callback", async (req, res, next) => {
       groupIds,
       isCostReader:
         !!cfg.costReaderGroupId && groupIds.includes(cfg.costReaderGroupId),
+      isAdmin: !!cfg.adminGroupId && groupIds.includes(cfg.adminGroupId),
     };
     const returnTo = safeReturnTo(oidc.returnTo);
     delete req.session.oidc;

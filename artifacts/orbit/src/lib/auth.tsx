@@ -28,6 +28,16 @@ export const COST_READER_GROUP: EntraGroup = {
   description: "Allowed to view cost, billing, and revenue data in Orbit.",
 };
 
+// Admin group — id must match the client-facing id used in orbitGroups.ts.
+// In mock mode, toggling this on also auto-grants cost-reader (mirroring the
+// server-side behaviour where isAdmin widens requireCostReader).
+export const ADMIN_GROUP: EntraGroup = {
+  id: "orbit-admins",
+  displayName: "Orbit-Admins",
+  description:
+    "Platform administration: feature flags, group management, preferences for all users.",
+};
+
 const STORAGE_KEY = "orbit-mock-groups";
 
 const AUTH_ME = "/api/auth/me";
@@ -173,9 +183,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     }
 
-    // Mock mode: fake user + client-side toggleable cost-readers group.
+    // Mock mode: fake user + client-side toggleable groups.
+    // Admin group auto-grants cost-reader (mirrors server-side requireCostReader widening).
+    const hasAdmin = toggleableIds.includes(ADMIN_GROUP.id);
+    const hasCostReader = toggleableIds.includes(COST_READER_GROUP.id);
     const toggleable: EntraGroup[] = [];
-    if (toggleableIds.includes(COST_READER_GROUP.id)) toggleable.push(COST_READER_GROUP);
+    if (hasAdmin) toggleable.push(ADMIN_GROUP);
+    if (hasCostReader || hasAdmin) toggleable.push(COST_READER_GROUP);
     const groups = [...MOCK_BASE_GROUPS, ...toggleable];
     const groupIds = new Set(groups.map((g) => g.id));
     return {
