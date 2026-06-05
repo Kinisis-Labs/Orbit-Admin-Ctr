@@ -51,6 +51,7 @@ export default function AppDetail() {
   const appId = params.appId!;
   const { hasGroup } = useAuth();
   const canSeeCost = hasGroup(COST_READER_GROUP.id);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const { data: app, isLoading: appLoading } = useGetApp(appId, { query: { enabled: !!appId, queryKey: getGetAppQueryKey(appId) } });
 
@@ -109,7 +110,7 @@ export default function AppDetail() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* Azure Pivot / Tab Strip */}
         <TabsList className="flex h-10 w-full justify-start rounded-none border-b border-border bg-transparent p-0">
           <TabsTrigger value="overview" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">Overview</TabsTrigger>
@@ -211,7 +212,7 @@ export default function AppDetail() {
                 </div>
               </div>
             </div>
-            {canSeeCost && <OverviewCostTile appId={appId} />}
+            {canSeeCost && <OverviewCostTile appId={appId} onGoToCost={() => setActiveTab("cost")} />}
           </TabsContent>
           
           <TabsContent value="infrastructure" className="m-0 space-y-4">
@@ -329,7 +330,7 @@ function DataSourceBadge({
   );
 }
 
-function OverviewCostTile({ appId }: { appId: string }) {
+function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: () => void }) {
   const { data, isLoading } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey: getGetCostQueryKey(appId) } });
   const budgetThreshold = useBudgetThreshold(appId);
 
@@ -346,6 +347,9 @@ function OverviewCostTile({ appId }: { appId: string }) {
   const isEstimated = data.dataSource === "mock";
   const forecastOverBudget = data.forecast > data.budget;
 
+  const tileClass =
+    "flex flex-col gap-1 rounded-sm p-2 -m-2 cursor-pointer transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
   return (
     <div className="bg-card border border-border shadow-sm p-4 text-[13px]">
       <div className="flex items-center justify-between mb-3">
@@ -354,13 +358,13 @@ function OverviewCostTile({ appId }: { appId: string }) {
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* MTD Spend */}
-        <div className="flex flex-col gap-1">
+        <button type="button" onClick={onGoToCost} className={tileClass}>
           <div className="text-[12px] text-muted-foreground font-medium">MTD spend</div>
           <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.monthToDate)}</div>
-        </div>
+        </button>
 
         {/* Budget Cap */}
-        <div className="flex flex-col gap-1">
+        <button type="button" onClick={onGoToCost} className={tileClass}>
           <div className="text-[12px] text-muted-foreground font-medium">Budget Cap</div>
           <div className="text-xl font-semibold tabular-nums">
             {formatCurrency(data.budget)}
@@ -370,17 +374,17 @@ function OverviewCostTile({ appId }: { appId: string }) {
             <TooltipProvider>
               <UITooltip>
                 <TooltipTrigger asChild>
-                  <Progress value={barUtilPct} className={`h-1.5 rounded-none bg-muted ${budgetBarClass} cursor-default`} />
+                  <Progress value={barUtilPct} className={`h-1.5 rounded-none bg-muted ${budgetBarClass} cursor-pointer`} />
                 </TooltipTrigger>
                 <TooltipContent>Alert at {budgetThreshold}% · {rawUtilPct.toFixed(0)}% utilized</TooltipContent>
               </UITooltip>
             </TooltipProvider>
             <div className="text-[11px] text-muted-foreground tabular-nums">{rawUtilPct.toFixed(0)}% of cap used MTD</div>
           </div>
-        </div>
+        </button>
 
         {/* Forecast EOM */}
-        <div className="flex flex-col gap-1">
+        <button type="button" onClick={onGoToCost} className={tileClass}>
           <div className="text-[12px] text-muted-foreground font-medium">Forecast EOM</div>
           <div className={`text-xl font-semibold tabular-nums ${forecastOverBudget ? "text-destructive" : "text-muted-foreground"}`}>
             {formatCurrency(data.forecast)}
@@ -391,10 +395,10 @@ function OverviewCostTile({ appId }: { appId: string }) {
               ? <span className="text-destructive">Projected to exceed cap</span>
               : <span className="text-muted-foreground">Projected end-of-month</span>}
           </div>
-        </div>
+        </button>
 
         {/* Headroom */}
-        <div className="flex flex-col gap-1">
+        <button type="button" onClick={onGoToCost} className={tileClass}>
           <div className="text-[12px] text-muted-foreground font-medium">Headroom</div>
           <div className={`text-xl font-semibold tabular-nums ${headroom < 0 ? "text-destructive" : "text-emerald-500"}`}>
             {formatCurrency(headroom)}
@@ -403,7 +407,7 @@ function OverviewCostTile({ appId }: { appId: string }) {
           <div className="text-[11px] text-muted-foreground mt-0.5">
             {headroom >= 0 ? "Remaining vs forecast" : "Overrun vs budget"}
           </div>
-        </div>
+        </button>
       </div>
     </div>
   );
