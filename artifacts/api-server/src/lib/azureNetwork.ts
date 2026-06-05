@@ -67,12 +67,11 @@ export async function fetchNetworkEndpoints(
   }
 
   const subscriptionIds = getSubscriptionIds();
-  const rg = app.resourceGroup.toLowerCase();
 
-  // Query networking-related resources in the RG.
+  // Query networking resources subscription-wide (not scoped to the app's compute RG)
+  // because shared resources like Front Door and DNS zones live in different RGs.
   const query = `
     resources
-    | where resourceGroup =~ '${rg}'
     | where type in~ (
         'microsoft.network/frontdoors',
         'microsoft.cdn/profiles',
