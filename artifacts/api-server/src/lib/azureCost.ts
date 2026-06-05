@@ -137,7 +137,7 @@ export async function resolveSubscriptionId(app: AppRecord): Promise<string | nu
  */
 export async function fetchMonthToDateCost(
   app: AppRecord,
-  { bypassCache = false }: { bypassCache?: boolean } = {},
+  { bypassCache = false, billingScope = "rg" }: { bypassCache?: boolean; billingScope?: "rg" | "subscription" } = {},
 ): Promise<CostResult | null> {
   if (!isAzureConfigured()) return null;
 
@@ -152,7 +152,13 @@ export async function fetchMonthToDateCost(
   const subscriptionId = await resolveSubscriptionId(app);
   if (!subscriptionId) return null;
 
-  const scope = `/subscriptions/${subscriptionId}/resourceGroups/${app.resourceGroup}`;
+  // Use subscription scope for apps with a dedicated subscription (all costs in that
+  // sub are attributable to this app).  Use resource-group scope for apps that share
+  // a subscription with other apps so we only count their portion of the bill.
+  const scope =
+    billingScope === "subscription"
+      ? `/subscriptions/${subscriptionId}`
+      : `/subscriptions/${subscriptionId}/resourceGroups/${app.resourceGroup}`;
 
   try {
     const result = await getCostClient().query.usage(scope, {
@@ -308,7 +314,7 @@ async function readCostSnapshot(appId: string): Promise<CostResult | null> {
  */
 export async function fetchMonthToDateCostWithFallback(
   app: AppRecord,
-  opts: { bypassCache?: boolean } = {},
+  opts: { bypassCache?: boolean; billingScope?: "rg" | "subscription" } = {},
 ): Promise<CostWithSource | null> {
   const live = await fetchMonthToDateCost(app, opts);
 

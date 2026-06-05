@@ -128,6 +128,21 @@ export const APPS: AppRecord[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Billing scope config: "subscription" means the app owns its entire Azure
+// subscription (query at sub scope for full cost coverage); "rg" means the app
+// shares a subscription with others (query at resource-group scope only).
+// ---------------------------------------------------------------------------
+const APP_BILLING_SCOPE: Record<string, "rg" | "subscription"> = {
+  grailbabe: "subscription", // mg-GrailBabeProd — dedicated subscription 01390551
+  orbit: "rg",               // shares sub-sharedplatf 893689ff with Kinisis Labs
+  "kinisis-labs": "rg",      // shares sub-sharedplatf 893689ff with Orbit
+};
+
+function billingScope(appId: string): "rg" | "subscription" {
+  return APP_BILLING_SCOPE[appId] ?? "rg";
+}
+
+// ---------------------------------------------------------------------------
 // Startup validation: every APPS entry must satisfy the GetAppResponse schema.
 // This ensures the inventory stays consistent with the OpenAPI contract.
 // The server refuses to start if any entry is invalid.
@@ -171,7 +186,7 @@ router.get("/apps", async (_req, res) => {
   // Falls back to static inventory values when Azure is unconfigured.
   const [alertResults, costWithSourceResults, budgetWithSourceResults] = await Promise.all([
     Promise.all(APPS.map((a) => fetchActiveAlerts(a, {}))),
-    Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, {}))),
+    Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, { billingScope: billingScope(a.id) }))),
     Promise.all(APPS.map((a) => fetchBudgetForAppWithFallback(a, {}))),
   ]);
 
@@ -486,7 +501,7 @@ router.get("/apps/:appId/cost", async (req, res) => {
   }
   const bypassCache = req.query["refresh"] === "true";
   const [costWS, budgetWithSource, rev] = await Promise.all([
-    fetchMonthToDateCostWithFallback(app, { bypassCache }),
+    fetchMonthToDateCostWithFallback(app, { bypassCache, billingScope: billingScope(app.id) }),
     fetchBudgetForAppWithFallback(app, { bypassCache }),
     syncAndReadRevenue(app),
   ]);
@@ -605,7 +620,7 @@ router.get("/global/alerts", async (_req, res) => {
 router.get("/global/cost-summary", async (req, res) => {
   const bypassCache = req.query["refresh"] === "true";
   const [costWithSourceResults, budgetWithSourceResults, revResults] = await Promise.all([
-    Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, { bypassCache }))),
+    Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, { bypassCache, billingScope: billingScope(a.id) }))),
     Promise.all(APPS.map((a) => fetchBudgetForAppWithFallback(a, { bypassCache }))),
     Promise.all(APPS.map((a) => syncAndReadRevenue(a))),
   ]);
