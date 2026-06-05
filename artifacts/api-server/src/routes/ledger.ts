@@ -63,7 +63,12 @@ router.post("/apps/:appId/ledger/entries", async (req, res) => {
     return;
   }
   try {
-    const entry = await postEntry(app.id, parsed.data);
+    const entry = await postEntry(app.id, {
+      ...parsed.data,
+      postedAt: parsed.data.postedAt
+        ? new Date(parsed.data.postedAt)
+        : undefined,
+    });
     res.status(201).json(ListLedgerEntriesResponseItem.parse(entry));
   } catch (err) {
     if (err instanceof LedgerError) {
@@ -90,7 +95,12 @@ router.post("/apps/:appId/ledger/sales", async (req, res) => {
     return;
   }
   try {
-    const result = await ingestSale(app.id, parsed.data);
+    const result = await ingestSale(app.id, {
+      ...parsed.data,
+      postedAt: parsed.data.postedAt
+        ? new Date(parsed.data.postedAt)
+        : undefined,
+    });
     res.status(201).json(result);
   } catch (err) {
     if (err instanceof LedgerError) {
