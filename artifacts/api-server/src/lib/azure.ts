@@ -32,12 +32,14 @@ export function getSubscriptionIds(): string[] {
 
 /**
  * Returns true when the required Azure env vars are present.
- * Mirrors `isEntraConfigured()` — same config-gate pattern.
+ *
+ * Only AZURE_SUBSCRIPTION_IDS is strictly required — in production on Azure
+ * Container Apps, DefaultAzureCredential picks up the user-assigned managed
+ * identity `id-orbit-api-prod` automatically via IMDS (no explicit client/
+ * tenant IDs needed at runtime). Setting AZURE_CLIENT_ID to the managed
+ * identity's client ID is still recommended so DefaultAzureCredential doesn't
+ * have to guess when multiple identities are assigned.
  */
 export function isAzureConfigured(): boolean {
-  return (
-    Boolean(process.env.AZURE_SUBSCRIPTION_IDS) &&
-    Boolean(process.env.AZURE_CLIENT_ID) &&
-    Boolean(process.env.AZURE_TENANT_ID)
-  );
+  return Boolean(process.env.AZURE_SUBSCRIPTION_IDS);
 }

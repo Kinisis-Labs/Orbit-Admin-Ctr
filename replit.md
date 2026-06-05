@@ -66,7 +66,17 @@ Hosted on Azure in `rg-orbit-prod-eus2` (region East US 2), fronted by the share
 - **Also provisioned:** App Configuration `appcs-orbit-prod-eus2` (`APP_CONFIGURATION_ENDPOINT`) and Application Insights `appi-oribit-prod` (resource name is misspelled "oribit"; `APPLICATIONINSIGHTS_CONNECTION_STRING`) — SDK wiring not built yet. A GitHub-OIDC federated managed identity (`…rg-orbit-prod-eus2Oidc`) also exists for the deploy workflow.
 - **Prod resource names (confirmed from Azure portal, June 2026):** SWA `swa-orbit-prod`, Container App `ca-orbit-api-prod`, Container Apps Env `cae-orbit-prod-eus2`, Postgres `pg-orbit-prod`, App Config `appcs-orbit-prod-eus2`, App Insights `appi-oribit-prod` (sic), API managed identity `id-orbit-api-prod`. Naming is inconsistent — several resources omit the `-eus2` suffix, the SWA uses `swa-` (not `stapp-`), and App Insights is misspelled. Shared/other resources (Front Door, Key Vault, ACR, Log Analytics, Storage, RG) were not in the portal listing and remain as specified above (unconfirmed).
 
-**Pending on the Azure side:** Real Azure *data* integrations (Resource Graph, Monitor, Cost Management, Graph) are not yet built — the dashboard still serves mock data plus the live Stripe-backed ledger.
+**Azure data integrations (Cost, Resources, Subscriptions) — built, config-gated:** `azureCost.ts`, `azureResources.ts`, and `azureSubscriptions.ts` are fully implemented. They activate when `AZURE_SUBSCRIPTION_IDS` is set on the Container App; otherwise the dashboard falls back to mock/seeded data (Replit dev preview is unaffected). Add these secrets to the **OrbitProduction** GitHub environment and retrigger the deploy workflow to go live:
+
+- `AZURE_SUBSCRIPTION_IDS` — comma-separated GUIDs of every subscription hosting tracked apps (e.g. the shared platform sub + the internal tools sub)
+- `AZURE_MANAGED_IDENTITY_CLIENT_ID` — client ID of `id-orbit-api-prod` (Azure Portal → Managed Identities → id-orbit-api-prod → Overview → Client ID); tells DefaultAzureCredential which user-assigned identity to use
+- `AZURE_SUB_GRAILBABE` — subscription GUID for GrailBabe's resource group `rg-grailbabeprod-compute-prod-eus2` (optional if it's the same sub as orbit)
+- `AZURE_SUB_ORBIT` — subscription GUID for Orbit's resource group `rg-orbit-prod-eus2` (optional)
+- `AZURE_SUB_KINISIS_LABS` — subscription GUID for `rg-kinisislabs-web-prod-eus2` (optional)
+
+Required Azure RBAC for `id-orbit-api-prod` on each subscription in `AZURE_SUBSCRIPTION_IDS`: **Cost Management Reader** (Cost Management queries) + **Reader** (Resource Graph queries). Assign via Azure Portal → Subscriptions → IAM → Add role assignment → Members tab → select Managed identity → `id-orbit-api-prod`.
+
+Also ensure `id-orbit-api-prod` is **assigned to the Container App**: Azure Portal → Container Apps → ca-orbit-api-prod → Identity → User assigned → Add → select `id-orbit-api-prod`.
 
 **Live time-series charts — config-gated:** The telemetry and infrastructure routes query real hourly time-series from Log Analytics when `AZURE_LOG_ANALYTICS_WORKSPACE_ID` is set (the workspace **customer ID / GUID**, shown as "Workspace ID" in the Azure portal — not the resource ID). Set this on the Container App alongside the base Azure vars. When unset (or when any live query fails / returns empty data), the routes fall back to deterministic seeded mock series — Replit dev preview is unaffected. Managed identity `id-orbit-api-prod` needs **Log Analytics Reader** on the workspace to run the KQL queries.
 
