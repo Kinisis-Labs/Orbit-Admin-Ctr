@@ -48,6 +48,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BAR_COLOR_DEFAULT, BAR_COLOR_UP_MILD, BAR_COLOR_UP_HIGH, BAR_COLOR_DOWN, getBarFill } from "@/lib/bar-trend";
 import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
 import { InfraAlertHistory } from "@/components/infra-alert-history";
+import { AlertConfigTable } from "@/components/alert-config-table";
 
 export default function AppDetail() {
   const params = useParams();
@@ -1333,6 +1334,8 @@ function AlertsTab({ appId }: { appId: string }) {
         </Table>
       </div>
     </div>
+    <InfraAlertHistory appId={appId} />
+    <AlertConfigTable appId={appId} />
     </>
   );
 }
