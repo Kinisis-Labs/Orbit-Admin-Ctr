@@ -1,5 +1,6 @@
 import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
+import { logger } from "./logger.js";
 import type { AppRecord } from "../routes/orbit.js";
 
 export type NetworkEndpoint = {
@@ -43,15 +44,22 @@ type NetworkCacheEntry = { result: NetworkEndpoint[]; expiresAt: number };
 const _networkCache = new Map<string, NetworkCacheEntry>();
 
 /**
- * Fetch networking resource health for the app's resource group via Resource Graph.
- * Queries for Front Door profiles, Application Gateways, Virtual Networks, and
- * Private DNS zones in the RG, then maps them to the dashboard endpoint shape.
+ * Fetch networking resource health for the subscriptions via Resource Graph.
+ * Queries subscription-wide (not scoped to the app's compute RG) because shared
+ * resources like Front Door and DNS zones live in different RGs. Includes:
+ *   - Azure Front Door / CDN profiles (microsoft.cdn/profiles)
+ *   - Classic Front Door (microsoft.network/frontdoors)
+ *   - Application Gateways
+ *   - Virtual Networks
+ *   - Private DNS zones / Public DNS zones
+ *   - Network Watchers  ← requires Network Watcher Reader
+ *
+ * Returns null when not configured or on any error (caller falls back to mock).
+ * Returns [] when configured but no matching resources found.
  *
  * Results are cached in-process for NETWORK_CACHE_TTL_MS (10 min). Pass
  * `bypassCache: true` to skip the cache and force a fresh API call (the fresh
  * result is still written back to the cache).
- *
- * Returns null when not configured or on any error (caller falls back to mock).
  */
 export async function fetchNetworkEndpoints(
   app: AppRecord,
@@ -70,6 +78,7 @@ export async function fetchNetworkEndpoints(
 
   // Query networking resources subscription-wide (not scoped to the app's compute RG)
   // because shared resources like Front Door and DNS zones live in different RGs.
+  // Includes Network Watchers — requires Network Watcher Reader role.
   const query = `
     resources
     | where type in~ (
@@ -78,17 +87,20 @@ export async function fetchNetworkEndpoints(
         'microsoft.network/applicationgateways',
         'microsoft.network/virtualnetworks',
         'microsoft.network/privatednszones',
-        'microsoft.network/dnszones'
+        'microsoft.network/dnszones',
+        'microsoft.network/networkwatchers'
       )
     | project
         id,
         name,
         type,
+        kind,
         location,
+        resourceGroup,
         provisioningState = tostring(properties.provisioningState),
         operationalState  = tostring(properties.operationalState)
     | order by type asc
-    | limit 20
+    | limit 50
   `;
 
   try {
@@ -99,33 +111,46 @@ export async function fetchNetworkEndpoints(
 
     const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
 
-    if (rows.length === 0) return null;
+    logger.info(
+      { appId: app.id, rowCount: rows.length, subscriptions: subscriptionIds },
+      "fetchNetworkEndpoints Resource Graph query returned",
+    );
+
+    if (rows.length === 0) return [];
 
     const endpoints: NetworkEndpoint[] = rows.map((row) => {
       const type = String(row["type"] ?? "").toLowerCase();
+      const kind = String(row["kind"] ?? "").toLowerCase();
       const provisioningState = String(row["provisioningState"] ?? "");
       const operationalState = String(row["operationalState"] ?? "");
       const status = mapNetworkStatus(provisioningState, operationalState);
       const location = String(row["location"] ?? app.region);
+      const resourceName = String(row["name"] ?? "");
 
       // Derive a friendly name and typical latency range by resource type.
       let displayName: string;
       let baseLatency: number;
 
-      if (type.includes("frontdoor") || type.includes("cdn/profiles")) {
-        displayName = "Front Door";
+      if (type.includes("frontdoor") || (type.includes("cdn/profiles") && kind.includes("frontdoor"))) {
+        displayName = `Front Door — ${resourceName}`;
         baseLatency = 35;
+      } else if (type.includes("cdn/profiles")) {
+        displayName = `CDN — ${resourceName}`;
+        baseLatency = 30;
       } else if (type.includes("applicationgateway")) {
-        displayName = "Application Gateway";
+        displayName = `App Gateway — ${resourceName}`;
         baseLatency = 12;
       } else if (type.includes("virtualnetwork")) {
-        displayName = "Origin VNet Link";
+        displayName = `VNet — ${resourceName}`;
         baseLatency = 4;
       } else if (type.includes("privatednszones") || type.includes("dnszones")) {
-        displayName = "Private DNS";
+        displayName = `DNS — ${resourceName}`;
         baseLatency = 1;
+      } else if (type.includes("networkwatchers")) {
+        displayName = `Network Watcher — ${resourceName}`;
+        baseLatency = 0;
       } else {
-        displayName = String(row["name"] ?? "Network Resource");
+        displayName = resourceName || "Network Resource";
         baseLatency = 10;
       }
 
@@ -140,7 +165,11 @@ export async function fetchNetworkEndpoints(
 
     _networkCache.set(app.id, { result: endpoints, expiresAt: Date.now() + NETWORK_CACHE_TTL_MS });
     return endpoints;
-  } catch {
+  } catch (err: unknown) {
+    logger.error(
+      { err, appId: app.id, subscriptions: subscriptionIds },
+      "fetchNetworkEndpoints Resource Graph query failed",
+    );
     return null;
   }
 }

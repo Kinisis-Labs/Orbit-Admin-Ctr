@@ -884,11 +884,11 @@ router.get("/global/slos", async (_req, res) => {
 });
 
 // --- global: network endpoints ---
-// Aggregates endpoint health across all apps from Azure Network Watcher.
-// Returns [] when Azure Monitor is not configured.
+// Aggregates endpoint health across all apps from Azure Resource Graph.
+// Returns { endpoints: [], liveEnabled: false, dataSource: "none" } when Azure is not configured.
 router.get("/global/endpoints", async (_req, res) => {
   if (!isAzureConfigured()) {
-    res.json([]);
+    res.json(ListGlobalEndpointsResponse.parse({ endpoints: [], liveEnabled: false, dataSource: "none" }));
     return;
   }
 
@@ -909,7 +909,11 @@ router.get("/global/endpoints", async (_req, res) => {
     }));
   });
 
-  res.json(ListGlobalEndpointsResponse.parse(rows));
+  // dataSource = "live" if we found real resources, "mock" if Azure is configured but returned nothing
+  const anyLive = endpointResults.some((r) => r !== null && r.length > 0);
+  const dataSource = anyLive ? "live" : "mock";
+
+  res.json(ListGlobalEndpointsResponse.parse({ endpoints: rows, liveEnabled: true, dataSource }));
 });
 
 export default router;

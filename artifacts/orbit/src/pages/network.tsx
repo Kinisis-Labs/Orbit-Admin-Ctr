@@ -15,13 +15,15 @@ const TONE: Record<EndpointStatus, "ok" | "warn" | "bad" | "muted"> = {
 };
 
 export default function NetworkPage() {
-  const { data: eps, isLoading } = useListGlobalEndpoints();
-  const isEmpty = !isLoading && (eps?.length ?? 0) === 0;
+  const { data, isLoading } = useListGlobalEndpoints();
+  const eps = data?.endpoints ?? [];
+  const liveEnabled = data?.liveEnabled ?? false;
+  const isEmpty = !isLoading && eps.length === 0;
 
-  const unhealthy = (eps ?? []).filter((e) => e.status === "unhealthy").length;
-  const degraded = (eps ?? []).filter((e) => e.status === "degraded").length;
-  const avgLatency = (eps ?? []).length
-    ? Math.round((eps ?? []).reduce((s, e) => s + e.latencyMs, 0) / (eps ?? []).length)
+  const unhealthy = eps.filter((e) => e.status === "unhealthy").length;
+  const degraded = eps.filter((e) => e.status === "degraded").length;
+  const avgLatency = eps.length
+    ? Math.round(eps.reduce((s, e) => s + e.latencyMs, 0) / eps.length)
     : 0;
 
   return (
@@ -29,7 +31,7 @@ export default function NetworkPage() {
       <PageHeader title="Network" subtitle="Cross-application endpoint health, latency, and packet loss" />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Tile title="Endpoints monitored" value={isLoading ? null : (eps?.length ?? 0).toString()} sub="Across all applications" />
+        <Tile title="Endpoints monitored" value={isLoading ? null : eps.length.toString()} sub="Across all applications" />
         <Tile title="Avg latency" value={isLoading ? null : `${avgLatency}ms`} sub="P50 across endpoints" />
         <Tile title="Degraded" value={isLoading ? null : degraded.toString()} sub="Elevated latency or loss" />
         <Tile title="Unhealthy" value={isLoading ? null : unhealthy.toString()} sub="Failing probes" />
@@ -42,12 +44,22 @@ export default function NetworkPage() {
         ) : isEmpty ? (
           <div className="p-8 text-center space-y-3">
             <Network className="h-8 w-8 mx-auto text-muted-foreground/40" />
-            <div className="text-[14px] font-semibold text-foreground">Network data not available</div>
+            <div className="text-[14px] font-semibold text-foreground">No network resources found</div>
             <div className="text-[12px] text-muted-foreground max-w-md mx-auto">
-              Endpoint health is sourced from Azure Network Watcher via Resource Graph. Set{" "}
-              <code className="bg-muted px-1 rounded">AZURE_SUBSCRIPTION_IDS</code>,{" "}
-              <code className="bg-muted px-1 rounded">AZURE_CLIENT_ID</code>, and{" "}
-              <code className="bg-muted px-1 rounded">AZURE_TENANT_ID</code> to enable live endpoint monitoring.
+              {liveEnabled ? (
+                <>
+                  Azure is connected but the Resource Graph query returned no networking resources
+                  (Front Door, Application Gateway, VNets, Network Watchers) in the tracked subscriptions.
+                  Check <code className="bg-muted px-1 rounded">/api/diagnostics</code> for details.
+                </>
+              ) : (
+                <>
+                  Endpoint health is sourced from Azure Resource Graph. Set{" "}
+                  <code className="bg-muted px-1 rounded">AZURE_SUBSCRIPTION_IDS</code>,{" "}
+                  <code className="bg-muted px-1 rounded">AZURE_CLIENT_ID</code>, and{" "}
+                  <code className="bg-muted px-1 rounded">AZURE_TENANT_ID</code> to enable live endpoint monitoring.
+                </>
+              )}
             </div>
           </div>
         ) : (
@@ -63,7 +75,7 @@ export default function NetworkPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(eps ?? []).map((e) => (
+              {eps.map((e) => (
                 <TableRow key={e.id} className="h-8 border-b border-border/50 hover:bg-muted/40">
                   <TableCell className="py-1 font-medium text-primary">{e.appName}</TableCell>
                   <TableCell className="py-1 font-medium">{e.name}</TableCell>
@@ -83,10 +95,10 @@ export default function NetworkPage() {
 
 function Tile({ title, value, sub }: { title: string; value: string | null; sub: string }) {
   return (
-    <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-      <div className="text-[12px] text-muted-foreground font-medium mb-1">{title}</div>
-      {value === null ? <Skeleton className="h-7 w-20 mb-1" /> : <div className="text-xl font-semibold tabular-nums mb-1">{value}</div>}
-      <div className="text-[11px] text-muted-foreground truncate">{sub}</div>
+    <div className="bg-card border border-border shadow-sm p-3 space-y-0.5">
+      <div className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">{title}</div>
+      {value === null ? <Skeleton className="h-7 w-16" /> : <div className="text-2xl font-bold tabular-nums">{value}</div>}
+      <div className="text-[11px] text-muted-foreground">{sub}</div>
     </div>
   );
 }

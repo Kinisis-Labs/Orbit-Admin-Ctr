@@ -479,15 +479,13 @@ paths:
     get:
       operationId: listGlobalEndpoints
       tags: [global]
-      summary: Cross-application network endpoint health from Azure. Returns [] when Azure is unconfigured.
+      summary: Cross-application network endpoint health from Azure. Returns empty endpoints when Azure is unconfigured.
       responses:
         "200":
           description: OK
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/GlobalEndpointRow" }
+              schema: { $ref: "#/components/schemas/GlobalEndpointsResponse" }
   /budget-alerts/log:
     get:
       operationId: listBudgetAlertLog
@@ -1294,6 +1292,20 @@ components:
           type: array
           items: { $ref: "#/components/schemas/SloRow" }
         dataSource: { type: string, enum: [live, mock], description: "Indicates whether SLO metrics come from live Azure Monitor or built-in mock values." }
+    GlobalEndpointsResponse:
+      type: object
+      required: [endpoints, liveEnabled, dataSource]
+      properties:
+        endpoints:
+          type: array
+          items: { $ref: "#/components/schemas/GlobalEndpointRow" }
+        liveEnabled:
+          type: boolean
+          description: Whether Azure is configured and live endpoint data is being served.
+        dataSource:
+          type: string
+          enum: [live, mock, none]
+          description: "'live' = Azure Resource Graph query succeeded, 'mock' = Azure configured but query returned no resources, 'none' = Azure not configured."
     GlobalEndpointRow:
       type: object
       required: [id, appId, appName, name, region, status, latencyMs, packetLossPercent]

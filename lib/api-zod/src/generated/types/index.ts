@@ -49,6 +49,8 @@ export * from './globalCostSummaryByAppItem';
 export * from './globalCostSummaryDataSource';
 export * from './globalCostSummaryRevenueByAppItem';
 export * from './globalEndpointRow';
+export * from './globalEndpointsResponse';
+export * from './globalEndpointsResponseDataSource';
 export * from './globalHealth';
 export * from './healthStatus';
 export * from './infraAlertLogEntry';

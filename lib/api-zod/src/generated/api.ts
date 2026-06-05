@@ -756,9 +756,10 @@ export const ListSlosResponse = zod.object({
 
 
 /**
- * @summary Cross-application network endpoint health from Azure. Returns [] when Azure is unconfigured.
+ * @summary Cross-application network endpoint health from Azure. Returns empty endpoints when Azure is unconfigured.
  */
-export const ListGlobalEndpointsResponseItem = zod.object({
+export const ListGlobalEndpointsResponse = zod.object({
+  "endpoints": zod.array(zod.object({
   "id": zod.string(),
   "appId": zod.string(),
   "appName": zod.string(),
@@ -767,8 +768,10 @@ export const ListGlobalEndpointsResponseItem = zod.object({
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "latencyMs": zod.number(),
   "packetLossPercent": zod.number()
+})),
+  "liveEnabled": zod.boolean().describe('Whether Azure is configured and live endpoint data is being served.'),
+  "dataSource": zod.enum(['live', 'mock', 'none']).describe('\'live\' = Azure Resource Graph query succeeded, \'mock\' = Azure configured but query returned no resources, \'none\' = Azure not configured.')
 })
-export const ListGlobalEndpointsResponse = zod.array(ListGlobalEndpointsResponseItem)
 
 
 /**

@@ -39,7 +39,7 @@ import type {
   GetNetworkParams,
   GetTelemetryParams,
   GlobalCostSummary,
-  GlobalEndpointRow,
+  GlobalEndpointsResponse,
   GlobalHealth,
   HealthStatus,
   InfraAlertLogEntry,
@@ -2281,11 +2281,11 @@ export const getListGlobalEndpointsUrl = () => {
 }
 
 /**
- * @summary Cross-application network endpoint health from Azure. Returns [] when Azure is unconfigured.
+ * @summary Cross-application network endpoint health from Azure. Returns empty endpoints when Azure is unconfigured.
  */
-export const listGlobalEndpoints = async ( options?: RequestInit): Promise<GlobalEndpointRow[]> => {
+export const listGlobalEndpoints = async ( options?: RequestInit): Promise<GlobalEndpointsResponse> => {
 
-  return customFetch<GlobalEndpointRow[]>(getListGlobalEndpointsUrl(),
+  return customFetch<GlobalEndpointsResponse>(getListGlobalEndpointsUrl(),
   {
     ...options,
     method: 'GET'
@@ -2328,7 +2328,7 @@ export type ListGlobalEndpointsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Cross-application network endpoint health from Azure. Returns [] when Azure is unconfigured.
+ * @summary Cross-application network endpoint health from Azure. Returns empty endpoints when Azure is unconfigured.
  */
 
 export function useListGlobalEndpoints<TData = Awaited<ReturnType<typeof listGlobalEndpoints>>, TError = ErrorType<unknown>>(

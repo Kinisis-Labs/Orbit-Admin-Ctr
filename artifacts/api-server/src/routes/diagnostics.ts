@@ -100,6 +100,54 @@ function checkSubscriptionConfig(): Record<string, string> {
   return apps;
 }
 
+/** Probe the Resource Graph network query — shows what resources were found (or why it failed). */
+async function checkNetworkResourceGraph(): Promise<CheckResult> {
+  if (!isAzureConfigured()) {
+    return { status: "not_configured", detail: "AZURE_SUBSCRIPTION_IDS not set" };
+  }
+  const subs = getSubscriptionIds();
+  try {
+    const client = new ResourceGraphClient(getAzureCredential());
+    const result = await client.resources({
+      subscriptions: subs,
+      query: `
+        resources
+        | where type in~ (
+            'microsoft.network/frontdoors',
+            'microsoft.cdn/profiles',
+            'microsoft.network/applicationgateways',
+            'microsoft.network/virtualnetworks',
+            'microsoft.network/privatednszones',
+            'microsoft.network/dnszones',
+            'microsoft.network/networkwatchers'
+          )
+        | project id, name, type, resourceGroup, location
+        | order by type asc
+        | limit 50
+      `,
+    });
+    const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
+    if (rows.length === 0) {
+      return {
+        status: "ok",
+        detail: `Query succeeded but found 0 networking resources across ${subs.length} subscription(s). ` +
+          `Verify that Front Door / VNets / Network Watchers exist in subscriptions: ${subs.join(", ")}`,
+      };
+    }
+    const summary = rows.map((r) => `${r["type"]}/${r["name"]} (${r["resourceGroup"]}, ${r["location"]})`).join("; ");
+    return { status: "ok", detail: `Found ${rows.length} resource(s): ${summary}` };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const isAuthError = msg.includes("AuthorizationFailed") || msg.includes("does not have authorization");
+    return {
+      status: "error",
+      detail: isAuthError
+        ? `Missing 'Reader' role on subscription(s) ${subs.join(", ")} for managed identity id-orbit-api-prod`
+        : msg,
+    };
+  }
+}
+
 /** Probe Cost Management Reader access on each configured subscription. */
 async function checkCostManagementAccess(): Promise<Record<string, CheckResult>> {
   if (!isAzureConfigured()) {
@@ -150,10 +198,11 @@ async function checkCostManagementAccess(): Promise<Record<string, CheckResult>>
 router.get("/diagnostics", async (_req, res) => {
   logger.info("diagnostics endpoint called");
 
-  const [azureCheck, githubCheck, costCheck] = await Promise.all([
+  const [azureCheck, githubCheck, costCheck, networkCheck] = await Promise.all([
     checkAzureCredential(),
     checkGitHubToken(),
     checkCostManagementAccess(),
+    checkNetworkResourceGraph(),
   ]);
 
   const report = {
@@ -195,6 +244,7 @@ router.get("/diagnostics", async (_req, res) => {
       azure_resource_graph: azureCheck,
       github_token: githubCheck,
       cost_management_access: costCheck,
+      network_resource_graph: networkCheck,
     },
     subscription_config: checkSubscriptionConfig(),
   };

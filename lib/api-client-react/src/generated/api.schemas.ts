@@ -863,6 +863,18 @@ export interface SlosResponse {
   dataSource: SlosResponseDataSource;
 }
 
+/**
+ * 'live' = Azure Resource Graph query succeeded, 'mock' = Azure configured but query returned no resources, 'none' = Azure not configured.
+ */
+export type GlobalEndpointsResponseDataSource = typeof GlobalEndpointsResponseDataSource[keyof typeof GlobalEndpointsResponseDataSource];
+
+
+export const GlobalEndpointsResponseDataSource = {
+  live: 'live',
+  mock: 'mock',
+  none: 'none',
+} as const;
+
 export interface GlobalEndpointRow {
   id: string;
   appId: string;
@@ -872,6 +884,14 @@ export interface GlobalEndpointRow {
   status: Status;
   latencyMs: number;
   packetLossPercent: number;
+}
+
+export interface GlobalEndpointsResponse {
+  endpoints: GlobalEndpointRow[];
+  /** Whether Azure is configured and live endpoint data is being served. */
+  liveEnabled: boolean;
+  /** 'live' = Azure Resource Graph query succeeded, 'mock' = Azure configured but query returned no resources, 'none' = Azure not configured. */
+  dataSource: GlobalEndpointsResponseDataSource;
 }
 
 export interface BudgetAlertLogEntry {
