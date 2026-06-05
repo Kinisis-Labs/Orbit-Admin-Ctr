@@ -74,7 +74,10 @@ jobs:
                 ENTRA_CLIENT_SECRET="${{ secrets.ENTRA_CLIENT_SECRET }}" \
                 ENTRA_REDIRECT_URI=https://orbit.kinisislabs.com/api/auth/callback \
                 ENTRA_AUTHORIZED_GROUP_ID="${{ secrets.ENTRA_AUTHORIZED_GROUP_ID }}" \
-                ENTRA_COST_READER_GROUP_ID="${{ secrets.ENTRA_COST_READER_GROUP_ID }}"
+                ENTRA_COST_READER_GROUP_ID="${{ secrets.ENTRA_COST_READER_GROUP_ID }}" \
+                ENTRA_ADMIN_GROUP_ID="${{ secrets.ENTRA_ADMIN_GROUP_ID }}" \
+                ENTRA_ENGINEER_GROUP_ID="${{ secrets.ENTRA_ENGINEER_GROUP_ID }}" \
+                ENTRA_FINOPS_GROUP_ID="${{ secrets.ENTRA_FINOPS_GROUP_ID }}"
             az containerapp ingress update \
               --name ca-orbit-api-prod \
               --resource-group rg-orbit-prod-eus2 \

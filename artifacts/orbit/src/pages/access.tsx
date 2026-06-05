@@ -50,7 +50,11 @@ export default function Access() {
     <div className="space-y-4">
       <PageHeader
         title="Identity & access"
-        subtitle="Entra ID groups that govern Orbit. Membership of the simulated user can be toggled for groups marked as such."
+        subtitle={
+          mode === "mock"
+            ? "Entra ID groups that govern Orbit. Membership of the simulated user can be toggled for groups marked as such."
+            : "Entra ID groups that govern Orbit. Membership is resolved from your real Entra ID token."
+        }
       />
 
       <div className="bg-card border border-border shadow-sm p-4 text-[13px]">
@@ -75,7 +79,9 @@ export default function Access() {
               <TableHead className="h-8 font-semibold text-foreground">Group</TableHead>
               <TableHead className="h-8 font-semibold text-foreground">Grants</TableHead>
               <TableHead className="h-8 font-semibold text-foreground">My membership</TableHead>
-              <TableHead className="h-8 font-semibold text-foreground text-right w-[140px]">Simulator</TableHead>
+              {mode === "mock" && (
+                <TableHead className="h-8 font-semibold text-foreground text-right w-[140px]">Simulator</TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -98,19 +104,21 @@ export default function Access() {
                       <StatusPill tone="muted"><XCircle className="h-3 w-3 mr-1" /> Not a member</StatusPill>
                     )}
                   </TableCell>
-                  <TableCell className="py-2 text-right">
-                    {toggleable && mode === "mock" ? (
-                      <button
-                        type="button"
-                        className="text-primary hover:underline text-[12px]"
-                        onClick={() => (isMember ? revokeGroup(g.id) : grantGroup(COST_READER_GROUP))}
-                      >
-                        {isMember ? "Revoke" : "Grant"}
-                      </button>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground">Managed in Entra</span>
-                    )}
-                  </TableCell>
+                  {mode === "mock" && (
+                    <TableCell className="py-2 text-right">
+                      {toggleable ? (
+                        <button
+                          type="button"
+                          className="text-primary hover:underline text-[12px]"
+                          onClick={() => (isMember ? revokeGroup(g.id) : grantGroup(COST_READER_GROUP))}
+                        >
+                          {isMember ? "Revoke" : "Grant"}
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
