@@ -1,0 +1,45 @@
+06/05/2026, 14:35:37
+(node:1) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+06/05/2026, 14:35:37
+
+{"level":30,"time":1780670135643,"pid":1,"hostname":"ca-orbit-api-prod--0000073-b9d89fbc8-fbfnx","msg":"budget-alert: no notification channel configured (ALERT_TEAMS_WEBHOOK_URL / ALERT_SMTP_HOST+ALERT_EMAIL_TO) — scheduler not started"}
+06/05/2026, 14:35:37
+(Use `node --trace-deprecation ...` to show where the warning was created)
+06/05/2026, 14:35:37
+
+{"level":30,"time":1780670135642,"pid":1,"hostname":"ca-orbit-api-prod--0000073-b9d89fbc8-fbfnx","port":80,"msg":"Server listening"}
+06/05/2026, 14:33:15
+(Use `node --trace-deprecation ...` to show where the warning was created)
+06/05/2026, 14:33:15
+
+{"level":30,"time":1780669994540,"pid":1,"hostname":"ca-orbit-api-prod--0000072-54bb777d9-mhxpl","msg":"budget-alert: no notification channel configured (ALERT_TEAMS_WEBHOOK_URL / ALERT_SMTP_HOST+ALERT_EMAIL_TO) — scheduler not started"}
+06/05/2026, 14:33:15
+
+{"level":30,"time":1780669994539,"pid":1,"hostname":"ca-orbit-api-prod--0000072-54bb777d9-mhxpl","port":80,"msg":"Server listening"}
+06/05/2026, 14:33:15
+(node:1) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+06/05/2026, 14:23:58
+
+{"level":30,"time":1780669437351,"pid":1,"hostname":"ca-orbit-api-prod--0000071-79b9fd8449-bh8fz","req":{"id":7,"method":"GET","url":"/api/apps/kinisis-labs/infrastructure"},"res":{"statusCode":304},"responseTime":1107,"msg":"request completed"}
+06/05/2026, 14:23:58
+
+{"level":30,"time":1780669437353,"pid":1,"hostname":"ca-orbit-api-prod--0000071-79b9fd8449-bh8fz","req":{"id":8,"method":"GET","url":"/api/apps/orbit/infrastructure"},"res":{"statusCode":304},"responseTime":1067,"msg":"request completed"}
+06/05/2026, 14:23:57
+
+{"level":30,"time":1780669437269,"pid":1,"hostname":"ca-orbit-api-prod--0000071-79b9fd8449-bh8fz","req":{"id":6,"method":"GET","url":"/api/apps/grailbabe/infrastructure"},"res":{"statusCode":304},"responseTime":1039,"msg":"request completed"}
+06/05/2026, 14:23:57
+
+{"level":30,"time":1780669436316,"pid":1,"hostname":"ca-orbit-api-prod--0000071-79b9fd8449-bh8fz","req":{"id":5,"method":"GET","url":"/api/budget-alerts/log"},"res":{"statusCode":200},"responseTime":375,"msg":"request completed"}
+06/05/2026, 14:23:57
+
+{"level":30,"time":1780669436282,"pid":1,"hostname":"ca-orbit-api-prod--0000071-79b9fd8449-bh8fz","req":{"id":2,"method":"GET","url":"/api/apps"},"res":{"statusCode":200},"responseTime":1315,"msg":"request completed"}
+06/05/2026, 14:23:57
+
+{"level":30,"time":1780669436241,"pid":1,"hostname":"ca-orbit-api-prod--0000071-79b9fd8449-bh8fz","req":{"id":3,"method":"GET","url":"/api/global/cost-summary"},"res":{"statusCode":200},"responseTime":1210,"msg":"request completed"}
+06/05/2026, 14:23:57
+
+{"level":30,"time":1780669436121,"pid":1,"hostname":"ca-orbit-api-prod--0000071-79b9fd8449-bh8fz","req":{"id":4,"method":"GET","url":"/api/alerts/config"},"res":{"statusCode":200},"responseTime":182,"msg":"request completed"}
+06/05/2026, 14:23:55
+To prepare for this change:
+06/05/2026, 14:23:55
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
