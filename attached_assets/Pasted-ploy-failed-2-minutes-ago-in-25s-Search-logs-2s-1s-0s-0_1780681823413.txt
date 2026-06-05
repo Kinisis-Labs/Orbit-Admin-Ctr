@@ -1,0 +1,191 @@
+ploy
+failed 2 minutes ago in 25s
+Search logs
+2s
+1s
+0s
+0s
+20s
+Run docker/build-push-action@v6
+GitHub Actions runtime token ACs
+Docker info
+Proxy configuration
+Buildx version
+Builder info
+/usr/bin/docker buildx build --file artifacts/api-server/Dockerfile --iidfile /home/runner/work/_temp/docker-actions-toolkit-MmlDDH/build-iidfile-2827da115b.txt --tag ghcr.io/kinisis-labs/orbit-api:latest --tag ghcr.io/kinisis-labs/orbit-api:837db3357111a9e70fafab2d8097c60327dbd051 --metadata-file /home/runner/work/_temp/docker-actions-toolkit-MmlDDH/build-metadata-40a9eab19d.json --push .
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.03kB 0.0s done
+#1 DONE 0.0s
+
+#2 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#2 DONE 0.0s
+
+#3 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#3 DONE 0.3s
+
+#4 docker-image://docker.io/docker/dockerfile:1@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89
+#4 resolve docker.io/docker/dockerfile:1@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89 done
+#4 extracting sha256:50ba52cd6a2c01eaf1a9efbedc7c75b5da5e3965c1586001c722980487a73fd7
+#4 sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89 9.08kB / 9.08kB done
+#4 sha256:e82bbc85c3cb06cf2a5a27b058208b43984448acbcd6a832cd1491933d4376dd 1.13kB / 1.13kB done
+#4 sha256:1a998cca4d41cfecafb1989342c5e7378bc992589af7d47510c4b854bebfc7d7 1.33kB / 1.33kB done
+#4 sha256:50ba52cd6a2c01eaf1a9efbedc7c75b5da5e3965c1586001c722980487a73fd7 14.36MB / 14.36MB 0.1s done
+#4 extracting sha256:50ba52cd6a2c01eaf1a9efbedc7c75b5da5e3965c1586001c722980487a73fd7 0.1s done
+#4 DONE 0.2s
+
+#5 [auth] library/node:pull token for registry-1.docker.io
+#5 DONE 0.0s
+
+#6 [internal] load metadata for docker.io/library/node:24-slim
+#6 DONE 0.3s
+
+#7 [internal] load .dockerignore
+#7 transferring context: 334B done
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 1.60MB 0.0s done
+#8 DONE 0.1s
+
+#9 [build 1/6] FROM docker.io/library/node:24-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf
+#9 resolve docker.io/library/node:24-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf done
+#9 sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf 5.20kB / 5.20kB done
+#9 sha256:cbd8bcbdfd0d148205c9449dff3ca3c9c94d73f393a0e03ef1c8d3846c5038bf 1.93kB / 1.93kB done
+#9 sha256:f5706f589c481bda9b55971f35e4577b614631171b9b554beec3bac50e91a53a 6.83kB / 6.83kB done
+#9 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 28.23MB / 28.23MB 0.1s
+#9 sha256:9bea510bd805f72c63e2d093c23fca1da9b02127c4849c121b6117a45d4d2ba7 3.31kB / 3.31kB 0.0s done
+#9 sha256:e008f534e95cab9dfc584b72c1beb5ccd5b4e7b6b73973a6fd6791f0d8e2ac29 8.39MB / 50.09MB 0.1s
+#9 sha256:b2b95943836ce3dea08d21af828b011a0645bdca70cd53536131ccd295ef3def 1.05MB / 1.71MB 0.1s
+#9 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 28.23MB / 28.23MB 0.1s done
+#9 sha256:e008f534e95cab9dfc584b72c1beb5ccd5b4e7b6b73973a6fd6791f0d8e2ac29 50.09MB / 50.09MB 0.2s
+#9 sha256:b2b95943836ce3dea08d21af828b011a0645bdca70cd53536131ccd295ef3def 1.71MB / 1.71MB 0.1s done
+#9 extracting sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 0.1s
+#9 sha256:06d464f614a98416f8f326dcd40292b0a96bf6a56a6fba9e2f98ed770cdacf11 449B / 449B 0.1s done
+#9 sha256:e008f534e95cab9dfc584b72c1beb5ccd5b4e7b6b73973a6fd6791f0d8e2ac29 50.09MB / 50.09MB 0.2s done
+#9 extracting sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 1.1s done
+#9 extracting sha256:9bea510bd805f72c63e2d093c23fca1da9b02127c4849c121b6117a45d4d2ba7 done
+#9 extracting sha256:e008f534e95cab9dfc584b72c1beb5ccd5b4e7b6b73973a6fd6791f0d8e2ac29
+#9 extracting sha256:e008f534e95cab9dfc584b72c1beb5ccd5b4e7b6b73973a6fd6791f0d8e2ac29 1.2s done
+#9 extracting sha256:b2b95943836ce3dea08d21af828b011a0645bdca70cd53536131ccd295ef3def
+#9 extracting sha256:b2b95943836ce3dea08d21af828b011a0645bdca70cd53536131ccd295ef3def 0.0s done
+#9 extracting sha256:06d464f614a98416f8f326dcd40292b0a96bf6a56a6fba9e2f98ed770cdacf11 done
+#9 DONE 2.8s
+
+#10 [runtime 2/3] WORKDIR /app
+#10 DONE 0.0s
+
+#11 [build 2/6] RUN corepack enable
+#11 DONE 0.2s
+
+#12 [build 3/6] WORKDIR /repo
+#12 DONE 0.0s
+
+#13 [build 4/6] COPY . .
+#13 DONE 0.1s
+
+#14 [build 5/6] RUN pnpm install --frozen-lockfile
+#14 0.155 ! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-10.26.1.tgz
+#14 1.560 Scope: all 8 workspace projects
+#14 1.636 Lockfile is up to date, resolution step is skipped
+#14 1.679 Progress: resolved 1, reused 0, downloaded 0, added 0
+#14 1.769 Packages: +549
+#14 1.769 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#14 1.973 
+#14 1.973    ╭──────────────────────────────────────────────╮
+#14 1.973    │                                              │
+#14 1.973    │     Update available! 10.26.1 → 11.5.2.      │
+#14 1.973    │     Changelog: https://pnpm.io/v/11.5.2      │
+#14 1.973    │   To update, run: corepack use pnpm@11.5.2   │
+#14 1.973    │                                              │
+#14 1.973    ╰──────────────────────────────────────────────╯
+#14 1.973 
+#14 2.680 Progress: resolved 549, reused 0, downloaded 84, added 28
+#14 3.682 Progress: resolved 549, reused 0, downloaded 309, added 289
+#14 4.685 Progress: resolved 549, reused 0, downloaded 354, added 325
+#14 5.687 Progress: resolved 549, reused 0, downloaded 425, added 354
+#14 6.687 Progress: resolved 549, reused 0, downloaded 548, added 518
+#14 6.778 Progress: resolved 549, reused 0, downloaded 549, added 549, done
+#14 6.981 .../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+#14 7.033 .../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+#14 7.243 
+#14 7.243 devDependencies:
+#14 7.243 + prettier 3.8.3
+#14 7.243 + typescript 5.9.3
+#14 7.243 
+#14 7.254 . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+#14 7.274 . preinstall: Done
+#14 7.388 Done in 6.1s using pnpm v10.26.1
+#14 DONE 8.4s
+
+#15 [build 6/6] RUN pnpm --filter @workspace/api-server run build
+#15 0.435 
+#15 0.435 > @workspace/api-server@0.0.0 build /repo/artifacts/api-server
+#15 0.435 > node ./build.mjs
+#15 0.435 
+#15 1.059 
+#15 1.059   dist/index.mjs                       6.4mb ⚠️
+#15 1.059   dist/pino-worker.mjs               153.4kb
+#15 1.059   dist/pino-file.mjs                 142.0kb
+#15 1.059   dist/pino-pretty.mjs               114.6kb
+#15 1.059   dist/thread-stream-worker.mjs        7.3kb
+#15 1.059   dist/index.mjs.map                  10.4mb
+#15 1.059   dist/pino-worker.mjs.map           256.9kb
+#15 1.059   dist/pino-file.mjs.map             229.0kb
+#15 1.059   dist/pino-pretty.mjs.map           204.0kb
+#15 1.059   dist/thread-stream-worker.mjs.map   12.0kb
+#15 1.059 
+#15 1.059 ⚡ Done in 576ms
+#15 DONE 1.1s
+
+#16 [runtime 3/3] COPY --from=build /repo/artifacts/api-server/dist ./dist
+#16 DONE 0.0s
+
+#17 exporting to image
+#17 exporting layers
+#17 exporting layers 0.9s done
+#17 writing image sha256:8be8fff2c90f4b56cd092ab12a07047625441a8abc12c6f377ba581bd0e4f8bf done
+#17 naming to ghcr.io/kinisis-labs/orbit-api:latest done
+#17 naming to ghcr.io/kinisis-labs/orbit-api:837db3357111a9e70fafab2d8097c60327dbd051 done
+#17 DONE 0.9s
+
+#18 resolving provenance for metadata file
+#18 DONE 0.0s
+
+#19 pushing ghcr.io/kinisis-labs/orbit-api:latest with docker
+#19 pushing layer edb68749e2d0
+#19 pushing layer d852ca857cc2
+#19 pushing layer 223a7a42ca23 0.1s
+#19 pushing layer 63f1a0ed3c0c
+#19 pushing layer 368a384a9b02
+#19 pushing layer 1a49327bff76
+#19 pushing layer b2008ac19409
+#19 pushing layer edb68749e2d0 7.10MB / 18.80MB 0.5s
+#19 pushing layer edb68749e2d0 9.46MB / 18.80MB 0.6s
+#19 pushing layer edb68749e2d0 13.00MB / 18.80MB 0.7s
+#19 pushing layer b2008ac19409 5.94MB / 74.82MB 0.6s
+#19 pushing layer edb68749e2d0 15.55MB / 18.80MB 0.8s
+#19 pushing layer edb68749e2d0 17.32MB / 18.80MB 0.9s
+#19 pushing layer b2008ac19409 11.38MB / 74.82MB 0.8s
+#19 pushing layer edb68749e2d0 18.81MB / 18.80MB 1.0s
+#19 pushing layer b2008ac19409 16.88MB / 74.82MB 1.1s
+#19 pushing layer d852ca857cc2 1.2s done
+#19 pushing layer b2008ac19409 23.33MB / 74.82MB 1.3s
+#19 pushing layer b2008ac19409 28.74MB / 74.82MB 1.4s
+#19 pushing layer b2008ac19409 32.53MB / 74.82MB 1.5s
+#19 pushing layer b2008ac19409 38.01MB / 74.82MB 1.7s
+#19 pushing layer edb68749e2d0 18.81MB / 18.80MB 1.9s done
+#19 pushing layer 223a7a42ca23 1.9s done
+#19 pushing layer 63f1a0ed3c0c 1.9s done
+#19 pushing layer 368a384a9b02 1.9s done
+#19 pushing layer 1a49327bff76 1.9s done
+#19 pushing layer b2008ac19409 41.28MB / 74.82MB 1.9s done
+#19 ERROR: unknown blob
+------
+ > pushing ghcr.io/kinisis-labs/orbit-api:latest with docker:
+------
+ERROR: failed to build: unknown blob
+Reference
+Check build summary support
+Error: buildx failed with: ERROR: failed to build: unknown blob
