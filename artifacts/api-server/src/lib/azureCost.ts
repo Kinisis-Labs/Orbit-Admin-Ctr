@@ -171,13 +171,21 @@ export async function fetchMonthToDateCost(
     );
     const rows = (result.rows ?? []) as unknown[][];
 
+    logger.info(
+      { appId: app.id, scope, columns, rowCount: rows.length, firstRow: rows[0] ?? null },
+      "Azure Cost Management response received",
+    );
+
     const costIdx = columns.findIndex((c) => c.toLowerCase().includes("cost"));
     const svcIdx = columns.findIndex((c) => c.toLowerCase().includes("service"));
     const dateIdx = columns.findIndex(
       (c) => c.toLowerCase().includes("date") || c.toLowerCase() === "usagedate",
     );
 
-    if (costIdx === -1) return null;
+    if (costIdx === -1) {
+      logger.warn({ appId: app.id, columns }, "Cost column not found in Azure Cost Management response");
+      return null;
+    }
 
     // Compute WoW trend cutoffs as integers (YYYYMMDD).
     const nowUtc = new Date();
