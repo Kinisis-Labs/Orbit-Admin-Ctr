@@ -180,8 +180,8 @@ export const GetCostResponse = zod.object({
   "amount": zod.number()
 }))
 }),
-  "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether cost figures come from live Azure Cost Management or built-in mock values.'),
-  "dataAsOf": zod.string().datetime({"offset":true}).optional().describe('Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live.'),
+  "dataSource": zod.enum(['live', 'cached', 'mock']).describe('Indicates whether cost figures come from live Azure Cost Management, a DB snapshot (cached), or built-in mock values.'),
+  "dataAsOf": zod.string().datetime({"offset":true}).optional().describe('Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live or cached.'),
   "budgetDataSource": zod.enum(['live', 'cached', 'estimated']).optional().describe('Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback.')
 })
 
@@ -446,8 +446,8 @@ export const GetGlobalCostSummaryResponse = zod.object({
 })).describe('Day-by-day total spend across all apps for the last 30 days, with vs-last-week comparison.'),
   "apiCalls": zod.number().describe('Total month-to-date API calls across all apps'),
   "apiCost": zod.number().describe('Portion of monthToDate attributable to API usage'),
-  "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether cost figures come from live Azure Cost Management or built-in mock values.'),
-  "dataAsOf": zod.string().datetime({"offset":true}).optional().describe('Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live.'),
+  "dataSource": zod.enum(['live', 'cached', 'mock']).describe('Indicates whether cost figures come from live Azure Cost Management, a DB snapshot (cached), or built-in mock values.'),
+  "dataAsOf": zod.string().datetime({"offset":true}).optional().describe('Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live or cached.'),
   "budgetDataSource": zod.enum(['live', 'cached', 'estimated']).optional().describe('Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback.'),
   "byApp": zod.array(zod.object({
   "appId": zod.string(),

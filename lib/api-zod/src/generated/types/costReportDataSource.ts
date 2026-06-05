@@ -7,12 +7,13 @@
  */
 
 /**
- * Indicates whether cost figures come from live Azure Cost Management or built-in mock values.
+ * Indicates whether cost figures come from live Azure Cost Management, a DB snapshot (cached), or built-in mock values.
  */
 export type CostReportDataSource = typeof CostReportDataSource[keyof typeof CostReportDataSource];
 
 
 export const CostReportDataSource = {
   live: 'live',
+  cached: 'cached',
   mock: 'mock',
 } as const;

@@ -18,7 +18,7 @@ import {
   ListGlobalEndpointsResponse,
 } from "@workspace/api-zod";
 import { fetchResourcesByResourceGroup, fetchResourceGroupTags } from "../lib/azureResources.js";
-import { fetchMonthToDateCost } from "../lib/azureCost.js";
+import { fetchMonthToDateCost, fetchMonthToDateCostWithFallback } from "../lib/azureCost.js";
 import { fetchBudgetForAppWithFallback } from "../lib/azureBudgets.js";
 import { fetchSubscriptionNames } from "../lib/azureSubscriptions.js";
 import {
@@ -238,9 +238,9 @@ function activeAlertCount(app: AppRecord): number {
 router.get("/apps", async (_req, res) => {
   // Fetch live cost, alert counts, budgets, and subscription names for all apps in parallel.
   // Falls back to static inventory values when Azure is unconfigured.
-  const [alertResults, costResults, budgetWithSourceResults] = await Promise.all([
+  const [alertResults, costWithSourceResults, budgetWithSourceResults] = await Promise.all([
     Promise.all(APPS.map((a) => fetchActiveAlerts(a, {}))),
-    Promise.all(APPS.map((a) => fetchMonthToDateCost(a, {}))),
+    Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, {}))),
     Promise.all(APPS.map((a) => fetchBudgetForAppWithFallback(a, {}))),
   ]);
 
@@ -251,7 +251,7 @@ router.get("/apps", async (_req, res) => {
   const data = ListAppsResponse.parse(
     APPS.map((app, i) => {
       const liveAlerts = alertResults[i];
-      const liveCost = costResults[i];
+      const costWS = costWithSourceResults[i];
       const budgetWS = budgetWithSourceResults[i];
       const subName = subNames.get(app.subscriptionId.toLowerCase());
       return {
@@ -267,7 +267,7 @@ router.get("/apps", async (_req, res) => {
         activeAlerts: liveAlerts
           ? liveAlerts.filter((a) => a.status === "active").length
           : activeAlertCount(app),
-        monthToDateCost: liveCost ? liveCost.monthToDate : app.monthToDateCost,
+        monthToDateCost: costWS ? costWS.result.monthToDate : app.monthToDateCost,
         ...(budgetWS ? { budget: budgetWS.result.amount } : {}),
         ...(budgetWS?.result.forecastAmount !== null && budgetWS?.result.forecastAmount !== undefined
           ? { forecast: budgetWS.result.forecastAmount }
@@ -576,11 +576,12 @@ router.get("/apps/:appId/cost", async (req, res) => {
   }
   const bypassCache = req.query["refresh"] === "true";
   const apiUsage = apiUsageForApp(app);
-  const [liveCost, budgetWithSource, rev] = await Promise.all([
-    fetchMonthToDateCost(app, { bypassCache }),
+  const [costWS, budgetWithSource, rev] = await Promise.all([
+    fetchMonthToDateCostWithFallback(app, { bypassCache }),
     fetchBudgetForAppWithFallback(app, { bypassCache }),
     syncAndReadRevenue(app),
   ]);
+  const liveCost = costWS?.result ?? null;
   const mtd = liveCost
     ? liveCost.monthToDate
     : Number((app.monthToDateCost + apiUsage.cost).toFixed(2));
@@ -605,7 +606,7 @@ router.get("/apps/:appId/cost", async (req, res) => {
     byService,
     apiUsage,
     revenue: buildRevenueDto(rev),
-    dataSource: liveCost ? "live" : "mock",
+    dataSource: costWS?.source ?? "mock",
     ...(liveCost ? { dataAsOf: liveCost.dataAsOf } : {}),
     budgetDataSource,
   });
@@ -802,12 +803,12 @@ router.get("/global/cost-summary", async (req, res) => {
 
   const bypassCache = req.query["refresh"] === "true";
   // Fetch live Azure cost, budgets, and ledger revenue for every app in parallel.
-  const [liveCostResults, budgetWithSourceResults, revResults] = await Promise.all([
-    Promise.all(APPS.map((a) => fetchMonthToDateCost(a, { bypassCache }))),
+  const [costWithSourceResults, budgetWithSourceResults, revResults] = await Promise.all([
+    Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, { bypassCache }))),
     Promise.all(APPS.map((a) => fetchBudgetForAppWithFallback(a, { bypassCache }))),
     Promise.all(APPS.map((a) => syncAndReadRevenue(a))),
   ]);
-  const liveCostByApp = new Map(APPS.map((a, i) => [a.id, liveCostResults[i]] as const));
+  const liveCostByApp = new Map(APPS.map((a, i) => [a.id, costWithSourceResults[i]?.result ?? null] as const));
   const liveBudgetByApp = new Map(APPS.map((a, i) => [a.id, budgetWithSourceResults[i]?.result ?? null] as const));
   const revByApp = new Map(APPS.map((a, i) => [a.id, revResults[i]!] as const));
 
@@ -894,8 +895,10 @@ router.get("/global/cost-summary", async (req, res) => {
     })
     .sort((a, b) => b.amount - a.amount);
 
-  const anyLive = liveCostResults.some((r) => r !== null);
-  const liveTimestamps = liveCostResults.filter((r) => r !== null).map((r) => r!.dataAsOf);
+  const anyLive = costWithSourceResults.some((r) => r?.source === "live");
+  const anyCached = costWithSourceResults.some((r) => r?.source === "cached");
+  const resolvedCostResults = costWithSourceResults.map((r) => r?.result ?? null);
+  const liveTimestamps = resolvedCostResults.filter((r) => r !== null).map((r) => r!.dataAsOf);
   const earliestDataAsOf = liveTimestamps.length > 0
     ? liveTimestamps.reduce((min, t) => (t < min ? t : min))
     : undefined;
@@ -935,7 +938,7 @@ router.get("/global/cost-summary", async (req, res) => {
     daily: makeDaily("global", 30, mtd / 30),
     apiCalls,
     apiCost: Number(apiCost.toFixed(2)),
-    dataSource: anyLive ? "live" : "mock",
+    dataSource: anyLive ? "live" : anyCached ? "cached" : "mock",
     ...(earliestDataAsOf ? { dataAsOf: earliestDataAsOf } : {}),
     budgetDataSource: globalBudgetDataSource,
     byApp: APPS.map((a) => ({

@@ -1,6 +1,9 @@
 import { CostManagementClient } from "@azure/arm-costmanagement";
 import { ResourceGraphClient } from "@azure/arm-resourcegraph";
+import { eq } from "drizzle-orm";
+import { db, costSnapshotsTable } from "@workspace/db";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
+import { logger } from "./logger.js";
 import type { AppRecord } from "../routes/orbit.js";
 
 export type CostByService = { service: string; amount: number; trend?: string };
@@ -9,6 +12,13 @@ export type CostResult = {
   monthToDate: number;
   byService: CostByService[];
   dataAsOf: string;
+};
+
+export type CostSource = "live" | "cached";
+
+export type CostWithSource = {
+  result: CostResult;
+  source: CostSource;
 };
 
 let _costClient: CostManagementClient | null = null;
@@ -221,4 +231,84 @@ export async function fetchMonthToDateCost(
   } catch {
     return null;
   }
+}
+
+/**
+ * Persist a successfully-fetched cost snapshot to the database.
+ * Write failures are non-fatal — the live result is already in hand.
+ */
+async function writeCostSnapshot(appId: string, result: CostResult): Promise<void> {
+  try {
+    const now = new Date();
+    await db
+      .insert(costSnapshotsTable)
+      .values({
+        appId,
+        monthToDate: result.monthToDate.toFixed(2),
+        byService: result.byService,
+        dataAsOf: new Date(result.dataAsOf),
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: costSnapshotsTable.appId,
+        set: {
+          monthToDate: result.monthToDate.toFixed(2),
+          byService: result.byService,
+          dataAsOf: new Date(result.dataAsOf),
+          updatedAt: now,
+        },
+      });
+  } catch (err) {
+    logger.warn({ err, appId }, "cost snapshot write failed (non-fatal)");
+  }
+}
+
+/**
+ * Read the last persisted cost snapshot for an app from the database.
+ * Returns null if no snapshot exists or the DB is unavailable.
+ */
+async function readCostSnapshot(appId: string): Promise<CostResult | null> {
+  try {
+    const row = await db.query.costSnapshotsTable.findFirst({
+      where: eq(costSnapshotsTable.appId, appId),
+    });
+    if (!row) return null;
+    return {
+      monthToDate: Number(row.monthToDate),
+      byService: row.byService as CostByService[],
+      dataAsOf: row.dataAsOf.toISOString(),
+    };
+  } catch (err) {
+    logger.warn({ err, appId }, "cost snapshot read failed (non-fatal)");
+    return null;
+  }
+}
+
+/**
+ * Fetch month-to-date cost for an app with a three-tier fallback strategy:
+ *
+ *   1. **live**   — Azure Cost Management succeeded; result is written through to DB.
+ *   2. **cached** — Azure unavailable; last-known value from the DB snapshot is used.
+ *   3. (returns null) — No DB snapshot; caller should apply formula estimates and report
+ *                        dataSource = "mock".
+ *
+ * Use this in routes that need to surface the cost data source to the client.
+ */
+export async function fetchMonthToDateCostWithFallback(
+  app: AppRecord,
+  opts: { bypassCache?: boolean } = {},
+): Promise<CostWithSource | null> {
+  const live = await fetchMonthToDateCost(app, opts);
+
+  if (live !== null) {
+    await writeCostSnapshot(app.id, live);
+    return { result: live, source: "live" };
+  }
+
+  const snapshot = await readCostSnapshot(app.id);
+  if (snapshot !== null) {
+    return { result: snapshot, source: "cached" };
+  }
+
+  return null;
 }

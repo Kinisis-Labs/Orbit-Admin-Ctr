@@ -11,7 +11,7 @@ import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link, useSearch, useLocation } from "wouter";
-import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff, AlertTriangle, Clipboard, Check, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch } from "lucide-react";
+import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff, AlertTriangle, Clipboard, Check, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
@@ -47,7 +47,7 @@ function DataSourceBadge({
   dataSource,
   dataAsOf,
 }: {
-  dataSource: "live" | "mock" | undefined;
+  dataSource: "live" | "cached" | "mock" | undefined;
   dataAsOf?: string | null;
 }) {
   if (!dataSource) return null;
@@ -71,6 +71,23 @@ function DataSourceBadge({
             }
           >
             {isStale && <AlertTriangle className="h-3 w-3" />}
+            as of {asOf}
+          </span>
+        )}
+      </span>
+    );
+  }
+  if (dataSource === "cached") {
+    const asOf = fmtDataAsOf(dataAsOf);
+    return (
+      <span className="inline-flex items-center gap-1.5 select-none flex-wrap">
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wide">
+          <Database className="h-3 w-3" />
+          Cached — DB snapshot
+        </span>
+        {asOf && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400">
+            <AlertTriangle className="h-3 w-3" />
             as of {asOf}
           </span>
         )}

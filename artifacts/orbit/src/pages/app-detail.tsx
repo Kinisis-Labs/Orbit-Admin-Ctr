@@ -26,7 +26,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { DailySpendChart } from "@/components/daily-spend-chart";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone } from "lucide-react";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone, Database } from "lucide-react";
 
 const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
@@ -290,7 +290,7 @@ function DataSourceBadge({
   dataAsOf,
   label,
 }: {
-  dataSource: "live" | "mock" | undefined;
+  dataSource: "live" | "cached" | "mock" | undefined;
   dataAsOf?: string | null;
   label?: string;
 }) {
@@ -316,6 +316,23 @@ function DataSourceBadge({
             }
           >
             {isStale && <AlertTriangle className="h-3 w-3" />}
+            as of {asOf}
+          </span>
+        )}
+      </span>
+    );
+  }
+  if (dataSource === "cached") {
+    const asOf = fmtDataAsOf(dataAsOf);
+    return (
+      <span className="inline-flex items-center gap-1.5 select-none flex-wrap">
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wide">
+          <Database className="h-3 w-3" />
+          Cached — DB snapshot
+        </span>
+        {asOf && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400">
+            <AlertTriangle className="h-3 w-3" />
             as of {asOf}
           </span>
         )}

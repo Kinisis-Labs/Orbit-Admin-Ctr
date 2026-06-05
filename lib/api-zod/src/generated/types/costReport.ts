@@ -21,9 +21,9 @@ export interface CostReport {
   byService: CostByService[];
   apiUsage: ApiUsage;
   revenue: Revenue;
-  /** Indicates whether cost figures come from live Azure Cost Management or built-in mock values. */
+  /** Indicates whether cost figures come from live Azure Cost Management, a DB snapshot (cached), or built-in mock values. */
   dataSource: CostReportDataSource;
-  /** Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live. */
+  /** Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live or cached. */
   dataAsOf?: string;
   /** Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback. */
   budgetDataSource?: CostReportBudgetDataSource;
