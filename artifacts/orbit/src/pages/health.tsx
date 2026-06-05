@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi, WifiOff, History } from "lucide-react";
+import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi, WifiOff, History, Info } from "lucide-react";
 import {
   AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -241,9 +241,22 @@ function ThresholdHistoryContent({ appId }: { appId: string }) {
   }
   if (allItems.length === 0) {
     return (
-      <p className="text-[13px] text-muted-foreground px-2 py-6 text-center">
-        No threshold changes recorded yet.
-      </p>
+      <div className="px-2 py-5 space-y-3">
+        <p className="text-[13px] text-muted-foreground text-center">
+          No threshold changes recorded yet.
+        </p>
+        <div className="flex gap-2.5 rounded-md border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/40 px-3 py-2.5 text-[12px] text-blue-800 dark:text-blue-300">
+          <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          <span>
+            History is written on every threshold save. On a fresh environment,
+            run{" "}
+            <code className="font-mono bg-blue-100 dark:bg-blue-900/60 px-1 rounded">
+              pnpm --filter @workspace/scripts run backfill-threshold-history
+            </code>{" "}
+            to seed an initial entry from the current configuration.
+          </span>
+        </div>
+      </div>
     );
   }
   return (
