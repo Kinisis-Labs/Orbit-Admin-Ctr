@@ -5,7 +5,7 @@ The Kinisis admin center — an Azure operations dashboard giving operators a un
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
+- `pnpm run typecheck` — full typecheck across all packages (**always use this, not per-package `typecheck`** — it rebuilds lib declarations first; running a leaf package's `typecheck` in isolation against stale `lib/*/dist/` will produce spurious errors)
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
