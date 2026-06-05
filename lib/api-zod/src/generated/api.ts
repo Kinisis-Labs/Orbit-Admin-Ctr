@@ -95,7 +95,9 @@ export const GetAppThresholdsParams = zod.object({
 export const GetAppThresholdsResponse = zod.object({
   "appId": zod.string(),
   "cpuThreshold": zod.number().describe('CPU utilisation % at which the SLO badge turns warning\/critical.'),
-  "memoryThreshold": zod.number().describe('Memory utilisation % at which the SLO badge turns warning\/critical.')
+  "memoryThreshold": zod.number().describe('Memory utilisation % at which the SLO badge turns warning\/critical.'),
+  "updatedBy": zod.string().describe('UPN of the operator who last changed the thresholds, or \'system\' when still at defaults (no DB override).'),
+  "updatedAt": zod.string().datetime({"offset":true}).optional().describe('When the thresholds were last changed by an operator. Absent when still at defaults (no DB override).')
 })
 
 
@@ -120,7 +122,9 @@ export const UpdateAppThresholdsBody = zod.object({
 export const UpdateAppThresholdsResponse = zod.object({
   "appId": zod.string(),
   "cpuThreshold": zod.number().describe('CPU utilisation % at which the SLO badge turns warning\/critical.'),
-  "memoryThreshold": zod.number().describe('Memory utilisation % at which the SLO badge turns warning\/critical.')
+  "memoryThreshold": zod.number().describe('Memory utilisation % at which the SLO badge turns warning\/critical.'),
+  "updatedBy": zod.string().describe('UPN of the operator who last changed the thresholds, or \'system\' when still at defaults (no DB override).'),
+  "updatedAt": zod.string().datetime({"offset":true}).optional().describe('When the thresholds were last changed by an operator. Absent when still at defaults (no DB override).')
 })
 
 

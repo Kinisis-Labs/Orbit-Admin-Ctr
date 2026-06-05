@@ -354,7 +354,15 @@ router.get("/apps/:appId/thresholds", async (req, res) => {
     ? { cpuThreshold: parseFloat(row.cpuThreshold), memoryThreshold: parseFloat(row.memoryThreshold) }
     : undefined;
   const { cpuThreshold, memoryThreshold } = resolveThresholds(app, override);
-  res.json(GetAppThresholdsResponse.parse({ appId: app.id, cpuThreshold, memoryThreshold }));
+  res.json(
+    GetAppThresholdsResponse.parse({
+      appId: app.id,
+      cpuThreshold,
+      memoryThreshold,
+      updatedBy: row?.updatedBy ?? "system",
+      updatedAt: row?.updatedAt?.toISOString() ?? undefined,
+    }),
+  );
 });
 
 router.put("/apps/:appId/thresholds", requireEngineerOrAdmin, async (req, res) => {
@@ -387,7 +395,16 @@ router.put("/apps/:appId/thresholds", requireEngineerOrAdmin, async (req, res) =
         updatedBy,
       },
     });
-  res.json(GetAppThresholdsResponse.parse({ appId: app.id, cpuThreshold, memoryThreshold }));
+  const now = new Date();
+  res.json(
+    GetAppThresholdsResponse.parse({
+      appId: app.id,
+      cpuThreshold,
+      memoryThreshold,
+      updatedBy,
+      updatedAt: now.toISOString(),
+    }),
+  );
 });
 
 // --- infrastructure ---

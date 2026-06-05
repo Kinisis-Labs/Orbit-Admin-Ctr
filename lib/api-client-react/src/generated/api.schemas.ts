@@ -965,6 +965,10 @@ export interface AppThresholds {
   cpuThreshold: number;
   /** Memory utilisation % at which the SLO badge turns warning/critical. */
   memoryThreshold: number;
+  /** UPN of the operator who last changed the thresholds, or 'system' when still at defaults (no DB override). */
+  updatedBy: string;
+  /** When the thresholds were last changed by an operator. Absent when still at defaults (no DB override). */
+  updatedAt?: string;
 }
 
 export interface UpdateAppThresholdsBody {

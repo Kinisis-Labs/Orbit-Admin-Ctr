@@ -234,48 +234,59 @@ function ThresholdRow({ appId, appName }: { appId: string; appName: string }) {
 
   const dirty = cpu !== "" || mem !== "";
 
+  const auditLine = data?.updatedBy
+    ? `Last set by ${data.updatedBy}${data.updatedAt ? ` on ${format(new Date(data.updatedAt), "MMM d, yyyy 'at' HH:mm")}` : ""}`
+    : null;
+
   return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border last:border-b-0">
-      <div className="text-[13px] text-foreground min-w-[120px]">{appName}</div>
-      {isLoading ? (
-        <div className="flex gap-4 flex-1 justify-end"><Skeleton className="h-7 w-[80px]" /><Skeleton className="h-7 w-[80px]" /></div>
-      ) : (
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[12px] text-muted-foreground w-[50px]">CPU</span>
-            <Input
-              type="number"
-              min={1}
-              max={100}
-              placeholder={data ? String(data.cpuThreshold) : "80"}
-              value={cpu}
-              onChange={(e) => { setCpu(e.target.value); setSaved(false); }}
-              className="h-7 w-[70px] rounded-sm text-[13px] text-right"
-            />
-            <span className="text-[12px] text-muted-foreground">%</span>
+    <div className="flex flex-col border-b border-border last:border-b-0">
+      <div className="flex items-center justify-between gap-4 px-4 py-3">
+        <div className="text-[13px] text-foreground min-w-[120px]">{appName}</div>
+        {isLoading ? (
+          <div className="flex gap-4 flex-1 justify-end"><Skeleton className="h-7 w-[80px]" /><Skeleton className="h-7 w-[80px]" /></div>
+        ) : (
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[12px] text-muted-foreground w-[50px]">CPU</span>
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                placeholder={data ? String(data.cpuThreshold) : "80"}
+                value={cpu}
+                onChange={(e) => { setCpu(e.target.value); setSaved(false); }}
+                className="h-7 w-[70px] rounded-sm text-[13px] text-right"
+              />
+              <span className="text-[12px] text-muted-foreground">%</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[12px] text-muted-foreground w-[60px]">Memory</span>
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                placeholder={data ? String(data.memoryThreshold) : "85"}
+                value={mem}
+                onChange={(e) => { setMem(e.target.value); setSaved(false); }}
+                className="h-7 w-[70px] rounded-sm text-[13px] text-right"
+              />
+              <span className="text-[12px] text-muted-foreground">%</span>
+            </div>
+            <Button
+              size="sm"
+              variant={saved ? "default" : "outline"}
+              className="h-7 rounded-sm text-[12px] min-w-[64px]"
+              disabled={!dirty || isPending}
+              onClick={() => void handleSave()}
+            >
+              {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : saved ? <><Check className="h-3 w-3 mr-1" />Saved</> : "Save"}
+            </Button>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[12px] text-muted-foreground w-[60px]">Memory</span>
-            <Input
-              type="number"
-              min={1}
-              max={100}
-              placeholder={data ? String(data.memoryThreshold) : "85"}
-              value={mem}
-              onChange={(e) => { setMem(e.target.value); setSaved(false); }}
-              className="h-7 w-[70px] rounded-sm text-[13px] text-right"
-            />
-            <span className="text-[12px] text-muted-foreground">%</span>
-          </div>
-          <Button
-            size="sm"
-            variant={saved ? "default" : "outline"}
-            className="h-7 rounded-sm text-[12px] min-w-[64px]"
-            disabled={!dirty || isPending}
-            onClick={() => void handleSave()}
-          >
-            {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : saved ? <><Check className="h-3 w-3 mr-1" />Saved</> : "Save"}
-          </Button>
+        )}
+      </div>
+      {!isLoading && auditLine && (
+        <div className="px-4 pb-2">
+          <span className="text-[11px] text-muted-foreground italic">{auditLine}</span>
         </div>
       )}
     </div>

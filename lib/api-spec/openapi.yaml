@@ -1327,11 +1327,13 @@ components:
           description: Display name / UPN of the operator who last saved DB overrides
     AppThresholds:
       type: object
-      required: [appId, cpuThreshold, memoryThreshold]
+      required: [appId, cpuThreshold, memoryThreshold, updatedBy]
       properties:
         appId: { type: string }
         cpuThreshold: { type: number, description: "CPU utilisation % at which the SLO badge turns warning/critical." }
         memoryThreshold: { type: number, description: "Memory utilisation % at which the SLO badge turns warning/critical." }
+        updatedBy: { type: string, description: "UPN of the operator who last changed the thresholds, or 'system' when still at defaults (no DB override)." }
+        updatedAt: { type: string, format: date-time, description: "When the thresholds were last changed by an operator. Absent when still at defaults (no DB override)." }
     UpdateAppThresholdsBody:
       type: object
       required: [cpuThreshold, memoryThreshold]
