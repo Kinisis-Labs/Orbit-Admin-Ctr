@@ -38,8 +38,10 @@
  *   ALERT_MEMORY_THRESHOLD_PCT           — Memory % above which an alert fires (default 85)
  *   ALERT_MEMORY_THRESHOLD_PCT__<APPID>  — per-app override
  *                                          e.g. ALERT_MEMORY_THRESHOLD_PCT__ORBIT=70
- *   ALERT_INFRA_CONSECUTIVE_CHECKS       — number of consecutive over-threshold checks required
- *                                          before a notification is dispatched (default 2)
+ *   ALERT_INFRA_CONSECUTIVE_CHECKS               — number of consecutive over-threshold checks required
+ *                                                  before a notification is dispatched (default 2)
+ *   ALERT_INFRA_CONSECUTIVE_CHECKS__<APPID>      — per-app override (upper-cased, hyphens → underscores)
+ *                                                  e.g. ALERT_INFRA_CONSECUTIVE_CHECKS__GRAILBABE=4
  */
 
 import nodemailer from "nodemailer";
@@ -125,9 +127,16 @@ function memoryThresholdPct(appId?: string): number {
 /**
  * Number of consecutive over-threshold scheduler checks required before a
  * notification fires (default 2).  A single transient spike will not alert.
+ *
+ * Per-app override via ALERT_INFRA_CONSECUTIVE_CHECKS__<APPID> takes
+ * precedence over the global ALERT_INFRA_CONSECUTIVE_CHECKS value.
  */
-function infraConsecutiveChecksRequired(): number {
-  const v = Number(process.env["ALERT_INFRA_CONSECUTIVE_CHECKS"] ?? 2);
+function infraConsecutiveChecksRequired(appId?: string): number {
+  const raw =
+    (appId ? process.env[`ALERT_INFRA_CONSECUTIVE_CHECKS__${appEnvKey(appId)}`] : undefined) ??
+    process.env["ALERT_INFRA_CONSECUTIVE_CHECKS"] ??
+    "2";
+  const v = Number(raw);
   return Number.isFinite(v) && v >= 1 ? Math.floor(v) : 2;
 }
 
@@ -473,7 +482,7 @@ async function sendEmailInfraAlert(
 </table>
 <br>
 <p><a href="https://orbit.kinisislabs.com/apps/${app.id}/telemetry">View telemetry in Orbit →</a></p>
-<p style="color:#888;font-size:12px;">This alert fires when ${label} stays above ${threshold.toFixed(1)}${unit} for ${infraConsecutiveChecksRequired()} consecutive check${infraConsecutiveChecksRequired() === 1 ? "" : "s"}. It will not repeat for ${Math.round(cooldownMs() / 3_600_000)} hours.</p>
+<p style="color:#888;font-size:12px;">This alert fires when ${label} stays above ${threshold.toFixed(1)}${unit} for ${infraConsecutiveChecksRequired(app.id)} consecutive check${infraConsecutiveChecksRequired(app.id) === 1 ? "" : "s"}. It will not repeat for ${Math.round(cooldownMs() / 3_600_000)} hours.</p>
 `;
 
   const text =
@@ -634,8 +643,6 @@ export async function checkInfraThresholds(): Promise<{
   alertsSent: number;
   errors: number;
 }> {
-  const requiredConsecutive = infraConsecutiveChecksRequired();
-
   let breaches = 0;
   let alertsSent = 0;
   let errors = 0;
@@ -647,6 +654,8 @@ export async function checkInfraThresholds(): Promise<{
   };
 
   for (const app of APPS) {
+    const requiredConsecutive = infraConsecutiveChecksRequired(app.id);
+
     const metrics: MetricSpec[] = [
       { name: "cpu_pct", kind: "cpu", threshold: cpuThresholdPct(app.id) },
       { name: "memory_pct", kind: "memory", threshold: memoryThresholdPct(app.id) },

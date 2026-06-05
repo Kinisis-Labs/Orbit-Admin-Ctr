@@ -122,6 +122,7 @@ A background scheduler (`lib/budgetAlerts.ts`) fires when `forecast > budget` fo
 - `ALERT_MEMORY_THRESHOLD_PCT` — Memory % above which an alert fires (default `85`)
 - `ALERT_MEMORY_THRESHOLD_PCT__<APPID>` — per-app override (e.g. `ALERT_MEMORY_THRESHOLD_PCT__ORBIT=70`)
 - `ALERT_INFRA_CONSECUTIVE_CHECKS` — consecutive over-threshold checks required before a notification fires (default `2`)
+- `ALERT_INFRA_CONSECUTIVE_CHECKS__<APPID>` — per-app override (upper-cased, hyphens → underscores; e.g. `ALERT_INFRA_CONSECUTIVE_CHECKS__GRAILBABE=4`)
 
 ## Product
 
