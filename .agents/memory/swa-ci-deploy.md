@@ -25,13 +25,15 @@ Deploy via **SWA CLI** with a token fetched at runtime — NOT `Azure/static-web
     echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
 
 - run: |
-    npm install -g @azure/static-web-apps-cli
+    npm install -g @azure/static-web-apps-cli@1.1.10
     swa deploy artifacts/orbit/dist/public \
       --deployment-token "${{ steps.swa-token.outputs.token }}" \
       --env production --no-use-keychain
 ```
 
 `--env production` is required — SWA CLI defaults to "preview" environment in CI.
+
+**Pin to `@azure/static-web-apps-cli@1.1.10`** — 2.x versions (up to 2.0.9) fail with "Could not find StaticSitesClient local binary / Could not load StaticSitesClient metadata from remote". 1.1.10 is the last stable 1.x release that works reliably.
 
 ## Recreating a broken SWA
 
