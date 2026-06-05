@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   useListAlertConfig,
   useUpdateAlertConfig,
@@ -9,13 +9,11 @@ import type { AppAlertConfig, InfrastructureReport, MetricSeries } from "@worksp
 import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings2, Pencil, RotateCcw, Check, X } from "lucide-react";
+import { Check, Pencil, RefreshCw, RotateCcw, Settings2, X } from "lucide-react";
 import { useAuth, ADMIN_GROUP } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
-// ---------------------------------------------------------------------------
-// Live utilization helpers (from main)
-// ---------------------------------------------------------------------------
+const REFETCH_INTERVAL_MS = 60_000;
 
 function getLatestValue(report: InfrastructureReport | undefined, seriesName: string): number | null {
   if (!report) return null;
@@ -50,6 +48,24 @@ const STATUS_COLORS = {
     badge: "border-border bg-muted/40 text-muted-foreground",
   },
 };
+
+function useSecondsTicker(intervalMs = 1000) {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return tick;
+}
+
+function formatSecondsAgo(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  if (s < 5) return "just now";
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  return `${Math.floor(m / 60)}h ago`;
+}
 
 function UtilizationIndicator({
   current,
@@ -98,7 +114,7 @@ function UtilizationIndicator({
 }
 
 // ---------------------------------------------------------------------------
-// Editable threshold helpers (from task #231)
+// Editable threshold helpers
 // ---------------------------------------------------------------------------
 
 type ThresholdField = "cpuThresholdPct" | "memoryThresholdPct" | "consecutiveChecks";
@@ -290,9 +306,11 @@ export function AlertConfigTable({ appId }: Props) {
   const rows = appId ? data?.filter((r) => r.appId === appId) : data;
 
   const infraQueries = useQueries({
-    queries: (rows ?? []).map((row) =>
-      getGetInfrastructureQueryOptions(row.appId)
-    ),
+    queries: (rows ?? []).map((row) => ({
+      ...getGetInfrastructureQueryOptions(row.appId),
+      refetchInterval: REFETCH_INTERVAL_MS,
+      refetchIntervalInBackground: false,
+    })),
   });
 
   function onSaved() {
@@ -320,6 +338,19 @@ export function AlertConfigTable({ appId }: Props) {
     );
   }
 
+  const isAnyFetching = infraQueries.some((q) => q.isFetching);
+
+  const latestUpdateAt = infraQueries.reduce((max, q) => {
+    return q.dataUpdatedAt > max ? q.dataUpdatedAt : max;
+  }, 0);
+
+  useSecondsTicker();
+
+  const updatedLabel =
+    latestUpdateAt > 0
+      ? formatSecondsAgo(Date.now() - latestUpdateAt)
+      : null;
+
   return (
     <div className="bg-card border border-border shadow-sm flex flex-col">
       <div className="flex items-center gap-2 p-3 border-b border-border">
@@ -330,10 +361,20 @@ export function AlertConfigTable({ appId }: Props) {
             editable
           </span>
         )}
-        <span className="ml-auto text-[11px] text-muted-foreground">
-          {!isLoading && rows !== undefined
-            ? `${rows.length} app${rows.length === 1 ? "" : "s"}`
-            : ""}
+        <span className="ml-auto flex items-center gap-2">
+          {updatedLabel && (
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <RefreshCw
+                className={`h-3 w-3 ${isAnyFetching ? "animate-spin text-primary" : "text-muted-foreground/60"}`}
+              />
+              {isAnyFetching ? "Refreshing…" : `Updated ${updatedLabel}`}
+            </span>
+          )}
+          {!isLoading && rows !== undefined && (
+            <span className="text-[11px] text-muted-foreground">
+              {rows.length} app{rows.length === 1 ? "" : "s"}
+            </span>
+          )}
         </span>
       </div>
 
