@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useListApps, useGetApp, getGetAppQueryKey } from "@workspace/api-client-react";
 import {
   Cloud, Search, Settings as SettingsIcon, Home, Bell, DollarSign, LayoutDashboard,
@@ -70,7 +70,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { overBudgetCount } = useOverBudgetDays(canSeeCost);
   useInfraThresholdAlerts();
 
+  const search = useSearch();
   const currentAppId = location.startsWith("/apps/") ? location.split("/")[2] : null;
+
+  const TAB_LABELS: Record<string, string> = {
+    overview: "Overview",
+    infrastructure: "Infrastructure",
+    network: "Network",
+    telemetry: "Telemetry",
+    cost: "Cost",
+    ledger: "Ledger",
+    alerts: "Alerts",
+  };
+
+  const VALID_TABS = ["overview", "infrastructure", "network", "telemetry", "cost", "ledger", "alerts"];
+  const rawTab = new URLSearchParams(currentAppId ? search : "").get("tab") ?? "";
+  const activeTab = VALID_TABS.includes(rawTab) ? rawTab : "overview";
+  const activeTabLabel = TAB_LABELS[activeTab];
   const currentApp = apps?.find(a => a.id === currentAppId);
   const { data: currentAppDetail } = useGetApp(currentAppId ?? "", {
     query: { enabled: !!currentAppId && !currentApp, queryKey: getGetAppQueryKey(currentAppId ?? "") },
@@ -202,7 +218,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <>
                   <Link href="/" className="hover:text-primary hover:underline transition-colors">App Services</Link>
                   <ChevronRight className="h-3.5 w-3.5 mx-1" />
-                  <span className="text-foreground font-semibold">{currentAppName}</span>
+                  <Link href={`/apps/${currentAppId}`} className="hover:text-primary hover:underline transition-colors">{currentAppName}</Link>
+                  <ChevronRight className="h-3.5 w-3.5 mx-1" />
+                  <span className="text-foreground font-semibold">{activeTabLabel}</span>
                 </>
               ) : location.startsWith("/cost/") ? (
                 <>
