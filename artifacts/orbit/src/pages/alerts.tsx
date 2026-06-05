@@ -1,9 +1,9 @@
 import { useState } from "react";
 import {
   useGetAppAlerts,
-  useListApps,
   getGetAppAlertsQueryKey,
 } from "@workspace/api-client-react";
+import { useApps } from "@/hooks/use-apps";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,7 +39,7 @@ export default function Alerts() {
   const [filter, setFilter] = useState("");
   const { mode } = useAuth();
 
-  const { data: apps } = useListApps();
+  const { data: apps } = useApps();
   const selectedApp = apps?.find((a) => a.id === scope);
 
   const appQueryKey = getGetAppAlertsQueryKey(scope);

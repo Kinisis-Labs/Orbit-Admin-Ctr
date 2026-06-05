@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useListApps } from "@workspace/api-client-react";
+import { useApps } from "@/hooks/use-apps";
 import {
   Select,
   SelectContent,
@@ -45,7 +45,7 @@ export function ScopeProvider({ children }: { children: React.ReactNode }) {
 
 export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
   const { scope, setScope } = useScope();
-  const { data: apps } = useListApps();
+  const { data: apps } = useApps();
 
   // If persisted scope refers to an app that no longer exists, fall back to
   // the first app in the list (or the default).

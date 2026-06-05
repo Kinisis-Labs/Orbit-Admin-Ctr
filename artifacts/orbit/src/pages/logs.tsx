@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import { useListApps, useQueryLogs } from "@workspace/api-client-react";
+import { useQueryLogs } from "@workspace/api-client-react";
+import { useApps } from "@/hooks/use-apps";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ const SAMPLE_QUERIES = [
 ];
 
 export default function Logs() {
-  const { data: apps } = useListApps();
+  const { data: apps } = useApps();
   const [query, setQuery] = useState(SAMPLE_QUERIES[0]!);
   const [committedQuery, setCommittedQuery] = useState(SAMPLE_QUERIES[0]!);
   const [selectedAppId, setSelectedAppId] = useState<string>("");

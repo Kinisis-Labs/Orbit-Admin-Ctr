@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useListApps } from "@workspace/api-client-react";
+import { useApps } from "@/hooks/use-apps";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,7 +22,7 @@ type Theme = "dark" | "light";
 type Density = "comfortable" | "compact";
 
 export default function Preferences() {
-  const { data: apps } = useListApps();
+  const { data: apps } = useApps();
   const { scope, setScope } = useScope();
   const [theme, setTheme] = useState<Theme>(() => (typeof window === "undefined" ? "dark" : (localStorage.getItem("orbit-theme") === "light" ? "light" : "dark")));
   const [density, setDensity] = useState<Density>(() => (typeof window === "undefined" ? "comfortable" : (localStorage.getItem("orbit-density") === "compact" ? "compact" : "comfortable")));

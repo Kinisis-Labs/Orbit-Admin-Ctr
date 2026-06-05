@@ -1,4 +1,4 @@
-import { useListApps } from "@workspace/api-client-react";
+import { useApps } from "@/hooks/use-apps";
 import type { AppSummary } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -71,7 +71,7 @@ function extraTags(app: AppSummary): [string, string][] {
 }
 
 export default function Tags() {
-  const { data: apps, isLoading } = useListApps();
+  const { data: apps, isLoading } = useApps();
 
   return (
     <div className="space-y-4">

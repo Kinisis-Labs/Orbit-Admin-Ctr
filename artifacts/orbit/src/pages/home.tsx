@@ -2,8 +2,8 @@ import {
   useGetApp,
   getGetAppQueryKey,
   getListAppsQueryKey,
-  useListApps,
 } from "@workspace/api-client-react";
+import { useApps } from "@/hooks/use-apps";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
@@ -27,7 +27,7 @@ export default function Home() {
 
   const queryClient = useQueryClient();
 
-  const { data: apps, isFetching: appsFetching } = useListApps();
+  const { data: apps, isFetching: appsFetching } = useApps();
 
   const { data: appDetail, isLoading: appDetailLoading } = useGetApp(scope, {
     query: { enabled: !!scope, queryKey: getGetAppQueryKey(scope) },

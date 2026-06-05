@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
-import { useListApps, listDeployments, getListDeploymentsQueryKey } from "@workspace/api-client-react";
+import { listDeployments, getListDeploymentsQueryKey } from "@workspace/api-client-react";
+import { useApps } from "@/hooks/use-apps";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ const STATUS_TONE: Record<DeploymentStatus, "ok" | "warn" | "bad" | "info"> = {
 
 export default function Deployments() {
   const { scope } = useScope();
-  const { data: apps, isLoading: appsLoading } = useListApps();
+  const { data: apps, isLoading: appsLoading } = useApps();
   const [filter, setFilter] = useState("");
 
   const selectedApp = apps?.find((a) => a.id === scope);

@@ -1,12 +1,12 @@
 import { useMemo } from "react";
-import { useListApps } from "@workspace/api-client-react";
+import { useApps } from "@/hooks/use-apps";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth, COST_READER_GROUP } from "@/lib/auth";
 import { PageHeader, StatusPill } from "@/components/page-header";
 
 export default function Subscriptions() {
-  const { data: apps, isLoading } = useListApps();
+  const { data: apps, isLoading } = useApps();
   const { hasGroup } = useAuth();
   const canSeeCost = hasGroup(COST_READER_GROUP.id);
 

@@ -2,13 +2,13 @@ import { useState, useEffect, useMemo, Fragment } from "react";
 import { Link } from "wouter";
 import {
   useListSlos,
-  useListApps,
   useGetAppThresholds,
   useUpdateAppThresholds,
   useListAppThresholdsLog,
   getListSlosQueryKey,
 } from "@workspace/api-client-react";
 import type { AppThresholdsLogEntry } from "@workspace/api-client-react";
+import { useApps } from "@/hooks/use-apps";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
@@ -529,7 +529,7 @@ function ThresholdRow({ appId, appName }: { appId: string; appName: string }) {
 
 // --- Threshold settings panel (collapsed by default) ---
 function ThresholdSettings() {
-  const { data: apps } = useListApps();
+  const { data: apps } = useApps();
   const [open, setOpen] = useState(false);
 
   return (

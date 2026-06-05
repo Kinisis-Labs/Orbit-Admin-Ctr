@@ -1,8 +1,8 @@
 import {
   useGetCost,
-  useListApps,
   getGetCostQueryKey,
 } from "@workspace/api-client-react";
+import { useApps } from "@/hooks/use-apps";
 import { BudgetAlertHistory } from "@/components/budget-alert-history";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
@@ -202,7 +202,7 @@ function AnomalyAlertBanner({
 
 export default function Cost() {
   const { scope } = useScope();
-  const { data: apps } = useListApps();
+  const { data: apps } = useApps();
   const selectedApp = apps?.find((a) => a.id === scope);
 
   return (
@@ -227,7 +227,7 @@ export default function Cost() {
 
 function AppCost() {
   const { scope } = useScope();
-  const { data: apps } = useListApps();
+  const { data: apps } = useApps();
   const selectedApp = apps?.find((a) => a.id === scope);
   const queryKey = getGetCostQueryKey(scope);
   const { data, isLoading, isFetching } = useGetCost(scope, undefined, {

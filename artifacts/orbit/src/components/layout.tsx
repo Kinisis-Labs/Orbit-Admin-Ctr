@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
-import { useListApps, useGetApp, getGetAppQueryKey } from "@workspace/api-client-react";
+import { useGetApp, getGetAppQueryKey } from "@workspace/api-client-react";
+import { useApps } from "@/hooks/use-apps";
 import {
   Cloud, Search, Settings as SettingsIcon, Home, Bell, DollarSign, LayoutDashboard,
   ChevronRight, Menu, Sun, Moon, Lock, Rocket, AlertOctagon, Activity,
@@ -43,7 +44,7 @@ function getInitialTheme(): Theme {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { data: apps } = useListApps();
+  const { data: apps } = useApps();
   const { hasGroup } = useAuth();
   const canSeeCost = hasGroup(COST_READER_GROUP.id);
   const [theme, setTheme] = useState<Theme>(getInitialTheme);

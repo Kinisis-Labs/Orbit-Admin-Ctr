@@ -1,9 +1,10 @@
 import { useQueries } from "@tanstack/react-query";
-import { useListApps, getGetCostQueryOptions } from "@workspace/api-client-react";
+import { getGetCostQueryOptions } from "@workspace/api-client-react";
+import { useApps } from "./use-apps";
 import type { CostReport } from "@workspace/api-client-react";
 
 export function useOverBudgetDays(enabled = true) {
-  const { data: apps, isLoading: appsLoading } = useListApps();
+  const { data: apps, isLoading: appsLoading } = useApps();
 
   const costQueries = useQueries({
     queries: (enabled && apps ? apps : []).map((app) => ({

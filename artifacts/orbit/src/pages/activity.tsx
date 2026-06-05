@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
-import { useListApps, listActivityLog, getListActivityLogQueryKey } from "@workspace/api-client-react";
+import { listActivityLog, getListActivityLogQueryKey } from "@workspace/api-client-react";
+import { useApps } from "@/hooks/use-apps";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,7 @@ function categoryTone(category: string): "info" | "warn" | "ok" | "muted" | "bad
 
 export default function ActivityLog() {
   const { scope } = useScope();
-  const { data: apps, isLoading: appsLoading } = useListApps();
+  const { data: apps, isLoading: appsLoading } = useApps();
   const [filter, setFilter] = useState("");
 
   const appsToQuery = useMemo(() => {
