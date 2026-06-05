@@ -283,7 +283,7 @@ function ThresholdHistoryDialog({ appId, appName }: { appId: string; appName: st
   );
 }
 
-// --- Per-app threshold row (GET + optimistic PUT) ---
+// --- Per-app threshold row (GET + optimistic PUT + history dialog) ---
 function ThresholdRow({ appId, appName }: { appId: string; appName: string }) {
   const { data, isLoading } = useGetAppThresholds(appId);
   const { mutateAsync, isPending } = useUpdateAppThresholds();

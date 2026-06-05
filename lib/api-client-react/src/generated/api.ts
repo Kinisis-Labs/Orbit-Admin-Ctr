@@ -52,7 +52,6 @@ import type {
   ListBudgetAlertLogParams,
   ListGlobalAlertsParams,
   ListInfraAlertLogParams,
-  ListSlos200,
   LogLine,
   NetworkReport,
   PlaySubscriptionRow,

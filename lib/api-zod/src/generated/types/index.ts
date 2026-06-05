@@ -72,8 +72,6 @@ export * from './listAppThresholdsLog403';
 export * from './listBudgetAlertLogParams';
 export * from './listGlobalAlertsParams';
 export * from './listInfraAlertLogParams';
-export * from './listSlos200';
-export * from './listSlos200DataSource';
 export * from './logLine';
 export * from './logLineLevel';
 export * from './metricPoint';
