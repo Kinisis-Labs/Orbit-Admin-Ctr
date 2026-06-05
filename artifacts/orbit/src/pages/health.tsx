@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi, History } from "lucide-react";
+import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi, WifiOff, History } from "lucide-react";
 import {
   AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -30,22 +30,6 @@ import { format } from "date-fns";
 import { useAuth, ADMIN_GROUP } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-
-function DataSourceBadge({ dataSource }: { dataSource: "live" | "mock" | undefined }) {
-  if (dataSource === "live") {
-    return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide select-none">
-        <Wifi className="h-3 w-3" />
-        Live — Azure Monitor
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted text-muted-foreground text-[10px] font-semibold uppercase tracking-wide select-none">
-      Demo data
-    </span>
-  );
-}
 
 type InfraTone = "ok" | "warn" | "bad";
 
@@ -186,6 +170,24 @@ function TrendSparkline({
       </div>
       </div>
     </div>
+  );
+}
+
+function DataSourceBadge({ dataSource }: { dataSource: "live" | "mock" | undefined }) {
+  if (!dataSource) return null;
+  if (dataSource === "live") {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide select-none">
+        <Wifi className="h-3 w-3" />
+        Live — Azure Monitor
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide select-none">
+      <WifiOff className="h-3 w-3" />
+      Demo data
+    </span>
   );
 }
 
@@ -456,7 +458,7 @@ export default function Health() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Health & SLOs" subtitle="Service-level objectives and error budget burn across all applications" />
+      <PageHeader title="Health & SLOs" subtitle="Service-level objectives and error budget burn across all applications" right={<DataSourceBadge dataSource={dataSource} />} />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         <Tile title="Meeting 99.9% uptime" value={isLoading ? null : `${meetingUptime} / ${slos?.length ?? 0}`} sub="Across tracked applications" />

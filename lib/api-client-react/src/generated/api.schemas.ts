@@ -1088,6 +1088,23 @@ q?: string;
 limit?: number;
 };
 
+/**
+ * Whether rows come from live Azure Monitor queries or deterministic mock data.
+ */
+export type ListSlos200DataSource = typeof ListSlos200DataSource[keyof typeof ListSlos200DataSource];
+
+
+export const ListSlos200DataSource = {
+  live: 'live',
+  mock: 'mock',
+} as const;
+
+export type ListSlos200 = {
+  /** Whether rows come from live Azure Monitor queries or deterministic mock data. */
+  dataSource: ListSlos200DataSource;
+  rows: SloRow[];
+};
+
 export type ListBudgetAlertLogParams = {
 /**
  * Filter to a specific app. Omit to return entries for all apps.
