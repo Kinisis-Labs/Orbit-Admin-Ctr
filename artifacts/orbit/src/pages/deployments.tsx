@@ -1,15 +1,18 @@
 import { useMemo, useState } from "react";
-import { useListApps } from "@workspace/api-client-react";
+import { useQueries } from "@tanstack/react-query";
+import { useListApps, listDeployments, getListDeploymentsQueryKey } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, RefreshCw, Search } from "lucide-react";
+import { Download, RefreshCw, Search, GitBranch } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { PageHeader, StatusPill } from "@/components/page-header";
-import { buildDeployments, type DeploymentStatus } from "@/lib/mock-data";
+import type { Deployment } from "@workspace/api-client-react";
+
+type DeploymentStatus = Deployment["status"];
 
 const STATUS_TONE: Record<DeploymentStatus, "ok" | "warn" | "bad" | "info"> = {
   Succeeded: "ok",
@@ -20,24 +23,42 @@ const STATUS_TONE: Record<DeploymentStatus, "ok" | "warn" | "bad" | "info"> = {
 
 export default function Deployments() {
   const { scope, isGlobal } = useScope();
-  const { data: apps, isLoading } = useListApps();
+  const { data: apps, isLoading: appsLoading } = useListApps();
   const [filter, setFilter] = useState("");
 
-  const deployments = useMemo(() => (apps ? buildDeployments(apps) : []), [apps]);
+  const appsToQuery = useMemo(() => {
+    if (!apps) return [];
+    return isGlobal ? apps : apps.filter((a) => a.id === scope);
+  }, [apps, isGlobal, scope]);
+
+  const deploymentQueries = useQueries({
+    queries: appsToQuery.map((app) => ({
+      queryKey: getListDeploymentsQueryKey(app.id),
+      queryFn: () => listDeployments(app.id),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+
+  const isLoading = appsLoading || deploymentQueries.some((q) => q.isLoading);
+  const allEmpty = !isLoading && deploymentQueries.every((q) => !q.isLoading && (q.data?.length ?? 0) === 0);
+
+  const deployments = useMemo(
+    () => deploymentQueries.flatMap((q) => q.data ?? []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [deploymentQueries.map((q) => q.dataUpdatedAt).join(",")],
+  );
+
   const filtered = useMemo(() => {
-    let rows = isGlobal ? deployments : deployments.filter((d) => d.appId === scope);
-    if (filter) {
-      const f = filter.toLowerCase();
-      rows = rows.filter(
-        (d) =>
-          d.appName.toLowerCase().includes(f) ||
-          d.version.toLowerCase().includes(f) ||
-          d.triggeredBy.toLowerCase().includes(f) ||
-          d.commitSha.includes(f),
-      );
-    }
-    return rows;
-  }, [deployments, scope, isGlobal, filter]);
+    if (!filter) return deployments;
+    const f = filter.toLowerCase();
+    return deployments.filter(
+      (d) =>
+        d.appName.toLowerCase().includes(f) ||
+        d.version.toLowerCase().includes(f) ||
+        d.triggeredBy.toLowerCase().includes(f) ||
+        d.commitSha.includes(f),
+    );
+  }, [deployments, filter]);
 
   const succeeded = filtered.filter((d) => d.status === "Succeeded").length;
   const inProgress = filtered.filter((d) => d.status === "InProgress").length;
@@ -53,7 +74,7 @@ export default function Deployments() {
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Tile title="Total" value={isLoading ? null : filtered.length.toString()} sub="Last 30 days" />
+        <Tile title="Total" value={isLoading ? null : filtered.length.toString()} sub="Workflow runs" />
         <Tile title="Success rate" value={isLoading ? null : `${successRate}%`} sub={`${succeeded} succeeded`} />
         <Tile title="In progress" value={isLoading ? null : inProgress.toString()} sub="Active rollouts" />
         <Tile title="Failed / rolled back" value={isLoading ? null : failed.toString()} sub="Requires review" />
@@ -87,6 +108,16 @@ export default function Deployments() {
             <div className="p-4 space-y-2">
               <Skeleton className="h-8" /><Skeleton className="h-8" /><Skeleton className="h-8" />
             </div>
+          ) : allEmpty ? (
+            <div className="p-8 text-center space-y-3">
+              <GitBranch className="h-8 w-8 mx-auto text-muted-foreground/40" />
+              <div className="text-[14px] font-semibold text-foreground">No deployment history available</div>
+              <div className="text-[12px] text-muted-foreground max-w-md mx-auto">
+                Set <code className="bg-muted px-1 rounded">GITHUB_TOKEN</code> to pull live GitHub Actions run
+                history. Repos: <code className="bg-muted px-1 rounded">Kinisis-Labs/GrailBabe</code>{" "}
+                and <code className="bg-muted px-1 rounded">Kinisis-Labs/Orbit-Admin-Ctr</code>.
+              </div>
+            </div>
           ) : (
             <Table className="text-[13px]">
               <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
@@ -114,7 +145,9 @@ export default function Deployments() {
                       {formatDistanceToNow(new Date(d.startedAt), { addSuffix: true })}
                     </TableCell>
                     <TableCell className="py-1 text-right tabular-nums">
-                      {Math.floor(d.durationSec / 60)}m {d.durationSec % 60}s
+                      {d.durationSec != null
+                        ? `${Math.floor(d.durationSec / 60)}m ${d.durationSec % 60}s`
+                        : "—"}
                     </TableCell>
                   </TableRow>
                 ))}

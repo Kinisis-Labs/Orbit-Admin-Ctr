@@ -9,3 +9,6 @@
 - [connect-pg-simple under esbuild](connect-pg-simple-esbuild.md) — bundled server has no table.sql → createTableIfMissing ENOENT; own user_sessions in schema + disable auto-create.
 - [SWA CI deploy](swa-ci-deploy.md) — portal-linked SWAs reject token-only deploys (OIDC); fix is CLI-recreated SWA + SWA CLI with runtime token + `--env production`.
 - [Azure prod routing gotchas](azure-prod-routing.md) — DNS must CNAME to Front Door (not SWA); port 80 required; PG firewall blocks GH Actions; SESSION_SECRET+DATABASE_URL must be in --set-env-vars.
+- [Azure arm-monitor client name](azure-arm-monitor.md) — the class is `MonitorClient` (not `MonitorManagementClient`); Activity Log is `client.activityLogs.list(filter, opts)`.
+- [Parallel per-app queries in React](parallel-per-app-queries.md) — use `useQueries` from `@tanstack/react-query` to fan-out per-app API calls; available in orbit via catalog dep; hook auto-disables on empty appId.
+- [Ledger postedAt Zod vs interface mismatch](ledger-posted-at.md) — Zod schema has `postedAt: z.string().datetime()` but `PostEntryInput`/`IngestSaleInput` use `Date`; convert at the route boundary with `new Date(parsed.data.postedAt)`.

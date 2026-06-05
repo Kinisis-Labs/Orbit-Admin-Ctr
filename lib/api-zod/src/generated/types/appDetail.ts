@@ -16,4 +16,6 @@ export type AppDetail = AppSummary & {
   androidPackage?: string;
   /** Apple App Store bundle identifier when this app ships a tracked iOS build. Presence flags the app for the App Store subscriptions surface. */
   iosBundle?: string;
+  /** GitHub repository name (under the Kinisis-Labs org) used to fetch deployment history from GitHub Actions. Absent for apps without a tracked CI/CD pipeline. */
+  appRepo?: string;
 };

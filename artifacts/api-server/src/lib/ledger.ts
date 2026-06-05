@@ -5,7 +5,7 @@ import {
   ledgerReconciliationRunsTable,
   type LedgerEntryRow,
 } from "@workspace/db";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
 
 const CURRENCY = "USD";
 
@@ -547,5 +547,59 @@ export async function ingestSale(
     fee: summary.feeCents / 100,
     net: summary.netCents / 100,
     entries: rows.map(toEntryDto),
+  };
+}
+
+/**
+ * Current-month gross revenue for a workload, split by channel.
+ *
+ * Sums all posted credit entries to account 4000 (sale revenue) for the
+ * current calendar month. Used by the cost route to surface live revenue
+ * instead of the old REVENUE_BY_APP constant.
+ *
+ * Returns zeroed object when no ledger entries exist (e.g. before any Stripe
+ * sync has run or before the app goes live).
+ */
+export async function getLedgerMonthRevenue(workloadId: string): Promise<{
+  stripe: number;
+  appStore: number;
+  playStore: number;
+}> {
+
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
+  const rows = await db
+    .select({
+      source: ledgerEntriesTable.source,
+      amount: ledgerEntriesTable.amount,
+    })
+    .from(ledgerEntriesTable)
+    .where(
+      and(
+        eq(ledgerEntriesTable.workloadId, workloadId),
+        eq(ledgerEntriesTable.creditAccount, SALE_REVENUE_ACCOUNT),
+        gte(ledgerEntriesTable.postedAt, monthStart),
+        lte(ledgerEntriesTable.postedAt, monthEnd),
+      ),
+    );
+
+  let stripe = 0;
+  let appStore = 0;
+  let playStore = 0;
+
+  for (const row of rows) {
+    const amt = parseFloat(String(row.amount));
+    if (isNaN(amt)) continue;
+    if (row.source === "stripe") stripe += amt;
+    else if (row.source === "app_store") appStore += amt;
+    else if (row.source === "play_store") playStore += amt;
+  }
+
+  return {
+    stripe: Number(stripe.toFixed(2)),
+    appStore: Number(appStore.toFixed(2)),
+    playStore: Number(playStore.toFixed(2)),
   };
 }

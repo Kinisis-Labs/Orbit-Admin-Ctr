@@ -5,9 +5,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { CostTabs } from "@/components/cost-tabs";
-import { buildBudgets, type BudgetRow } from "@/lib/mock-data";
 
-const TONE: Record<BudgetRow["status"], "ok" | "warn" | "bad"> = {
+type BudgetStatus = "Healthy" | "Warning" | "Breach";
+
+const TONE: Record<BudgetStatus, "ok" | "warn" | "bad"> = {
   Healthy: "ok",
   Warning: "warn",
   Breach: "bad",
@@ -15,9 +16,30 @@ const TONE: Record<BudgetRow["status"], "ok" | "warn" | "bad"> = {
 
 const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
+type BudgetRow = {
+  appId: string;
+  appName: string;
+  environment: string;
+  budget: number;
+  spent: number;
+  forecast: number;
+  status: BudgetStatus;
+};
+
+function buildBudgetRows(apps: Array<{ id: string; name: string; environment: string; monthToDateCost: number }>): BudgetRow[] {
+  return apps.map((app) => {
+    const spent = app.monthToDateCost;
+    const budget = Number((spent * 2.0).toFixed(2));
+    const forecast = Number((spent * 1.7).toFixed(2));
+    const status: BudgetStatus =
+      forecast > budget ? "Breach" : spent > budget * 0.8 ? "Warning" : "Healthy";
+    return { appId: app.id, appName: app.name, environment: app.environment, budget, spent, forecast, status };
+  });
+}
+
 export default function Budgets() {
   const { data: apps, isLoading } = useListApps();
-  const rows = useMemo(() => (apps ? buildBudgets(apps) : []), [apps]);
+  const rows = useMemo<BudgetRow[]>(() => (apps ? buildBudgetRows(apps) : []), [apps]);
 
   return (
     <div className="space-y-4">

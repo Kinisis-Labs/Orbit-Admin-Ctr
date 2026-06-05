@@ -70,7 +70,8 @@ export const GetAppResponse = zod.object({
   "owners": zod.array(zod.string()),
   "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users. \"clerk\" = consumer app with Clerk-authenticated users (activity ingested via webhooks). \"entra\" = employee-only internal tool authenticated via Entra ID. \"none\" = no end-user authentication (e.g. public marketing site).'),
   "androidPackage": zod.string().optional().describe('Google Play package name when this app ships a tracked Android build. Presence flags the app for the Play subscriptions surface.'),
-  "iosBundle": zod.string().optional().describe('Apple App Store bundle identifier when this app ships a tracked iOS build. Presence flags the app for the App Store subscriptions surface.')
+  "iosBundle": zod.string().optional().describe('Apple App Store bundle identifier when this app ships a tracked iOS build. Presence flags the app for the App Store subscriptions surface.'),
+  "appRepo": zod.string().optional().describe('GitHub repository name (under the Kinisis-Labs org) used to fetch deployment history from GitHub Actions. Absent for apps without a tracked CI\/CD pipeline.')
 }))
 
 
@@ -543,5 +544,119 @@ export const ListAppleSubscriptionsResponseItem = zod.object({
   "dataSource": zod.enum(['placeholder', 'live'])
 })
 export const ListAppleSubscriptionsResponse = zod.array(ListAppleSubscriptionsResponseItem)
+
+
+/**
+ * @summary GitHub Actions workflow runs for this app (last 50 runs). Returns [] when GITHUB_TOKEN is absent.
+ */
+export const ListDeploymentsParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const ListDeploymentsResponseItem = zod.object({
+  "id": zod.string(),
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "environment": zod.string(),
+  "version": zod.string(),
+  "status": zod.enum(['Succeeded', 'Failed', 'InProgress', 'RolledBack']),
+  "triggeredBy": zod.string(),
+  "startedAt": zod.string().datetime({"offset":true}),
+  "durationSec": zod.number().nullish(),
+  "commitSha": zod.string(),
+  "pipeline": zod.string()
+})
+export const ListDeploymentsResponse = zod.array(ListDeploymentsResponseItem)
+
+
+/**
+ * @summary Azure Activity Log events for this app's resource group (last 7 days). Returns [] when Azure is unconfigured.
+ */
+export const ListActivityLogParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const ListActivityLogResponseItem = zod.object({
+  "id": zod.string(),
+  "timestamp": zod.string().datetime({"offset":true}),
+  "actor": zod.string(),
+  "action": zod.string(),
+  "target": zod.string(),
+  "appId": zod.string().optional(),
+  "status": zod.enum(['Succeeded', 'Failed', 'Started']),
+  "category": zod.string()
+})
+export const ListActivityLogResponse = zod.array(ListActivityLogResponseItem)
+
+
+/**
+ * @summary KQL query against the centralised Log Analytics workspace. Returns [] when AZURE_LOG_ANALYTICS_WORKSPACE_ID is absent.
+ */
+export const QueryLogsParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const QueryLogsQueryParams = zod.object({
+  "q": zod.coerce.string().optional(),
+  "limit": zod.coerce.number().optional()
+})
+
+export const QueryLogsResponseItem = zod.object({
+  "id": zod.string(),
+  "timestamp": zod.string().datetime({"offset":true}),
+  "appId": zod.string(),
+  "level": zod.enum(['INFO', 'WARN', 'ERROR']),
+  "message": zod.string()
+})
+export const QueryLogsResponse = zod.array(QueryLogsResponseItem)
+
+
+/**
+ * @summary Azure Service Health events for all monitored subscriptions. Returns [] when Azure is unconfigured.
+ */
+export const ListServiceHealthResponseItem = zod.object({
+  "id": zod.string(),
+  "service": zod.string(),
+  "region": zod.string(),
+  "status": zod.enum(['Active', 'Resolved', 'Advisory']),
+  "severity": zod.enum(['Low', 'Medium', 'High']),
+  "title": zod.string(),
+  "startedAt": zod.string().datetime({"offset":true}),
+  "resolvedAt": zod.string().datetime({"offset":true}).nullish()
+})
+export const ListServiceHealthResponse = zod.array(ListServiceHealthResponseItem)
+
+
+/**
+ * @summary Per-application SLO snapshot derived from Azure Monitor. Returns [] when Azure is unconfigured.
+ */
+export const ListSlosResponseItem = zod.object({
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "environment": zod.string(),
+  "uptimePct": zod.number(),
+  "errorBudgetRemainingPct": zod.number(),
+  "p95LatencyMs": zod.number(),
+  "p95TargetMs": zod.number(),
+  "errorRatePct": zod.number(),
+  "errorTargetPct": zod.number()
+})
+export const ListSlosResponse = zod.array(ListSlosResponseItem)
+
+
+/**
+ * @summary Cross-application network endpoint health from Azure. Returns [] when Azure is unconfigured.
+ */
+export const ListGlobalEndpointsResponseItem = zod.object({
+  "id": zod.string(),
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "name": zod.string(),
+  "region": zod.string(),
+  "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
+  "latencyMs": zod.number(),
+  "packetLossPercent": zod.number()
+})
+export const ListGlobalEndpointsResponse = zod.array(ListGlobalEndpointsResponseItem)
 
 

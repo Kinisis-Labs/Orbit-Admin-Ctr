@@ -326,6 +326,98 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/AppleSubscriptionRow" }
+  /apps/{appId}/deployments:
+    get:
+      operationId: listDeployments
+      tags: [apps]
+      summary: GitHub Actions workflow runs for this app (last 50 runs). Returns [] when GITHUB_TOKEN is absent.
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Deployment" }
+  /apps/{appId}/activity:
+    get:
+      operationId: listActivityLog
+      tags: [apps]
+      summary: Azure Activity Log events for this app's resource group (last 7 days). Returns [] when Azure is unconfigured.
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ActivityEntry" }
+  /apps/{appId}/logs:
+    get:
+      operationId: queryLogs
+      tags: [apps]
+      summary: KQL query against the centralised Log Analytics workspace. Returns [] when AZURE_LOG_ANALYTICS_WORKSPACE_ID is absent.
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LogLine" }
+  /global/service-health:
+    get:
+      operationId: listServiceHealth
+      tags: [global]
+      summary: Azure Service Health events for all monitored subscriptions. Returns [] when Azure is unconfigured.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ServiceHealthEvent" }
+  /global/slos:
+    get:
+      operationId: listSlos
+      tags: [global]
+      summary: Per-application SLO snapshot derived from Azure Monitor. Returns [] when Azure is unconfigured.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SloRow" }
+  /global/endpoints:
+    get:
+      operationId: listGlobalEndpoints
+      tags: [global]
+      summary: Cross-application network endpoint health from Azure. Returns [] when Azure is unconfigured.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/GlobalEndpointRow" }
 components:
   parameters:
     AppId:
@@ -421,6 +513,12 @@ components:
               description: >-
                 Apple App Store bundle identifier when this app ships a tracked iOS build.
                 Presence flags the app for the App Store subscriptions surface.
+            appRepo:
+              type: string
+              description: >-
+                GitHub repository name (under the Kinisis-Labs org) used to fetch
+                deployment history from GitHub Actions. Absent for apps without a
+                tracked CI/CD pipeline.
     UserActivityRow:
       type: object
       required: [appId, appName, environment, totalMembers, dau, wau, mau, inactive30d, newLast7d, dauTrendPct]
@@ -855,3 +953,76 @@ components:
                 type: number
                 nullable: true
                 description: (net / total) * 100. Null when revenue is zero.
+    Deployment:
+      type: object
+      required: [id, appId, appName, environment, version, status, triggeredBy, startedAt, commitSha, pipeline]
+      properties:
+        id: { type: string }
+        appId: { type: string }
+        appName: { type: string }
+        environment: { type: string }
+        version: { type: string }
+        status: { type: string, enum: [Succeeded, Failed, InProgress, RolledBack] }
+        triggeredBy: { type: string }
+        startedAt: { type: string, format: date-time }
+        durationSec: { type: integer, nullable: true }
+        commitSha: { type: string }
+        pipeline: { type: string }
+    ActivityEntry:
+      type: object
+      required: [id, timestamp, actor, action, target, status, category]
+      properties:
+        id: { type: string }
+        timestamp: { type: string, format: date-time }
+        actor: { type: string }
+        action: { type: string }
+        target: { type: string }
+        appId: { type: string }
+        status: { type: string, enum: [Succeeded, Failed, Started] }
+        category: { type: string }
+    LogLine:
+      type: object
+      required: [id, timestamp, appId, level, message]
+      properties:
+        id: { type: string }
+        timestamp: { type: string, format: date-time }
+        appId: { type: string }
+        level: { type: string, enum: [INFO, WARN, ERROR] }
+        message: { type: string }
+    ServiceHealthEvent:
+      type: object
+      required: [id, service, region, status, severity, title, startedAt]
+      properties:
+        id: { type: string }
+        service: { type: string }
+        region: { type: string }
+        status: { type: string, enum: [Active, Resolved, Advisory] }
+        severity: { type: string, enum: [Low, Medium, High] }
+        title: { type: string }
+        startedAt: { type: string, format: date-time }
+        resolvedAt: { type: string, format: date-time, nullable: true }
+    SloRow:
+      type: object
+      required: [appId, appName, environment, uptimePct, errorBudgetRemainingPct, p95LatencyMs, p95TargetMs, errorRatePct, errorTargetPct]
+      properties:
+        appId: { type: string }
+        appName: { type: string }
+        environment: { type: string }
+        uptimePct: { type: number }
+        errorBudgetRemainingPct: { type: number }
+        p95LatencyMs: { type: number }
+        p95TargetMs: { type: number }
+        errorRatePct: { type: number }
+        errorTargetPct: { type: number }
+    GlobalEndpointRow:
+      type: object
+      required: [id, appId, appName, name, region, status, latencyMs, packetLossPercent]
+      properties:
+        id: { type: string }
+        appId: { type: string }
+        appName: { type: string }
+        name: { type: string }
+        region: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+        latencyMs: { type: number }
+        packetLossPercent: { type: number }

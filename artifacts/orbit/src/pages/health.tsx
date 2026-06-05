@@ -1,26 +1,27 @@
-import { useMemo } from "react";
-import { useListApps } from "@workspace/api-client-react";
+import { useListSlos } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader, StatusPill } from "@/components/page-header";
-import { buildSlos } from "@/lib/mock-data";
+import { Activity } from "lucide-react";
 
 export default function Health() {
-  const { data: apps, isLoading } = useListApps();
-  const slos = useMemo(() => (apps ? buildSlos(apps) : []), [apps]);
+  const { data: slos, isLoading } = useListSlos();
+  const isEmpty = !isLoading && (slos?.length ?? 0) === 0;
 
-  const meetingUptime = slos.filter((s) => s.uptimePct >= 99.9).length;
-  const breachingErr = slos.filter((s) => s.errorRatePct > s.errorTargetPct).length;
-  const breachingLat = slos.filter((s) => s.p95LatencyMs > s.p95TargetMs).length;
-  const avgBudget = slos.length ? slos.reduce((s, r) => s + r.errorBudgetRemainingPct, 0) / slos.length : 0;
+  const meetingUptime = (slos ?? []).filter((s) => s.uptimePct >= 99.9).length;
+  const breachingErr = (slos ?? []).filter((s) => s.errorRatePct > s.errorTargetPct).length;
+  const breachingLat = (slos ?? []).filter((s) => s.p95LatencyMs > s.p95TargetMs).length;
+  const avgBudget = slos?.length
+    ? slos.reduce((s, r) => s + r.errorBudgetRemainingPct, 0) / slos.length
+    : 0;
 
   return (
     <div className="space-y-4">
       <PageHeader title="Health & SLOs" subtitle="Service-level objectives and error budget burn across all applications" />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Tile title="Meeting 99.9% uptime" value={isLoading ? null : `${meetingUptime} / ${slos.length}`} sub="Across tracked applications" />
+        <Tile title="Meeting 99.9% uptime" value={isLoading ? null : `${meetingUptime} / ${slos?.length ?? 0}`} sub="Across tracked applications" />
         <Tile title="Avg error budget left" value={isLoading ? null : `${avgBudget.toFixed(1)}%`} sub="Rolling 30-day window" />
         <Tile title="Breaching P95 latency" value={isLoading ? null : breachingLat.toString()} sub="Target: <500ms" />
         <Tile title="Breaching error rate" value={isLoading ? null : breachingErr.toString()} sub="Target: <1%" />
@@ -32,6 +33,17 @@ export default function Health() {
         </div>
         {isLoading ? (
           <div className="p-4 space-y-2"><Skeleton className="h-8" /><Skeleton className="h-8" /></div>
+        ) : isEmpty ? (
+          <div className="p-8 text-center space-y-3">
+            <Activity className="h-8 w-8 mx-auto text-muted-foreground/40" />
+            <div className="text-[14px] font-semibold text-foreground">SLO data not available</div>
+            <div className="text-[12px] text-muted-foreground max-w-md mx-auto">
+              SLO metrics are derived from Azure Monitor. Set{" "}
+              <code className="bg-muted px-1 rounded">AZURE_SUBSCRIPTION_IDS</code>,{" "}
+              <code className="bg-muted px-1 rounded">AZURE_CLIENT_ID</code>, and{" "}
+              <code className="bg-muted px-1 rounded">AZURE_TENANT_ID</code> to enable live SLO tracking.
+            </div>
+          </div>
         ) : (
           <Table className="text-[13px]">
             <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
@@ -46,7 +58,7 @@ export default function Health() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {slos.map((s) => {
+              {(slos ?? []).map((s) => {
                 const latencyOk = s.p95LatencyMs <= s.p95TargetMs;
                 const errOk = s.errorRatePct <= s.errorTargetPct;
                 const overall = latencyOk && errOk && s.uptimePct >= 99.9 ? "ok" : latencyOk || errOk ? "warn" : "bad";

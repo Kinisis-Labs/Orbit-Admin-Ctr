@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useListServiceHealth } from "@workspace/api-client-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, formatDistanceToNow } from "date-fns";
-import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Wifi } from "lucide-react";
 import { PageHeader, StatusPill } from "@/components/page-header";
-import { buildServiceHealth, type ServiceHealthEvent } from "@/lib/mock-data";
+import type { ServiceHealthEvent } from "@workspace/api-client-react";
 
 const TONE: Record<ServiceHealthEvent["status"], "ok" | "warn" | "bad" | "info"> = {
   Resolved: "ok",
@@ -17,8 +18,9 @@ const SEV_TONE: Record<ServiceHealthEvent["severity"], "ok" | "warn" | "bad"> = 
 };
 
 export default function ServiceHealth() {
-  const events = useMemo(() => buildServiceHealth(), []);
-  const active = events.filter((e) => e.status === "Active");
+  const { data: events, isLoading } = useListServiceHealth();
+  const active = (events ?? []).filter((e) => e.status === "Active");
+  const isEmpty = !isLoading && (events?.length ?? 0) === 0;
 
   return (
     <div className="space-y-4">
@@ -27,54 +29,79 @@ export default function ServiceHealth() {
         subtitle="Active incidents, advisories, and planned maintenance affecting Azure services Orbit depends on"
       />
 
-      <div className={`border shadow-sm p-4 flex items-start gap-3 ${active.length === 0 ? "bg-emerald-500/5 border-emerald-500/30" : "bg-destructive/5 border-destructive/30"}`}>
-        {active.length === 0 ? (
-          <>
-            <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-            <div>
-              <div className="text-[14px] font-semibold text-foreground">All Azure services nominal</div>
-              <div className="text-[12px] text-muted-foreground mt-0.5">No active incidents affecting Orbit's dependencies.</div>
+      {isLoading ? (
+        <div className="border shadow-sm bg-card p-4 space-y-2">
+          <Skeleton className="h-5 w-64" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+      ) : isEmpty ? (
+        <div className="border shadow-sm p-4 flex items-start gap-3 bg-muted/30 border-border">
+          <Wifi className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+          <div>
+            <div className="text-[14px] font-semibold text-foreground">Azure service health not connected</div>
+            <div className="text-[12px] text-muted-foreground mt-0.5">
+              Set <code className="bg-muted px-1 rounded">AZURE_SUBSCRIPTION_IDS</code>,{" "}
+              <code className="bg-muted px-1 rounded">AZURE_CLIENT_ID</code>, and{" "}
+              <code className="bg-muted px-1 rounded">AZURE_TENANT_ID</code> to pull live Azure Service Health events.
             </div>
-          </>
-        ) : (
-          <>
-            <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-            <div>
-              <div className="text-[14px] font-semibold text-foreground">{active.length} active Azure incident{active.length === 1 ? "" : "s"}</div>
-              <div className="text-[12px] text-muted-foreground mt-0.5">Review impacted services below; Kinisis applications in those regions may be affected.</div>
-            </div>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      ) : (
+        <div className={`border shadow-sm p-4 flex items-start gap-3 ${active.length === 0 ? "bg-emerald-500/5 border-emerald-500/30" : "bg-destructive/5 border-destructive/30"}`}>
+          {active.length === 0 ? (
+            <>
+              <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+              <div>
+                <div className="text-[14px] font-semibold text-foreground">All Azure services nominal</div>
+                <div className="text-[12px] text-muted-foreground mt-0.5">No active incidents affecting Orbit's dependencies.</div>
+              </div>
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <div>
+                <div className="text-[14px] font-semibold text-foreground">{active.length} active Azure incident{active.length === 1 ? "" : "s"}</div>
+                <div className="text-[12px] text-muted-foreground mt-0.5">Review impacted services below; Kinisis applications in those regions may be affected.</div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="bg-card border border-border shadow-sm">
         <div className="p-2 border-b border-border"><h2 className="text-sm font-semibold px-2">Recent events</h2></div>
-        <Table className="text-[13px]">
-          <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="h-8 font-semibold text-foreground">Title</TableHead>
-              <TableHead className="h-8 font-semibold text-foreground">Service</TableHead>
-              <TableHead className="h-8 font-semibold text-foreground">Region</TableHead>
-              <TableHead className="h-8 font-semibold text-foreground">Severity</TableHead>
-              <TableHead className="h-8 font-semibold text-foreground">Status</TableHead>
-              <TableHead className="h-8 font-semibold text-foreground">Started</TableHead>
-              <TableHead className="h-8 font-semibold text-foreground">Resolved</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {events.map((e) => (
-              <TableRow key={e.id} className="h-8 border-b border-border/50 hover:bg-muted/40">
-                <TableCell className="py-1 font-medium">{e.title}</TableCell>
-                <TableCell className="py-1 text-muted-foreground">{e.service}</TableCell>
-                <TableCell className="py-1 text-muted-foreground">{e.region}</TableCell>
-                <TableCell className="py-1"><StatusPill tone={SEV_TONE[e.severity]}>{e.severity}</StatusPill></TableCell>
-                <TableCell className="py-1"><StatusPill tone={TONE[e.status]}>{e.status}</StatusPill></TableCell>
-                <TableCell className="py-1 text-muted-foreground" title={format(new Date(e.startedAt), "PPpp")}>{formatDistanceToNow(new Date(e.startedAt), { addSuffix: true })}</TableCell>
-                <TableCell className="py-1 text-muted-foreground">{e.resolvedAt ? formatDistanceToNow(new Date(e.resolvedAt), { addSuffix: true }) : "—"}</TableCell>
+        {isLoading ? (
+          <div className="p-4 space-y-2"><Skeleton className="h-8" /><Skeleton className="h-8" /></div>
+        ) : (events?.length ?? 0) === 0 ? (
+          <div className="p-6 text-center text-[13px] text-muted-foreground">No service health events to display.</div>
+        ) : (
+          <Table className="text-[13px]">
+            <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-8 font-semibold text-foreground">Title</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">Service</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">Region</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">Severity</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">Status</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">Started</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">Resolved</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {(events ?? []).map((e) => (
+                <TableRow key={e.id} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                  <TableCell className="py-1 font-medium">{e.title}</TableCell>
+                  <TableCell className="py-1 text-muted-foreground">{e.service}</TableCell>
+                  <TableCell className="py-1 text-muted-foreground">{e.region}</TableCell>
+                  <TableCell className="py-1"><StatusPill tone={SEV_TONE[e.severity]}>{e.severity}</StatusPill></TableCell>
+                  <TableCell className="py-1"><StatusPill tone={TONE[e.status]}>{e.status}</StatusPill></TableCell>
+                  <TableCell className="py-1 text-muted-foreground" title={format(new Date(e.startedAt), "PPpp")}>{formatDistanceToNow(new Date(e.startedAt), { addSuffix: true })}</TableCell>
+                  <TableCell className="py-1 text-muted-foreground">{e.resolvedAt ? formatDistanceToNow(new Date(e.resolvedAt), { addSuffix: true }) : "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
     </div>
   );

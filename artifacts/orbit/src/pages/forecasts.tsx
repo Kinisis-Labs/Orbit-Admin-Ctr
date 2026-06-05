@@ -4,14 +4,31 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { CostTabs } from "@/components/cost-tabs";
-import { buildBudgets } from "@/lib/mock-data";
 import { TrendingDown, TrendingUp } from "lucide-react";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
+type ForecastRow = {
+  appId: string;
+  appName: string;
+  budget: number;
+  spent: number;
+  forecast: number;
+};
+
+function buildForecastRows(apps: Array<{ id: string; name: string; monthToDateCost: number }>): ForecastRow[] {
+  return apps.map((app) => ({
+    appId: app.id,
+    appName: app.name,
+    spent: app.monthToDateCost,
+    budget: Number((app.monthToDateCost * 2.0).toFixed(2)),
+    forecast: Number((app.monthToDateCost * 1.7).toFixed(2)),
+  }));
+}
+
 export default function Forecasts() {
   const { data: apps, isLoading } = useListApps();
-  const rows = useMemo(() => (apps ? buildBudgets(apps) : []), [apps]);
+  const rows = useMemo<ForecastRow[]>(() => (apps ? buildForecastRows(apps) : []), [apps]);
 
   const totalForecast = rows.reduce((s, r) => s + r.forecast, 0);
   const totalBudget = rows.reduce((s, r) => s + r.budget, 0);

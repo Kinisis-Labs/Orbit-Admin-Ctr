@@ -11,4 +11,5 @@ export {
   GetAppAlertsParams,
   GetCostParams,
   GetGlobalCostSummaryQueryParams,
+  QueryLogsParams,
 } from "./generated/api";

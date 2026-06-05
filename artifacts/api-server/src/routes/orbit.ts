@@ -10,12 +10,31 @@ import {
   GetGlobalHealthResponse,
   ListGlobalAlertsResponse,
   GetGlobalCostSummaryResponse,
+  ListDeploymentsResponse,
+  ListActivityLogResponse,
+  QueryLogsResponse,
+  ListServiceHealthResponse,
+  ListSlosResponse,
+  ListGlobalEndpointsResponse,
 } from "@workspace/api-zod";
 import { fetchResourcesByResourceGroup, fetchResourceGroupTags } from "../lib/azureResources.js";
 import { fetchMonthToDateCost } from "../lib/azureCost.js";
-import { fetchAppMetrics, fetchAppTimeSeries } from "../lib/azureMonitor.js";
+import {
+  fetchAppMetrics,
+  fetchAppTimeSeries,
+  isMonitorConfigured,
+  getLogAnalyticsWorkspaceId,
+} from "../lib/azureMonitor.js";
+import { isAzureConfigured } from "../lib/azure.js";
 import { fetchActiveAlerts } from "../lib/azureAlerts.js";
 import { fetchNetworkEndpoints } from "../lib/azureNetwork.js";
+import { fetchDeployments } from "../lib/github.js";
+import { fetchActivityLog } from "../lib/azureActivity.js";
+import { fetchServiceHealth } from "../lib/azureServiceHealth.js";
+import { isStripeConfigured } from "../lib/stripeClient.js";
+import { syncStripeSales } from "../lib/stripeSync.js";
+import { getLedgerMonthRevenue } from "../lib/ledger.js";
+import { LogsQueryClient } from "@azure/monitor-query";
 
 const router: IRouter = Router();
 
@@ -38,7 +57,7 @@ export const APPS: AppRecord[] = [
     status: "healthy",
     activeAlerts: 1,
     monthToDateCost: 4128.42,
-    subscriptionId: "a1f4-shared-platform",
+    subscriptionId: process.env.AZURE_SUB_GRAILBABE ?? "a1f4-shared-platform",
     description: "Consumer marketplace for limited-edition collectibles.",
     tags: {
       workload: "GrailBabeProd",
@@ -49,8 +68,9 @@ export const APPS: AppRecord[] = [
     },
     owners: ["Ryan Gutridge"],
     userAuth: "clerk",
-    androidPackage: "com.kinisislabs.grailbabe",
+    androidPackage: "com.grailbabe.app",
     iosBundle: "com.kinisislabs.grailbabe",
+    appRepo: "GrailBabe",
   },
   {
     id: "orbit",
@@ -61,7 +81,7 @@ export const APPS: AppRecord[] = [
     status: "healthy",
     activeAlerts: 0,
     monthToDateCost: 612.33,
-    subscriptionId: "b203-internal-tools",
+    subscriptionId: process.env.AZURE_SUB_ORBIT ?? "b203-internal-tools",
     description: "The Kinisis admin center — Azure operations dashboard.",
     tags: {
       workload: "Orbit",
@@ -72,6 +92,7 @@ export const APPS: AppRecord[] = [
     },
     owners: ["Ryan Gutridge"],
     userAuth: "entra",
+    appRepo: "Orbit-Admin-Ctr",
   },
   {
     id: "kinisis-labs",
@@ -82,7 +103,7 @@ export const APPS: AppRecord[] = [
     status: "healthy",
     activeAlerts: 0,
     monthToDateCost: 47.18,
-    subscriptionId: "a1f4-shared-platform",
+    subscriptionId: process.env.AZURE_SUB_KINISIS_LABS ?? "a1f4-shared-platform",
     description: "Public marketing site for Kinisis Labs (kinisislabs.com).",
     tags: {
       workload: "KinisisLabs",
@@ -212,22 +233,35 @@ function activeAlertCount(app: AppRecord): number {
 }
 
 // --- /apps ---
-router.get("/apps", (_req, res) => {
+router.get("/apps", async (_req, res) => {
+  // Fetch live cost + alert counts for all apps in parallel.
+  // Falls back to static inventory values when Azure is unconfigured.
+  const [alertResults, costResults] = await Promise.all([
+    Promise.all(APPS.map((a) => fetchActiveAlerts(a, {}))),
+    Promise.all(APPS.map((a) => fetchMonthToDateCost(a, {}))),
+  ]);
+
   const data = ListAppsResponse.parse(
-    APPS.map((app) => ({
-      id: app.id,
-      name: app.name,
-      environment: app.environment,
-      region: app.region,
-      resourceGroup: app.resourceGroup,
-      subscriptionId: app.subscriptionId,
-      tags: app.tags,
-      status: app.status,
-      activeAlerts: activeAlertCount(app),
-      monthToDateCost: app.monthToDateCost,
-      group: app.group,
-      userAuth: app.userAuth,
-    })),
+    APPS.map((app, i) => {
+      const liveAlerts = alertResults[i];
+      const liveCost = costResults[i];
+      return {
+        id: app.id,
+        name: app.name,
+        environment: app.environment,
+        region: app.region,
+        resourceGroup: app.resourceGroup,
+        subscriptionId: app.subscriptionId,
+        tags: app.tags,
+        status: app.status,
+        activeAlerts: liveAlerts
+          ? liveAlerts.filter((a) => a.status === "active").length
+          : activeAlertCount(app),
+        monthToDateCost: liveCost ? liveCost.monthToDate : app.monthToDateCost,
+        group: app.group,
+        userAuth: app.userAuth,
+      };
+    }),
   );
   res.json(data);
 });
@@ -409,23 +443,46 @@ const API_NAMES_BY_APP: Record<string, string[]> = {
   ],
 };
 
-// Mocked month-to-date revenue per app, split by channel. Designed to mirror what
-// real integrations would return (Stripe BalanceTransactions, App Store Connect
-// Sales/Trends, Google Play earnings reports). orbit is internal -> $0.
-const REVENUE_BY_APP: Record<string, { stripe: number; appStore: number; playStore: number }> = {
-  grailbabe: { stripe: 28430.18, appStore: 9120.55, playStore: 4892.40 },
-  orbit: { stripe: 0, appStore: 0, playStore: 0 },
-  "kinisis-labs": { stripe: 0, appStore: 0, playStore: 0 },
-};
-
 const REVENUE_SOURCE_LABELS = {
   stripe: "Stripe",
   app_store: "Apple App Store",
   play_store: "Google Play Store",
 } as const;
 
-function revenueForApp(appId: string) {
-  const r = REVENUE_BY_APP[appId] ?? { stripe: 0, appStore: 0, playStore: 0 };
+// Only GrailBabe has a live Stripe integration today.
+const STRIPE_SYNC_APPS = new Set(["grailbabe"]);
+// Rate-limit Stripe syncs to once per 15 minutes per app to avoid
+// hammering the Stripe API on every cost-route request.
+const STRIPE_SYNC_TTL_MS = 15 * 60 * 1000;
+const _stripeSyncTs = new Map<string, number>();
+
+/**
+ * Sync Stripe charges (rate-limited) then read current-month revenue from the
+ * ledger for the given app. Non-Stripe channels (App Store, Play) are read
+ * directly from ledger entries posted by their respective ingestion pipelines
+ * when those come online.
+ *
+ * Returns zeroed object when no entries exist yet (before Stripe is configured
+ * or before the app goes live), so revenue shows as $0 rather than stale mock
+ * figures.
+ */
+async function syncAndReadRevenue(app: AppRecord): Promise<{ stripe: number; appStore: number; playStore: number }> {
+  if (isStripeConfigured() && STRIPE_SYNC_APPS.has(app.id)) {
+    const lastSync = _stripeSyncTs.get(app.id) ?? 0;
+    if (Date.now() - lastSync > STRIPE_SYNC_TTL_MS) {
+      _stripeSyncTs.set(app.id, Date.now());
+      try {
+        await syncStripeSales(app.id);
+      } catch {
+        // Non-fatal: the ledger still returns whatever was previously synced.
+        _stripeSyncTs.delete(app.id); // allow retry next request
+      }
+    }
+  }
+  return getLedgerMonthRevenue(app.id);
+}
+
+function buildRevenueDto(r: { stripe: number; appStore: number; playStore: number }) {
   const bySource = [
     { source: "stripe" as const, label: REVENUE_SOURCE_LABELS.stripe, amount: Number(r.stripe.toFixed(2)) },
     { source: "app_store" as const, label: REVENUE_SOURCE_LABELS.app_store, amount: Number(r.appStore.toFixed(2)) },
@@ -505,7 +562,10 @@ router.get("/apps/:appId/cost", async (req, res) => {
   }
   const bypassCache = req.query["refresh"] === "true";
   const apiUsage = apiUsageForApp(app);
-  const liveCost = await fetchMonthToDateCost(app, { bypassCache });
+  const [liveCost, rev] = await Promise.all([
+    fetchMonthToDateCost(app, { bypassCache }),
+    syncAndReadRevenue(app),
+  ]);
   const mtd = liveCost
     ? liveCost.monthToDate
     : Number((app.monthToDateCost + apiUsage.cost).toFixed(2));
@@ -520,7 +580,7 @@ router.get("/apps/:appId/cost", async (req, res) => {
     daily: makeDaily(app.id, 30, mtd / 18),
     byService,
     apiUsage,
-    revenue: revenueForApp(app.id),
+    revenue: buildRevenueDto(rev),
     dataSource: liveCost ? "live" : "mock",
     ...(liveCost ? { dataAsOf: liveCost.dataAsOf } : {}),
   });
@@ -716,9 +776,13 @@ router.get("/global/cost-summary", async (req, res) => {
   const apiByApp = new Map(APPS.map((a) => [a.id, apiUsageForApp(a)] as const));
 
   const bypassCache = req.query["refresh"] === "true";
-  // Fetch live Azure cost for every app in parallel; falls back to null (mock) when unconfigured.
-  const liveCostResults = await Promise.all(APPS.map((a) => fetchMonthToDateCost(a, { bypassCache })));
+  // Fetch live Azure cost + ledger revenue for every app in parallel.
+  const [liveCostResults, revResults] = await Promise.all([
+    Promise.all(APPS.map((a) => fetchMonthToDateCost(a, { bypassCache }))),
+    Promise.all(APPS.map((a) => syncAndReadRevenue(a))),
+  ]);
   const liveCostByApp = new Map(APPS.map((a, i) => [a.id, liveCostResults[i]] as const));
+  const revByApp = new Map(APPS.map((a, i) => [a.id, revResults[i]!] as const));
 
   const apiCost = APPS.reduce((s, a) => s + (apiByApp.get(a.id)?.cost ?? 0), 0);
   const apiCalls = APPS.reduce((s, a) => s + (apiByApp.get(a.id)?.totalCalls ?? 0), 0);
@@ -734,7 +798,7 @@ router.get("/global/cost-summary", async (req, res) => {
   const mtd = APPS.reduce((s, a) => s + infraCostByApp.get(a.id)!, 0) + apiCost;
 
   const revenueByApp = APPS.map((a) => {
-    const r = REVENUE_BY_APP[a.id] ?? { stripe: 0, appStore: 0, playStore: 0 };
+    const r = revByApp.get(a.id) ?? { stripe: 0, appStore: 0, playStore: 0 };
     const total = Number((r.stripe + r.appStore + r.playStore).toFixed(2));
     const cost = Number((infraCostByApp.get(a.id)! + (apiByApp.get(a.id)?.cost ?? 0)).toFixed(2));
     const net = Number((total - cost).toFixed(2));
@@ -849,6 +913,151 @@ router.get("/global/cost-summary", async (req, res) => {
     revenueByApp,
   });
   res.json(data);
+});
+
+// ---------------------------------------------------------------------------
+// --- deployments (GitHub Actions) ---
+router.get("/apps/:appId/deployments", async (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  const runs = await fetchDeployments(app.id, app.name, app.appRepo, app.environment);
+  const data = ListDeploymentsResponse.parse(runs);
+  res.json(data);
+});
+
+// --- activity log (Azure Activity Log) ---
+router.get("/apps/:appId/activity", async (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  const entries = await fetchActivityLog(app.id, app.resourceGroup, app.subscriptionId);
+  const data = ListActivityLogResponse.parse(entries);
+  res.json(data);
+});
+
+// --- log search (KQL against centralised Log Analytics workspace) ---
+// Returns [] when AZURE_LOG_ANALYTICS_WORKSPACE_ID is not set.
+router.get("/apps/:appId/logs", async (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  if (!isMonitorConfigured()) {
+    res.json([]);
+    return;
+  }
+  const workspaceId = getLogAnalyticsWorkspaceId()!;
+  const rawQ = req.query["q"];
+  const q = typeof rawQ === "string" && rawQ.trim() ? rawQ.trim() : null;
+  const limit = Math.min(parseInt(String(req.query["limit"] ?? "100"), 10), 500);
+
+  const kql = q
+    ? `${q} | limit ${limit}`
+    : `AppTraces | where AppRoleName =~ '${app.id}' | order by TimeGenerated desc | limit ${limit}`;
+
+  try {
+    const credential = await import("@azure/identity").then((m) => new m.DefaultAzureCredential());
+    const logsClient = new LogsQueryClient(credential);
+    const result = await logsClient.queryWorkspace(workspaceId, kql, { duration: "P7D" });
+
+    const lines: Array<{ id: string; timestamp: string; appId: string; level: string; message: string }> = [];
+    if (result.status === "Success" && result.tables.length > 0) {
+      const table = result.tables[0]!;
+      const cols = table.columnDescriptors.map((c) => c.name ?? "");
+      const timeIdx = cols.findIndex((c) => /time/i.test(c));
+      const msgIdx = cols.findIndex((c) => /message|msg/i.test(c));
+      const lvlIdx = cols.findIndex((c) => /level|severity/i.test(c));
+
+      for (const row of table.rows) {
+        const ts = timeIdx >= 0 ? String(row[timeIdx] ?? "") : new Date().toISOString();
+        const msg = msgIdx >= 0 ? String(row[msgIdx] ?? "") : JSON.stringify(row);
+        const lvlRaw = lvlIdx >= 0 ? String(row[lvlIdx] ?? "").toUpperCase() : "INFO";
+        const level = ["ERROR", "WARN", "INFO"].includes(lvlRaw) ? lvlRaw : "INFO";
+        lines.push({ id: `${app.id}-log-${lines.length}`, timestamp: ts, appId: app.id, level, message: msg });
+      }
+    }
+    res.json(QueryLogsResponse.parse(lines));
+  } catch {
+    res.json([]);
+  }
+});
+
+// --- global: service health ---
+router.get("/global/service-health", async (_req, res) => {
+  const events = await fetchServiceHealth();
+  const data = ListServiceHealthResponse.parse(events);
+  res.json(data);
+});
+
+// --- global: SLOs ---
+// Derives SLO snapshot from Azure Monitor metrics for each app.
+// Returns [] when Azure Monitor is not configured.
+router.get("/global/slos", async (_req, res) => {
+  if (!isAzureConfigured()) {
+    res.json([]);
+    return;
+  }
+
+  const metricsResults = await Promise.all(APPS.map((a) => fetchAppMetrics(a, {})));
+
+  const rows = APPS.flatMap((app, i) => {
+    const m = metricsResults[i];
+    if (!m) return [];
+    const errorTargetPct = 1.0;
+    const p95TargetMs = 500;
+    const errorBudgetRemainingPct = Math.max(
+      0,
+      Number((100 * (1 - m.errorRatePercent / errorTargetPct)).toFixed(1)),
+    );
+    return [{
+      appId: app.id,
+      appName: app.name,
+      environment: app.environment,
+      uptimePct: Number(m.availabilityPercent.toFixed(4)),
+      errorBudgetRemainingPct,
+      p95LatencyMs: Number(m.p95LatencyMs.toFixed(0)),
+      p95TargetMs,
+      errorRatePct: Number(m.errorRatePercent.toFixed(4)),
+      errorTargetPct,
+    }];
+  });
+
+  res.json(ListSlosResponse.parse(rows));
+});
+
+// --- global: network endpoints ---
+// Aggregates endpoint health across all apps from Azure Network Watcher.
+// Returns [] when Azure Monitor is not configured.
+router.get("/global/endpoints", async (_req, res) => {
+  if (!isAzureConfigured()) {
+    res.json([]);
+    return;
+  }
+
+  const endpointResults = await Promise.all(APPS.map((a) => fetchNetworkEndpoints(a, {})));
+
+  const rows = APPS.flatMap((app, i) => {
+    const endpoints = endpointResults[i];
+    if (!endpoints) return [];
+    return endpoints.map((ep) => ({
+      id: `${app.id}-${ep.name}`,
+      appId: app.id,
+      appName: app.name,
+      name: ep.name,
+      region: ep.region,
+      status: ep.status,
+      latencyMs: ep.latencyMs,
+      packetLossPercent: ep.packetLossPercent,
+    }));
+  });
+
+  res.json(ListGlobalEndpointsResponse.parse(rows));
 });
 
 export default router;

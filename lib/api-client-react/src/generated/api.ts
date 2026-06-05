@@ -20,11 +20,13 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ActivityEntry,
   Alert,
   AppDetail,
   AppSummary,
   AppleSubscriptionRow,
   CostReport,
+  Deployment,
   GetAppAlertsParams,
   GetCostParams,
   GetGlobalCostSummaryParams,
@@ -32,6 +34,7 @@ import type {
   GetNetworkParams,
   GetTelemetryParams,
   GlobalCostSummary,
+  GlobalEndpointRow,
   GlobalHealth,
   HealthStatus,
   InfrastructureReport,
@@ -41,9 +44,13 @@ import type {
   LedgerReconciliation,
   LedgerReport,
   ListGlobalAlertsParams,
+  LogLine,
   NetworkReport,
   PlaySubscriptionRow,
   PostLedgerEntryRequest,
+  QueryLogsParams,
+  ServiceHealthEvent,
+  SloRow,
   StripeSyncResult,
   TelemetryReport,
   UserActivityRow
@@ -1605,6 +1612,480 @@ export function useListAppleSubscriptions<TData = Awaited<ReturnType<typeof list
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListAppleSubscriptionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListDeploymentsUrl = (appId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/deployments`
+}
+
+/**
+ * @summary GitHub Actions workflow runs for this app (last 50 runs). Returns [] when GITHUB_TOKEN is absent.
+ */
+export const listDeployments = async (appId: string, options?: RequestInit): Promise<Deployment[]> => {
+
+  return customFetch<Deployment[]>(getListDeploymentsUrl(appId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDeploymentsQueryKey = (appId: string,) => {
+    return [
+    `/api/apps/${appId}/deployments`
+    ] as const;
+    }
+
+
+export const getListDeploymentsQueryOptions = <TData = Awaited<ReturnType<typeof listDeployments>>, TError = ErrorType<unknown>>(appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDeployments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDeploymentsQueryKey(appId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDeployments>>> = ({ signal }) => listDeployments(appId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(appId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDeployments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDeploymentsQueryResult = NonNullable<Awaited<ReturnType<typeof listDeployments>>>
+export type ListDeploymentsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary GitHub Actions workflow runs for this app (last 50 runs). Returns [] when GITHUB_TOKEN is absent.
+ */
+
+export function useListDeployments<TData = Awaited<ReturnType<typeof listDeployments>>, TError = ErrorType<unknown>>(
+ appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDeployments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDeploymentsQueryOptions(appId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListActivityLogUrl = (appId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/activity`
+}
+
+/**
+ * @summary Azure Activity Log events for this app's resource group (last 7 days). Returns [] when Azure is unconfigured.
+ */
+export const listActivityLog = async (appId: string, options?: RequestInit): Promise<ActivityEntry[]> => {
+
+  return customFetch<ActivityEntry[]>(getListActivityLogUrl(appId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListActivityLogQueryKey = (appId: string,) => {
+    return [
+    `/api/apps/${appId}/activity`
+    ] as const;
+    }
+
+
+export const getListActivityLogQueryOptions = <TData = Awaited<ReturnType<typeof listActivityLog>>, TError = ErrorType<unknown>>(appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listActivityLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListActivityLogQueryKey(appId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listActivityLog>>> = ({ signal }) => listActivityLog(appId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(appId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listActivityLog>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListActivityLogQueryResult = NonNullable<Awaited<ReturnType<typeof listActivityLog>>>
+export type ListActivityLogQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Azure Activity Log events for this app's resource group (last 7 days). Returns [] when Azure is unconfigured.
+ */
+
+export function useListActivityLog<TData = Awaited<ReturnType<typeof listActivityLog>>, TError = ErrorType<unknown>>(
+ appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listActivityLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListActivityLogQueryOptions(appId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getQueryLogsUrl = (appId: string,
+    params?: QueryLogsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/apps/${appId}/logs?${stringifiedParams}` : `/api/apps/${appId}/logs`
+}
+
+/**
+ * @summary KQL query against the centralised Log Analytics workspace. Returns [] when AZURE_LOG_ANALYTICS_WORKSPACE_ID is absent.
+ */
+export const queryLogs = async (appId: string,
+    params?: QueryLogsParams, options?: RequestInit): Promise<LogLine[]> => {
+
+  return customFetch<LogLine[]>(getQueryLogsUrl(appId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getQueryLogsQueryKey = (appId: string,
+    params?: QueryLogsParams,) => {
+    return [
+    `/api/apps/${appId}/logs`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getQueryLogsQueryOptions = <TData = Awaited<ReturnType<typeof queryLogs>>, TError = ErrorType<unknown>>(appId: string,
+    params?: QueryLogsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof queryLogs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getQueryLogsQueryKey(appId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof queryLogs>>> = ({ signal }) => queryLogs(appId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(appId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof queryLogs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type QueryLogsQueryResult = NonNullable<Awaited<ReturnType<typeof queryLogs>>>
+export type QueryLogsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary KQL query against the centralised Log Analytics workspace. Returns [] when AZURE_LOG_ANALYTICS_WORKSPACE_ID is absent.
+ */
+
+export function useQueryLogs<TData = Awaited<ReturnType<typeof queryLogs>>, TError = ErrorType<unknown>>(
+ appId: string,
+    params?: QueryLogsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof queryLogs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getQueryLogsQueryOptions(appId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListServiceHealthUrl = () => {
+
+
+
+
+  return `/api/global/service-health`
+}
+
+/**
+ * @summary Azure Service Health events for all monitored subscriptions. Returns [] when Azure is unconfigured.
+ */
+export const listServiceHealth = async ( options?: RequestInit): Promise<ServiceHealthEvent[]> => {
+
+  return customFetch<ServiceHealthEvent[]>(getListServiceHealthUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListServiceHealthQueryKey = () => {
+    return [
+    `/api/global/service-health`
+    ] as const;
+    }
+
+
+export const getListServiceHealthQueryOptions = <TData = Awaited<ReturnType<typeof listServiceHealth>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listServiceHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListServiceHealthQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listServiceHealth>>> = ({ signal }) => listServiceHealth({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listServiceHealth>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListServiceHealthQueryResult = NonNullable<Awaited<ReturnType<typeof listServiceHealth>>>
+export type ListServiceHealthQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Azure Service Health events for all monitored subscriptions. Returns [] when Azure is unconfigured.
+ */
+
+export function useListServiceHealth<TData = Awaited<ReturnType<typeof listServiceHealth>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listServiceHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListServiceHealthQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListSlosUrl = () => {
+
+
+
+
+  return `/api/global/slos`
+}
+
+/**
+ * @summary Per-application SLO snapshot derived from Azure Monitor. Returns [] when Azure is unconfigured.
+ */
+export const listSlos = async ( options?: RequestInit): Promise<SloRow[]> => {
+
+  return customFetch<SloRow[]>(getListSlosUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSlosQueryKey = () => {
+    return [
+    `/api/global/slos`
+    ] as const;
+    }
+
+
+export const getListSlosQueryOptions = <TData = Awaited<ReturnType<typeof listSlos>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSlos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSlosQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSlos>>> = ({ signal }) => listSlos({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSlos>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSlosQueryResult = NonNullable<Awaited<ReturnType<typeof listSlos>>>
+export type ListSlosQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Per-application SLO snapshot derived from Azure Monitor. Returns [] when Azure is unconfigured.
+ */
+
+export function useListSlos<TData = Awaited<ReturnType<typeof listSlos>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSlos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSlosQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListGlobalEndpointsUrl = () => {
+
+
+
+
+  return `/api/global/endpoints`
+}
+
+/**
+ * @summary Cross-application network endpoint health from Azure. Returns [] when Azure is unconfigured.
+ */
+export const listGlobalEndpoints = async ( options?: RequestInit): Promise<GlobalEndpointRow[]> => {
+
+  return customFetch<GlobalEndpointRow[]>(getListGlobalEndpointsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListGlobalEndpointsQueryKey = () => {
+    return [
+    `/api/global/endpoints`
+    ] as const;
+    }
+
+
+export const getListGlobalEndpointsQueryOptions = <TData = Awaited<ReturnType<typeof listGlobalEndpoints>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGlobalEndpoints>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListGlobalEndpointsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listGlobalEndpoints>>> = ({ signal }) => listGlobalEndpoints({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listGlobalEndpoints>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListGlobalEndpointsQueryResult = NonNullable<Awaited<ReturnType<typeof listGlobalEndpoints>>>
+export type ListGlobalEndpointsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Cross-application network endpoint health from Azure. Returns [] when Azure is unconfigured.
+ */
+
+export function useListGlobalEndpoints<TData = Awaited<ReturnType<typeof listGlobalEndpoints>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGlobalEndpoints>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListGlobalEndpointsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

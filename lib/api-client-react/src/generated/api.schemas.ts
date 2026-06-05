@@ -90,6 +90,8 @@ export type AppDetail = AppSummary & {
   androidPackage?: string;
   /** Apple App Store bundle identifier when this app ships a tracked iOS build. Presence flags the app for the App Store subscriptions surface. */
   iosBundle?: string;
+  /** GitHub repository name (under the Kinisis-Labs org) used to fetch deployment history from GitHub Actions. Absent for apps without a tracked CI/CD pipeline. */
+  appRepo?: string;
 };
 
 export interface UserActivityRow {
@@ -663,6 +665,119 @@ export interface GlobalCostSummary {
   revenueByApp: GlobalCostSummaryRevenueByAppItem[];
 }
 
+export type DeploymentStatus = typeof DeploymentStatus[keyof typeof DeploymentStatus];
+
+
+export const DeploymentStatus = {
+  Succeeded: 'Succeeded',
+  Failed: 'Failed',
+  InProgress: 'InProgress',
+  RolledBack: 'RolledBack',
+} as const;
+
+export interface Deployment {
+  id: string;
+  appId: string;
+  appName: string;
+  environment: string;
+  version: string;
+  status: DeploymentStatus;
+  triggeredBy: string;
+  startedAt: string;
+  durationSec?: number | null;
+  commitSha: string;
+  pipeline: string;
+}
+
+export type ActivityEntryStatus = typeof ActivityEntryStatus[keyof typeof ActivityEntryStatus];
+
+
+export const ActivityEntryStatus = {
+  Succeeded: 'Succeeded',
+  Failed: 'Failed',
+  Started: 'Started',
+} as const;
+
+export interface ActivityEntry {
+  id: string;
+  timestamp: string;
+  actor: string;
+  action: string;
+  target: string;
+  appId?: string;
+  status: ActivityEntryStatus;
+  category: string;
+}
+
+export type LogLineLevel = typeof LogLineLevel[keyof typeof LogLineLevel];
+
+
+export const LogLineLevel = {
+  INFO: 'INFO',
+  WARN: 'WARN',
+  ERROR: 'ERROR',
+} as const;
+
+export interface LogLine {
+  id: string;
+  timestamp: string;
+  appId: string;
+  level: LogLineLevel;
+  message: string;
+}
+
+export type ServiceHealthEventStatus = typeof ServiceHealthEventStatus[keyof typeof ServiceHealthEventStatus];
+
+
+export const ServiceHealthEventStatus = {
+  Active: 'Active',
+  Resolved: 'Resolved',
+  Advisory: 'Advisory',
+} as const;
+
+export type ServiceHealthEventSeverity = typeof ServiceHealthEventSeverity[keyof typeof ServiceHealthEventSeverity];
+
+
+export const ServiceHealthEventSeverity = {
+  Low: 'Low',
+  Medium: 'Medium',
+  High: 'High',
+} as const;
+
+export interface ServiceHealthEvent {
+  id: string;
+  service: string;
+  region: string;
+  status: ServiceHealthEventStatus;
+  severity: ServiceHealthEventSeverity;
+  title: string;
+  startedAt: string;
+  resolvedAt?: string | null;
+}
+
+export interface SloRow {
+  appId: string;
+  appName: string;
+  environment: string;
+  uptimePct: number;
+  errorBudgetRemainingPct: number;
+  p95LatencyMs: number;
+  p95TargetMs: number;
+  errorRatePct: number;
+  errorTargetPct: number;
+}
+
+export interface GlobalEndpointRow {
+  id: string;
+  appId: string;
+  appName: string;
+  name: string;
+  region: string;
+  status: Status;
+  latencyMs: number;
+  packetLossPercent: number;
+}
+
 /**
  * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
  */
@@ -715,5 +830,10 @@ export type GetGlobalCostSummaryParams = {
  * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
  */
 refresh?: RefreshParameter;
+};
+
+export type QueryLogsParams = {
+q?: string;
+limit?: number;
 };
 

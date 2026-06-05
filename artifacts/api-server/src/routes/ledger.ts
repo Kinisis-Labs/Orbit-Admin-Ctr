@@ -65,9 +65,7 @@ router.post("/apps/:appId/ledger/entries", async (req, res) => {
   try {
     const entry = await postEntry(app.id, {
       ...parsed.data,
-      postedAt: parsed.data.postedAt
-        ? new Date(parsed.data.postedAt)
-        : undefined,
+      postedAt: parsed.data.postedAt ? new Date(parsed.data.postedAt) : undefined,
     });
     res.status(201).json(ListLedgerEntriesResponseItem.parse(entry));
   } catch (err) {
@@ -97,9 +95,7 @@ router.post("/apps/:appId/ledger/sales", async (req, res) => {
   try {
     const result = await ingestSale(app.id, {
       ...parsed.data,
-      postedAt: parsed.data.postedAt
-        ? new Date(parsed.data.postedAt)
-        : undefined,
+      postedAt: parsed.data.postedAt ? new Date(parsed.data.postedAt) : undefined,
     });
     res.status(201).json(result);
   } catch (err) {
