@@ -7,9 +7,10 @@ import {
 } from "@workspace/api-client-react";
 import type { AppAlertConfig, InfrastructureReport, MetricSeries } from "@workspace/api-client-react";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, Pencil, RefreshCw, RotateCcw, Settings2, X } from "lucide-react";
+import { Check, Pencil, RefreshCw, RotateCcw, Settings2, X, ArrowRight } from "lucide-react";
 import { useAuth, ADMIN_GROUP } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -302,6 +303,7 @@ export function AlertConfigTable({ appId }: Props) {
   const queryClient = useQueryClient();
   const { hasGroup } = useAuth();
   const canEdit = hasGroup(ADMIN_GROUP.id);
+  const [, navigate] = useLocation();
 
   const rows = appId ? data?.filter((r) => r.appId === appId) : data;
 
@@ -398,6 +400,7 @@ export function AlertConfigTable({ appId }: Props) {
                 <TableHead className="h-8 font-semibold text-foreground w-[200px]">Current memory</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground w-[200px]">Consecutive checks</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground">Last updated</TableHead>
+                <TableHead className="h-8 w-8" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -408,7 +411,11 @@ export function AlertConfigTable({ appId }: Props) {
                 const currentMem = getLatestValue(infraData, "Memory %");
 
                 return (
-                  <TableRow key={row.appId} className="h-12 border-b border-border/50 hover:bg-muted/40">
+                  <TableRow
+                    key={row.appId}
+                    className="h-12 border-b border-border/50 hover:bg-muted/40 cursor-pointer group"
+                    onClick={() => navigate(`/apps/${row.appId}?tab=infrastructure`)}
+                  >
                     {!appId && (
                       <TableCell className="py-1 font-medium">{row.appName}</TableCell>
                     )}
@@ -444,6 +451,9 @@ export function AlertConfigTable({ appId }: Props) {
                       ) : (
                         <span className="opacity-40">—</span>
                       )}
+                    </TableCell>
+                    <TableCell className="py-1 w-8 text-right pr-3">
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
                     </TableCell>
                   </TableRow>
                 );
