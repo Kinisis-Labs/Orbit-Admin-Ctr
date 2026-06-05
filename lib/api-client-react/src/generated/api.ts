@@ -58,6 +58,7 @@ import type {
   SloRow,
   StripeSyncResult,
   TelemetryReport,
+  UpdateAlertConfigBody,
   UserActivityRow
 } from './api.schemas';
 
@@ -2266,7 +2267,7 @@ export const getListAlertConfigUrl = () => {
 }
 
 /**
- * @summary Effective CPU / memory thresholds per app, including whether a per-app override is active
+ * @summary Effective CPU / memory / consecutive-checks thresholds per app, including override source
  */
 export const listAlertConfig = async ( options?: RequestInit): Promise<AppAlertConfig[]> => {
 
@@ -2313,7 +2314,7 @@ export type ListAlertConfigQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Effective CPU / memory thresholds per app, including whether a per-app override is active
+ * @summary Effective CPU / memory / consecutive-checks thresholds per app, including override source
  */
 
 export function useListAlertConfig<TData = Awaited<ReturnType<typeof listAlertConfig>>, TError = ErrorType<unknown>>(
@@ -2333,6 +2334,78 @@ export function useListAlertConfig<TData = Awaited<ReturnType<typeof listAlertCo
 
 
 
+
+export const getUpdateAlertConfigUrl = (appId: string,) => {
+
+
+
+
+  return `/api/alerts/config/${appId}`
+}
+
+/**
+ * @summary Save per-app infra alert threshold overrides (requires Orbit-Admins membership)
+ */
+export const updateAlertConfig = async (appId: string,
+    updateAlertConfigBody: UpdateAlertConfigBody, options?: RequestInit): Promise<AppAlertConfig> => {
+
+  return customFetch<AppAlertConfig>(getUpdateAlertConfigUrl(appId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateAlertConfigBody,)
+  }
+);}
+
+
+
+
+export const getUpdateAlertConfigMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAlertConfig>>, TError,{appId: string;data: BodyType<UpdateAlertConfigBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAlertConfig>>, TError,{appId: string;data: BodyType<UpdateAlertConfigBody>}, TContext> => {
+
+const mutationKey = ['updateAlertConfig'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAlertConfig>>, {appId: string;data: BodyType<UpdateAlertConfigBody>}> = (props) => {
+          const {appId,data} = props ?? {};
+
+          return  updateAlertConfig(appId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAlertConfigMutationResult = NonNullable<Awaited<ReturnType<typeof updateAlertConfig>>>
+    export type UpdateAlertConfigMutationBody = BodyType<UpdateAlertConfigBody>
+    export type UpdateAlertConfigMutationError = ErrorType<void>
+
+    /**
+ * @summary Save per-app infra alert threshold overrides (requires Orbit-Admins membership)
+ */
+export const useUpdateAlertConfig = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAlertConfig>>, TError,{appId: string;data: BodyType<UpdateAlertConfigBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAlertConfig>>,
+        TError,
+        {appId: string;data: BodyType<UpdateAlertConfigBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateAlertConfigMutationOptions(options));
+    }
 
 export const getListInfraAlertLogUrl = (params?: ListInfraAlertLogParams,) => {
   const normalizedParams = new URLSearchParams();

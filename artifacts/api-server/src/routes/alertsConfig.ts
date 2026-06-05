@@ -1,61 +1,128 @@
 import { Router, type IRouter } from "express";
 import { APPS } from "./orbit.js";
+import { resolveThresholdsBulk, resolveThresholds } from "../lib/alertThresholds.js";
+import { db, alertThresholdConfigTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { requireAdmin } from "../middlewares/auth.js";
 
 const router: IRouter = Router();
 
-function appEnvKey(appId: string): string {
-  return appId.toUpperCase().replace(/-/g, "_");
-}
+router.get("/alerts/config", async (_req, res) => {
+  const appIds = APPS.map((a) => a.id);
+  const thresholds = await resolveThresholdsBulk(appIds);
 
-function cpuThresholdPct(appId: string): { value: number; isOverride: boolean } {
-  const perApp = process.env[`ALERT_CPU_THRESHOLD_PCT__${appEnvKey(appId)}`];
-  if (perApp !== undefined) {
-    const v = Number(perApp);
-    if (Number.isFinite(v) && v > 0 && v <= 100) return { value: v, isOverride: true };
-  }
-  const global = process.env["ALERT_CPU_THRESHOLD_PCT"];
-  if (global !== undefined) {
-    const v = Number(global);
-    if (Number.isFinite(v) && v > 0 && v <= 100) return { value: v, isOverride: false };
-  }
-  return { value: 80, isOverride: false };
-}
-
-function memoryThresholdPct(appId: string): { value: number; isOverride: boolean } {
-  const perApp = process.env[`ALERT_MEMORY_THRESHOLD_PCT__${appEnvKey(appId)}`];
-  if (perApp !== undefined) {
-    const v = Number(perApp);
-    if (Number.isFinite(v) && v > 0 && v <= 100) return { value: v, isOverride: true };
-  }
-  const global = process.env["ALERT_MEMORY_THRESHOLD_PCT"];
-  if (global !== undefined) {
-    const v = Number(global);
-    if (Number.isFinite(v) && v > 0 && v <= 100) return { value: v, isOverride: false };
-  }
-  return { value: 85, isOverride: false };
-}
-
-function consecutiveChecks(): number {
-  const v = Number(process.env["ALERT_INFRA_CONSECUTIVE_CHECKS"] ?? 2);
-  return Number.isFinite(v) && v >= 1 ? Math.floor(v) : 2;
-}
-
-router.get("/alerts/config", (_req, res) => {
-  const checks = consecutiveChecks();
   const result = APPS.map((app) => {
-    const cpu = cpuThresholdPct(app.id);
-    const mem = memoryThresholdPct(app.id);
+    const t = thresholds.get(app.id)!;
     return {
       appId: app.id,
       appName: app.name,
-      cpuThresholdPct: cpu.value,
-      memoryThresholdPct: mem.value,
-      cpuIsOverride: cpu.isOverride,
-      memoryIsOverride: mem.isOverride,
-      consecutiveChecks: checks,
+      cpuThresholdPct: t.cpuThresholdPct,
+      memoryThresholdPct: t.memoryThresholdPct,
+      cpuIsOverride: t.cpuIsOverride,
+      memoryIsOverride: t.memoryIsOverride,
+      consecutiveChecks: t.consecutiveChecks,
+      consecutiveChecksIsOverride: t.consecutiveChecksIsOverride,
+      cpuSource: t.cpuSource,
+      memorySource: t.memorySource,
+      consecutiveChecksSource: t.consecutiveChecksSource,
+      updatedAt: t.updatedAt,
+      updatedBy: t.updatedBy,
     };
   });
+
   res.json(result);
+});
+
+function parseIntField(
+  raw: unknown,
+  label: string,
+  min: number,
+  max?: number,
+): { value: number; error: string | null } {
+  if (raw === null || raw === undefined) return { value: 0, error: null };
+  const v = Number(raw);
+  if (!Number.isFinite(v) || !Number.isInteger(v)) {
+    return { value: 0, error: `${label} must be an integer` };
+  }
+  if (v < min) return { value: 0, error: `${label} must be >= ${min}` };
+  if (max !== undefined && v > max) return { value: 0, error: `${label} must be <= ${max}` };
+  return { value: v, error: null };
+}
+
+function toNullableInt(raw: unknown, label: string, min: number, max?: number): { value: number | null; error: string | null } {
+  if (raw === null || raw === undefined) return { value: null, error: null };
+  const { value, error } = parseIntField(raw, label, min, max);
+  if (error) return { value: null, error };
+  return { value, error: null };
+}
+
+router.put("/alerts/config/:appId", requireAdmin, async (req, res) => {
+  const appId = req.params["appId"] as string;
+  const app = APPS.find((a) => a.id === appId);
+  if (!app) {
+    res.status(404).json({ error: "app not found" });
+    return;
+  }
+
+  const body = req.body as Record<string, unknown>;
+  const errors: string[] = [];
+
+  const cpu = toNullableInt(body["cpuThresholdPct"], "cpuThresholdPct", 1, 100);
+  if (cpu.error) errors.push(cpu.error);
+
+  const mem = toNullableInt(body["memoryThresholdPct"], "memoryThresholdPct", 1, 100);
+  if (mem.error) errors.push(mem.error);
+
+  const consec = toNullableInt(body["consecutiveChecks"], "consecutiveChecks", 1);
+  if (consec.error) errors.push(consec.error);
+
+  if (errors.length > 0) {
+    res.status(400).json({ error: "validation error", issues: errors });
+    return;
+  }
+
+  const updatedBy =
+    req.session.user?.displayName ??
+    req.session.user?.userPrincipalName ??
+    "mock-admin";
+
+  await db
+    .insert(alertThresholdConfigTable)
+    .values({
+      appId,
+      cpuThresholdPct: cpu.value,
+      memoryThresholdPct: mem.value,
+      consecutiveChecks: consec.value,
+      updatedBy,
+    })
+    .onConflictDoUpdate({
+      target: alertThresholdConfigTable.appId,
+      set: {
+        cpuThresholdPct: cpu.value,
+        memoryThresholdPct: mem.value,
+        consecutiveChecks: consec.value,
+        updatedAt: new Date(),
+        updatedBy,
+      },
+    });
+
+  const t = await resolveThresholds(appId);
+
+  res.json({
+    appId: app.id,
+    appName: app.name,
+    cpuThresholdPct: t.cpuThresholdPct,
+    memoryThresholdPct: t.memoryThresholdPct,
+    cpuIsOverride: t.cpuIsOverride,
+    memoryIsOverride: t.memoryIsOverride,
+    consecutiveChecks: t.consecutiveChecks,
+    consecutiveChecksIsOverride: t.consecutiveChecksIsOverride,
+    cpuSource: t.cpuSource,
+    memorySource: t.memorySource,
+    consecutiveChecksSource: t.consecutiveChecksSource,
+    updatedAt: t.updatedAt,
+    updatedBy: t.updatedBy,
+  });
 });
 
 export default router;

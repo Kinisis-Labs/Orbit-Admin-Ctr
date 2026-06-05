@@ -61,6 +61,7 @@ import { fetchBudgetForAppWithFallback } from "./azureBudgets.js";
 import { fetchAppTimeSeries } from "./azureMonitor.js";
 import { logger } from "./logger.js";
 import { db, budgetAlertLogTable, infraAlertLogTable } from "@workspace/db";
+import { resolveThresholds } from "./alertThresholds.js";
 
 // ---------------------------------------------------------------------------
 // Config helpers
@@ -523,7 +524,7 @@ async function sendEmailInfraAlert(
 </table>
 <br>
 <p><a href="https://orbit.kinisislabs.com/apps/${app.id}/telemetry">View telemetry in Orbit →</a></p>
-<p style="color:#888;font-size:12px;">This alert fires when ${label} stays above ${threshold.toFixed(1)}${unit} for ${infraConsecutiveChecksRequired(app.id)} consecutive check${infraConsecutiveChecksRequired(app.id) === 1 ? "" : "s"}. It will not repeat for ${Math.round(cooldownMs(app.id) / 3_600_000)} hours.</p>
+<p style="color:#888;font-size:12px;">This alert fires when ${label} stays above ${threshold.toFixed(1)}${unit} for ${consecutiveChecks} consecutive check${consecutiveChecks === 1 ? "" : "s"}. It will not repeat for ${Math.round(cooldownMs(app.id) / 3_600_000)} hours.</p>
 `;
 
   const text =
@@ -695,11 +696,12 @@ export async function checkInfraThresholds(): Promise<{
   };
 
   for (const app of APPS) {
-    const requiredConsecutive = infraConsecutiveChecksRequired(app.id);
+    const thresholds = await resolveThresholds(app.id);
+    const requiredConsecutive = thresholds.consecutiveChecks;
 
     const metrics: MetricSpec[] = [
-      { name: "cpu_pct", kind: "cpu", threshold: cpuThresholdPct(app.id) },
-      { name: "memory_pct", kind: "memory", threshold: memoryThresholdPct(app.id) },
+      { name: "cpu_pct", kind: "cpu", threshold: thresholds.cpuThresholdPct },
+      { name: "memory_pct", kind: "memory", threshold: thresholds.memoryThresholdPct },
     ];
 
     for (const { name, kind, threshold } of metrics) {
@@ -829,15 +831,19 @@ export function startBudgetAlertScheduler(): void {
       ? intervalMinutes * 60 * 1000
       : 60 * 60 * 1000;
 
+  const cpuDefault = Number(process.env["ALERT_CPU_THRESHOLD_PCT"] ?? 80);
+  const memDefault = Number(process.env["ALERT_MEMORY_THRESHOLD_PCT"] ?? 85);
+  const consecDefault = Number(process.env["ALERT_INFRA_CONSECUTIVE_CHECKS"] ?? 2);
+
   logger.info(
     {
       intervalMinutes: intervalMs / 60_000,
       cooldownHours: cooldownMs() / 3_600_000,
-      cpuThresholdPctDefault: cpuThresholdPct(),
-      memoryThresholdPctDefault: memoryThresholdPct(),
-      infraConsecutiveChecks: infraConsecutiveChecksRequired(),
+      cpuThresholdPctDefault: Number.isFinite(cpuDefault) ? cpuDefault : 80,
+      memoryThresholdPctDefault: Number.isFinite(memDefault) ? memDefault : 85,
+      infraConsecutiveChecks: Number.isFinite(consecDefault) ? consecDefault : 2,
     },
-    "budget-alert: scheduler started (budget + infra checks; per-app threshold overrides apply at check time)",
+    "budget-alert: scheduler started (budget + infra checks; per-app DB/env overrides apply at check time)",
   );
 
   const run = async (): Promise<void> => {

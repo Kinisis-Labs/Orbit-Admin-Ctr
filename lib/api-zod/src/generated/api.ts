@@ -733,18 +733,61 @@ export const AcknowledgeBudgetAlertLogEntryResponse = zod.object({
 
 
 /**
- * @summary Effective CPU / memory thresholds per app, including whether a per-app override is active
+ * @summary Effective CPU / memory / consecutive-checks thresholds per app, including override source
  */
 export const ListAlertConfigResponseItem = zod.object({
   "appId": zod.string(),
   "appName": zod.string(),
   "cpuThresholdPct": zod.number().describe('Effective CPU alert threshold (percent)'),
   "memoryThresholdPct": zod.number().describe('Effective memory alert threshold (percent)'),
-  "cpuIsOverride": zod.boolean().describe('True when a per-app ALERT_CPU_THRESHOLD_PCT__<APPID> env var overrides the global default'),
-  "memoryIsOverride": zod.boolean().describe('True when a per-app ALERT_MEMORY_THRESHOLD_PCT__<APPID> env var overrides the global default'),
-  "consecutiveChecks": zod.number().describe('Number of consecutive over-threshold scheduler checks required before a notification fires')
+  "cpuIsOverride": zod.boolean().describe('True when a per-app DB or env-var value overrides the global default'),
+  "memoryIsOverride": zod.boolean().describe('True when a per-app DB or env-var value overrides the global default'),
+  "consecutiveChecks": zod.number().describe('Number of consecutive over-threshold scheduler checks required before a notification fires'),
+  "consecutiveChecksIsOverride": zod.boolean().describe('True when a per-app DB or env-var value overrides the global default'),
+  "cpuSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective CPU threshold'),
+  "memorySource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective memory threshold'),
+  "consecutiveChecksSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective consecutive-checks value'),
+  "updatedAt": zod.string().datetime({"offset":true}).nullish().describe('When a DB override was last saved for this app'),
+  "updatedBy": zod.string().nullish().describe('Display name \/ UPN of the operator who last saved DB overrides')
 })
 export const ListAlertConfigResponse = zod.array(ListAlertConfigResponseItem)
+
+
+/**
+ * @summary Save per-app infra alert threshold overrides (requires Orbit-Admins membership)
+ */
+export const UpdateAlertConfigParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const updateAlertConfigBodyCpuThresholdPctMax = 100;
+
+export const updateAlertConfigBodyMemoryThresholdPctMax = 100;
+
+
+
+
+export const UpdateAlertConfigBody = zod.object({
+  "cpuThresholdPct": zod.number().min(1).max(updateAlertConfigBodyCpuThresholdPctMax).nullish().describe('CPU alert threshold (percent). Null clears the DB override.'),
+  "memoryThresholdPct": zod.number().min(1).max(updateAlertConfigBodyMemoryThresholdPctMax).nullish().describe('Memory alert threshold (percent). Null clears the DB override.'),
+  "consecutiveChecks": zod.number().min(1).nullish().describe('Consecutive over-threshold checks required before a notification fires. Null clears the DB override.')
+}).describe('Per-app infra alert threshold overrides. Pass null for a field to clear the DB override and revert to env-var \/ global default.')
+
+export const UpdateAlertConfigResponse = zod.object({
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "cpuThresholdPct": zod.number().describe('Effective CPU alert threshold (percent)'),
+  "memoryThresholdPct": zod.number().describe('Effective memory alert threshold (percent)'),
+  "cpuIsOverride": zod.boolean().describe('True when a per-app DB or env-var value overrides the global default'),
+  "memoryIsOverride": zod.boolean().describe('True when a per-app DB or env-var value overrides the global default'),
+  "consecutiveChecks": zod.number().describe('Number of consecutive over-threshold scheduler checks required before a notification fires'),
+  "consecutiveChecksIsOverride": zod.boolean().describe('True when a per-app DB or env-var value overrides the global default'),
+  "cpuSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective CPU threshold'),
+  "memorySource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective memory threshold'),
+  "consecutiveChecksSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective consecutive-checks value'),
+  "updatedAt": zod.string().datetime({"offset":true}).nullish().describe('When a DB override was last saved for this app'),
+  "updatedBy": zod.string().nullish().describe('Display name \/ UPN of the operator who last saved DB overrides')
+})
 
 
 /**

@@ -12,4 +12,6 @@ export {
   GetCostParams,
   GetGlobalCostSummaryQueryParams,
   QueryLogsParams,
+  UpdateAlertConfigParams,
+  UpdateAlertConfigBody,
 } from "./generated/api";

@@ -5,6 +5,9 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { AppAlertConfigConsecutiveChecksSource } from './appAlertConfigConsecutiveChecksSource';
+import type { AppAlertConfigCpuSource } from './appAlertConfigCpuSource';
+import type { AppAlertConfigMemorySource } from './appAlertConfigMemorySource';
 
 export interface AppAlertConfig {
   appId: string;
@@ -13,10 +16,22 @@ export interface AppAlertConfig {
   cpuThresholdPct: number;
   /** Effective memory alert threshold (percent) */
   memoryThresholdPct: number;
-  /** True when a per-app ALERT_CPU_THRESHOLD_PCT__<APPID> env var overrides the global default */
+  /** True when a per-app DB or env-var value overrides the global default */
   cpuIsOverride: boolean;
-  /** True when a per-app ALERT_MEMORY_THRESHOLD_PCT__<APPID> env var overrides the global default */
+  /** True when a per-app DB or env-var value overrides the global default */
   memoryIsOverride: boolean;
   /** Number of consecutive over-threshold scheduler checks required before a notification fires */
   consecutiveChecks: number;
+  /** True when a per-app DB or env-var value overrides the global default */
+  consecutiveChecksIsOverride: boolean;
+  /** Which source provides the effective CPU threshold */
+  cpuSource?: AppAlertConfigCpuSource;
+  /** Which source provides the effective memory threshold */
+  memorySource?: AppAlertConfigMemorySource;
+  /** Which source provides the effective consecutive-checks value */
+  consecutiveChecksSource?: AppAlertConfigConsecutiveChecksSource;
+  /** When a DB override was last saved for this app */
+  updatedAt?: string | null;
+  /** Display name / UPN of the operator who last saved DB overrides */
+  updatedBy?: string | null;
 }

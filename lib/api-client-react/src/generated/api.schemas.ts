@@ -856,6 +856,65 @@ export interface BudgetAlertLogEntry {
   acknowledgedAt?: string | null;
 }
 
+/**
+ * Per-app infra alert threshold overrides. Pass null for a field to clear the DB override and revert to env-var / global default.
+ */
+export interface UpdateAlertConfigBody {
+  /**
+     * CPU alert threshold (percent). Null clears the DB override.
+     * @minimum 1
+     * @maximum 100
+     */
+  cpuThresholdPct?: number | null;
+  /**
+     * Memory alert threshold (percent). Null clears the DB override.
+     * @minimum 1
+     * @maximum 100
+     */
+  memoryThresholdPct?: number | null;
+  /**
+     * Consecutive over-threshold checks required before a notification fires. Null clears the DB override.
+     * @minimum 1
+     */
+  consecutiveChecks?: number | null;
+}
+
+/**
+ * Which source provides the effective CPU threshold
+ */
+export type AppAlertConfigCpuSource = typeof AppAlertConfigCpuSource[keyof typeof AppAlertConfigCpuSource];
+
+
+export const AppAlertConfigCpuSource = {
+  db: 'db',
+  env: 'env',
+  default: 'default',
+} as const;
+
+/**
+ * Which source provides the effective memory threshold
+ */
+export type AppAlertConfigMemorySource = typeof AppAlertConfigMemorySource[keyof typeof AppAlertConfigMemorySource];
+
+
+export const AppAlertConfigMemorySource = {
+  db: 'db',
+  env: 'env',
+  default: 'default',
+} as const;
+
+/**
+ * Which source provides the effective consecutive-checks value
+ */
+export type AppAlertConfigConsecutiveChecksSource = typeof AppAlertConfigConsecutiveChecksSource[keyof typeof AppAlertConfigConsecutiveChecksSource];
+
+
+export const AppAlertConfigConsecutiveChecksSource = {
+  db: 'db',
+  env: 'env',
+  default: 'default',
+} as const;
+
 export interface AppAlertConfig {
   appId: string;
   appName: string;
@@ -863,12 +922,24 @@ export interface AppAlertConfig {
   cpuThresholdPct: number;
   /** Effective memory alert threshold (percent) */
   memoryThresholdPct: number;
-  /** True when a per-app ALERT_CPU_THRESHOLD_PCT__<APPID> env var overrides the global default */
+  /** True when a per-app DB or env-var value overrides the global default */
   cpuIsOverride: boolean;
-  /** True when a per-app ALERT_MEMORY_THRESHOLD_PCT__<APPID> env var overrides the global default */
+  /** True when a per-app DB or env-var value overrides the global default */
   memoryIsOverride: boolean;
   /** Number of consecutive over-threshold scheduler checks required before a notification fires */
   consecutiveChecks: number;
+  /** True when a per-app DB or env-var value overrides the global default */
+  consecutiveChecksIsOverride: boolean;
+  /** Which source provides the effective CPU threshold */
+  cpuSource?: AppAlertConfigCpuSource;
+  /** Which source provides the effective memory threshold */
+  memorySource?: AppAlertConfigMemorySource;
+  /** Which source provides the effective consecutive-checks value */
+  consecutiveChecksSource?: AppAlertConfigConsecutiveChecksSource;
+  /** When a DB override was last saved for this app */
+  updatedAt?: string | null;
+  /** Display name / UPN of the operator who last saved DB overrides */
+  updatedBy?: string | null;
 }
 
 export interface InfraAlertLogEntry {

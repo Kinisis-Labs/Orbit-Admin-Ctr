@@ -474,7 +474,7 @@ paths:
     get:
       operationId: listAlertConfig
       tags: [alerts]
-      summary: Effective CPU / memory thresholds per app, including whether a per-app override is active
+      summary: Effective CPU / memory / consecutive-checks thresholds per app, including override source
       responses:
         "200":
           description: OK
@@ -483,6 +483,28 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/AppAlertConfig" }
+  /alerts/config/{appId}:
+    put:
+      operationId: updateAlertConfig
+      tags: [alerts]
+      summary: Save per-app infra alert threshold overrides (requires Orbit-Admins membership)
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateAlertConfigBody" }
+      responses:
+        "200":
+          description: Updated configuration
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AppAlertConfig" }
+        "400":
+          description: Validation error
+        "403":
+          description: Caller is not a member of Orbit-Admins
   /infra-alerts/log:
     get:
       operationId: listInfraAlertLog
@@ -1191,9 +1213,30 @@ components:
           description: Notification channels that fired (e.g. "teams", "email")
         sentAt: { type: string, format: date-time, description: When the notification was dispatched }
         acknowledgedAt: { type: string, format: date-time, nullable: true, description: When the entry was acknowledged by an operator. Null if not yet acknowledged. }
+    UpdateAlertConfigBody:
+      type: object
+      description: Per-app infra alert threshold overrides. Pass null for a field to clear the DB override and revert to env-var / global default.
+      properties:
+        cpuThresholdPct:
+          type: integer
+          minimum: 1
+          maximum: 100
+          nullable: true
+          description: CPU alert threshold (percent). Null clears the DB override.
+        memoryThresholdPct:
+          type: integer
+          minimum: 1
+          maximum: 100
+          nullable: true
+          description: Memory alert threshold (percent). Null clears the DB override.
+        consecutiveChecks:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Consecutive over-threshold checks required before a notification fires. Null clears the DB override.
     AppAlertConfig:
       type: object
-      required: [appId, appName, cpuThresholdPct, memoryThresholdPct, cpuIsOverride, memoryIsOverride, consecutiveChecks]
+      required: [appId, appName, cpuThresholdPct, memoryThresholdPct, cpuIsOverride, memoryIsOverride, consecutiveChecks, consecutiveChecksIsOverride]
       properties:
         appId: { type: string }
         appName: { type: string }
@@ -1205,13 +1248,37 @@ components:
           description: Effective memory alert threshold (percent)
         cpuIsOverride:
           type: boolean
-          description: True when a per-app ALERT_CPU_THRESHOLD_PCT__<APPID> env var overrides the global default
+          description: True when a per-app DB or env-var value overrides the global default
         memoryIsOverride:
           type: boolean
-          description: True when a per-app ALERT_MEMORY_THRESHOLD_PCT__<APPID> env var overrides the global default
+          description: True when a per-app DB or env-var value overrides the global default
         consecutiveChecks:
           type: integer
           description: Number of consecutive over-threshold scheduler checks required before a notification fires
+        consecutiveChecksIsOverride:
+          type: boolean
+          description: True when a per-app DB or env-var value overrides the global default
+        cpuSource:
+          type: string
+          enum: [db, env, default]
+          description: Which source provides the effective CPU threshold
+        memorySource:
+          type: string
+          enum: [db, env, default]
+          description: Which source provides the effective memory threshold
+        consecutiveChecksSource:
+          type: string
+          enum: [db, env, default]
+          description: Which source provides the effective consecutive-checks value
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When a DB override was last saved for this app
+        updatedBy:
+          type: string
+          nullable: true
+          description: Display name / UPN of the operator who last saved DB overrides
     InfraAlertLogEntry:
       type: object
       required: [id, appId, appName, metric, value, threshold, channels, sentAt]

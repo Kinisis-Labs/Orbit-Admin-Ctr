@@ -1,9 +1,21 @@
-import { useListAlertConfig, getGetInfrastructureQueryOptions } from "@workspace/api-client-react";
-import type { InfrastructureReport, MetricSeries } from "@workspace/api-client-react";
-import { useQueries } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import {
+  useListAlertConfig,
+  useUpdateAlertConfig,
+  getListAlertConfigQueryKey,
+  getGetInfrastructureQueryOptions,
+} from "@workspace/api-client-react";
+import type { AppAlertConfig, InfrastructureReport, MetricSeries } from "@workspace/api-client-react";
+import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings2 } from "lucide-react";
+import { Settings2, Pencil, RotateCcw, Check, X } from "lucide-react";
+import { useAuth, ADMIN_GROUP } from "@/lib/auth";
+import { cn } from "@/lib/utils";
+
+// ---------------------------------------------------------------------------
+// Live utilization helpers (from main)
+// ---------------------------------------------------------------------------
 
 function getLatestValue(report: InfrastructureReport | undefined, seriesName: string): number | null {
   if (!report) return null;
@@ -34,8 +46,8 @@ const STATUS_COLORS = {
   },
   ok: {
     bar: "bg-emerald-500",
-    text: "text-emerald-600 dark:text-emerald-400",
-    badge: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    text: "text-muted-foreground",
+    badge: "border-border bg-muted/40 text-muted-foreground",
   },
 };
 
@@ -51,18 +63,16 @@ function UtilizationIndicator({
   if (loading) {
     return <Skeleton className="h-4 w-24" />;
   }
-
   if (current === null) {
-    return <span className="text-[11px] text-muted-foreground">—</span>;
+    return <span className="text-[11px] text-muted-foreground opacity-40">—</span>;
   }
-
   const status = utilizationStatus(current, threshold);
   const colors = STATUS_COLORS[status];
-  const barWidthPct = Math.min((current / threshold) * 100, 100);
+  const barWidthPct = Math.min(100, (current / threshold) * 100);
   const delta = threshold - current;
 
   return (
-    <div className="flex flex-col gap-1 min-w-[120px]">
+    <div className="flex flex-col gap-0.5 min-w-[80px]">
       <div className="flex items-center gap-1.5">
         <span className={`tabular-nums font-mono text-[12px] font-semibold ${colors.text}`}>
           {current.toFixed(1)}%
@@ -87,29 +97,195 @@ function UtilizationIndicator({
   );
 }
 
-function ThresholdCell({ value, isOverride }: { value: number; isOverride: boolean }) {
+// ---------------------------------------------------------------------------
+// Editable threshold helpers (from task #231)
+// ---------------------------------------------------------------------------
+
+type ThresholdField = "cpuThresholdPct" | "memoryThresholdPct" | "consecutiveChecks";
+
+function SourceBadge({ source }: { source: "db" | "env" | "default" | undefined }) {
+  if (source === "db") {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-semibold uppercase tracking-wide">
+        db
+      </span>
+    );
+  }
+  if (source === "env") {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wide">
+        env
+      </span>
+    );
+  }
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="tabular-nums font-mono text-[12px]">{value}%</span>
-      {isOverride ? (
-        <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wide">
-          override
-        </span>
-      ) : (
-        <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
-          default
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
+      default
+    </span>
+  );
+}
+
+interface EditableCellProps {
+  appId: string;
+  field: ThresholdField;
+  value: number;
+  source: "db" | "env" | "default" | undefined;
+  isPercent?: boolean;
+  canEdit: boolean;
+  onSaved: () => void;
+}
+
+function EditableCell({ appId, field, value, source, isPercent = false, canEdit, onSaved }: EditableCellProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { mutateAsync } = useUpdateAlertConfig();
+
+  function startEdit() {
+    setDraft(String(value));
+    setError(null);
+    setEditing(true);
+    setTimeout(() => inputRef.current?.select(), 0);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+    setError(null);
+  }
+
+  async function save(newValue: number | null) {
+    setSaving(true);
+    setError(null);
+    try {
+      await mutateAsync({ appId, data: { [field]: newValue } });
+      setEditing(false);
+      onSaved();
+    } catch {
+      setError("Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function commitDraft() {
+    const parsed = Number(draft);
+    if (!Number.isFinite(parsed) || parsed < 1 || (isPercent && parsed > 100)) {
+      setError(isPercent ? "Must be 1–100" : "Must be ≥ 1");
+      return;
+    }
+    await save(Math.round(parsed));
+  }
+
+  if (editing) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <input
+          ref={inputRef}
+          type="number"
+          min={1}
+          max={isPercent ? 100 : undefined}
+          value={draft}
+          onChange={(e) => { setDraft(e.target.value); setError(null); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void commitDraft();
+            if (e.key === "Escape") cancelEdit();
+          }}
+          onBlur={() => { if (!saving) void commitDraft(); }}
+          disabled={saving}
+          className={cn(
+            "w-16 h-6 px-1.5 text-[12px] font-mono tabular-nums bg-background border rounded text-foreground focus:outline-none focus:ring-1 focus:ring-ring",
+            error ? "border-destructive" : "border-border",
+          )}
+          autoFocus
+        />
+        {isPercent && <span className="text-[11px] text-muted-foreground">%</span>}
+        {saving ? (
+          <span className="text-[11px] text-muted-foreground">saving…</span>
+        ) : (
+          <>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); void commitDraft(); }}
+              className="text-green-600 dark:text-green-400 hover:opacity-80"
+              aria-label="Confirm"
+            >
+              <Check className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); cancelEdit(); }}
+              className="text-muted-foreground hover:opacity-80"
+              aria-label="Cancel"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </>
+        )}
+        {error && <span className="text-[10px] text-destructive">{error}</span>}
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 group/cell">
+      <span className="tabular-nums font-mono text-[12px]">
+        {value}{isPercent ? "%" : ""}
+      </span>
+      <SourceBadge source={source} />
+      {canEdit && (
+        <span className="inline-flex items-center gap-0.5 opacity-0 group-hover/cell:opacity-100 transition-opacity">
+          <button
+            type="button"
+            onClick={startEdit}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            aria-label={`Edit ${field}`}
+          >
+            <Pencil className="h-2.5 w-2.5" />
+          </button>
+          {source === "db" && (
+            <button
+              type="button"
+              onClick={() => void save(null)}
+              className="text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+              aria-label="Reset to env/default"
+              title="Reset to env-var / global default"
+            >
+              <RotateCcw className="h-2.5 w-2.5" />
+            </button>
+          )}
         </span>
       )}
     </span>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Main table
+// ---------------------------------------------------------------------------
+
 interface Props {
   appId?: string;
 }
 
+function formatUpdatedAt(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(iso));
+  } catch {
+    return null;
+  }
+}
+
 export function AlertConfigTable({ appId }: Props) {
   const { data, isLoading } = useListAlertConfig();
+  const queryClient = useQueryClient();
+  const { hasGroup } = useAuth();
+  const canEdit = hasGroup(ADMIN_GROUP.id);
 
   const rows = appId ? data?.filter((r) => r.appId === appId) : data;
 
@@ -119,11 +295,41 @@ export function AlertConfigTable({ appId }: Props) {
     ),
   });
 
+  function onSaved() {
+    void queryClient.invalidateQueries({ queryKey: getListAlertConfigQueryKey() });
+  }
+
+  function renderThresholdCell(row: AppAlertConfig, field: ThresholdField) {
+    const value = row[field];
+    const source =
+      field === "cpuThresholdPct" ? row.cpuSource :
+      field === "memoryThresholdPct" ? row.memorySource :
+      row.consecutiveChecksSource;
+    const isPercent = field !== "consecutiveChecks";
+
+    return (
+      <EditableCell
+        appId={row.appId}
+        field={field}
+        value={value}
+        source={source}
+        isPercent={isPercent}
+        canEdit={canEdit}
+        onSaved={onSaved}
+      />
+    );
+  }
+
   return (
     <div className="bg-card border border-border shadow-sm flex flex-col">
       <div className="flex items-center gap-2 p-3 border-b border-border">
         <Settings2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <h2 className="text-sm font-semibold">Infra alert thresholds</h2>
+        {canEdit && (
+          <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
+            editable
+          </span>
+        )}
         <span className="ml-auto text-[11px] text-muted-foreground">
           {!isLoading && rows !== undefined
             ? `${rows.length} app${rows.length === 1 ? "" : "s"}`
@@ -149,7 +355,8 @@ export function AlertConfigTable({ appId }: Props) {
                 <TableHead className="h-8 font-semibold text-foreground w-[200px]">Current CPU</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground w-[220px]">Memory threshold</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground w-[200px]">Current memory</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground w-[180px]">Consecutive checks</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground w-[200px]">Consecutive checks</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">Last updated</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -165,7 +372,7 @@ export function AlertConfigTable({ appId }: Props) {
                       <TableCell className="py-1 font-medium">{row.appName}</TableCell>
                     )}
                     <TableCell className="py-1">
-                      <ThresholdCell value={row.cpuThresholdPct} isOverride={row.cpuIsOverride} />
+                      {renderThresholdCell(row, "cpuThresholdPct")}
                     </TableCell>
                     <TableCell className="py-1.5">
                       <UtilizationIndicator
@@ -175,7 +382,7 @@ export function AlertConfigTable({ appId }: Props) {
                       />
                     </TableCell>
                     <TableCell className="py-1">
-                      <ThresholdCell value={row.memoryThresholdPct} isOverride={row.memoryIsOverride} />
+                      {renderThresholdCell(row, "memoryThresholdPct")}
                     </TableCell>
                     <TableCell className="py-1.5">
                       <UtilizationIndicator
@@ -184,8 +391,18 @@ export function AlertConfigTable({ appId }: Props) {
                         loading={infraLoading}
                       />
                     </TableCell>
-                    <TableCell className="py-1 tabular-nums text-muted-foreground text-[12px]">
-                      {row.consecutiveChecks} check{row.consecutiveChecks === 1 ? "" : "s"}
+                    <TableCell className="py-1">
+                      {renderThresholdCell(row, "consecutiveChecks")}
+                    </TableCell>
+                    <TableCell className="py-1 text-[11px] text-muted-foreground">
+                      {row.updatedAt ? (
+                        <span title={row.updatedAt ?? undefined}>
+                          {formatUpdatedAt(row.updatedAt)}
+                          {row.updatedBy && <span className="ml-1 opacity-70">by {row.updatedBy}</span>}
+                        </span>
+                      ) : (
+                        <span className="opacity-40">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -196,27 +413,22 @@ export function AlertConfigTable({ appId }: Props) {
       )}
 
       <div className="px-3 py-2 border-t border-border bg-muted/20">
-        <p className="text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1 mr-2">
-            <span className="inline-flex items-center px-1 py-px rounded-sm border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wide">override</span>
-            — per-app env var is set
+        <p className="text-[11px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
+          <span className="inline-flex items-center gap-1">
+            <SourceBadge source="db" />
+            — saved via Orbit UI
           </span>
-          <span className="inline-flex items-center gap-1 mr-4">
-            <span className="inline-flex items-center px-1 py-px rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">default</span>
-            — global or built-in default applies
+          <span className="inline-flex items-center gap-1">
+            <SourceBadge source="env" />
+            — per-app env var
           </span>
-          <span className="inline-flex items-center gap-1.5 mr-3">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" />
-            <span>&gt;15% below threshold</span>
+          <span className="inline-flex items-center gap-1">
+            <SourceBadge source="default" />
+            — global or built-in default
           </span>
-          <span className="inline-flex items-center gap-1.5 mr-3">
-            <span className="h-2 w-2 rounded-full bg-amber-400 inline-block" />
-            <span>within 15% of threshold</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-red-500 inline-block" />
-            <span>at or above threshold</span>
-          </span>
+          {canEdit && (
+            <span className="opacity-60">Hover a value to edit. Click <RotateCcw className="inline h-2.5 w-2.5" /> to clear a DB override.</span>
+          )}
         </p>
       </div>
     </div>

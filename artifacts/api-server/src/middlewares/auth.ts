@@ -18,3 +18,11 @@ export const requireCostReader: RequestHandler = (req, res, next) => {
   if (req.session.user?.isCostReader || req.session.user?.isAdmin) return next();
   res.status(403).json({ error: "forbidden", requiredGroup: "Orbit-Cost-Readers" });
 };
+
+/** Require membership in the Orbit-Admins group for write/configuration surfaces.
+ * In mock mode (no Entra config) the gate is open so the dev preview keeps working. */
+export const requireAdmin: RequestHandler = (req, res, next) => {
+  if (!isEntraConfigured()) return next();
+  if (req.session.user?.isAdmin) return next();
+  res.status(403).json({ error: "forbidden", requiredGroup: "Orbit-Admins" });
+};
