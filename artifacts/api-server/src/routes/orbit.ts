@@ -24,6 +24,7 @@ import { fetchSubscriptionNames } from "../lib/azureSubscriptions.js";
 import {
   fetchAppMetrics,
   fetchAppTimeSeries,
+  fetchTopExceptions,
   isMonitorConfigured,
   getLogAnalyticsWorkspaceId,
 } from "../lib/azureMonitor.js";
@@ -632,10 +633,10 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
   const rand = seededRand(app.id + "tel");
   const sick = app.status === "unhealthy";
 
-  // Fetch point-in-time summary and all five time-series in parallel.
-  // CPU and memory come only from Log Analytics (performanceCounters); they are
-  // not available through the Azure Monitor Metrics API used by fetchAppMetrics.
-  const [liveMetrics, liveRpmSeries, liveLatenSeries, liveErrSeries, liveCpuSeries, liveMemSeries] =
+  // Fetch point-in-time summary, all five time-series, and top exceptions in
+  // parallel. CPU and memory come only from Log Analytics (performanceCounters);
+  // they are not available through the Azure Monitor Metrics API used by fetchAppMetrics.
+  const [liveMetrics, liveRpmSeries, liveLatenSeries, liveErrSeries, liveCpuSeries, liveMemSeries, liveTopExceptions] =
     await Promise.all([
       fetchAppMetrics(app, { bypassCache }),
       fetchAppTimeSeries(app, "requests_per_min", 24, { bypassCache }),
@@ -643,6 +644,7 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
       fetchAppTimeSeries(app, "error_rate_pct", 24, { bypassCache }),
       fetchAppTimeSeries(app, "cpu_pct", 24, { bypassCache }),
       fetchAppTimeSeries(app, "memory_pct", 24, { bypassCache }),
+      fetchTopExceptions(app, { hours: 24, limit: 5, bypassCache }),
     ]);
 
   // Derive current CPU / memory scalars from the last live series point.
@@ -656,7 +658,7 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
   const mockCpuPct = Number((20 + rand() * 60).toFixed(1));
   const mockMemPct = Number((30 + rand() * 50).toFixed(1));
 
-  const isLive = Boolean(liveMetrics || liveCpuSeries || liveMemSeries);
+  const isLive = Boolean(liveMetrics || liveCpuSeries || liveMemSeries || liveTopExceptions);
 
   const data = GetTelemetryResponse.parse({
     requestsPerMin: liveMetrics?.requestsPerMin ?? Number((400 + rand() * 1200).toFixed(0)),
@@ -687,7 +689,7 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
         points: liveMemSeries ?? makeSeries(app.id, "Memory %", "%", 24, sick ? 88 : 60, 20).points,
       },
     ],
-    topErrors: [
+    topErrors: liveTopExceptions ?? [
       {
         message: "TimeoutException: upstream call to the ledger service exceeded 5s",
         count: sick ? 412 : 18,

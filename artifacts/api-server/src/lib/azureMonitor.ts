@@ -243,6 +243,98 @@ export async function fetchMetricTimeSeries(
   }
 }
 
+export type TopException = {
+  message: string;
+  count: number;
+  lastSeen: string;
+};
+
+// Cache: "appId:hours" → { result, expiresAt }
+type TopExceptionsCacheEntry = { result: TopException[]; expiresAt: number };
+const _topExceptionsCache = new Map<string, TopExceptionsCacheEntry>();
+
+/**
+ * Query the top N exceptions (by count) from the Application Insights `exceptions`
+ * table over the last `hours` hours, scoped to a specific App Insights component
+ * via `_ResourceId`.
+ *
+ * Returns up to `limit` exceptions ordered by count descending, or null when:
+ *   - Monitor is not configured
+ *   - No App Insights component is found for the app
+ *   - The query returns zero rows
+ *   - Any error occurs (all errors are suppressed; callers fall back to mock data)
+ */
+export async function fetchTopExceptions(
+  app: AppRecord,
+  {
+    hours = 24,
+    limit = 5,
+    bypassCache = false,
+  }: { hours?: number; limit?: number; bypassCache?: boolean } = {},
+): Promise<TopException[] | null> {
+  if (!isMonitorConfigured()) return null;
+
+  const cacheKey = `${app.id}:${hours}:${limit}`;
+  if (bypassCache) {
+    _topExceptionsCache.delete(cacheKey);
+  } else {
+    const entry = _topExceptionsCache.get(cacheKey);
+    if (entry && entry.expiresAt > Date.now()) {
+      return entry.result;
+    }
+  }
+
+  const resourceId = await resolveAppInsightsResourceId(app, { bypassCache });
+  if (!resourceId) return null;
+
+  const workspaceId = getLogAnalyticsWorkspaceId()!;
+
+  const kql = `
+    exceptions
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(${hours}h)
+    | summarize count = count(), lastSeen = max(timestamp) by type, outerMessage
+    | top ${limit} by count desc
+    | project message = strcat(type, ': ', outerMessage), count, lastSeen
+    | order by count desc
+  `;
+
+  try {
+    const result = await getLogsClient().queryWorkspace(
+      workspaceId,
+      kql,
+      { duration: `PT${hours}H` },
+    );
+
+    if (result.status !== "Success") return null;
+    const table = result.tables?.[0];
+    if (!table) return null;
+
+    const cols = table.columnDescriptors as Array<{ name?: string }>;
+    const msgIdx = cols.findIndex((c) => c.name === "message");
+    const cntIdx = cols.findIndex((c) => c.name === "count");
+    const lsIdx = cols.findIndex((c) => c.name === "lastSeen");
+    if (msgIdx === -1 || cntIdx === -1 || lsIdx === -1) return null;
+
+    const rows = table.rows as unknown[][];
+    if (rows.length === 0) return null;
+
+    const exceptions: TopException[] = rows.map((row) => ({
+      message: String(row[msgIdx] ?? ""),
+      count: Number(row[cntIdx] ?? 0),
+      lastSeen: String(row[lsIdx] ?? new Date().toISOString()),
+    }));
+
+    _topExceptionsCache.set(cacheKey, {
+      result: exceptions,
+      expiresAt: Date.now() + METRICS_CACHE_TTL_MS,
+    });
+    return exceptions;
+  } catch {
+    return null;
+  }
+}
+
 // Cache: app id → { result, expiresAt }
 type MetricsCacheEntry = { result: TelemetrySummary; expiresAt: number };
 const _metricsCache = new Map<string, MetricsCacheEntry>();
