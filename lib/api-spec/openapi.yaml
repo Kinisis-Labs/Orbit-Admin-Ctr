@@ -491,6 +491,7 @@ components:
         monthToDateCost: { type: number }
         budget: { type: number, description: "Monthly budget cap in USD from Azure Cost Management. Only present when a budget is configured in Azure." }
         forecast: { type: number, description: "Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured." }
+        forecastOverBudget: { type: boolean, description: "True when the projected end-of-month spend exceeds the monthly budget cap." }
         group: { type: string, description: Optional scope-selector grouping label (e.g. Platform). }
         userAuth:
           $ref: "#/components/schemas/UserAuthType"

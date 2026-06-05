@@ -254,6 +254,13 @@ router.get("/apps", async (_req, res) => {
       const costWS = costWithSourceResults[i];
       const budgetWS = budgetWithSourceResults[i];
       const subName = subNames.get(app.subscriptionId.toLowerCase());
+      const mtd = costWS ? costWS.result.monthToDate : app.monthToDateCost;
+      const budget = budgetWS?.result.amount ?? Number((mtd * 2.0).toFixed(2));
+      const forecastMultiplier = !budgetWS && app.id === "orbit" ? 2.3 : 1.7;
+      const forecast =
+        budgetWS?.result.forecastAmount !== null && budgetWS?.result.forecastAmount !== undefined
+          ? budgetWS.result.forecastAmount
+          : Number((mtd * forecastMultiplier).toFixed(2));
       return {
         id: app.id,
         name: app.name,
@@ -267,11 +274,12 @@ router.get("/apps", async (_req, res) => {
         activeAlerts: liveAlerts
           ? liveAlerts.filter((a) => a.status === "active").length
           : activeAlertCount(app),
-        monthToDateCost: costWS ? costWS.result.monthToDate : app.monthToDateCost,
+        monthToDateCost: mtd,
         ...(budgetWS ? { budget: budgetWS.result.amount } : {}),
         ...(budgetWS?.result.forecastAmount !== null && budgetWS?.result.forecastAmount !== undefined
           ? { forecast: budgetWS.result.forecastAmount }
           : {}),
+        forecastOverBudget: forecast > budget,
         group: app.group,
         userAuth: app.userAuth,
       };

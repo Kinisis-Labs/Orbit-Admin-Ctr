@@ -11,7 +11,8 @@ import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link, useSearch, useLocation } from "wouter";
-import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff, AlertTriangle, Clipboard, Check, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, Database } from "lucide-react";
+import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff, AlertTriangle, Clipboard, Check, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, Database, TriangleAlert } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
@@ -236,6 +237,8 @@ function GlobalCost() {
   const { data: cost, isLoading, isFetching } = useGetGlobalCostSummary(undefined, {
     query: { queryKey },
   });
+  const { data: apps } = useListApps();
+  const overBudgetApps = new Set(apps?.filter((a) => a.forecastOverBudget).map((a) => a.id) ?? []);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh("/api/global/cost-summary", queryKey);
   const [showDailyTable, setShowDailyTable] = useState(false);
   const [copiedDaily, setCopiedDaily] = useState(false);
@@ -623,7 +626,21 @@ function GlobalCost() {
               cost?.byApp.map((item) => (
                 <TableRow key={item.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
                   <TableCell className="py-1 font-medium">
-                    <Link href={`/apps/${item.appId}`} className="hover:underline text-primary">{item.appName}</Link>
+                    <div className="flex items-center gap-1.5">
+                      <Link href={`/apps/${item.appId}`} className="hover:underline text-primary">{item.appName}</Link>
+                      {overBudgetApps.has(item.appId) && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center">
+                                <TriangleAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>Forecast exceeds budget cap</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="py-1 text-right font-mono text-[12px]">{fmt(item.amount, cost.currency)}</TableCell>
                   <TableCell className="py-1">

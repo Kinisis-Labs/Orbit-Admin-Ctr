@@ -39,6 +39,7 @@ export const ListAppsResponseItem = zod.object({
   "monthToDateCost": zod.number(),
   "budget": zod.number().optional().describe('Monthly budget cap in USD from Azure Cost Management. Only present when a budget is configured in Azure.'),
   "forecast": zod.number().optional().describe('Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured.'),
+  "forecastOverBudget": zod.boolean().optional().describe('True when the projected end-of-month spend exceeds the monthly budget cap.'),
   "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).'),
   "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users. \"clerk\" = consumer app with Clerk-authenticated users (activity ingested via webhooks). \"entra\" = employee-only internal tool authenticated via Entra ID. \"none\" = no end-user authentication (e.g. public marketing site).')
 })
@@ -69,6 +70,7 @@ export const GetAppResponse = zod.object({
   "monthToDateCost": zod.number(),
   "budget": zod.number().optional().describe('Monthly budget cap in USD from Azure Cost Management. Only present when a budget is configured in Azure.'),
   "forecast": zod.number().optional().describe('Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured.'),
+  "forecastOverBudget": zod.boolean().optional().describe('True when the projected end-of-month spend exceeds the monthly budget cap.'),
   "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).'),
   "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users. \"clerk\" = consumer app with Clerk-authenticated users (activity ingested via webhooks). \"entra\" = employee-only internal tool authenticated via Entra ID. \"none\" = no end-user authentication (e.g. public marketing site).')
 }).and(zod.object({

@@ -12,7 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Download, ChevronRight, Clipboard, Check, AlertTriangle } from "lucide-react";
+import { RefreshCw, Download, ChevronRight, Clipboard, Check, AlertTriangle, TriangleAlert } from "lucide-react";
 import { Link, useSearch, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -22,6 +22,7 @@ import { AuthBadge } from "@/components/auth-badge";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useOverBudgetDays } from "@/hooks/use-over-budget-days";
 import { useAuth, COST_READER_GROUP } from "@/lib/auth";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type UserAuthFilter = "all" | "clerk" | "entra" | "none";
 type EnvFilter = "all" | "prod" | "staging" | "dev";
@@ -308,9 +309,23 @@ export default function Home() {
                       onClick={() => setScope(app.id)}
                     >
                       <TableCell className="py-1">
-                        <Link href={`/apps/${app.id}`} className="text-primary hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
-                          {app.name}
-                        </Link>
+                        <div className="flex items-center gap-1.5">
+                          <Link href={`/apps/${app.id}`} className="text-primary hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                            {app.name}
+                          </Link>
+                          {canSeeCost && app.forecastOverBudget && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center">
+                                    <TriangleAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>Forecast exceeds budget cap</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="py-1">
                         <StatusBadge status={app.status} />

@@ -83,6 +83,8 @@ export interface AppSummary {
   budget?: number;
   /** Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured. */
   forecast?: number;
+  /** True when the projected end-of-month spend exceeds the monthly budget cap. */
+  forecastOverBudget?: boolean;
   /** Optional scope-selector grouping label (e.g. Platform). */
   group?: string;
   userAuth: UserAuthType;
