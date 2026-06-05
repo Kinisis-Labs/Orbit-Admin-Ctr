@@ -7,12 +7,12 @@ import { StaleCacheBanner } from "@/components/stale-cache-banner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApp } from "@/hooks/use-app";
 import { useAppAlerts } from "@/hooks/use-app-alerts";
+import { useAppInfrastructure } from "@/hooks/use-app-infrastructure";
+import { useAppNetwork } from "@/hooks/use-app-network";
+import { useAppCost } from "@/hooks/use-app-cost";
+import { useAppLedger } from "@/hooks/use-app-ledger";
+import { useAppTelemetry } from "@/hooks/use-app-telemetry";
 import { 
-  useGetInfrastructure, getGetInfrastructureQueryKey, 
-  useGetNetwork, getGetNetworkQueryKey, 
-  useGetCost, getGetCostQueryKey, 
-  useGetLedger, getGetLedgerQueryKey, 
-  useGetTelemetry, getGetTelemetryQueryKey, 
   useSyncStripeSales,
   UserAuthType,
 } from "@workspace/api-client-react";
@@ -77,9 +77,7 @@ export default function AppDetail() {
 
   // Fetch cost data here so the tab trigger can show a warning badge without an extra network request
   // (React Query serves the same cache key used inside CostTab, so no duplicate fetch)
-  const { data: costData } = useGetCost(appId, undefined, {
-    query: { enabled: !!appId && canSeeCost, queryKey: getGetCostQueryKey(appId) },
-  });
+  const { data: costData } = useAppCost(appId, canSeeCost);
   const forecastOverBudget = costData ? costData.forecast > costData.budget : false;
 
   if (appLoading) {
@@ -377,7 +375,7 @@ function DataSourceBadge({
 }
 
 function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: () => void }) {
-  const { data, isLoading } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey: getGetCostQueryKey(appId) } });
+  const { data, isLoading } = useAppCost(appId);
   const budgetThreshold = useBudgetThreshold(appId);
 
   if (isLoading) return <Skeleton className="h-20 w-full" />;
@@ -482,8 +480,7 @@ function isLiveMode(mode: string) {
   return mode === "entra";
 }
 function InfraTab({ appId }: { appId: string }) {
-  const queryKey = getGetInfrastructureQueryKey(appId);
-  const { data, isLoading, isFetching } = useGetInfrastructure(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { data, isLoading, isFetching, queryKey } = useAppInfrastructure(appId);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/infrastructure`, queryKey);
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No infrastructure data available</div>;
@@ -577,8 +574,7 @@ function InfraTab({ appId }: { appId: string }) {
 
 function NetworkTab({ appId }: { appId: string }) {
   const { mode } = useAuth();
-  const queryKey = getGetNetworkQueryKey(appId);
-  const { data, isLoading, isFetching } = useGetNetwork(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { data, isLoading, isFetching, queryKey } = useAppNetwork(appId);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/network`, queryKey);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
@@ -660,8 +656,7 @@ function NetworkTab({ appId }: { appId: string }) {
 }
 
 function TelemetryTab({ appId }: { appId: string }) {
-  const queryKey = getGetTelemetryQueryKey(appId);
-  const { data, isLoading, isFetching } = useGetTelemetry(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { data, isLoading, isFetching, queryKey } = useAppTelemetry(appId);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/telemetry`, queryKey);
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No telemetry data available</div>;
@@ -786,8 +781,7 @@ function getBudgetBarClass(utilPct: number, budgetThreshold: number): string {
 }
 
 function CostTab({ appId }: { appId: string }) {
-  const queryKey = getGetCostQueryKey(appId);
-  const { data, isLoading, isFetching } = useGetCost(appId, undefined, { query: { enabled: !!appId, queryKey } });
+  const { data, isLoading, isFetching, queryKey } = useAppCost(appId);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/cost`, queryKey);
   const threshold = useSpendThreshold(appId);
   const budgetThreshold = useBudgetThreshold(appId);
@@ -989,14 +983,14 @@ function CostTab({ appId }: { appId: string }) {
 }
 
 function LedgerTab({ appId }: { appId: string }) {
-  const { data, isLoading, isFetching } = useGetLedger(appId, { query: { enabled: !!appId, queryKey: getGetLedgerQueryKey(appId) } });
+  const { data, isLoading, isFetching, queryKey } = useAppLedger(appId);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const stripeSyncEnabled = appId === "grailbabe";
   const syncStripe = useSyncStripeSales({
     mutation: {
       onSuccess: (result) => {
-        queryClient.invalidateQueries({ queryKey: getGetLedgerQueryKey(appId) });
+        queryClient.invalidateQueries({ queryKey });
         toast({
           title: "Stripe sync complete",
           description: `${result.imported} imported, ${result.alreadyRecorded} already recorded, ${result.skipped} skipped. Net ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(result.net)}.`,
