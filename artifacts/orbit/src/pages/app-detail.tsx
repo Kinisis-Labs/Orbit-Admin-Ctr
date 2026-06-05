@@ -479,9 +479,12 @@ function InfraTab({ appId }: { appId: string }) {
   const queryKey = getGetInfrastructureQueryKey(appId);
   const { data, isLoading, isFetching } = useGetInfrastructure(appId, undefined, { query: { enabled: !!appId, queryKey } });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/infrastructure`, queryKey);
+  const [infraCalloutDismissed, setInfraCalloutDismissed] = useState(false);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No infrastructure data available</div>;
+
+  const showInfraCallout = data.dataSource === "mock" && !infraCalloutDismissed;
 
   return (
     <>
@@ -490,7 +493,34 @@ function InfraTab({ appId }: { appId: string }) {
           <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
         </div>
       )}
-    <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
+    <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
+      {showInfraCallout && (
+        <div className="flex items-start gap-3 rounded-none border border-blue-500/30 bg-blue-500/5 px-4 py-3 text-[13px]">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+          <div className="flex-1 space-y-1">
+            <p className="font-medium text-foreground">Showing demo data — Azure not configured</p>
+            <p className="text-muted-foreground">
+              To stream live infrastructure data, set these environment variables on the API Container App:
+            </p>
+            <ul className="mt-1 space-y-0.5 text-muted-foreground">
+              <li><code className="bg-muted px-1 rounded text-[12px]">AZURE_SUBSCRIPTION_IDS</code> — comma-separated subscription GUIDs</li>
+              <li><code className="bg-muted px-1 rounded text-[12px]">AZURE_CLIENT_ID</code> — managed identity client ID (<code className="bg-muted px-1 rounded text-[12px]">id-orbit-api-prod</code>)</li>
+              <li><code className="bg-muted px-1 rounded text-[12px]">AZURE_TENANT_ID</code> — Entra tenant GUID</li>
+            </ul>
+            <p className="text-muted-foreground">
+              The managed identity also needs <strong>Reader</strong> on each subscription (for Resource Graph queries). See <code className="bg-muted px-1 rounded text-[12px]">replit.md</code> for the full setup guide.
+            </p>
+          </div>
+          <button
+            onClick={() => setInfraCalloutDismissed(true)}
+            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Dismiss"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <div className="lg:col-span-1 bg-card border border-border shadow-sm flex flex-col">
         <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Resources</h2>
@@ -548,6 +578,7 @@ function InfraTab({ appId }: { appId: string }) {
           ))}
         </div>
       </div>
+    </div>
     </div>
     </>
   );
