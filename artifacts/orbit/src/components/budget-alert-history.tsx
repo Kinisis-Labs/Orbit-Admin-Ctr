@@ -2,9 +2,9 @@ import { useListBudgetAlertLog, useAcknowledgeBudgetAlertLogEntry, getListBudget
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Bell, BellOff, Download, Clipboard, Check, Filter } from "lucide-react";
-import { format } from "date-fns";
-import { useState } from "react";
+import { Bell, BellOff, Download, Clipboard, Check, Filter, X, CalendarRange } from "lucide-react";
+import { format, parseISO, isValid, startOfDay, endOfDay } from "date-fns";
+import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
@@ -73,13 +73,44 @@ export function BudgetAlertHistory({ appId }: Props) {
     },
   });
 
-  const totalCount = entries?.length ?? 0;
+  const [startInput, setStartInput] = useState("");
+  const [endInput, setEndInput] = useState("");
+
+  const startDate = useMemo(() => {
+    if (!startInput) return null;
+    const d = parseISO(startInput);
+    return isValid(d) ? startOfDay(d) : null;
+  }, [startInput]);
+
+  const endDate = useMemo(() => {
+    if (!endInput) return null;
+    const d = parseISO(endInput);
+    return isValid(d) ? endOfDay(d) : null;
+  }, [endInput]);
+
+  const isFiltered = startDate !== null || endDate !== null;
+
+  const filteredEntries = useMemo(() => {
+    if (!entries) return entries;
+    if (!isFiltered) return entries;
+    return entries.filter((entry) => {
+      const sent = new Date(entry.sentAt);
+      if (startDate && sent < startDate) return false;
+      if (endDate && sent > endDate) return false;
+      return true;
+    });
+  }, [entries, startDate, endDate, isFiltered]);
+
+  function clearFilter() {
+    setStartInput("");
+    setEndInput("");
+  }
 
   const csvHeaders = appId
     ? ["Sent At", "MTD Spend", "Forecast", "Budget Cap", "Overage %", "Channels"]
     : ["App", "Sent At", "MTD Spend", "Forecast", "Budget Cap", "Overage %", "Channels"];
 
-  const csvRows = entries?.map((entry) => {
+  const csvRows = filteredEntries?.map((entry) => {
     const overage = entry.budget > 0 ? (((entry.forecast - entry.budget) / entry.budget) * 100).toFixed(1) + "%" : "N/A";
     const sentAt = format(new Date(entry.sentAt), "MMM d, yyyy HH:mm");
     const channels = entry.channels.map((ch) => CHANNEL_LABELS[ch] ?? ch).join("; ");
@@ -101,59 +132,109 @@ export function BudgetAlertHistory({ appId }: Props) {
     () => toast({ title: "No alerts to export", description: "There are no alert records in the current view." }),
   );
 
+  const total = entries?.length ?? 0;
+  const shown = filteredEntries?.length ?? 0;
+
   return (
     <div className="bg-card border border-border shadow-sm flex flex-col">
-      <div className="flex items-center gap-2 p-3 border-b border-border">
+      <div className="flex items-center gap-2 p-3 border-b border-border flex-wrap">
         <Bell className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <h2 className="text-sm font-semibold">Alerts sent</h2>
-        {!isLoading && entries !== undefined && (
-          <span className="ml-auto text-[11px] text-muted-foreground">
-            {totalCount === 0 ? "No alerts on record" : `${totalCount} notification${totalCount === 1 ? "" : "s"}`}
-          </span>
-        )}
-        <button
-          onClick={() => setUnacknowledgedOnly((v) => !v)}
-          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-sm border text-[11px] font-medium transition-colors ${
-            unacknowledgedOnly
-              ? "border-primary/40 bg-primary/10 text-primary"
-              : "border-border bg-transparent text-muted-foreground hover:text-foreground hover:border-border/80"
-          }`}
-          title={unacknowledgedOnly ? "Showing unacknowledged only — click to show all" : "Click to show only unacknowledged"}
-        >
-          <Filter className="h-3 w-3" />
-          {unacknowledgedOnly ? "Unacknowledged only" : "All"}
-        </button>
-        {!isLoading && entries !== undefined && (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`h-7 text-xs px-2 rounded-sm hover:bg-primary/10 ${csvDisabled ? "text-muted-foreground opacity-50 cursor-default" : "text-primary hover:text-primary"}`}
-              onClick={handleExport}
-            >
-              <Download className="h-3.5 w-3.5 mr-1.5" />
-              Export CSV
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`h-7 text-xs px-2 rounded-sm hover:bg-primary/10 ${csvDisabled ? "text-muted-foreground opacity-50 cursor-default" : "text-primary hover:text-primary"}`}
-              onClick={handleCopy}
-            >
-              {copied ? (
-                <>
-                  <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
-                  <span className="text-green-500">Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Clipboard className="h-3.5 w-3.5 mr-1.5" />
-                  Copy
-                </>
-              )}
-            </Button>
+
+        <div className="flex items-center gap-1.5 ml-auto flex-wrap">
+          <button
+            onClick={() => setUnacknowledgedOnly((v) => !v)}
+            className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-sm border text-[11px] font-medium transition-colors ${
+              unacknowledgedOnly
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border bg-transparent text-muted-foreground hover:text-foreground hover:border-border/80"
+            }`}
+            title={unacknowledgedOnly ? "Showing unacknowledged only — click to show all" : "Click to show only unacknowledged"}
+          >
+            <Filter className="h-3 w-3" />
+            {unacknowledgedOnly ? "Unacknowledged only" : "All"}
+          </button>
+
+          <div className="flex items-center gap-1 rounded-sm border border-border bg-muted/30 px-2 py-1">
+            <CalendarRange className="h-3 w-3 text-muted-foreground shrink-0" />
+            <label className="text-[11px] text-muted-foreground select-none" htmlFor="alert-date-start">
+              From
+            </label>
+            <input
+              id="alert-date-start"
+              type="date"
+              value={startInput}
+              max={endInput || undefined}
+              onChange={(e) => setStartInput(e.target.value)}
+              className="text-[11px] bg-transparent border-none outline-none text-foreground cursor-pointer tabular-nums h-5 w-[110px]"
+            />
+            <span className="text-[11px] text-muted-foreground mx-0.5">–</span>
+            <label className="sr-only" htmlFor="alert-date-end">
+              To
+            </label>
+            <input
+              id="alert-date-end"
+              type="date"
+              value={endInput}
+              min={startInput || undefined}
+              onChange={(e) => setEndInput(e.target.value)}
+              className="text-[11px] bg-transparent border-none outline-none text-foreground cursor-pointer tabular-nums h-5 w-[110px]"
+            />
+            {isFiltered && (
+              <button
+                onClick={clearFilter}
+                className="ml-1 flex items-center justify-center h-4 w-4 rounded-sm hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Clear date filter"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
           </div>
-        )}
+
+          {!isLoading && entries !== undefined && (
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+              {total === 0
+                ? "No alerts on record"
+                : isFiltered
+                  ? `${shown} of ${total} notification${total === 1 ? "" : "s"}`
+                  : `${total} notification${total === 1 ? "" : "s"}`}
+            </span>
+          )}
+
+          {!isLoading && filteredEntries && filteredEntries.length > 0 && (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+                onClick={handleExport}
+                disabled={csvDisabled}
+              >
+                <Download className="h-3.5 w-3.5 mr-1.5" />
+                Export CSV
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+                onClick={handleCopy}
+                disabled={csvDisabled}
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
+                    <span className="text-green-500">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Clipboard className="h-3.5 w-3.5 mr-1.5" />
+                    Copy
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
@@ -186,6 +267,17 @@ export function BudgetAlertHistory({ appId }: Props) {
             </>
           )}
         </div>
+      ) : filteredEntries && filteredEntries.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
+          <CalendarRange className="h-6 w-6 opacity-40" />
+          <p className="text-sm">No alerts in this date range.</p>
+          <button
+            onClick={clearFilter}
+            className="text-[12px] text-primary hover:underline"
+          >
+            Clear filter to see all {total} notification{total === 1 ? "" : "s"}
+          </button>
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <Table className="text-[13px]">
@@ -204,7 +296,7 @@ export function BudgetAlertHistory({ appId }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries.map((entry) => {
+              {filteredEntries!.map((entry) => {
                 const isAcked = !!entry.acknowledgedAt;
                 return (
                   <TableRow
