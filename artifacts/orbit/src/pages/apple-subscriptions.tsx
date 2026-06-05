@@ -6,11 +6,11 @@ import { TrendingDown, TrendingUp, ExternalLink, Clock, AlertTriangle } from "lu
 import { PageHeader } from "@/components/page-header";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
-import { Button } from "@/components/ui/button";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { format } from "date-fns";
+import { StaleCacheBanner } from "@/components/stale-cache-banner";
 
 const num = (n: number) => new Intl.NumberFormat("en-US").format(n);
 const usd = (n: number) =>
@@ -18,11 +18,11 @@ const usd = (n: number) =>
 
 export default function AppleSubscriptions() {
   const { toast } = useToast();
-  const { scope, isGlobal } = useScope();
+  const { scope } = useScope();
   const { data, isLoading, dataUpdatedAt } = useListAppleSubscriptions();
 
   const rows = useMemo(() => data ?? [], [data]);
-  const scoped = isGlobal ? rows : rows.filter((r) => r.appId === scope);
+  const scoped = rows.filter((r) => r.appId === scope);
 
   const totals = scoped.reduce(
     (acc, r) => ({
@@ -189,24 +189,6 @@ function AppleBanner({ placeholder, dataUpdatedAt }: { placeholder: boolean; dat
       >
         Open App Store Connect <ExternalLink className="h-3 w-3" />
       </a>
-    </div>
-  );
-}
-
-function StaleCacheBanner({ dataAsOf }: { dataAsOf?: string | null }) {
-  if (!dataAsOf) return null;
-  const ageMs = Date.now() - new Date(dataAsOf).getTime();
-  if (ageMs < 4 * 60 * 60 * 1000) return null;
-  let asOf = dataAsOf;
-  try { asOf = format(new Date(dataAsOf), "MMM d, h:mm a bbb"); } catch { /* noop */ }
-  return (
-    <div className="flex items-start gap-2 rounded-sm border border-orange-300 bg-orange-50 dark:border-orange-700 dark:bg-orange-950/40 px-3 py-2 text-[12px] text-orange-800 dark:text-orange-300">
-      <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-      <span>
-        <span className="font-semibold">Cached data —</span> App Store subscriber figures were last fetched on{" "}
-        <span className="font-medium">{asOf}</span>. The live App Store Connect feed may be unavailable.
-        Figures shown may not reflect the current state.
-      </span>
     </div>
   );
 }

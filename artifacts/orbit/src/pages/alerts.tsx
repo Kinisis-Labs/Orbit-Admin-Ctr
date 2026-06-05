@@ -1,16 +1,13 @@
 import { useState } from "react";
 import {
-  useListGlobalAlerts,
   useGetAppAlerts,
   useListApps,
-  getListGlobalAlertsQueryKey,
   getGetAppAlertsQueryKey,
 } from "@workspace/api-client-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { Link } from "wouter";
 import { Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,36 +35,26 @@ type AlertRow = {
 
 export default function Alerts() {
   const { toast } = useToast();
-  const { scope, isGlobal } = useScope();
+  const { scope } = useScope();
   const [filter, setFilter] = useState("");
   const { mode } = useAuth();
 
   const { data: apps } = useListApps();
   const selectedApp = apps?.find((a) => a.id === scope);
 
-  const globalQueryKey = getListGlobalAlertsQueryKey();
   const appQueryKey = getGetAppAlertsQueryKey(scope);
 
-  const { data: globalAlerts, isLoading: globalLoading, isFetching: globalFetching } = useListGlobalAlerts(undefined, {
-    query: { enabled: isGlobal, queryKey: globalQueryKey },
-  });
-  const { data: appAlerts, isLoading: appLoading, isFetching: appFetching } = useGetAppAlerts(scope, undefined, {
-    query: { enabled: !isGlobal, queryKey: appQueryKey },
+  const { data: appAlerts, isLoading, isFetching } = useGetAppAlerts(scope, undefined, {
+    query: { enabled: !!scope, queryKey: appQueryKey },
   });
 
-  const globalRefresh = useForceRefresh("/api/global/alerts", globalQueryKey);
-  const appRefresh = useForceRefresh(`/api/apps/${scope}/alerts`, appQueryKey);
-  const { isRefreshing, isCoolingDown, forceRefresh } = isGlobal ? globalRefresh : appRefresh;
+  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${scope}/alerts`, appQueryKey);
 
-  const isLoading = isGlobal ? globalLoading : appLoading;
-  const isFetching = isGlobal ? globalFetching : appFetching;
-  const rows: AlertRow[] | undefined = isGlobal
-    ? globalAlerts
-    : appAlerts?.map((a) => ({
-        ...a,
-        appId: scope,
-        appName: selectedApp?.name ?? scope,
-      }));
+  const rows: AlertRow[] | undefined = appAlerts?.map((a) => ({
+    ...a,
+    appId: scope,
+    appName: selectedApp?.name ?? scope,
+  }));
 
   const filteredAlerts = rows?.filter(
     (a) =>
@@ -75,19 +62,14 @@ export default function Alerts() {
       a.appName.toLowerCase().includes(filter.toLowerCase()),
   );
 
-  const csvHeaders = isGlobal
-    ? ["Fired At", "Severity", "Target Resource", "Alert Rule / Title", "Signal Type", "State"]
-    : ["Fired At", "Severity", "Alert Rule / Title", "Signal Type", "State"];
-  const csvRows = filteredAlerts?.map((a) => {
-    const base = [
-      format(new Date(a.firedAt), "MM/dd/yyyy HH:mm"),
-      a.severity,
-      a.title,
-      a.source,
-      a.status,
-    ];
-    return isGlobal ? [base[0], base[1], a.appName, base[2], base[3], base[4]] : base;
-  });
+  const csvHeaders = ["Fired At", "Severity", "Alert Rule / Title", "Signal Type", "State"];
+  const csvRows = filteredAlerts?.map((a) => [
+    format(new Date(a.firedAt), "MM/dd/yyyy HH:mm"),
+    a.severity,
+    a.title,
+    a.source,
+    a.status,
+  ]);
   const { copied, disabled: csvDisabled, handleExport, handleCopy } = useCsvExport(
     csvRows ?? null,
     csvHeaders,
@@ -100,12 +82,10 @@ export default function Alerts() {
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold text-foreground tracking-tight">
-            {isGlobal ? "Global Alerts" : `Alerts — ${selectedApp?.name ?? ""}`}
+            {`Alerts — ${selectedApp?.name ?? ""}`}
           </h1>
           <p className="text-[12px] text-muted-foreground mt-0.5">
-            {isGlobal
-              ? "Alerts across all monitored applications"
-              : `Scoped to ${selectedApp?.name ?? "application"}`}
+            {`Scoped to ${selectedApp?.name ?? "application"}`}
           </p>
         </div>
         <ScopeSelect />
@@ -161,9 +141,6 @@ export default function Alerts() {
               <TableRow className="hover:bg-transparent">
                 <TableHead className="h-8 font-semibold text-foreground w-[120px]">Fired At</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground w-[100px]">Severity</TableHead>
-                {isGlobal && (
-                  <TableHead className="h-8 font-semibold text-foreground">Target Resource</TableHead>
-                )}
                 <TableHead className="h-8 font-semibold text-foreground w-1/3">Alert Rule / Title</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground">Signal Type</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground">State</TableHead>
@@ -175,7 +152,6 @@ export default function Alerts() {
                   <TableRow key={i} className="h-8 border-b border-border/50">
                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    {isGlobal && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
                     <TableCell><Skeleton className="h-4 w-48" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-16" /></TableCell>
@@ -183,7 +159,7 @@ export default function Alerts() {
                 ))
               ) : filteredAlerts?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isGlobal ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     No matching alerts found.
                   </TableCell>
                 </TableRow>
@@ -196,13 +172,6 @@ export default function Alerts() {
                     <TableCell className="py-1">
                       <StatusBadge status={alert.severity} />
                     </TableCell>
-                    {isGlobal && (
-                      <TableCell className="py-1 font-medium">
-                        <Link href={`/apps/${alert.appId}`} className="hover:underline text-primary">
-                          {alert.appName}
-                        </Link>
-                      </TableCell>
-                    )}
                     <TableCell className="py-1">{alert.title}</TableCell>
                     <TableCell className="py-1 text-muted-foreground">{alert.source}</TableCell>
                     <TableCell className="py-1">
@@ -215,8 +184,8 @@ export default function Alerts() {
           </Table>
         </div>
       </div>
-      <InfraAlertHistory appId={isGlobal ? undefined : scope} />
-      <AlertConfigTable appId={isGlobal ? undefined : scope} />
+      <InfraAlertHistory appId={scope} />
+      <AlertConfigTable appId={scope} />
     </div>
   );
 }

@@ -27,14 +27,14 @@ function categoryTone(category: string): "info" | "warn" | "ok" | "muted" | "bad
 }
 
 export default function ActivityLog() {
-  const { scope, isGlobal } = useScope();
+  const { scope } = useScope();
   const { data: apps, isLoading: appsLoading } = useListApps();
   const [filter, setFilter] = useState("");
 
   const appsToQuery = useMemo(() => {
     if (!apps) return [];
-    return isGlobal ? apps : apps.filter((a) => a.id === scope);
-  }, [apps, isGlobal, scope]);
+    return apps.filter((a) => a.id === scope);
+  }, [apps, scope]);
 
   const activityQueries = useQueries({
     queries: appsToQuery.map((app) => ({
@@ -68,11 +68,13 @@ export default function ActivityLog() {
     );
   }, [entries, filter]);
 
+  const selectedApp = apps?.find((a) => a.id === scope);
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Activity log"
-        subtitle="Audit trail of operator and automation actions across all subscriptions"
+        subtitle={selectedApp ? `Audit trail of operator and automation actions for ${selectedApp.name}` : "Audit trail of operator and automation actions"}
         right={<ScopeSelect />}
       />
 

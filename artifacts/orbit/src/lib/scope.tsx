@@ -3,20 +3,19 @@ import { useListApps } from "@workspace/api-client-react";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { GLOBAL_SCOPE, ScopeContext, useScope } from "./scope-context";
+import { ScopeContext, useScope } from "./scope-context";
 
 const STORAGE_KEY = "orbit-scope";
+const DEFAULT_SCOPE = "grailbabe";
 
 export function ScopeProvider({ children }: { children: React.ReactNode }) {
   const [scope, setScopeState] = useState<string>(() => {
-    if (typeof window === "undefined") return GLOBAL_SCOPE;
-    return window.localStorage.getItem(STORAGE_KEY) ?? GLOBAL_SCOPE;
+    if (typeof window === "undefined") return DEFAULT_SCOPE;
+    return window.localStorage.getItem(STORAGE_KEY) ?? DEFAULT_SCOPE;
   });
 
   const setScope = useCallback((v: string) => {
@@ -37,7 +36,7 @@ export function ScopeProvider({ children }: { children: React.ReactNode }) {
   }, [scope]);
 
   const value = useMemo(
-    () => ({ scope, setScope, isGlobal: scope === GLOBAL_SCOPE }),
+    () => ({ scope, setScope }),
     [scope, setScope],
   );
 
@@ -48,33 +47,19 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
   const { scope, setScope } = useScope();
   const { data: apps } = useListApps();
 
-  // If persisted scope refers to an app that no longer exists, fall back to Global.
+  // If persisted scope refers to an app that no longer exists, fall back to
+  // the first app in the list (or the default).
   useEffect(() => {
-    if (!apps || scope === GLOBAL_SCOPE) return;
-    if (!apps.some((a) => a.id === scope)) setScope(GLOBAL_SCOPE);
+    if (!apps || apps.length === 0) return;
+    if (!apps.some((a) => a.id === scope)) {
+      setScope(apps[0].id ?? DEFAULT_SCOPE);
+    }
   }, [apps, scope, setScope]);
 
-  const selectedApp = scope !== GLOBAL_SCOPE ? (apps ?? []).find((a) => a.id === scope) : undefined;
+  const selectedApp = (apps ?? []).find((a) => a.id === scope);
 
-  // Apps without a group render as top-level entries; grouped apps render
-  // under a labelled section (e.g. "Platform").
   const collator = new Intl.Collator(undefined, { sensitivity: "base" });
-  const ungrouped = (apps ?? [])
-    .filter((a) => !a.group)
-    .sort((a, b) => collator.compare(a.name, b.name));
-  const groups = new Map<string, NonNullable<typeof apps>>();
-  for (const a of apps ?? []) {
-    if (!a.group) continue;
-    const arr = groups.get(a.group) ?? [];
-    arr.push(a);
-    groups.set(a.group, arr);
-  }
-  const sortedGroups = [...groups.entries()]
-    .sort(([a], [b]) => collator.compare(a, b))
-    .map(([label, items]) => [
-      label,
-      [...items].sort((a, b) => collator.compare(a.name, b.name)),
-    ] as const);
+  const sortedApps = [...(apps ?? [])].sort((a, b) => collator.compare(a.name, b.name));
 
   return (
     <div className="flex items-center gap-2">
@@ -98,27 +83,13 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
           )}
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={GLOBAL_SCOPE}>Global — All Applications</SelectItem>
-          {ungrouped.map((a) => (
+          {sortedApps.map((a) => (
             <SelectItem key={a.id} value={a.id}>
               <span className="flex items-center gap-2 min-w-0">
                 <span className="truncate">{a.name}</span>
                 <span className="shrink-0 text-[11px] text-muted-foreground">{a.environment}</span>
               </span>
             </SelectItem>
-          ))}
-          {sortedGroups.map(([label, items]) => (
-            <SelectGroup key={label}>
-              <SelectLabel>{label}</SelectLabel>
-              {items.map((a) => (
-                <SelectItem key={a.id} value={a.id}>
-                  <span className="flex items-center gap-2 min-w-0">
-                    <span className="truncate">{a.name}</span>
-                    <span className="shrink-0 text-[11px] text-muted-foreground">{a.environment}</span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectGroup>
           ))}
         </SelectContent>
       </Select>

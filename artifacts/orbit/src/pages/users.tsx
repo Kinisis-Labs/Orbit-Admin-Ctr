@@ -10,11 +10,11 @@ import { useScope } from "@/lib/scope-context";
 const fmt = (n: number) => new Intl.NumberFormat("en-US").format(n);
 
 export default function Users() {
-  const { scope, isGlobal } = useScope();
+  const { scope } = useScope();
   const { data, isLoading } = useListUserActivity();
 
   const activity = useMemo(() => data ?? [], [data]);
-  const scopedActivity = isGlobal ? activity : activity.filter((a) => a.appId === scope);
+  const scopedActivity = activity.filter((a) => a.appId === scope);
 
   const totals = scopedActivity.reduce(
     (acc, r) => ({

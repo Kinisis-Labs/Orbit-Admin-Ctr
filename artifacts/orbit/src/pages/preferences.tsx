@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
-import { GLOBAL_SCOPE, useScope } from "@/lib/scope-context";
+import { useScope } from "@/lib/scope-context";
 import {
   DEFAULT_SPEND_THRESHOLD,
   getSpendThreshold,
@@ -119,7 +119,7 @@ export default function Preferences() {
   };
 
   const reset = () => {
-    setTheme("dark"); setDensity("comfortable"); setScope(GLOBAL_SCOPE);
+    setTheme("dark"); setDensity("comfortable"); setScope("grailbabe");
     localStorage.removeItem("orbit-nav-collapsed");
     clearSpendThresholds();
     clearBudgetThresholds();
@@ -165,7 +165,6 @@ export default function Preferences() {
         <Select value={scope} onValueChange={setScope}>
           <SelectTrigger className="h-8 w-[260px] rounded-sm text-[13px]"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value={GLOBAL_SCOPE}>Global — All Applications</SelectItem>
             {apps?.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
           </SelectContent>
         </Select>

@@ -6,11 +6,10 @@ import { TrendingDown, TrendingUp, ExternalLink } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
-import { Button } from "@/components/ui/button";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
 import { CsvToolbar } from "@/components/csv-toolbar";
-import { StaleCacheBanner, STALE_CACHE_MS } from "@/components/stale-cache-banner";
+import { StaleCacheBanner } from "@/components/stale-cache-banner";
 
 const num = (n: number) => new Intl.NumberFormat("en-US").format(n);
 const usd = (n: number) =>
@@ -18,11 +17,11 @@ const usd = (n: number) =>
 
 export default function PlaySubscriptions() {
   const { toast } = useToast();
-  const { scope, isGlobal } = useScope();
+  const { scope } = useScope();
   const { data, isLoading } = useListPlaySubscriptions();
 
   const rows = useMemo(() => data ?? [], [data]);
-  const scoped = isGlobal ? rows : rows.filter((r) => r.appId === scope);
+  const scoped = rows.filter((r) => r.appId === scope);
 
   const totals = scoped.reduce(
     (acc, r) => ({
@@ -39,7 +38,6 @@ export default function PlaySubscriptions() {
   const staleCachedRow = useMemo(() => {
     const cached = scoped.filter((r) => r.dataSource === "cached" && !!r.dataAsOf);
     if (cached.length === 0) return null;
-    // Pick the row with the oldest dataAsOf to surface the worst-case staleness.
     return cached.reduce((oldest, r) =>
       new Date(r.dataAsOf!).getTime() < new Date(oldest.dataAsOf!).getTime() ? r : oldest,
     );

@@ -83,28 +83,6 @@ export const APPS: AppRecord[] = [
     memoryThreshold: 80,
   },
   {
-    id: "orbit",
-    name: "Orbit",
-    environment: "prod",
-    region: "eastus2",
-    resourceGroup: "rg-orbit-prod-eus2",
-    status: "healthy",
-    activeAlerts: 0,
-    monthToDateCost: 0,
-    subscriptionId: process.env.AZURE_SUB_ORBIT ?? "b203-internal-tools",
-    description: "The Kinisis admin center — Azure operations dashboard.",
-    tags: {
-      workload: "Orbit",
-      environment: "prod",
-      owner: "Ryan Gutridge",
-      "cost-center": "CC-Orbit",
-      criticality: "high",
-    },
-    owners: ["Ryan Gutridge"],
-    userAuth: "entra",
-    appRepo: "Orbit-Admin-Ctr",
-  },
-  {
     id: "kinisis-labs",
     name: "Kinisis Labs",
     environment: "prod",
@@ -134,8 +112,7 @@ export const APPS: AppRecord[] = [
 // ---------------------------------------------------------------------------
 const APP_BILLING_SCOPE: Record<string, "rg" | "subscription"> = {
   grailbabe: "subscription", // mg-GrailBabeProd — dedicated subscription 01390551
-  orbit: "rg",               // shares sub-sharedplatf 893689ff with Kinisis Labs
-  "kinisis-labs": "rg",      // shares sub-sharedplatf 893689ff with Orbit
+  "kinisis-labs": "rg",      // shares sub-sharedplatf 893689ff with platform subscription
 };
 
 function billingScope(appId: string): "rg" | "subscription" {

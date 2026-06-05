@@ -22,14 +22,16 @@ const STATUS_TONE: Record<DeploymentStatus, "ok" | "warn" | "bad" | "info"> = {
 };
 
 export default function Deployments() {
-  const { scope, isGlobal } = useScope();
+  const { scope } = useScope();
   const { data: apps, isLoading: appsLoading } = useListApps();
   const [filter, setFilter] = useState("");
 
+  const selectedApp = apps?.find((a) => a.id === scope);
+
   const appsToQuery = useMemo(() => {
     if (!apps) return [];
-    return isGlobal ? apps : apps.filter((a) => a.id === scope);
-  }, [apps, isGlobal, scope]);
+    return apps.filter((a) => a.id === scope);
+  }, [apps, scope]);
 
   const deploymentQueries = useQueries({
     queries: appsToQuery.map((app) => ({
@@ -69,7 +71,7 @@ export default function Deployments() {
     <div className="space-y-4">
       <PageHeader
         title="Deployments"
-        subtitle={isGlobal ? "Release activity across all applications" : `Scoped to selected application`}
+        subtitle={selectedApp ? `Release activity for ${selectedApp.name}` : "Release activity"}
         right={<ScopeSelect />}
       />
 
