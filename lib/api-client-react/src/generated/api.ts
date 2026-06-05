@@ -27,7 +27,7 @@ import type {
   AppDetail,
   AppSummary,
   AppThresholds,
-  AppThresholdsLogEntry,
+  AppThresholdsLogPage,
   AppleSubscriptionRow,
   BudgetAlertLogEntry,
   CostReport,
@@ -50,6 +50,7 @@ import type {
   LedgerReconciliation,
   LedgerReport,
   ListAppThresholdsLog403,
+  ListAppThresholdsLogParams,
   ListBudgetAlertLogParams,
   ListGlobalAlertsParams,
   ListInfraAlertLogParams,
@@ -454,20 +455,29 @@ export const useUpdateAppThresholds = <TError = ErrorType<UpdateAppThresholds403
       return useMutation(getUpdateAppThresholdsMutationOptions(options));
     }
 
-export const getListAppThresholdsLogUrl = (appId: string,) => {
+export const getListAppThresholdsLogUrl = (appId: string,
+    params?: ListAppThresholdsLogParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/apps/${appId}/thresholds/log`
+  return stringifiedParams.length > 0 ? `/api/apps/${appId}/thresholds/log?${stringifiedParams}` : `/api/apps/${appId}/thresholds/log`
 }
 
 /**
  * @summary Audit history of threshold changes for an app. Requires Orbit-Admins or Orbit-Engineers.
  */
-export const listAppThresholdsLog = async (appId: string, options?: RequestInit): Promise<AppThresholdsLogEntry[]> => {
+export const listAppThresholdsLog = async (appId: string,
+    params?: ListAppThresholdsLogParams, options?: RequestInit): Promise<AppThresholdsLogPage> => {
 
-  return customFetch<AppThresholdsLogEntry[]>(getListAppThresholdsLogUrl(appId),
+  return customFetch<AppThresholdsLogPage>(getListAppThresholdsLogUrl(appId,params),
   {
     ...options,
     method: 'GET'
@@ -480,23 +490,25 @@ export const listAppThresholdsLog = async (appId: string, options?: RequestInit)
 
 
 
-export const getListAppThresholdsLogQueryKey = (appId: string,) => {
+export const getListAppThresholdsLogQueryKey = (appId: string,
+    params?: ListAppThresholdsLogParams,) => {
     return [
-    `/api/apps/${appId}/thresholds/log`
+    `/api/apps/${appId}/thresholds/log`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListAppThresholdsLogQueryOptions = <TData = Awaited<ReturnType<typeof listAppThresholdsLog>>, TError = ErrorType<ListAppThresholdsLog403 | void>>(appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAppThresholdsLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListAppThresholdsLogQueryOptions = <TData = Awaited<ReturnType<typeof listAppThresholdsLog>>, TError = ErrorType<ListAppThresholdsLog403 | void>>(appId: string,
+    params?: ListAppThresholdsLogParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAppThresholdsLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListAppThresholdsLogQueryKey(appId);
+  const queryKey =  queryOptions?.queryKey ?? getListAppThresholdsLogQueryKey(appId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAppThresholdsLog>>> = ({ signal }) => listAppThresholdsLog(appId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAppThresholdsLog>>> = ({ signal }) => listAppThresholdsLog(appId,params, { signal, ...requestOptions });
 
 
 
@@ -514,11 +526,12 @@ export type ListAppThresholdsLogQueryError = ErrorType<ListAppThresholdsLog403 |
  */
 
 export function useListAppThresholdsLog<TData = Awaited<ReturnType<typeof listAppThresholdsLog>>, TError = ErrorType<ListAppThresholdsLog403 | void>>(
- appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAppThresholdsLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ appId: string,
+    params?: ListAppThresholdsLogParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAppThresholdsLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListAppThresholdsLogQueryOptions(appId,options)
+  const queryOptions = getListAppThresholdsLogQueryOptions(appId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

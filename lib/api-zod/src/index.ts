@@ -15,4 +15,5 @@ export {
   UpdateAlertConfigParams,
   UpdateAlertConfigBody,
   UpdateAppThresholdsBody,
+  ListAppThresholdsLogParams,
 } from "./generated/api";

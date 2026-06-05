@@ -1022,6 +1022,12 @@ export interface AlertThresholdConfigLogEntry {
   changedAt: string;
 }
 
+export interface AppThresholdsLogPage {
+  items: AppThresholdsLogEntry[];
+  /** Total number of history entries for this app (used for pagination) */
+  total: number;
+}
+
 export interface InfraAlertLogEntry {
   id: number;
   appId: string;
@@ -1048,6 +1054,20 @@ export type RefreshParameter = boolean;
 export type UpdateAppThresholds403 = {
   error?: string;
   requiredGroup?: string;
+};
+
+export type ListAppThresholdsLogParams = {
+/**
+ * Maximum number of entries to return (default 50).
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: number;
+/**
+ * Number of entries to skip for pagination (default 0).
+ * @minimum 0
+ */
+offset?: number;
 };
 
 export type ListAppThresholdsLog403 = {

@@ -135,7 +135,21 @@ export const ListAppThresholdsLogParams = zod.object({
   "appId": zod.coerce.string()
 })
 
-export const ListAppThresholdsLogResponseItem = zod.object({
+export const listAppThresholdsLogQueryLimitDefault = 50;
+export const listAppThresholdsLogQueryLimitMax = 200;
+
+export const listAppThresholdsLogQueryOffsetDefault = 0;
+export const listAppThresholdsLogQueryOffsetMin = 0;
+
+
+
+export const ListAppThresholdsLogQueryParams = zod.object({
+  "limit": zod.coerce.number().min(1).max(listAppThresholdsLogQueryLimitMax).default(listAppThresholdsLogQueryLimitDefault).describe('Maximum number of entries to return (default 50).'),
+  "offset": zod.coerce.number().min(listAppThresholdsLogQueryOffsetMin).default(listAppThresholdsLogQueryOffsetDefault).describe('Number of entries to skip for pagination (default 0).')
+})
+
+export const ListAppThresholdsLogResponse = zod.object({
+  "items": zod.array(zod.object({
   "id": zod.number(),
   "appId": zod.string(),
   "oldCpuThreshold": zod.number().nullish().describe('CPU threshold before this change (null for the first-ever set)'),
@@ -144,8 +158,9 @@ export const ListAppThresholdsLogResponseItem = zod.object({
   "newMemoryThreshold": zod.number().describe('Memory threshold set by this change'),
   "changedBy": zod.string().describe('UPN \/ identifier of the operator who made the change'),
   "changedAt": zod.string().datetime({"offset":true}).describe('When the change was recorded')
+})),
+  "total": zod.number().describe('Total number of history entries for this app (used for pagination)')
 })
-export const ListAppThresholdsLogResponse = zod.array(ListAppThresholdsLogResponseItem)
 
 
 export const GetInfrastructureParams = zod.object({

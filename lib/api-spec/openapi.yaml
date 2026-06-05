@@ -113,14 +113,22 @@ paths:
       summary: Audit history of threshold changes for an app. Requires Orbit-Admins or Orbit-Engineers.
       parameters:
         - $ref: "#/components/parameters/AppId"
+        - name: limit
+          in: query
+          description: Maximum number of entries to return (default 50).
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - name: offset
+          in: query
+          description: Number of entries to skip for pagination (default 0).
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
       responses:
         "200":
           description: OK
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/AppThresholdsLogEntry" }
+              schema: { $ref: "#/components/schemas/AppThresholdsLogPage" }
         "403":
           description: Forbidden — requires Orbit-Admins or Orbit-Engineers
           content:
@@ -1432,6 +1440,16 @@ components:
           type: string
           format: date-time
           description: When the change was recorded
+    AppThresholdsLogPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AppThresholdsLogEntry" }
+        total:
+          type: integer
+          description: Total number of history entries for this app (used for pagination)
     InfraAlertLogEntry:
       type: object
       required: [id, appId, appName, metric, value, threshold, channels, sentAt]

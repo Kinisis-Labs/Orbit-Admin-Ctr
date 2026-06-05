@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { Link } from "wouter";
 import {
   useListSlos,
@@ -8,6 +8,7 @@ import {
   useListAppThresholdsLog,
   getListSlosQueryKey,
 } from "@workspace/api-client-react";
+import type { AppThresholdsLogEntry } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
@@ -198,14 +199,38 @@ const ENGINEER_GROUP = {
   description: "Operational actions on Kinisis applications.",
 };
 
+const HISTORY_PAGE_SIZE = 50;
+
 // Inner content — only mounts when the dialog is open, so the query fires lazily
 function ThresholdHistoryContent({ appId }: { appId: string }) {
-  const { data, isLoading } = useListAppThresholdsLog(appId);
+  const [offset, setOffset] = useState(0);
+  const [allItems, setAllItems] = useState<AppThresholdsLogEntry[]>([]);
+
+  const { data, isLoading, isFetching } = useListAppThresholdsLog(
+    appId,
+    { limit: HISTORY_PAGE_SIZE, offset },
+  );
+
+  useEffect(() => {
+    if (!data?.items) return;
+    setAllItems((prev) =>
+      offset === 0 ? data.items : [...prev, ...data.items],
+    );
+  }, [data, offset]);
+
+  // Reset when appId changes
+  useEffect(() => {
+    setOffset(0);
+    setAllItems([]);
+  }, [appId]);
+
+  const total = data?.total ?? 0;
+  const hasMore = allItems.length < total;
 
   const fmt = (v: number | null | undefined) =>
     v != null ? `${v}%` : <span className="text-muted-foreground italic">—</span>;
 
-  if (isLoading) {
+  if (isLoading && allItems.length === 0) {
     return (
       <div className="space-y-2 p-2">
         <Skeleton className="h-7 w-full" />
@@ -214,7 +239,7 @@ function ThresholdHistoryContent({ appId }: { appId: string }) {
       </div>
     );
   }
-  if (!data || data.length === 0) {
+  if (allItems.length === 0) {
     return (
       <p className="text-[13px] text-muted-foreground px-2 py-6 text-center">
         No threshold changes recorded yet.
@@ -222,34 +247,59 @@ function ThresholdHistoryContent({ appId }: { appId: string }) {
     );
   }
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="text-[12px] py-2">When</TableHead>
-          <TableHead className="text-[12px] py-2">Changed by</TableHead>
-          <TableHead className="text-[12px] py-2 text-right">CPU before</TableHead>
-          <TableHead className="text-[12px] py-2 text-right">CPU after</TableHead>
-          <TableHead className="text-[12px] py-2 text-right">Mem before</TableHead>
-          <TableHead className="text-[12px] py-2 text-right">Mem after</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {data.map((entry) => (
-          <TableRow key={entry.id}>
-            <TableCell className="text-[12px] py-1.5 whitespace-nowrap">
-              {format(new Date(entry.changedAt), "MMM d, yyyy HH:mm")}
-            </TableCell>
-            <TableCell className="text-[12px] py-1.5 max-w-[160px] truncate" title={entry.changedBy}>
-              {entry.changedBy}
-            </TableCell>
-            <TableCell className="text-[12px] py-1.5 text-right">{fmt(entry.oldCpuThreshold)}</TableCell>
-            <TableCell className="text-[12px] py-1.5 text-right font-medium">{fmt(entry.newCpuThreshold)}</TableCell>
-            <TableCell className="text-[12px] py-1.5 text-right">{fmt(entry.oldMemoryThreshold)}</TableCell>
-            <TableCell className="text-[12px] py-1.5 text-right font-medium">{fmt(entry.newMemoryThreshold)}</TableCell>
+    <div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="text-[12px] py-2">When</TableHead>
+            <TableHead className="text-[12px] py-2">Changed by</TableHead>
+            <TableHead className="text-[12px] py-2 text-right">CPU before</TableHead>
+            <TableHead className="text-[12px] py-2 text-right">CPU after</TableHead>
+            <TableHead className="text-[12px] py-2 text-right">Mem before</TableHead>
+            <TableHead className="text-[12px] py-2 text-right">Mem after</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {allItems.map((entry) => (
+            <TableRow key={entry.id}>
+              <TableCell className="text-[12px] py-1.5 whitespace-nowrap">
+                {format(new Date(entry.changedAt), "MMM d, yyyy HH:mm")}
+              </TableCell>
+              <TableCell className="text-[12px] py-1.5 max-w-[160px] truncate" title={entry.changedBy}>
+                {entry.changedBy}
+              </TableCell>
+              <TableCell className="text-[12px] py-1.5 text-right">{fmt(entry.oldCpuThreshold)}</TableCell>
+              <TableCell className="text-[12px] py-1.5 text-right font-medium">{fmt(entry.newCpuThreshold)}</TableCell>
+              <TableCell className="text-[12px] py-1.5 text-right">{fmt(entry.oldMemoryThreshold)}</TableCell>
+              <TableCell className="text-[12px] py-1.5 text-right font-medium">{fmt(entry.newMemoryThreshold)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {hasMore && (
+        <div className="flex items-center justify-between px-2 py-2 border-t text-[12px] text-muted-foreground">
+          <span>Showing {allItems.length} of {total}</span>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-[12px] px-2"
+            disabled={isFetching}
+            onClick={() => setOffset((prev) => prev + HISTORY_PAGE_SIZE)}
+          >
+            {isFetching ? (
+              <><Loader2 className="h-3 w-3 animate-spin mr-1" />Loading…</>
+            ) : (
+              "Load more"
+            )}
+          </Button>
+        </div>
+      )}
+      {!hasMore && total > HISTORY_PAGE_SIZE && (
+        <p className="px-2 py-2 border-t text-[12px] text-muted-foreground text-center">
+          All {total} entries shown
+        </p>
+      )}
+    </div>
   );
 }
 

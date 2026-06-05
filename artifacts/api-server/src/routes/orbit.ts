@@ -21,7 +21,7 @@ import {
   ListAppThresholdsLogResponse,
 } from "@workspace/api-zod";
 import { db, appThresholdsTable, appThresholdsLogTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { requireEngineerOrAdmin } from "../middlewares/auth.js";
 import { fetchResourcesByResourceGroup, fetchResourceGroupTags } from "../lib/azureResources.js";
 import { fetchMonthToDateCost, fetchMonthToDateCostWithFallback } from "../lib/azureCost.js";
@@ -435,14 +435,29 @@ router.get("/apps/:appId/thresholds/log", requireEngineerOrAdmin, async (req, re
     res.status(404).json({ error: "App not found" });
     return;
   }
-  const rows = await db
-    .select()
-    .from(appThresholdsLogTable)
-    .where(eq(appThresholdsLogTable.appId, app.id))
-    .orderBy(desc(appThresholdsLogTable.changedAt));
+  const rawLimit = parseInt((req.query["limit"] as string | undefined) ?? "50", 10);
+  const rawOffset = parseInt((req.query["offset"] as string | undefined) ?? "0", 10);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 50;
+  const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+
+  const [rows, countRows] = await Promise.all([
+    db
+      .select()
+      .from(appThresholdsLogTable)
+      .where(eq(appThresholdsLogTable.appId, app.id))
+      .orderBy(desc(appThresholdsLogTable.changedAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(appThresholdsLogTable)
+      .where(eq(appThresholdsLogTable.appId, app.id)),
+  ]);
+
+  const total = countRows[0]?.count ?? 0;
   res.json(
-    ListAppThresholdsLogResponse.parse(
-      rows.map((r) => ({
+    ListAppThresholdsLogResponse.parse({
+      items: rows.map((r) => ({
         id: r.id,
         appId: r.appId,
         oldCpuThreshold: r.oldCpuThreshold !== null ? parseFloat(r.oldCpuThreshold) : null,
@@ -452,7 +467,8 @@ router.get("/apps/:appId/thresholds/log", requireEngineerOrAdmin, async (req, re
         changedBy: r.changedBy,
         changedAt: r.changedAt.toISOString(),
       })),
-    ),
+      total,
+    }),
   );
 });
 
