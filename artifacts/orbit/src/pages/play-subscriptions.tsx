@@ -2,20 +2,17 @@ import { useMemo } from "react";
 import { useListPlaySubscriptions } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingDown, TrendingUp, ExternalLink, Download, Clipboard, Check, WifiOff } from "lucide-react";
+import { TrendingDown, TrendingUp, ExternalLink, Download, Clipboard, Check } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { Button } from "@/components/ui/button";
 import { useCsvExport } from "@/hooks/use-csv-export";
-import { format } from "date-fns";
+import { StaleCacheBanner, STALE_CACHE_MS } from "@/components/stale-cache-banner";
 
 const num = (n: number) => new Intl.NumberFormat("en-US").format(n);
 const usd = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
-
-const STALE_CACHE_HOURS = 4;
-const STALE_CACHE_MS = STALE_CACHE_HOURS * 60 * 60 * 1000;
 
 export default function PlaySubscriptions() {
   const { scope, isGlobal } = useScope();
@@ -71,7 +68,11 @@ export default function PlaySubscriptions() {
       />
 
       <PlayBanner placeholder={isPlaceholder} />
-      <StaleCacheBanner dataAsOf={staleCachedRow?.dataAsOf} />
+      <StaleCacheBanner
+        dataAsOf={staleCachedRow?.dataAsOf}
+        label="Google Play"
+        liveText="live subscriber counts may differ"
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <Tile title="Active subscribers" value={isLoading ? null : num(totals.active)} sub="Currently paying" />
@@ -166,29 +167,6 @@ export default function PlaySubscriptions() {
   );
 }
 
-function StaleCacheBanner({ dataAsOf }: { dataAsOf?: string | null }) {
-  if (!dataAsOf) return null;
-  const ageMs = Date.now() - new Date(dataAsOf).getTime();
-  if (ageMs <= STALE_CACHE_MS) return null;
-  const ageHours = Math.floor(ageMs / (60 * 60 * 1000));
-  let asOf: string | null = null;
-  try { asOf = format(new Date(dataAsOf), "MMM d, h:mm a bbb"); } catch { /* noop */ }
-  return (
-    <div className="flex items-start gap-3 px-3 py-2.5 rounded-sm border border-orange-500/50 bg-orange-500/10 text-orange-800 dark:text-orange-300">
-      <WifiOff className="h-4 w-4 mt-0.5 shrink-0 text-orange-500" />
-      <div className="flex-1 min-w-0 text-[13px] leading-snug">
-        <span className="font-semibold">Google Play data unreachable — </span>
-        <span>
-          Figures shown are from the last known snapshot
-          {asOf ? <>, captured <span className="font-semibold">{asOf}</span></> : null}.
-          {" "}Data is approximately{" "}
-          <span className="font-semibold">{ageHours} hour{ageHours !== 1 ? "s" : ""} old</span>
-          {" "}— live subscriber counts may differ.
-        </span>
-      </div>
-    </div>
-  );
-}
 
 function PlayBanner({ placeholder }: { placeholder: boolean }) {
   return (

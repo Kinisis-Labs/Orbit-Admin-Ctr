@@ -22,11 +22,16 @@ export function fmtStaleCacheAsOf(iso: string | undefined | null): string | null
 export function StaleCacheBanner({
   dataSource,
   dataAsOf,
+  label = "Azure Cost Management",
+  liveText = "live costs may differ",
 }: {
-  dataSource: "live" | "cached" | "mock" | undefined;
+  dataSource?: "live" | "cached" | "mock" | undefined;
   dataAsOf?: string | null;
+  label?: string;
+  liveText?: string;
 }) {
-  if (dataSource !== "cached" || !dataAsOf) return null;
+  if (dataSource !== undefined && dataSource !== "cached") return null;
+  if (!dataAsOf) return null;
   const ageMs = Date.now() - new Date(dataAsOf).getTime();
   if (ageMs <= STALE_CACHE_MS) return null;
   const ageHours = Math.floor(ageMs / (60 * 60 * 1000));
@@ -35,13 +40,13 @@ export function StaleCacheBanner({
     <div className="flex items-start gap-3 px-3 py-2.5 rounded-sm border border-orange-500/50 bg-orange-500/10 text-orange-800 dark:text-orange-300">
       <WifiOff className="h-4 w-4 mt-0.5 shrink-0 text-orange-500" />
       <div className="flex-1 min-w-0 text-[13px] leading-snug">
-        <span className="font-semibold">Azure Cost Management unreachable — </span>
+        <span className="font-semibold">{label} unreachable — </span>
         <span>
           Figures shown are from the last known snapshot
           {asOf ? <>, captured <span className="font-semibold">{asOf}</span></> : null}.
           {" "}Data is approximately{" "}
           <span className="font-semibold">{ageHours} hour{ageHours !== 1 ? "s" : ""} old</span>
-          {" "}— live costs may differ.
+          {" "}— {liveText}.
         </span>
       </div>
     </div>
