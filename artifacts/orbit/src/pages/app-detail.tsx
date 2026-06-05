@@ -47,6 +47,7 @@ import { AccessDenied } from "@/components/access-denied";
 import { useToast } from "@/hooks/use-toast";
 import { BAR_COLOR_DEFAULT, BAR_COLOR_UP_MILD, BAR_COLOR_UP_HIGH, BAR_COLOR_DOWN, getBarFill } from "@/lib/bar-trend";
 import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
+import { InfraAlertHistory } from "@/components/infra-alert-history";
 
 export default function AppDetail() {
   const params = useParams();
@@ -811,6 +812,8 @@ function TelemetryTab({ appId }: { appId: string }) {
           </div>
         </div>
       </div>
+
+      <InfraAlertHistory appId={appId} />
     </div>
     </>
   );
