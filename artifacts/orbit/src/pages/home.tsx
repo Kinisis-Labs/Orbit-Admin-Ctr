@@ -1,9 +1,6 @@
-import {
-  useGetApp,
-  getGetAppQueryKey,
-  getListAppsQueryKey,
-} from "@workspace/api-client-react";
+import { getListAppsQueryKey } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
+import { useApp } from "@/hooks/use-app";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
@@ -29,15 +26,13 @@ export default function Home() {
 
   const { data: apps, isFetching: appsFetching } = useApps();
 
-  const { data: appDetail, isLoading: appDetailLoading } = useGetApp(scope, {
-    query: { enabled: !!scope, queryKey: getGetAppQueryKey(scope), staleTime: 3 * 60 * 1000 },
-  });
+  const { data: appDetail, isLoading: appDetailLoading, queryKey: appQueryKey } = useApp(scope || undefined);
 
   const selectedApp = apps?.find((a) => a.id === scope);
 
   function handleRefresh() {
     queryClient.invalidateQueries({ queryKey: getListAppsQueryKey() });
-    queryClient.invalidateQueries({ queryKey: getGetAppQueryKey(scope) });
+    queryClient.invalidateQueries({ queryKey: appQueryKey });
   }
 
   return (

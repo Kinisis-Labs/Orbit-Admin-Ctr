@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
-import { useGetApp, getGetAppQueryKey } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
+import { useApp } from "@/hooks/use-app";
 import {
   Cloud, Search, Settings as SettingsIcon, Home, Bell, DollarSign, LayoutDashboard,
   ChevronRight, Menu, Sun, Moon, Lock, Rocket, AlertOctagon, Activity,
@@ -87,9 +87,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const activeTab = VALID_TABS.includes(rawTab) ? rawTab : "overview";
   const activeTabLabel = TAB_LABELS[activeTab];
   const currentApp = apps?.find(a => a.id === currentAppId);
-  const { data: currentAppDetail } = useGetApp(currentAppId ?? "", {
-    query: { enabled: !!currentAppId && !currentApp, queryKey: getGetAppQueryKey(currentAppId ?? ""), staleTime: 3 * 60 * 1000 },
-  });
+  const { data: currentAppDetail } = useApp(currentAppId && !currentApp ? currentAppId : undefined);
   const currentAppName = currentApp?.name ?? currentAppDetail?.name ?? currentAppId;
   const isCostRoute = location === "/cost";
 

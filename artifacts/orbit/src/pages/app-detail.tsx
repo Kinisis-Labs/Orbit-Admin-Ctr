@@ -5,8 +5,8 @@ import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { StaleCacheBanner } from "@/components/stale-cache-banner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useApp } from "@/hooks/use-app";
 import { 
-  useGetApp, getGetAppQueryKey, 
   useGetInfrastructure, getGetInfrastructureQueryKey, 
   useGetNetwork, getGetNetworkQueryKey, 
   useGetCost, getGetCostQueryKey, 
@@ -73,7 +73,7 @@ export default function AppDetail() {
   const recentAlerts = useRecentBudgetAlerts(canSeeCost, appId);
   const recentAlertDate = recentAlerts.get(appId);
 
-  const { data: app, isLoading: appLoading } = useGetApp(appId, { query: { enabled: !!appId, queryKey: getGetAppQueryKey(appId) } });
+  const { data: app, isLoading: appLoading } = useApp(appId);
 
   // Fetch cost data here so the tab trigger can show a warning badge without an extra network request
   // (React Query serves the same cache key used inside CostTab, so no duplicate fetch)
