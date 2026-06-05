@@ -10,7 +10,6 @@ export {
   GetTelemetryParams,
   GetAppAlertsParams,
   GetCostParams,
-  GetGlobalCostSummaryQueryParams,
   QueryLogsParams,
   UpdateAlertConfigParams,
   UpdateAlertConfigBody,

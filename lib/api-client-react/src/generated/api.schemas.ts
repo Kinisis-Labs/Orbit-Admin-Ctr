@@ -626,97 +626,6 @@ export interface GlobalHealth {
   currency: string;
 }
 
-/**
- * Indicates whether cost figures come from live Azure Cost Management, a DB snapshot (cached), or built-in mock values.
- */
-export type GlobalCostSummaryDataSource = typeof GlobalCostSummaryDataSource[keyof typeof GlobalCostSummaryDataSource];
-
-
-export const GlobalCostSummaryDataSource = {
-  live: 'live',
-  cached: 'cached',
-  mock: 'mock',
-} as const;
-
-/**
- * Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback.
- */
-export type GlobalCostSummaryBudgetDataSource = typeof GlobalCostSummaryBudgetDataSource[keyof typeof GlobalCostSummaryBudgetDataSource];
-
-
-export const GlobalCostSummaryBudgetDataSource = {
-  live: 'live',
-  cached: 'cached',
-  estimated: 'estimated',
-} as const;
-
-export type GlobalCostSummaryByAppItem = {
-  appId: string;
-  appName: string;
-  amount: number;
-};
-
-export type GlobalCostSummaryApiByAppItem = {
-  appId: string;
-  appName: string;
-  totalCalls: number;
-  costPerMillion: number;
-  cost: number;
-};
-
-export type GlobalCostSummaryApiByNameItem = {
-  appId: string;
-  appName: string;
-  apiName: string;
-  totalCalls: number;
-  cost: number;
-};
-
-export type GlobalCostSummaryRevenueByAppItem = {
-  appId: string;
-  appName: string;
-  /** Total month-to-date revenue across all sources */
-  total: number;
-  stripe: number;
-  appStore: number;
-  playStore: number;
-  /** Month-to-date Azure cost for the app (infra + API) */
-  cost: number;
-  /** total - cost */
-  net: number;
-  /** (net / total) * 100. Null when revenue is zero. */
-  marginPercent?: number | null;
-};
-
-export interface GlobalCostSummary {
-  currency: string;
-  monthToDate: number;
-  forecast: number;
-  budget: number;
-  /** Day-by-day total spend across all apps for the last 30 days, with vs-last-week comparison. */
-  daily: DailyCostPoint[];
-  /** Total month-to-date API calls across all apps */
-  apiCalls: number;
-  /** Portion of monthToDate attributable to API usage */
-  apiCost: number;
-  /** Indicates whether cost figures come from live Azure Cost Management, a DB snapshot (cached), or built-in mock values. */
-  dataSource: GlobalCostSummaryDataSource;
-  /** Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live or cached. */
-  dataAsOf?: string;
-  /** Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback. */
-  budgetDataSource?: GlobalCostSummaryBudgetDataSource;
-  byApp: GlobalCostSummaryByAppItem[];
-  /** Cost breakdown by Azure resource type, aggregated across all apps. */
-  byResource: CostByService[];
-  /** Per-app API usage with call counts and cost. */
-  apiByApp: GlobalCostSummaryApiByAppItem[];
-  /** Flat breakdown of cost by API name per app, sorted by cost desc. */
-  apiByName: GlobalCostSummaryApiByNameItem[];
-  revenue: Revenue;
-  /** Per-app revenue with cost and margin for cost-vs-revenue comparison. */
-  revenueByApp: GlobalCostSummaryRevenueByAppItem[];
-}
-
 export type DeploymentStatus = typeof DeploymentStatus[keyof typeof DeploymentStatus];
 
 
@@ -1150,13 +1059,6 @@ refresh?: RefreshParameter;
 };
 
 export type ListGlobalAlertsParams = {
-/**
- * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
- */
-refresh?: RefreshParameter;
-};
-
-export type GetGlobalCostSummaryParams = {
 /**
  * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
  */

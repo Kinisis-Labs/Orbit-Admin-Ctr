@@ -34,11 +34,9 @@ import type {
   Deployment,
   GetAppAlertsParams,
   GetCostParams,
-  GetGlobalCostSummaryParams,
   GetInfrastructureParams,
   GetNetworkParams,
   GetTelemetryParams,
-  GlobalCostSummary,
   GlobalEndpointsResponse,
   GlobalHealth,
   HealthStatus,
@@ -1548,90 +1546,6 @@ export function useListGlobalAlerts<TData = Awaited<ReturnType<typeof listGlobal
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListGlobalAlertsQueryOptions(params,options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-
-
-export const getGetGlobalCostSummaryUrl = (params?: GetGlobalCostSummaryParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/global/cost-summary?${stringifiedParams}` : `/api/global/cost-summary`
-}
-
-/**
- * @summary Cost summary across all apps
- */
-export const getGlobalCostSummary = async (params?: GetGlobalCostSummaryParams, options?: RequestInit): Promise<GlobalCostSummary> => {
-
-  return customFetch<GlobalCostSummary>(getGetGlobalCostSummaryUrl(params),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetGlobalCostSummaryQueryKey = (params?: GetGlobalCostSummaryParams,) => {
-    return [
-    `/api/global/cost-summary`, ...(params ? [params] : [])
-    ] as const;
-    }
-
-
-export const getGetGlobalCostSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getGlobalCostSummary>>, TError = ErrorType<unknown>>(params?: GetGlobalCostSummaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGlobalCostSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetGlobalCostSummaryQueryKey(params);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGlobalCostSummary>>> = ({ signal }) => getGlobalCostSummary(params, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGlobalCostSummary>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetGlobalCostSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getGlobalCostSummary>>>
-export type GetGlobalCostSummaryQueryError = ErrorType<unknown>
-
-
-/**
- * @summary Cost summary across all apps
- */
-
-export function useGetGlobalCostSummary<TData = Awaited<ReturnType<typeof getGlobalCostSummary>>, TError = ErrorType<unknown>>(
- params?: GetGlobalCostSummaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGlobalCostSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetGlobalCostSummaryQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

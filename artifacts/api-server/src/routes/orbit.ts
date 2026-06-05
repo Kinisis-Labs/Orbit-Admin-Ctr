@@ -9,7 +9,6 @@ import {
   GetAppAlertsResponse,
   GetGlobalHealthResponse,
   ListGlobalAlertsResponse,
-  GetGlobalCostSummaryResponse,
   ListDeploymentsResponse,
   ListActivityLogResponse,
   QueryLogsResponse,
@@ -591,129 +590,6 @@ router.get("/global/alerts", async (_req, res) => {
     .flatMap((alerts) => alerts ?? [])
     .sort((a, b) => (a.firedAt < b.firedAt ? 1 : -1));
   const data = ListGlobalAlertsResponse.parse(all);
-  res.json(data);
-});
-
-router.get("/global/cost-summary", async (req, res) => {
-  const bypassCache = req.query["refresh"] === "true";
-  const [costWithSourceResults, budgetWithSourceResults, revResults] = await Promise.all([
-    Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, { bypassCache, billingScope: billingScope(a.id) }))),
-    Promise.all(APPS.map((a) => fetchBudgetForAppWithFallback(a, { bypassCache }))),
-    Promise.all(APPS.map((a) => syncAndReadRevenue(a))),
-  ]);
-  const liveCostByApp = new Map(APPS.map((a, i) => [a.id, costWithSourceResults[i]?.result ?? null] as const));
-  const liveBudgetByApp = new Map(APPS.map((a, i) => [a.id, budgetWithSourceResults[i]?.result ?? null] as const));
-  const revByApp = new Map(APPS.map((a, i) => [a.id, revResults[i]!] as const));
-
-  // Per-app infra cost: real Azure data only, 0 when unavailable.
-  const infraCostByApp = new Map(
-    APPS.map((a) => [a.id, liveCostByApp.get(a.id)?.monthToDate ?? 0] as const),
-  );
-  const mtd = APPS.reduce((s, a) => s + infraCostByApp.get(a.id)!, 0);
-
-  const revenueByApp = APPS.map((a) => {
-    const r = revByApp.get(a.id) ?? { stripe: 0, appStore: 0, playStore: 0 };
-    const total = Number((r.stripe + r.appStore + r.playStore).toFixed(2));
-    const cost = Number((infraCostByApp.get(a.id)!).toFixed(2));
-    const net = Number((total - cost).toFixed(2));
-    return {
-      appId: a.id,
-      appName: a.name,
-      total,
-      stripe: Number(r.stripe.toFixed(2)),
-      appStore: Number(r.appStore.toFixed(2)),
-      playStore: Number(r.playStore.toFixed(2)),
-      cost,
-      net,
-      marginPercent: total > 0 ? Number(((net / total) * 100).toFixed(1)) : null,
-    };
-  }).sort((a, b) => b.total - a.total);
-
-  const totalStripe = revenueByApp.reduce((s, r) => s + r.stripe, 0);
-  const totalAppStore = revenueByApp.reduce((s, r) => s + r.appStore, 0);
-  const totalPlayStore = revenueByApp.reduce((s, r) => s + r.playStore, 0);
-  const totalRevenue = Number((totalStripe + totalAppStore + totalPlayStore).toFixed(2));
-  const revenue = {
-    currency: "USD",
-    total: totalRevenue,
-    bySource: [
-      { source: "stripe" as const, label: REVENUE_SOURCE_LABELS.stripe, amount: Number(totalStripe.toFixed(2)) },
-      { source: "app_store" as const, label: REVENUE_SOURCE_LABELS.app_store, amount: Number(totalAppStore.toFixed(2)) },
-      { source: "play_store" as const, label: REVENUE_SOURCE_LABELS.play_store, amount: Number(totalPlayStore.toFixed(2)) },
-    ],
-  };
-
-  // Aggregate byService from live Azure cost data only; skip apps with no live data.
-  const byResourceMap = new Map<string, { amount: number; weightedTrendSum: number; trendWeight: number }>();
-  for (const a of APPS) {
-    const live = liveCostByApp.get(a.id);
-    if (!live) continue;
-    for (const line of live.byService) {
-      const existing = byResourceMap.get(line.service) ?? { amount: 0, weightedTrendSum: 0, trendWeight: 0 };
-      let weightedTrendSum = existing.weightedTrendSum;
-      let trendWeight = existing.trendWeight;
-      if (line.trend != null) {
-        const sign = line.trend.startsWith("-") ? -1 : 1;
-        const pct = parseFloat(line.trend.replace(/[^0-9.]/g, "")) * sign;
-        if (!isNaN(pct)) {
-          weightedTrendSum += pct * line.amount;
-          trendWeight += line.amount;
-        }
-      }
-      byResourceMap.set(line.service, { amount: existing.amount + line.amount, weightedTrendSum, trendWeight });
-    }
-  }
-  const byResource = Array.from(byResourceMap.entries())
-    .map(([service, { amount, weightedTrendSum, trendWeight }]) => {
-      const roundedAmount = Number(amount.toFixed(2));
-      let trend: string | undefined;
-      if (trendWeight > 0) {
-        const avg = weightedTrendSum / trendWeight;
-        trend = (avg >= 0 ? "+" : "") + avg.toFixed(1) + "%";
-      }
-      return { service, amount: roundedAmount, ...(trend !== undefined ? { trend } : {}) };
-    })
-    .sort((a, b) => b.amount - a.amount);
-
-  const anyLive = costWithSourceResults.some((r) => r?.source === "live");
-  const anyCached = costWithSourceResults.some((r) => r?.source === "cached");
-  const resolvedCostResults = costWithSourceResults.map((r) => r?.result ?? null);
-  const liveTimestamps = resolvedCostResults.filter((r) => r !== null).map((r) => r!.dataAsOf);
-  const earliestDataAsOf = liveTimestamps.length > 0
-    ? liveTimestamps.reduce((min, t) => (t < min ? t : min))
-    : undefined;
-
-  // Global budget/forecast: sum of real Azure Budget amounts only; 0 when unavailable.
-  const globalBudget = APPS.reduce((s, a) => s + (liveBudgetByApp.get(a.id)?.amount ?? 0), 0);
-  const globalForecast = APPS.reduce((s, a) => s + (liveBudgetByApp.get(a.id)?.forecastAmount ?? 0), 0);
-  const globalBudgetDataSource = (() => {
-    if (budgetWithSourceResults.some((b) => b?.source === "live")) return "live" as const;
-    if (budgetWithSourceResults.some((b) => b?.source === "cached")) return "cached" as const;
-    return "estimated" as const;
-  })();
-
-  const data = GetGlobalCostSummaryResponse.parse({
-    currency: "USD",
-    monthToDate: Number(mtd.toFixed(2)),
-    forecast: Number(globalForecast.toFixed(2)),
-    budget: Number(globalBudget.toFixed(2)),
-    daily: [],
-    apiCalls: 0,
-    apiCost: 0,
-    dataSource: anyLive ? "live" : anyCached ? "cached" : "mock",
-    ...(earliestDataAsOf ? { dataAsOf: earliestDataAsOf } : {}),
-    budgetDataSource: globalBudgetDataSource,
-    byApp: APPS.map((a) => ({
-      appId: a.id,
-      appName: a.name,
-      amount: Number(infraCostByApp.get(a.id)!.toFixed(2)),
-    })),
-    byResource,
-    apiByApp: [],
-    apiByName: [],
-    revenue,
-    revenueByApp,
-  });
   res.json(data);
 });
 
