@@ -356,59 +356,81 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
         <h3 className="font-semibold text-sm">Cost snapshot</h3>
         <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
       </div>
+      <TooltipProvider delayDuration={600}>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* MTD Spend */}
-        <button type="button" onClick={onGoToCost} className={tileClass}>
-          <div className="text-[12px] text-muted-foreground font-medium">MTD spend</div>
-          <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.monthToDate)}</div>
-        </button>
+        <UITooltip>
+          <TooltipTrigger asChild>
+            <button type="button" onClick={onGoToCost} className={tileClass}>
+              <div className="text-[12px] text-muted-foreground font-medium">MTD spend</div>
+              <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.monthToDate)}</div>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Go to Cost tab</TooltipContent>
+        </UITooltip>
 
         {/* Budget Cap */}
-        <button type="button" onClick={onGoToCost} className={tileClass}>
-          <div className="text-[12px] text-muted-foreground font-medium">Budget Cap</div>
-          <div className="text-xl font-semibold tabular-nums">
-            {formatCurrency(data.budget)}
-            {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
-          </div>
-          <div className="space-y-1 mt-0.5">
-            <TooltipProvider>
-              <UITooltip>
-                <TooltipTrigger asChild>
-                  <Progress value={barUtilPct} className={`h-1.5 rounded-none bg-muted ${budgetBarClass} cursor-pointer`} />
-                </TooltipTrigger>
-                <TooltipContent>Alert at {budgetThreshold}% · {rawUtilPct.toFixed(0)}% utilized</TooltipContent>
-              </UITooltip>
-            </TooltipProvider>
-            <div className="text-[11px] text-muted-foreground tabular-nums">{rawUtilPct.toFixed(0)}% of cap used MTD</div>
-          </div>
-        </button>
+        <UITooltip>
+          <TooltipTrigger asChild>
+            <button type="button" onClick={onGoToCost} className={tileClass}>
+              <div className="text-[12px] text-muted-foreground font-medium">Budget Cap</div>
+              <div className="text-xl font-semibold tabular-nums">
+                {formatCurrency(data.budget)}
+                {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
+              </div>
+              <div className="space-y-1 mt-0.5">
+                <TooltipProvider>
+                  <UITooltip>
+                    <TooltipTrigger asChild>
+                      <Progress value={barUtilPct} className={`h-1.5 rounded-none bg-muted ${budgetBarClass} cursor-pointer`} />
+                    </TooltipTrigger>
+                    <TooltipContent>Alert at {budgetThreshold}% · {rawUtilPct.toFixed(0)}% utilized</TooltipContent>
+                  </UITooltip>
+                </TooltipProvider>
+                <div className="text-[11px] text-muted-foreground tabular-nums">{rawUtilPct.toFixed(0)}% of cap used MTD</div>
+              </div>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Go to Cost tab</TooltipContent>
+        </UITooltip>
 
         {/* Forecast EOM */}
-        <button type="button" onClick={onGoToCost} className={tileClass}>
-          <div className="text-[12px] text-muted-foreground font-medium">Forecast EOM</div>
-          <div className={`text-xl font-semibold tabular-nums ${forecastOverBudget ? "text-destructive" : "text-muted-foreground"}`}>
-            {formatCurrency(data.forecast)}
-            {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
-          </div>
-          <div className="text-[11px] mt-0.5">
-            {forecastOverBudget
-              ? <span className="text-destructive">Projected to exceed cap</span>
-              : <span className="text-muted-foreground">Projected end-of-month</span>}
-          </div>
-        </button>
+        <UITooltip>
+          <TooltipTrigger asChild>
+            <button type="button" onClick={onGoToCost} className={tileClass}>
+              <div className="text-[12px] text-muted-foreground font-medium">Forecast EOM</div>
+              <div className={`text-xl font-semibold tabular-nums ${forecastOverBudget ? "text-destructive" : "text-muted-foreground"}`}>
+                {formatCurrency(data.forecast)}
+                {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
+              </div>
+              <div className="text-[11px] mt-0.5">
+                {forecastOverBudget
+                  ? <span className="text-destructive">Projected to exceed cap</span>
+                  : <span className="text-muted-foreground">Projected end-of-month</span>}
+              </div>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Go to Cost tab</TooltipContent>
+        </UITooltip>
 
         {/* Headroom */}
-        <button type="button" onClick={onGoToCost} className={tileClass}>
-          <div className="text-[12px] text-muted-foreground font-medium">Headroom</div>
-          <div className={`text-xl font-semibold tabular-nums ${headroom < 0 ? "text-destructive" : "text-emerald-500"}`}>
-            {formatCurrency(headroom)}
-            {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">
-            {headroom >= 0 ? "Remaining vs forecast" : "Overrun vs budget"}
-          </div>
-        </button>
+        <UITooltip>
+          <TooltipTrigger asChild>
+            <button type="button" onClick={onGoToCost} className={tileClass}>
+              <div className="text-[12px] text-muted-foreground font-medium">Headroom</div>
+              <div className={`text-xl font-semibold tabular-nums ${headroom < 0 ? "text-destructive" : "text-emerald-500"}`}>
+                {formatCurrency(headroom)}
+                {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                {headroom >= 0 ? "Remaining vs forecast" : "Overrun vs budget"}
+              </div>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Go to Cost tab</TooltipContent>
+        </UITooltip>
       </div>
+      </TooltipProvider>
     </div>
   );
 }
