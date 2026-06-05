@@ -8,6 +8,7 @@ import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n);
@@ -201,37 +202,57 @@ export function BudgetAlertHistory({ appId }: Props) {
             </span>
           )}
 
-          {!isLoading && filteredEntries && filteredEntries.length > 0 && (
+          {!isLoading && (
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                onClick={handleExport}
-                disabled={csvDisabled}
-              >
-                <Download className="h-3.5 w-3.5 mr-1.5" />
-                Export CSV
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                onClick={handleCopy}
-                disabled={csvDisabled}
-              >
-                {copied ? (
-                  <>
-                    <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
-                    <span className="text-green-500">Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Clipboard className="h-3.5 w-3.5 mr-1.5" />
-                    Copy
-                  </>
-                )}
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+                        onClick={handleExport}
+                        disabled={csvDisabled}
+                        style={csvDisabled ? { pointerEvents: "none" } : undefined}
+                      >
+                        <Download className="h-3.5 w-3.5 mr-1.5" />
+                        Export CSV
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {csvDisabled && <TooltipContent>No rows to export</TooltipContent>}
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+                        onClick={handleCopy}
+                        disabled={csvDisabled}
+                        style={csvDisabled ? { pointerEvents: "none" } : undefined}
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
+                            <span className="text-green-500">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Clipboard className="h-3.5 w-3.5 mr-1.5" />
+                            Copy
+                          </>
+                        )}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {csvDisabled && <TooltipContent>No rows to export</TooltipContent>}
+                </Tooltip>
+              </TooltipProvider>
             </div>
           )}
         </div>
