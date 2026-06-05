@@ -49,7 +49,7 @@ export const APPS: AppRecord[] = [
     },
     owners: ["Ryan Gutridge"],
     userAuth: "clerk",
-    androidPackage: "com.grailbabe.app",
+    androidPackage: "com.kinisislabs.grailbabe",
     iosBundle: "com.kinisislabs.grailbabe",
   },
   {
