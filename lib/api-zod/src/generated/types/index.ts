@@ -13,6 +13,7 @@ export * from './alertSource';
 export * from './alertStatus';
 export * from './apiByName';
 export * from './apiUsage';
+export * from './appAlertConfig';
 export * from './appDetail';
 export * from './appleSubscriptionRow';
 export * from './appleSubscriptionRowDataSource';

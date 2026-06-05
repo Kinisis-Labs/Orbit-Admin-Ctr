@@ -470,6 +470,19 @@ paths:
               schema: { $ref: "#/components/schemas/BudgetAlertLogEntry" }
         "404":
           description: Entry not found
+  /alerts/config:
+    get:
+      operationId: listAlertConfig
+      tags: [alerts]
+      summary: Effective CPU / memory thresholds per app, including whether a per-app override is active
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AppAlertConfig" }
   /infra-alerts/log:
     get:
       operationId: listInfraAlertLog
@@ -1170,6 +1183,27 @@ components:
           description: Notification channels that fired (e.g. "teams", "email")
         sentAt: { type: string, format: date-time, description: When the notification was dispatched }
         acknowledgedAt: { type: string, format: date-time, nullable: true, description: When the entry was acknowledged by an operator. Null if not yet acknowledged. }
+    AppAlertConfig:
+      type: object
+      required: [appId, appName, cpuThresholdPct, memoryThresholdPct, cpuIsOverride, memoryIsOverride, consecutiveChecks]
+      properties:
+        appId: { type: string }
+        appName: { type: string }
+        cpuThresholdPct:
+          type: number
+          description: Effective CPU alert threshold (percent)
+        memoryThresholdPct:
+          type: number
+          description: Effective memory alert threshold (percent)
+        cpuIsOverride:
+          type: boolean
+          description: True when a per-app ALERT_CPU_THRESHOLD_PCT__<APPID> env var overrides the global default
+        memoryIsOverride:
+          type: boolean
+          description: True when a per-app ALERT_MEMORY_THRESHOLD_PCT__<APPID> env var overrides the global default
+        consecutiveChecks:
+          type: integer
+          description: Number of consecutive over-threshold scheduler checks required before a notification fires
     InfraAlertLogEntry:
       type: object
       required: [id, appId, appName, metric, value, threshold, channels, sentAt]

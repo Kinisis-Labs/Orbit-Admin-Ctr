@@ -22,6 +22,7 @@ import type {
 import type {
   ActivityEntry,
   Alert,
+  AppAlertConfig,
   AppDetail,
   AppSummary,
   AppleSubscriptionRow,
@@ -2255,6 +2256,83 @@ export const useAcknowledgeBudgetAlertLogEntry = <TError = ErrorType<void>,
       > => {
       return useMutation(getAcknowledgeBudgetAlertLogEntryMutationOptions(options));
     }
+
+export const getListAlertConfigUrl = () => {
+
+
+
+
+  return `/api/alerts/config`
+}
+
+/**
+ * @summary Effective CPU / memory thresholds per app, including whether a per-app override is active
+ */
+export const listAlertConfig = async ( options?: RequestInit): Promise<AppAlertConfig[]> => {
+
+  return customFetch<AppAlertConfig[]>(getListAlertConfigUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAlertConfigQueryKey = () => {
+    return [
+    `/api/alerts/config`
+    ] as const;
+    }
+
+
+export const getListAlertConfigQueryOptions = <TData = Awaited<ReturnType<typeof listAlertConfig>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAlertConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAlertConfigQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAlertConfig>>> = ({ signal }) => listAlertConfig({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAlertConfig>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAlertConfigQueryResult = NonNullable<Awaited<ReturnType<typeof listAlertConfig>>>
+export type ListAlertConfigQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Effective CPU / memory thresholds per app, including whether a per-app override is active
+ */
+
+export function useListAlertConfig<TData = Awaited<ReturnType<typeof listAlertConfig>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAlertConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAlertConfigQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getListInfraAlertLogUrl = (params?: ListInfraAlertLogParams,) => {
   const normalizedParams = new URLSearchParams();

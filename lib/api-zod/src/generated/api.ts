@@ -725,6 +725,21 @@ export const AcknowledgeBudgetAlertLogEntryResponse = zod.object({
 
 
 /**
+ * @summary Effective CPU / memory thresholds per app, including whether a per-app override is active
+ */
+export const ListAlertConfigResponseItem = zod.object({
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "cpuThresholdPct": zod.number().describe('Effective CPU alert threshold (percent)'),
+  "memoryThresholdPct": zod.number().describe('Effective memory alert threshold (percent)'),
+  "cpuIsOverride": zod.boolean().describe('True when a per-app ALERT_CPU_THRESHOLD_PCT__<APPID> env var overrides the global default'),
+  "memoryIsOverride": zod.boolean().describe('True when a per-app ALERT_MEMORY_THRESHOLD_PCT__<APPID> env var overrides the global default'),
+  "consecutiveChecks": zod.number().describe('Number of consecutive over-threshold scheduler checks required before a notification fires')
+})
+export const ListAlertConfigResponse = zod.array(ListAlertConfigResponseItem)
+
+
+/**
  * @summary Recent infra-pressure notifications (CPU / memory threshold breaches) dispatched by the scheduler
  */
 export const ListInfraAlertLogQueryParams = zod.object({

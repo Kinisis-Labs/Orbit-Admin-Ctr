@@ -852,6 +852,21 @@ export interface BudgetAlertLogEntry {
   acknowledgedAt?: string | null;
 }
 
+export interface AppAlertConfig {
+  appId: string;
+  appName: string;
+  /** Effective CPU alert threshold (percent) */
+  cpuThresholdPct: number;
+  /** Effective memory alert threshold (percent) */
+  memoryThresholdPct: number;
+  /** True when a per-app ALERT_CPU_THRESHOLD_PCT__<APPID> env var overrides the global default */
+  cpuIsOverride: boolean;
+  /** True when a per-app ALERT_MEMORY_THRESHOLD_PCT__<APPID> env var overrides the global default */
+  memoryIsOverride: boolean;
+  /** Number of consecutive over-threshold scheduler checks required before a notification fires */
+  consecutiveChecks: number;
+}
+
 export interface InfraAlertLogEntry {
   id: number;
   appId: string;
