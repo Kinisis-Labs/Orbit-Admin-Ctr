@@ -38,6 +38,7 @@ import type {
   GlobalEndpointRow,
   GlobalHealth,
   HealthStatus,
+  InfraAlertLogEntry,
   InfrastructureReport,
   IngestSaleRequest,
   IngestSaleResult,
@@ -46,6 +47,7 @@ import type {
   LedgerReport,
   ListBudgetAlertLogParams,
   ListGlobalAlertsParams,
+  ListInfraAlertLogParams,
   LogLine,
   NetworkReport,
   PlaySubscriptionRow,
@@ -2252,5 +2254,159 @@ export const useAcknowledgeBudgetAlertLogEntry = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getAcknowledgeBudgetAlertLogEntryMutationOptions(options));
+    }
+
+export const getListInfraAlertLogUrl = (params?: ListInfraAlertLogParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/infra-alerts/log?${stringifiedParams}` : `/api/infra-alerts/log`
+}
+
+/**
+ * @summary Recent infra-pressure notifications (CPU / memory threshold breaches) dispatched by the scheduler
+ */
+export const listInfraAlertLog = async (params?: ListInfraAlertLogParams, options?: RequestInit): Promise<InfraAlertLogEntry[]> => {
+
+  return customFetch<InfraAlertLogEntry[]>(getListInfraAlertLogUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListInfraAlertLogQueryKey = (params?: ListInfraAlertLogParams,) => {
+    return [
+    `/api/infra-alerts/log`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListInfraAlertLogQueryOptions = <TData = Awaited<ReturnType<typeof listInfraAlertLog>>, TError = ErrorType<unknown>>(params?: ListInfraAlertLogParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listInfraAlertLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListInfraAlertLogQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listInfraAlertLog>>> = ({ signal }) => listInfraAlertLog(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listInfraAlertLog>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListInfraAlertLogQueryResult = NonNullable<Awaited<ReturnType<typeof listInfraAlertLog>>>
+export type ListInfraAlertLogQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Recent infra-pressure notifications (CPU / memory threshold breaches) dispatched by the scheduler
+ */
+
+export function useListInfraAlertLog<TData = Awaited<ReturnType<typeof listInfraAlertLog>>, TError = ErrorType<unknown>>(
+ params?: ListInfraAlertLogParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listInfraAlertLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListInfraAlertLogQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getAcknowledgeInfraAlertLogEntryUrl = (id: number,) => {
+
+
+
+
+  return `/api/infra-alerts/log/${id}/acknowledge`
+}
+
+/**
+ * @summary Acknowledge (dismiss) an infra-pressure alert log entry
+ */
+export const acknowledgeInfraAlertLogEntry = async (id: number, options?: RequestInit): Promise<InfraAlertLogEntry> => {
+
+  return customFetch<InfraAlertLogEntry>(getAcknowledgeInfraAlertLogEntryUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getAcknowledgeInfraAlertLogEntryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acknowledgeInfraAlertLogEntry>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acknowledgeInfraAlertLogEntry>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['acknowledgeInfraAlertLogEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acknowledgeInfraAlertLogEntry>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  acknowledgeInfraAlertLogEntry(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcknowledgeInfraAlertLogEntryMutationResult = NonNullable<Awaited<ReturnType<typeof acknowledgeInfraAlertLogEntry>>>
+
+    export type AcknowledgeInfraAlertLogEntryMutationError = ErrorType<void>
+
+    /**
+ * @summary Acknowledge (dismiss) an infra-pressure alert log entry
+ */
+export const useAcknowledgeInfraAlertLogEntry = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acknowledgeInfraAlertLogEntry>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof acknowledgeInfraAlertLogEntry>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getAcknowledgeInfraAlertLogEntryMutationOptions(options));
     }
 

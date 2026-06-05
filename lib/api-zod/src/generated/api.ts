@@ -718,3 +718,47 @@ export const AcknowledgeBudgetAlertLogEntryResponse = zod.object({
 })
 
 
+/**
+ * @summary Recent infra-pressure notifications (CPU / memory threshold breaches) dispatched by the scheduler
+ */
+export const ListInfraAlertLogQueryParams = zod.object({
+  "appId": zod.coerce.string().optional().describe('Filter to a specific app. Omit to return entries for all apps.'),
+  "limit": zod.coerce.number().optional().describe('Maximum number of entries to return (default 50, max 200).'),
+  "unacknowledgedOnly": zod.coerce.boolean().optional().describe('When true, only return entries that have not yet been acknowledged.'),
+  "since": zod.coerce.string().datetime({"offset":true}).optional().describe('ISO 8601 datetime. When set, only return entries with sentAt >= since.')
+})
+
+export const ListInfraAlertLogResponseItem = zod.object({
+  "id": zod.number(),
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "metric": zod.string().describe('Which metric breached — \'cpu\' or \'memory\''),
+  "value": zod.number().describe('Observed metric value (percent) at alert time'),
+  "threshold": zod.number().describe('Configured threshold (percent) that was exceeded'),
+  "channels": zod.array(zod.string()).describe('Notification channels that fired (e.g. \"teams\", \"email\")'),
+  "sentAt": zod.string().datetime({"offset":true}).describe('When the notification was dispatched'),
+  "acknowledgedAt": zod.string().datetime({"offset":true}).nullish().describe('When the entry was acknowledged by an operator. Null if not yet acknowledged.')
+})
+export const ListInfraAlertLogResponse = zod.array(ListInfraAlertLogResponseItem)
+
+
+/**
+ * @summary Acknowledge (dismiss) an infra-pressure alert log entry
+ */
+export const AcknowledgeInfraAlertLogEntryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AcknowledgeInfraAlertLogEntryResponse = zod.object({
+  "id": zod.number(),
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "metric": zod.string().describe('Which metric breached — \'cpu\' or \'memory\''),
+  "value": zod.number().describe('Observed metric value (percent) at alert time'),
+  "threshold": zod.number().describe('Configured threshold (percent) that was exceeded'),
+  "channels": zod.array(zod.string()).describe('Notification channels that fired (e.g. \"teams\", \"email\")'),
+  "sentAt": zod.string().datetime({"offset":true}).describe('When the notification was dispatched'),
+  "acknowledgedAt": zod.string().datetime({"offset":true}).nullish().describe('When the entry was acknowledged by an operator. Null if not yet acknowledged.')
+})
+
+

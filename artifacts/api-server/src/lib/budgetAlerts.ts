@@ -1,8 +1,10 @@
 /**
- * Budget overrun alert notifications.
+ * Budget overrun + infra-pressure alert notifications.
  *
- * Sends a push notification (Microsoft Teams webhook and/or SMTP email) when an
- * app's end-of-month cost forecast crosses its budget cap.
+ * Sends push notifications (Microsoft Teams webhook and/or SMTP email) when:
+ *   1. An app's end-of-month cost forecast crosses its budget cap.
+ *   2. An app's CPU or memory stays above a configurable threshold for
+ *      N consecutive scheduler checks (default: 2 consecutive checks).
  *
  * Completely opt-in — the scheduler only starts when at least one notification
  * channel is configured via env vars.  All channels are no-ops in dev unless
@@ -28,6 +30,12 @@
  * Scheduler:
  *   ALERT_CHECK_INTERVAL_MINUTES         — polling cadence (default 60)
  *   ALERT_COOLDOWN_HOURS                 — min hours between repeat alerts per app (default 12)
+ *
+ * Infra thresholds:
+ *   ALERT_CPU_THRESHOLD_PCT              — CPU % above which an alert fires (default 80)
+ *   ALERT_MEMORY_THRESHOLD_PCT           — Memory % above which an alert fires (default 85)
+ *   ALERT_INFRA_CONSECUTIVE_CHECKS       — number of consecutive over-threshold checks required
+ *                                          before a notification is dispatched (default 2)
  */
 
 import nodemailer from "nodemailer";
@@ -35,8 +43,9 @@ import type { AppRecord } from "../routes/orbit.js";
 import { APPS } from "../routes/orbit.js";
 import { fetchMonthToDateCost } from "./azureCost.js";
 import { fetchBudgetForAppWithFallback } from "./azureBudgets.js";
+import { fetchAppTimeSeries } from "./azureMonitor.js";
 import { logger } from "./logger.js";
-import { db, budgetAlertLogTable } from "@workspace/db";
+import { db, budgetAlertLogTable, infraAlertLogTable } from "@workspace/db";
 
 // ---------------------------------------------------------------------------
 // Config helpers
@@ -89,31 +98,66 @@ export function isBudgetAlertsConfigured(): boolean {
   return isSmtpConfigured() || hasAnyTeamsConfig();
 }
 
+/** CPU threshold percent (default 80). */
+function cpuThresholdPct(): number {
+  const v = Number(process.env["ALERT_CPU_THRESHOLD_PCT"] ?? 80);
+  return Number.isFinite(v) && v > 0 && v <= 100 ? v : 80;
+}
+
+/** Memory threshold percent (default 85). */
+function memoryThresholdPct(): number {
+  const v = Number(process.env["ALERT_MEMORY_THRESHOLD_PCT"] ?? 85);
+  return Number.isFinite(v) && v > 0 && v <= 100 ? v : 85;
+}
+
+/**
+ * Number of consecutive over-threshold scheduler checks required before a
+ * notification fires (default 2).  A single transient spike will not alert.
+ */
+function infraConsecutiveChecksRequired(): number {
+  const v = Number(process.env["ALERT_INFRA_CONSECUTIVE_CHECKS"] ?? 2);
+  return Number.isFinite(v) && v >= 1 ? Math.floor(v) : 2;
+}
+
 // ---------------------------------------------------------------------------
 // In-memory deduplication: appId → timestamp of last sent alert
+// Budget and infra use separate maps so they don't share cooldown state.
+// Infra uses "<appId>:<metric>" keys (e.g. "grailbabe:cpu").
 // ---------------------------------------------------------------------------
 
-const _lastAlertSentAt = new Map<string, number>();
+const _lastBudgetAlertSentAt = new Map<string, number>();
+const _lastInfraAlertSentAt = new Map<string, number>();
+
+/**
+ * Consecutive over-threshold reading count per "<appId>:<metric>".
+ * Incremented each check cycle the metric is above threshold; reset to 0 when
+ * the metric is at or below threshold.
+ */
+const _infraConsecutiveCounts = new Map<string, number>();
 
 function cooldownMs(): number {
   const hours = Number(process.env["ALERT_COOLDOWN_HOURS"] ?? 12);
   return (Number.isFinite(hours) && hours > 0 ? hours : 12) * 60 * 60 * 1000;
 }
 
-function isOnCooldown(appId: string): boolean {
-  const last = _lastAlertSentAt.get(appId);
+function isBudgetOnCooldown(appId: string): boolean {
+  const last = _lastBudgetAlertSentAt.get(appId);
   return last !== undefined && Date.now() - last < cooldownMs();
 }
 
-function markAlertSent(
+function isInfraOnCooldown(appId: string, metric: string): boolean {
+  const key = `${appId}:${metric}`;
+  const last = _lastInfraAlertSentAt.get(key);
+  return last !== undefined && Date.now() - last < cooldownMs();
+}
+
+function markBudgetAlertSent(
   appId: string,
   alert: OverrunAlert,
   channels: string[],
 ): void {
-  _lastAlertSentAt.set(appId, Date.now());
+  _lastBudgetAlertSentAt.set(appId, Date.now());
 
-  // Persist to DB asynchronously — fire and forget so a DB failure never
-  // blocks or disrupts the alert delivery path.
   db.insert(budgetAlertLogTable)
     .values({
       appId,
@@ -127,8 +171,31 @@ function markAlertSent(
     });
 }
 
+function markInfraAlertSent(
+  appId: string,
+  metric: string,
+  value: number,
+  threshold: number,
+  channels: string[],
+): void {
+  const key = `${appId}:${metric}`;
+  _lastInfraAlertSentAt.set(key, Date.now());
+
+  db.insert(infraAlertLogTable)
+    .values({
+      appId,
+      metric,
+      value: String(value),
+      threshold: String(threshold),
+      channels: channels.join(","),
+    })
+    .catch((err: unknown) => {
+      logger.error({ err, appId, metric }, "infra-alert: failed to persist alert log row");
+    });
+}
+
 // ---------------------------------------------------------------------------
-// Notification payload
+// Budget overrun notification payload
 // ---------------------------------------------------------------------------
 
 interface OverrunAlert {
@@ -145,10 +212,30 @@ function fmt(n: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Teams (Adaptive Card via Incoming Webhook)
+// Infra pressure notification payload
 // ---------------------------------------------------------------------------
 
-async function sendTeamsAlert(
+interface InfraPressureAlert {
+  app: AppRecord;
+  metric: "cpu" | "memory";
+  value: number;
+  threshold: number;
+  consecutiveChecks: number;
+}
+
+function metricLabel(metric: "cpu" | "memory"): string {
+  return metric === "cpu" ? "CPU" : "Memory";
+}
+
+function metricUnit(_metric: "cpu" | "memory"): string {
+  return "%";
+}
+
+// ---------------------------------------------------------------------------
+// Teams (Adaptive Card via Incoming Webhook) — budget
+// ---------------------------------------------------------------------------
+
+async function sendTeamsBudgetAlert(
   webhookUrl: string,
   alert: OverrunAlert,
 ): Promise<void> {
@@ -218,6 +305,77 @@ async function sendTeamsAlert(
 }
 
 // ---------------------------------------------------------------------------
+// Teams (Adaptive Card via Incoming Webhook) — infra pressure
+// ---------------------------------------------------------------------------
+
+async function sendTeamsInfraAlert(
+  webhookUrl: string,
+  alert: InfraPressureAlert,
+): Promise<void> {
+  const { app, metric, value, threshold, consecutiveChecks } = alert;
+  const label = metricLabel(metric);
+  const unit = metricUnit(metric);
+
+  const body = {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: {
+          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+          type: "AdaptiveCard",
+          version: "1.4",
+          body: [
+            {
+              type: "TextBlock",
+              text: `⚠️ Infra Pressure — ${label} High on ${app.name}`,
+              weight: "Bolder",
+              size: "Medium",
+              wrap: true,
+            },
+            {
+              type: "TextBlock",
+              text: `**${app.name}** (${app.environment}) has sustained high ${label.toLowerCase()} usage for ${consecutiveChecks} consecutive check${consecutiveChecks === 1 ? "" : "s"}.`,
+              wrap: true,
+              spacing: "Small",
+            },
+            {
+              type: "FactSet",
+              spacing: "Medium",
+              facts: [
+                { title: `Current ${label}`, value: `${value.toFixed(1)}${unit}` },
+                { title: "Threshold", value: `${threshold.toFixed(1)}${unit}` },
+                { title: "Consecutive checks over threshold", value: String(consecutiveChecks) },
+                { title: "Resource group", value: app.resourceGroup },
+              ],
+            },
+          ],
+          actions: [
+            {
+              type: "Action.OpenUrl",
+              title: "View telemetry in Orbit",
+              url: `https://orbit.kinisislabs.com/apps/${app.id}/telemetry`,
+            },
+          ],
+          msteams: { width: "Full" },
+        },
+      },
+    ],
+  };
+
+  const res = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "(no body)");
+    throw new Error(`Teams webhook returned ${res.status}: ${text}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // SMTP email via nodemailer
 // ---------------------------------------------------------------------------
 
@@ -243,7 +401,7 @@ function getSmtpTransport(): ReturnType<typeof nodemailer.createTransport> {
   return _smtpTransport;
 }
 
-async function sendEmailAlert(
+async function sendEmailBudgetAlert(
   recipients: string[],
   alert: OverrunAlert,
 ): Promise<void> {
@@ -280,8 +438,45 @@ async function sendEmailAlert(
   await getSmtpTransport().sendMail({ from, to: recipients.join(", "), subject, html, text });
 }
 
+async function sendEmailInfraAlert(
+  recipients: string[],
+  alert: InfraPressureAlert,
+): Promise<void> {
+  if (recipients.length === 0) return;
+
+  const { app, metric, value, threshold, consecutiveChecks } = alert;
+  const label = metricLabel(metric);
+  const unit = metricUnit(metric);
+  const from = process.env["ALERT_SMTP_FROM"] ?? "orbit@kinisislabs.com";
+  const subject = `[Orbit] Infra pressure — ${label} high on ${app.name} (${value.toFixed(1)}${unit})`;
+
+  const html = `
+<p>Hi team,</p>
+<p><strong>${app.name}</strong> (${app.environment}) has sustained high ${label.toLowerCase()} usage for ${consecutiveChecks} consecutive check${consecutiveChecks === 1 ? "" : "s"}.</p>
+<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:sans-serif;font-size:14px;">
+  <tr><td style="font-weight:bold;padding-right:24px;">Current ${label}</td><td>${value.toFixed(1)}${unit}</td></tr>
+  <tr><td style="font-weight:bold;padding-right:24px;">Threshold</td><td>${threshold.toFixed(1)}${unit}</td></tr>
+  <tr><td style="font-weight:bold;padding-right:24px;">Consecutive checks over threshold</td><td>${consecutiveChecks}</td></tr>
+  <tr><td style="font-weight:bold;padding-right:24px;">Resource group</td><td>${app.resourceGroup}</td></tr>
+</table>
+<br>
+<p><a href="https://orbit.kinisislabs.com/apps/${app.id}/telemetry">View telemetry in Orbit →</a></p>
+<p style="color:#888;font-size:12px;">This alert fires when ${label} stays above ${threshold.toFixed(1)}${unit} for ${infraConsecutiveChecksRequired()} consecutive check${infraConsecutiveChecksRequired() === 1 ? "" : "s"}. It will not repeat for ${Math.round(cooldownMs() / 3_600_000)} hours.</p>
+`;
+
+  const text =
+    `[Orbit] Infra pressure — ${label} high on ${app.name}\n\n` +
+    `Current ${label}                 : ${value.toFixed(1)}${unit}\n` +
+    `Threshold                        : ${threshold.toFixed(1)}${unit}\n` +
+    `Consecutive checks over threshold: ${consecutiveChecks}\n` +
+    `Resource group                   : ${app.resourceGroup}\n\n` +
+    `View in Orbit: https://orbit.kinisislabs.com/apps/${app.id}/telemetry\n`;
+
+  await getSmtpTransport().sendMail({ from, to: recipients.join(", "), subject, html, text });
+}
+
 // ---------------------------------------------------------------------------
-// Core check logic
+// Core budget check logic
 // ---------------------------------------------------------------------------
 
 /**
@@ -300,11 +495,7 @@ async function resolveCostAndBudget(
 
   const mtd = liveCost ? liveCost.monthToDate : app.monthToDateCost;
 
-  // Budget: prefer live/cached Azure Budget; fall back to 2× MTD formula
   const budget = budgetWithSource?.result.amount ?? Number((mtd * 2.0).toFixed(2));
-
-  // Forecast: prefer Azure Forecast API; fall back to 1.7× MTD formula
-  // (mirror the same logic used in the cost route)
   const forecastMultiplier = !budgetWithSource && app.id === "orbit" ? 2.3 : 1.7;
   const forecast =
     budgetWithSource?.result.forecastAmount ?? Number((mtd * forecastMultiplier).toFixed(2));
@@ -313,11 +504,7 @@ async function resolveCostAndBudget(
 }
 
 /**
- * Run a single pass over all tracked apps.  For each app whose forecast exceeds
- * its budget, send alert(s) on any configured channel — unless the app is on
- * cooldown (already alerted recently).
- *
- * Returns a summary of what was found and what was sent.
+ * Run a single pass over all tracked apps checking budget forecasts.
  */
 export async function checkBudgetForecasts(): Promise<{
   checked: number;
@@ -355,18 +542,17 @@ export async function checkBudgetForecasts(): Promise<{
       "budget-alert: forecast exceeds budget",
     );
 
-    if (isOnCooldown(app.id)) {
+    if (isBudgetOnCooldown(app.id)) {
       logger.debug({ appId: app.id }, "budget-alert: on cooldown, skipping notifications");
       continue;
     }
 
     const firedChannels: string[] = [];
 
-    // --- Teams ---
     const teamsUrl = teamsWebhookUrl(app.id);
     if (teamsUrl) {
       try {
-        await sendTeamsAlert(teamsUrl, alert);
+        await sendTeamsBudgetAlert(teamsUrl, alert);
         logger.info({ appId: app.id }, "budget-alert: Teams notification sent");
         alertsSent++;
         firedChannels.push("teams");
@@ -376,11 +562,10 @@ export async function checkBudgetForecasts(): Promise<{
       }
     }
 
-    // --- Email ---
     const recipients = emailRecipients(app.id);
     if (isSmtpConfigured() && recipients.length > 0) {
       try {
-        await sendEmailAlert(recipients, alert);
+        await sendEmailBudgetAlert(recipients, alert);
         logger.info({ appId: app.id, recipients }, "budget-alert: email notification sent");
         alertsSent++;
         firedChannels.push("email");
@@ -390,10 +575,169 @@ export async function checkBudgetForecasts(): Promise<{
       }
     }
 
-    if (firedChannels.length > 0) markAlertSent(app.id, alert, firedChannels);
+    if (firedChannels.length > 0) markBudgetAlertSent(app.id, alert, firedChannels);
   }
 
   return { checked: APPS.length, overruns, alertsSent, errors };
+}
+
+// ---------------------------------------------------------------------------
+// Infra pressure check logic
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve the last observed value for a single metric (cpu_pct or memory_pct)
+ * for the given app using Azure Monitor Log Analytics.
+ *
+ * Fetches a 2-hour window (two hourly buckets) and returns the most recent
+ * point's value, or null when Monitor is not configured / the query fails.
+ */
+async function resolveLastMetricValue(
+  app: AppRecord,
+  metricName: "cpu_pct" | "memory_pct",
+): Promise<number | null> {
+  try {
+    const series = await fetchAppTimeSeries(app, metricName, 2, {});
+    if (!series || series.length === 0) return null;
+    const last = series[series.length - 1];
+    return last ? last.value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Run a single pass over all tracked apps checking CPU and memory thresholds.
+ *
+ * Uses a consecutive-check counter per (app, metric) pair. An alert fires only
+ * when the metric has been above the threshold for ALERT_INFRA_CONSECUTIVE_CHECKS
+ * consecutive scheduler runs (default: 2). The counter resets to 0 as soon as
+ * the metric drops back to or below the threshold.
+ *
+ * Returns a summary of what was found and what was sent.
+ */
+export async function checkInfraThresholds(): Promise<{
+  checked: number;
+  breaches: number;
+  alertsSent: number;
+  errors: number;
+}> {
+  const cpuThreshold = cpuThresholdPct();
+  const memThreshold = memoryThresholdPct();
+  const requiredConsecutive = infraConsecutiveChecksRequired();
+
+  let breaches = 0;
+  let alertsSent = 0;
+  let errors = 0;
+
+  type MetricSpec = {
+    name: "cpu_pct" | "memory_pct";
+    kind: "cpu" | "memory";
+    threshold: number;
+  };
+
+  const metrics: MetricSpec[] = [
+    { name: "cpu_pct", kind: "cpu", threshold: cpuThreshold },
+    { name: "memory_pct", kind: "memory", threshold: memThreshold },
+  ];
+
+  for (const app of APPS) {
+    for (const { name, kind, threshold } of metrics) {
+      const counterKey = `${app.id}:${kind}`;
+
+      let value: number | null = null;
+      try {
+        value = await resolveLastMetricValue(app, name);
+      } catch (err) {
+        logger.warn({ err, appId: app.id, metric: kind }, "infra-alert: failed to fetch metric");
+        errors++;
+        continue;
+      }
+
+      if (value === null) {
+        // Monitor not configured or no data — reset consecutive count and skip.
+        _infraConsecutiveCounts.set(counterKey, 0);
+        continue;
+      }
+
+      if (value <= threshold) {
+        // Metric is healthy — reset consecutive counter.
+        _infraConsecutiveCounts.set(counterKey, 0);
+        continue;
+      }
+
+      // Metric is above threshold — increment consecutive counter.
+      const prev = _infraConsecutiveCounts.get(counterKey) ?? 0;
+      const consecutive = prev + 1;
+      _infraConsecutiveCounts.set(counterKey, consecutive);
+
+      logger.debug(
+        { appId: app.id, metric: kind, value, threshold, consecutive, requiredConsecutive },
+        "infra-alert: metric above threshold",
+      );
+
+      if (consecutive < requiredConsecutive) {
+        // Not yet enough consecutive over-threshold checks — don't fire yet.
+        continue;
+      }
+
+      breaches++;
+
+      logger.info(
+        { appId: app.id, metric: kind, value, threshold, consecutive },
+        "infra-alert: threshold breached for required consecutive checks",
+      );
+
+      if (isInfraOnCooldown(app.id, kind)) {
+        logger.debug({ appId: app.id, metric: kind }, "infra-alert: on cooldown, skipping notifications");
+        continue;
+      }
+
+      const infraAlert: InfraPressureAlert = {
+        app,
+        metric: kind,
+        value,
+        threshold,
+        consecutiveChecks: consecutive,
+      };
+
+      const firedChannels: string[] = [];
+
+      // --- Teams ---
+      const teamsUrl = teamsWebhookUrl(app.id);
+      if (teamsUrl) {
+        try {
+          await sendTeamsInfraAlert(teamsUrl, infraAlert);
+          logger.info({ appId: app.id, metric: kind }, "infra-alert: Teams notification sent");
+          alertsSent++;
+          firedChannels.push("teams");
+        } catch (err) {
+          logger.error({ err, appId: app.id, metric: kind }, "infra-alert: Teams notification failed");
+          errors++;
+        }
+      }
+
+      // --- Email ---
+      const recipients = emailRecipients(app.id);
+      if (isSmtpConfigured() && recipients.length > 0) {
+        try {
+          await sendEmailInfraAlert(recipients, infraAlert);
+          logger.info({ appId: app.id, metric: kind, recipients }, "infra-alert: email notification sent");
+          alertsSent++;
+          firedChannels.push("email");
+        } catch (err) {
+          logger.error({ err, appId: app.id, metric: kind }, "infra-alert: email notification failed");
+          errors++;
+        }
+      }
+
+      if (firedChannels.length > 0) {
+        markInfraAlertSent(app.id, kind, value, threshold, firedChannels);
+      }
+    }
+  }
+
+  return { checked: APPS.length, breaches, alertsSent, errors };
 }
 
 // ---------------------------------------------------------------------------
@@ -403,10 +747,11 @@ export async function checkBudgetForecasts(): Promise<{
 let _schedulerHandle: ReturnType<typeof setInterval> | null = null;
 
 /**
- * Start the background budget-alert scheduler.
+ * Start the background alert scheduler.
  *
- * No-op if no notification channel is configured, or if it is already running.
- * Safe to call at server startup — it logs what it does.
+ * Each run checks both budget forecasts and infra thresholds (CPU + memory).
+ * No-op if no notification channel is configured, or if already running.
+ * Safe to call at server startup.
  */
 export function startBudgetAlertScheduler(): void {
   if (_schedulerHandle !== null) return;
@@ -425,23 +770,30 @@ export function startBudgetAlertScheduler(): void {
       : 60 * 60 * 1000;
 
   logger.info(
-    { intervalMinutes: intervalMs / 60_000, cooldownHours: cooldownMs() / 3_600_000 },
-    "budget-alert: scheduler started",
+    {
+      intervalMinutes: intervalMs / 60_000,
+      cooldownHours: cooldownMs() / 3_600_000,
+      cpuThresholdPct: cpuThresholdPct(),
+      memoryThresholdPct: memoryThresholdPct(),
+      infraConsecutiveChecks: infraConsecutiveChecksRequired(),
+    },
+    "budget-alert: scheduler started (budget + infra checks)",
   );
 
   const run = async (): Promise<void> => {
     try {
-      const result = await checkBudgetForecasts();
-      logger.info(result, "budget-alert: check complete");
+      const [budgetResult, infraResult] = await Promise.all([
+        checkBudgetForecasts(),
+        checkInfraThresholds(),
+      ]);
+      logger.info({ budget: budgetResult, infra: infraResult }, "budget-alert: check complete");
     } catch (err) {
       logger.error({ err }, "budget-alert: unexpected error during check");
     }
   };
 
-  // Run immediately on startup, then on every interval
   void run();
   _schedulerHandle = setInterval(() => void run(), intervalMs);
-  // Don't hold the Node.js event loop open — the interval is background work
   _schedulerHandle.unref();
 }
 

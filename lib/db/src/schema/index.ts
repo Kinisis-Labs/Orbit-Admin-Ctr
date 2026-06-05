@@ -7,3 +7,4 @@ export * from "./session";
 export * from "./budgetSnapshots";
 export * from "./costSnapshots";
 export * from "./budgetAlertLog";
+export * from "./infraAlertLog";

@@ -22,6 +22,7 @@ import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
 import { CsvToolbar } from "@/components/csv-toolbar";
+import { InfraAlertHistory } from "@/components/infra-alert-history";
 
 type AlertRow = {
   id: string;
@@ -213,6 +214,7 @@ export default function Alerts() {
           </Table>
         </div>
       </div>
+      <InfraAlertHistory appId={isGlobal ? undefined : scope} />
     </div>
   );
 }

@@ -844,6 +844,24 @@ export interface BudgetAlertLogEntry {
   acknowledgedAt?: string | null;
 }
 
+export interface InfraAlertLogEntry {
+  id: number;
+  appId: string;
+  appName: string;
+  /** Which metric breached — 'cpu' or 'memory' */
+  metric: string;
+  /** Observed metric value (percent) at alert time */
+  value: number;
+  /** Configured threshold (percent) that was exceeded */
+  threshold: number;
+  /** Notification channels that fired (e.g. "teams", "email") */
+  channels: string[];
+  /** When the notification was dispatched */
+  sentAt: string;
+  /** When the entry was acknowledged by an operator. Null if not yet acknowledged. */
+  acknowledgedAt?: string | null;
+}
+
 /**
  * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
  */
@@ -904,6 +922,25 @@ limit?: number;
 };
 
 export type ListBudgetAlertLogParams = {
+/**
+ * Filter to a specific app. Omit to return entries for all apps.
+ */
+appId?: string;
+/**
+ * Maximum number of entries to return (default 50, max 200).
+ */
+limit?: number;
+/**
+ * When true, only return entries that have not yet been acknowledged.
+ */
+unacknowledgedOnly?: boolean;
+/**
+ * ISO 8601 datetime. When set, only return entries with sentAt >= since.
+ */
+since?: string;
+};
+
+export type ListInfraAlertLogParams = {
 /**
  * Filter to a specific app. Omit to return entries for all apps.
  */

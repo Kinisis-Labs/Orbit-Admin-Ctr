@@ -7,6 +7,7 @@ import usersRouter from "./users";
 import playSubscriptionsRouter from "./playSubscriptions";
 import appleSubscriptionsRouter from "./appleSubscriptions";
 import budgetAlertLogRouter from "./budgetAlertLog";
+import infraAlertLogRouter from "./infraAlertLog";
 import { requireAuth, requireCostReader } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -25,5 +26,7 @@ router.use(requireAuth, usersRouter);
 router.use(requireAuth, requireCostReader, playSubscriptionsRouter);
 router.use(requireAuth, requireCostReader, appleSubscriptionsRouter);
 router.use(requireAuth, requireCostReader, budgetAlertLogRouter);
+// Infra pressure alerts are operational (not financial) — gated by requireAuth only.
+router.use(requireAuth, infraAlertLogRouter);
 
 export default router;
