@@ -38,6 +38,29 @@ function mapNetworkStatus(
   return "unknown";
 }
 
+/**
+ * Azure Resource Graph returns data in two formats depending on the query size/result count:
+ *   - Object-array format: `Record<string,unknown>[]`  (small results)
+ *   - Table format: `{ columns: [{name,type},...], rows: [[val,...],...]}`  (larger results)
+ *
+ * This normaliser always returns an object-array so callers don't have to care which came back.
+ */
+export function normalizeResourceGraphRows(data: unknown): Record<string, unknown>[] {
+  if (Array.isArray(data)) {
+    return data as Record<string, unknown>[];
+  }
+  if (data && typeof data === "object") {
+    const d = data as Record<string, unknown>;
+    if (Array.isArray(d["rows"]) && Array.isArray(d["columns"])) {
+      const columns = (d["columns"] as Array<{ name: string }>).map((c) => c.name);
+      return (d["rows"] as unknown[][]).map((row) =>
+        Object.fromEntries(columns.map((col, i) => [col, row[i]])),
+      );
+    }
+  }
+  return [];
+}
+
 // Cache: app id → { result, expiresAt }
 const NETWORK_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 type NetworkCacheEntry = { result: NetworkEndpoint[]; expiresAt: number };
@@ -113,7 +136,7 @@ export async function fetchNetworkEndpoints(
       subscriptions: subscriptionIds,
     });
 
-    const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
+    const rows = normalizeResourceGraphRows(result.data);
 
     logger.info(
       { appId: app.id, rowCount: rows.length, subscriptions: subscriptionIds },

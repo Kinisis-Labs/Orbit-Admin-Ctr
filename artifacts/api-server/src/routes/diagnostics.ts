@@ -6,6 +6,7 @@ import {
   getSubscriptionIds,
   isAzureConfigured,
 } from "../lib/azure.js";
+import { normalizeResourceGraphRows } from "../lib/azureNetwork.js";
 import { logger } from "../lib/logger.js";
 
 const router = Router();
@@ -130,12 +131,12 @@ async function checkNetworkResourceGraph(): Promise<CheckResult> {
         | limit 100
       `,
     });
-    const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
+    const rows = normalizeResourceGraphRows(result.data);
     if (rows.length === 0) {
       return {
         status: "ok",
         detail: `Query succeeded but found 0 networking resources across ${subs.length} subscription(s). ` +
-          `Verify that Front Door / VNets / Network Watchers exist in subscriptions: ${subs.join(", ")}`,
+          `Verify that Container Apps / Front Door / Network Watchers exist in subscriptions: ${subs.join(", ")}`,
       };
     }
     const summary = rows.map((r) => `${r["type"]}/${r["name"]} (${r["resourceGroup"]}, ${r["location"]})`).join("; ");
