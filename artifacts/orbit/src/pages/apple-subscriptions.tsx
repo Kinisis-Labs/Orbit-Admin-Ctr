@@ -125,7 +125,17 @@ export default function AppleSubscriptions() {
                 return (
                   <TableRow key={r.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
                     <TableCell className="py-1 font-medium text-primary">{r.appName}</TableCell>
-                    <TableCell className="py-1 font-mono text-[12px] text-muted-foreground">{r.bundleId}</TableCell>
+                    <TableCell className="py-1 font-mono text-[12px]">
+                      <a
+                        href={`https://apps.apple.com/app/${r.bundleId}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        {r.bundleId}
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                      </a>
+                    </TableCell>
                     <TableCell className="py-1 text-muted-foreground">{r.environment}</TableCell>
                     <TableCell className="py-1 text-right tabular-nums">{num(r.activeSubscribers)}</TableCell>
                     <TableCell className="py-1 text-right tabular-nums text-muted-foreground">{num(r.canceledSubscribers)}</TableCell>
