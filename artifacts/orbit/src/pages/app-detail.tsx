@@ -321,8 +321,11 @@ function OverviewCostTile({ appId }: { appId: string }) {
     new Intl.NumberFormat("en-US", { style: "currency", currency: data.currency }).format(amount);
 
   const rawUtilPct = data.budget > 0 ? (data.monthToDate / data.budget) * 100 : 0;
-  const utilPct = Math.min(rawUtilPct, 100);
-  const budgetBarClass = getBudgetBarClass(utilPct, budgetThreshold);
+  const barUtilPct = Math.min(rawUtilPct, 100);
+  const budgetBarClass = getBudgetBarClass(barUtilPct, budgetThreshold);
+  const headroom = data.budget - data.forecast;
+  const isEstimated = data.dataSource === "mock";
+  const forecastOverBudget = data.forecast > data.budget;
 
   return (
     <div className="bg-card border border-border shadow-sm p-4 text-[13px]">
@@ -330,31 +333,57 @@ function OverviewCostTile({ appId }: { appId: string }) {
         <h3 className="font-semibold text-sm">Cost snapshot</h3>
         <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* MTD Spend */}
         <div className="flex flex-col gap-1">
           <div className="text-[12px] text-muted-foreground font-medium">MTD spend</div>
           <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.monthToDate)}</div>
         </div>
+
+        {/* Budget Cap */}
         <div className="flex flex-col gap-1">
-          <div className="text-[12px] text-muted-foreground font-medium">Forecast</div>
-          <div className="text-xl font-semibold tabular-nums text-muted-foreground">{formatCurrency(data.forecast)}</div>
-        </div>
-        <div className="md:col-span-2 flex flex-col justify-center gap-1.5">
-          <div className="flex justify-between text-[12px]">
-            <span className="text-muted-foreground font-medium">Budget utilization</span>
-            <span className="tabular-nums text-foreground font-medium">
-              {formatCurrency(data.monthToDate)} <span className="text-muted-foreground font-normal">of {formatCurrency(data.budget)}</span>
-            </span>
+          <div className="text-[12px] text-muted-foreground font-medium">Budget Cap</div>
+          <div className="text-xl font-semibold tabular-nums">
+            {formatCurrency(data.budget)}
+            {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
           </div>
-          <TooltipProvider>
-            <UITooltip>
-              <TooltipTrigger asChild>
-                <Progress value={utilPct} className={`h-1.5 rounded-none bg-muted ${budgetBarClass} cursor-default`} />
-              </TooltipTrigger>
-              <TooltipContent>Alert at {budgetThreshold}% · {rawUtilPct.toFixed(0)}% used</TooltipContent>
-            </UITooltip>
-          </TooltipProvider>
-          <div className="text-[11px] text-muted-foreground tabular-nums">{utilPct.toFixed(0)}% used</div>
+          <div className="space-y-1 mt-0.5">
+            <TooltipProvider>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <Progress value={barUtilPct} className={`h-1.5 rounded-none bg-muted ${budgetBarClass} cursor-default`} />
+                </TooltipTrigger>
+                <TooltipContent>Alert at {budgetThreshold}% · {rawUtilPct.toFixed(0)}% utilized</TooltipContent>
+              </UITooltip>
+            </TooltipProvider>
+            <div className="text-[11px] text-muted-foreground tabular-nums">{rawUtilPct.toFixed(0)}% of cap used MTD</div>
+          </div>
+        </div>
+
+        {/* Forecast EOM */}
+        <div className="flex flex-col gap-1">
+          <div className="text-[12px] text-muted-foreground font-medium">Forecast EOM</div>
+          <div className={`text-xl font-semibold tabular-nums ${forecastOverBudget ? "text-destructive" : "text-muted-foreground"}`}>
+            {formatCurrency(data.forecast)}
+            {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
+          </div>
+          <div className="text-[11px] mt-0.5">
+            {forecastOverBudget
+              ? <span className="text-destructive">Projected to exceed cap</span>
+              : <span className="text-muted-foreground">Projected end-of-month</span>}
+          </div>
+        </div>
+
+        {/* Headroom */}
+        <div className="flex flex-col gap-1">
+          <div className="text-[12px] text-muted-foreground font-medium">Headroom</div>
+          <div className={`text-xl font-semibold tabular-nums ${headroom < 0 ? "text-destructive" : "text-emerald-500"}`}>
+            {formatCurrency(headroom)}
+            {isEstimated && <span className="ml-1 text-[10px] text-muted-foreground italic font-normal">est.</span>}
+          </div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">
+            {headroom >= 0 ? "Remaining vs forecast" : "Overrun vs budget"}
+          </div>
         </div>
       </div>
     </div>
