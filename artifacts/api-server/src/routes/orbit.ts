@@ -1107,9 +1107,47 @@ function mockInfraPct(appId: string, lo: number, hi: number): number {
   return Number((lo + (h % 1000) / 1000 * (hi - lo)).toFixed(1));
 }
 
+function mockSloRows() {
+  const CPU_THRESHOLD = 80;
+  const MEMORY_THRESHOLD = 85;
+  return APPS.map((app) => {
+    const rand = seededRand(app.id + "slo");
+    const cpuSeries = makeSeries(app.id, "CPU %", "%", 24, 45, 25).points;
+    const memSeries = makeSeries(app.id, "Memory %", "%", 24, 60, 20).points;
+    const cpuPct = mockInfraPct(app.id + "cpu", 18, 72);
+    const memoryPct = mockInfraPct(app.id + "mem", 38, 82);
+    const uptimePct = Number((99.5 + rand() * 0.5).toFixed(4));
+    const errorRatePct = Number((rand() * 0.8).toFixed(4));
+    const p95LatencyMs = Math.round(120 + rand() * 250);
+    const errorTargetPct = 1.0;
+    const p95TargetMs = 500;
+    const errorBudgetRemainingPct = Math.max(
+      0,
+      Number((100 * (1 - errorRatePct / errorTargetPct)).toFixed(1)),
+    );
+    return {
+      appId: app.id,
+      appName: app.name,
+      environment: app.environment,
+      uptimePct,
+      errorBudgetRemainingPct,
+      p95LatencyMs,
+      p95TargetMs,
+      errorRatePct,
+      errorTargetPct,
+      cpuPct,
+      cpuThreshold: CPU_THRESHOLD,
+      memoryPct,
+      memoryThreshold: MEMORY_THRESHOLD,
+      cpuSeries,
+      memorySeries: memSeries,
+    };
+  });
+}
+
 router.get("/global/slos", async (_req, res) => {
   if (!isAzureConfigured()) {
-    res.json([]);
+    res.json(ListSlosResponse.parse(mockSloRows()));
     return;
   }
 
@@ -1118,8 +1156,8 @@ router.get("/global/slos", async (_req, res) => {
 
   const [metricsResults, cpuSeriesResults, memSeriesResults] = await Promise.all([
     Promise.all(APPS.map((a) => fetchAppMetrics(a, {}))),
-    Promise.all(APPS.map((a) => fetchAppTimeSeries(a, "cpu_pct", 1))),
-    Promise.all(APPS.map((a) => fetchAppTimeSeries(a, "memory_pct", 1))),
+    Promise.all(APPS.map((a) => fetchAppTimeSeries(a, "cpu_pct", 24))),
+    Promise.all(APPS.map((a) => fetchAppTimeSeries(a, "memory_pct", 24))),
   ]);
 
   const rows = APPS.flatMap((app, i) => {
@@ -1134,10 +1172,10 @@ router.get("/global/slos", async (_req, res) => {
 
     // Take the last non-NaN point from each time-series, or fall back to a
     // deterministic mock so the column always has a value to display.
-    const cpuSeries = cpuSeriesResults[i];
-    const memSeries = memSeriesResults[i];
-    const lastCpuPoint = cpuSeries ? [...cpuSeries].reverse().find((p) => Number.isFinite(p.value)) : undefined;
-    const lastMemPoint = memSeries ? [...memSeries].reverse().find((p) => Number.isFinite(p.value)) : undefined;
+    const cpuSeries = cpuSeriesResults[i] ?? makeSeries(app.id, "CPU %", "%", 24, 45, 25).points;
+    const memSeries = memSeriesResults[i] ?? makeSeries(app.id, "Memory %", "%", 24, 60, 20).points;
+    const lastCpuPoint = [...cpuSeries].reverse().find((p) => Number.isFinite(p.value));
+    const lastMemPoint = [...memSeries].reverse().find((p) => Number.isFinite(p.value));
     const lastCpu = lastCpuPoint?.value;
     const lastMem = lastMemPoint?.value;
     const cpuPct = lastCpu !== undefined ? Number(lastCpu.toFixed(1)) : mockInfraPct(app.id + "cpu", 18, 72);
@@ -1160,6 +1198,8 @@ router.get("/global/slos", async (_req, res) => {
       cpuThreshold,
       memoryPct,
       memoryThreshold,
+      cpuSeries,
+      memorySeries: memSeries,
     }];
   });
 

@@ -5,6 +5,7 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { MetricPoint } from './metricPoint';
 
 export interface SloRow {
   appId: string;
@@ -20,4 +21,8 @@ export interface SloRow {
   cpuThreshold: number;
   memoryPct: number;
   memoryThreshold: number;
+  /** 24-hour CPU % time-series (live from Monitor or mock). Omitted when data is unavailable. */
+  cpuSeries?: MetricPoint[];
+  /** 24-hour memory % time-series (live from Monitor or mock). Omitted when data is unavailable. */
+  memorySeries?: MetricPoint[];
 }

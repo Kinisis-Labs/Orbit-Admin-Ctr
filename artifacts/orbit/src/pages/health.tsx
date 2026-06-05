@@ -1,9 +1,15 @@
+import { useState, Fragment } from "react";
 import { useListSlos } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader, StatusPill } from "@/components/page-header";
-import { Activity } from "lucide-react";
+import { Activity, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from "recharts";
+import { format } from "date-fns";
 
 type InfraTone = "ok" | "warn" | "bad";
 
@@ -26,8 +32,117 @@ function InfraBadge({ pct, threshold }: { pct: number; threshold: number }) {
   );
 }
 
+type MetricPoint = { timestamp: string; value: number };
+
+function TrendSparkline({
+  cpuSeries,
+  memorySeries,
+  cpuThreshold,
+  memoryThreshold,
+}: {
+  cpuSeries: MetricPoint[];
+  memorySeries: MetricPoint[];
+  cpuThreshold: number;
+  memoryThreshold: number;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-4 px-4 py-3 bg-muted/30 border-t border-border/50">
+      <div>
+        <div className="text-[11px] font-semibold text-muted-foreground mb-1.5">
+          CPU % — last 24h
+          <span className="ml-1.5 text-[10px] font-normal opacity-60">threshold {cpuThreshold}%</span>
+        </div>
+        <div className="h-20">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={cpuSeries} margin={{ top: 2, right: 0, left: -28, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="hsl(var(--border))" />
+              <XAxis
+                dataKey="timestamp"
+                tickFormatter={(v) => format(new Date(v), "HH:mm")}
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                domain={[0, 100]}
+                tickFormatter={(v) => `${v}%`}
+              />
+              <Tooltip
+                contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "2px", fontSize: "11px" }}
+                labelFormatter={(v) => format(new Date(v), "HH:mm")}
+                formatter={(v: number) => [`${v.toFixed(1)}%`, "CPU"]}
+              />
+              <Area
+                type="step"
+                dataKey="value"
+                stroke="hsl(var(--primary))"
+                strokeWidth={1.5}
+                fillOpacity={0.1}
+                fill="hsl(var(--primary))"
+                isAnimationActive={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+      <div>
+        <div className="text-[11px] font-semibold text-muted-foreground mb-1.5">
+          Memory % — last 24h
+          <span className="ml-1.5 text-[10px] font-normal opacity-60">threshold {memoryThreshold}%</span>
+        </div>
+        <div className="h-20">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={memorySeries} margin={{ top: 2, right: 0, left: -28, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="hsl(var(--border))" />
+              <XAxis
+                dataKey="timestamp"
+                tickFormatter={(v) => format(new Date(v), "HH:mm")}
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                domain={[0, 100]}
+                tickFormatter={(v) => `${v}%`}
+              />
+              <Tooltip
+                contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "2px", fontSize: "11px" }}
+                labelFormatter={(v) => format(new Date(v), "HH:mm")}
+                formatter={(v: number) => [`${v.toFixed(1)}%`, "Memory"]}
+              />
+              <Area
+                type="step"
+                dataKey="value"
+                stroke="hsl(var(--chart-2))"
+                strokeWidth={1.5}
+                fillOpacity={0.1}
+                fill="hsl(var(--chart-2))"
+                isAnimationActive={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Health() {
   const { data: slos, isLoading } = useListSlos();
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+
   const isEmpty = !isLoading && (slos?.length ?? 0) === 0;
 
   const meetingUptime = (slos ?? []).filter((s) => s.uptimePct >= 99.9).length;
@@ -38,6 +153,10 @@ export default function Health() {
     : 0;
   const breachingCpu = (slos ?? []).filter((s) => s.cpuPct >= s.cpuThreshold).length;
   const breachingMem = (slos ?? []).filter((s) => s.memoryPct >= s.memoryThreshold).length;
+
+  function toggleRow(appId: string) {
+    setExpandedRow((prev) => (prev === appId ? null : appId));
+  }
 
   return (
     <div className="space-y-4">
@@ -73,6 +192,7 @@ export default function Health() {
           <Table className="text-[13px]">
             <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
               <TableRow className="hover:bg-transparent">
+                <TableHead className="h-8 w-8" />
                 <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground">Env</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground text-right">Uptime</TableHead>
@@ -95,23 +215,49 @@ export default function Health() {
                   : latencyOk && errOk && s.uptimePct >= 99.9
                     ? "warn"
                     : "bad";
+                const isExpanded = expandedRow === s.appId;
+                const hasSeries = (s.cpuSeries?.length ?? 0) > 0 || (s.memorySeries?.length ?? 0) > 0;
                 return (
-                  <TableRow key={s.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
-                    <TableCell className="py-1 font-medium text-primary">{s.appName}</TableCell>
-                    <TableCell className="py-1 text-muted-foreground">{s.environment}</TableCell>
-                    <TableCell className="py-1 text-right tabular-nums">{s.uptimePct}%</TableCell>
-                    <TableCell className="py-1">
-                      <div className="flex items-center gap-2">
-                        <Progress value={s.errorBudgetRemainingPct} className="h-1.5 rounded-none bg-muted w-32" />
-                        <span className="text-[11px] tabular-nums text-muted-foreground w-10">{s.errorBudgetRemainingPct}%</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className={`py-1 text-right tabular-nums ${latencyOk ? "" : "text-destructive font-medium"}`}>{s.p95LatencyMs}ms</TableCell>
-                    <TableCell className={`py-1 text-right tabular-nums ${errOk ? "" : "text-destructive font-medium"}`}>{s.errorRatePct}%</TableCell>
-                    <TableCell className="py-1"><InfraBadge pct={s.cpuPct} threshold={s.cpuThreshold} /></TableCell>
-                    <TableCell className="py-1"><InfraBadge pct={s.memoryPct} threshold={s.memoryThreshold} /></TableCell>
-                    <TableCell className="py-1"><StatusPill tone={overall as "ok" | "warn" | "bad"}>{overall === "ok" ? "Meeting SLO" : overall === "warn" ? "At risk" : "Breaching"}</StatusPill></TableCell>
-                  </TableRow>
+                  <Fragment key={s.appId}>
+                    <TableRow
+                      className={`h-8 border-b border-border/50 hover:bg-muted/40 ${hasSeries ? "cursor-pointer" : ""}`}
+                      onClick={() => hasSeries && toggleRow(s.appId)}
+                    >
+                      <TableCell className="py-1 pl-3 pr-0 w-8">
+                        {hasSeries ? (
+                          isExpanded
+                            ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                            : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="py-1 font-medium text-primary">{s.appName}</TableCell>
+                      <TableCell className="py-1 text-muted-foreground">{s.environment}</TableCell>
+                      <TableCell className="py-1 text-right tabular-nums">{s.uptimePct}%</TableCell>
+                      <TableCell className="py-1">
+                        <div className="flex items-center gap-2">
+                          <Progress value={s.errorBudgetRemainingPct} className="h-1.5 rounded-none bg-muted w-32" />
+                          <span className="text-[11px] tabular-nums text-muted-foreground w-10">{s.errorBudgetRemainingPct}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className={`py-1 text-right tabular-nums ${latencyOk ? "" : "text-destructive font-medium"}`}>{s.p95LatencyMs}ms</TableCell>
+                      <TableCell className={`py-1 text-right tabular-nums ${errOk ? "" : "text-destructive font-medium"}`}>{s.errorRatePct}%</TableCell>
+                      <TableCell className="py-1"><InfraBadge pct={s.cpuPct} threshold={s.cpuThreshold} /></TableCell>
+                      <TableCell className="py-1"><InfraBadge pct={s.memoryPct} threshold={s.memoryThreshold} /></TableCell>
+                      <TableCell className="py-1"><StatusPill tone={overall as "ok" | "warn" | "bad"}>{overall === "ok" ? "Meeting SLO" : overall === "warn" ? "At risk" : "Breaching"}</StatusPill></TableCell>
+                    </TableRow>
+                    {isExpanded && hasSeries && (
+                      <tr className="border-b border-border/50">
+                        <td colSpan={10} className="p-0">
+                          <TrendSparkline
+                            cpuSeries={(s.cpuSeries ?? []) as MetricPoint[]}
+                            memorySeries={(s.memorySeries ?? []) as MetricPoint[]}
+                            cpuThreshold={s.cpuThreshold}
+                            memoryThreshold={s.memoryThreshold}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
             </TableBody>

@@ -821,6 +821,10 @@ export interface SloRow {
   cpuThreshold: number;
   memoryPct: number;
   memoryThreshold: number;
+  /** 24-hour CPU % time-series (live from Monitor or mock). Omitted when data is unavailable. */
+  cpuSeries?: MetricPoint[];
+  /** 24-hour memory % time-series (live from Monitor or mock). Omitted when data is unavailable. */
+  memorySeries?: MetricPoint[];
 }
 
 export interface GlobalEndpointRow {

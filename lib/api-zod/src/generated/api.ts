@@ -659,7 +659,15 @@ export const ListSlosResponseItem = zod.object({
   "cpuPct": zod.number(),
   "cpuThreshold": zod.number(),
   "memoryPct": zod.number(),
-  "memoryThreshold": zod.number()
+  "memoryThreshold": zod.number(),
+  "cpuSeries": zod.array(zod.object({
+  "timestamp": zod.string().datetime({"offset":true}),
+  "value": zod.number()
+})).optional().describe('24-hour CPU % time-series (live from Monitor or mock). Omitted when data is unavailable.'),
+  "memorySeries": zod.array(zod.object({
+  "timestamp": zod.string().datetime({"offset":true}),
+  "value": zod.number()
+})).optional().describe('24-hour memory % time-series (live from Monitor or mock). Omitted when data is unavailable.')
 })
 export const ListSlosResponse = zod.array(ListSlosResponseItem)
 

@@ -1155,6 +1155,14 @@ components:
         cpuThreshold: { type: number }
         memoryPct: { type: number }
         memoryThreshold: { type: number }
+        cpuSeries:
+          type: array
+          items: { $ref: "#/components/schemas/MetricPoint" }
+          description: "24-hour CPU % time-series (live from Monitor or mock). Omitted when data is unavailable."
+        memorySeries:
+          type: array
+          items: { $ref: "#/components/schemas/MetricPoint" }
+          description: "24-hour memory % time-series (live from Monitor or mock). Omitted when data is unavailable."
     GlobalEndpointRow:
       type: object
       required: [id, appId, appName, name, region, status, latencyMs, packetLossPercent]
