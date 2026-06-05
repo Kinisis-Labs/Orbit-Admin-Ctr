@@ -6,9 +6,10 @@ export function useOverBudgetDays(enabled = true) {
   const { data: apps, isLoading: appsLoading } = useListApps();
 
   const costQueries = useQueries({
-    queries: (enabled && apps ? apps : []).map((app) =>
-      getGetCostQueryOptions(app.id)
-    ),
+    queries: (enabled && apps ? apps : []).map((app) => ({
+      ...getGetCostQueryOptions(app.id),
+      staleTime: 5 * 60 * 1000,
+    })),
   });
 
   const isLoading = appsLoading || costQueries.some((q) => q.isLoading);
