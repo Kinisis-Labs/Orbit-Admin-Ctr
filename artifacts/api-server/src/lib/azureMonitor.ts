@@ -144,7 +144,12 @@ async function resolveAppInsightsResourceId(
     return _appInsightsIdCache.get(app.id) ?? null;
   }
 
-  const subscriptionIds = getSubscriptionIds();
+  // Include the app's own subscription so App Insights is found even when
+  // an app lives in a dedicated sub not listed in AZURE_SUBSCRIPTION_IDS.
+  const globalSubs = getSubscriptionIds();
+  const subscriptionIds = app.subscriptionId
+    ? [...new Set([...globalSubs, app.subscriptionId])]
+    : globalSubs;
   const rg = app.resourceGroup.toLowerCase();
 
   const query = `

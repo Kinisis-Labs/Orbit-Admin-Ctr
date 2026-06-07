@@ -94,7 +94,12 @@ export async function fetchNetworkEndpoints(
     }
   }
 
-  const subscriptionIds = getSubscriptionIds();
+  // Include the app's own subscription so resources are found even when
+  // the app lives in a dedicated sub not listed in AZURE_SUBSCRIPTION_IDS.
+  const globalSubs = getSubscriptionIds();
+  const subscriptionIds = app.subscriptionId
+    ? [...new Set([...globalSubs, app.subscriptionId])]
+    : globalSubs;
 
   // Query subscription-wide — shared resources (Front Door, Container Apps Envs) live
   // in different RGs from the compute RG.  Container Apps is the primary source of truth
