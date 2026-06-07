@@ -8,6 +8,7 @@ import {
 } from "../lib/azure.js";
 import { normalizeResourceGraphRows } from "../lib/azureNetwork.js";
 import { logger } from "../lib/logger.js";
+import { requireAdmin } from "../middlewares/auth.js";
 
 const router = Router();
 
@@ -200,7 +201,7 @@ async function checkCostManagementAccess(): Promise<Record<string, CheckResult>>
   return results;
 }
 
-router.get("/diagnostics", async (_req, res) => {
+router.get("/diagnostics", requireAdmin, async (_req, res) => {
   logger.info("diagnostics endpoint called");
 
   const [azureCheck, githubCheck, costCheck, networkCheck] = await Promise.all([

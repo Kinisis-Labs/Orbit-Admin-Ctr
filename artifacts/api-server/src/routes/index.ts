@@ -10,16 +10,15 @@ import appleSubscriptionsRouter from "./appleSubscriptions";
 import budgetAlertLogRouter from "./budgetAlertLog";
 import infraAlertLogRouter from "./infraAlertLog";
 import alertsConfigRouter from "./alertsConfig";
-import { requireAuth, requireAdmin, requireCostReader } from "../middlewares/auth";
+import { requireAuth, requireCostReader } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
 // Public: health + the auth handshake endpoints.
 router.use(healthRouter);
 router.use(authRouter);
-
-// Diagnostics exposes sensitive config/credential metadata — admin only.
-router.use(requireAuth, requireAdmin, diagnosticsRouter);
+// Diagnostics: admin gate is applied inside diagnosticsRouter on its specific route.
+router.use(requireAuth, diagnosticsRouter);
 
 // Protected data routes.
 router.use(requireAuth, orbitRouter);
