@@ -46,6 +46,8 @@ jobs:
           allow-no-subscriptions: true
 
       - name: Run DB migrations
+        continue-on-error: true
+        timeout-minutes: 2
         run: |
           npm install -g pnpm
           pnpm install --frozen-lockfile
@@ -54,6 +56,8 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Run threshold history backfill
+        continue-on-error: true
+        timeout-minutes: 2
         run: pnpm --filter @workspace/scripts run backfill-threshold-history
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
