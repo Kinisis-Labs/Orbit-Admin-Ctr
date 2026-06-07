@@ -64,8 +64,8 @@ jobs:
           azcliversion: latest
           inlineScript: |
             az containerapp update \
-              --name ca-orbit-api-prod \
-              --resource-group rg-orbit-prod-eus2 \
+              --name ca-orbit-prod-v2 \
+              --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
               --image "${{ steps.image.outputs.name }}:${{ github.sha }}" \
               --min-replicas 1 \
               --set-env-vars \
@@ -94,8 +94,8 @@ jobs:
                 GITHUB_TOKEN="${{ secrets.ORBIT_DEPLOYMENT_ID }}" \
                 STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}"
             az containerapp ingress update \
-              --name ca-orbit-api-prod \
-              --resource-group rg-orbit-prod-eus2 \
+              --name ca-orbit-prod-v2 \
+              --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
               --target-port 80
 
       - name: Print Container App FQDN
@@ -104,7 +104,7 @@ jobs:
           azcliversion: latest
           inlineScript: |
             FQDN=$(az containerapp show \
-              --name ca-orbit-api-prod \
-              --resource-group rg-orbit-prod-eus2 \
+              --name ca-orbit-prod-v2 \
+              --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
               --query "properties.configuration.ingress.fqdn" -o tsv)
             echo "Container App FQDN: $FQDN"
