@@ -12,7 +12,8 @@ import { useScope } from "@/lib/scope-context";
 import { RefreshCw } from "lucide-react";
 import { AuthBadge } from "@/components/auth-badge";
 import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
-import { useAuth, COST_READER_GROUP } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
+import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow } from "date-fns";
 

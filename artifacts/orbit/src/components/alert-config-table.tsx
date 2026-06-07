@@ -12,7 +12,8 @@ import { useLocation } from "wouter";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Check, ChevronDown, ChevronUp, History, Pencil, RefreshCw, RotateCcw, Settings2, X, ArrowRight } from "lucide-react";
-import { useAuth, ADMIN_GROUP } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
+import { ADMIN_GROUP } from "@/lib/auth-groups";
 import { cn } from "@/lib/utils";
 
 const REFETCH_INTERVAL_MS = 60_000;

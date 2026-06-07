@@ -6,7 +6,7 @@ import { Layout } from "@/components/layout";
 import { ScopeProvider } from "@/lib/scope";
 import { AuthProvider } from "@/lib/auth";
 import { RequireGroup } from "@/components/access-denied";
-import { COST_READER_GROUP } from "@/lib/auth";
+import { COST_READER_GROUP } from "@/lib/auth-groups";
 
 import Home from "@/pages/home";
 import Alerts from "@/pages/alerts";

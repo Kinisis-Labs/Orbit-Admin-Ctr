@@ -10,7 +10,8 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
-import { useAuth, COST_READER_GROUP } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
+import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { useOverBudgetDays } from "@/hooks/use-over-budget-days";
 import { useInfraThresholdAlerts } from "@/hooks/use-infra-threshold-alerts";
 

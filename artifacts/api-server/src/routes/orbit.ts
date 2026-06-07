@@ -680,14 +680,8 @@ router.get("/global/service-health", async (_req, res) => {
 
 // --- global: SLOs ---
 // Derives SLO snapshot from Azure Monitor metrics for each app.
-// Returns empty rows when Azure Monitor is not configured.
 
 router.get("/global/slos", async (_req, res) => {
-  if (!isAzureConfigured()) {
-    res.json(ListSlosResponse.parse({ rows: [], dataSource: "mock" }));
-    return;
-  }
-
   const [metricsResults, cpuSeriesResults, memSeriesResults, thresholdOverrides] = await Promise.all([
     Promise.all(APPS.map((a) => fetchAppMetrics(a, {}))),
     Promise.all(APPS.map((a) => fetchAppTimeSeries(a, "cpu_pct", 24))),
@@ -738,13 +732,7 @@ router.get("/global/slos", async (_req, res) => {
 
 // --- global: network endpoints ---
 // Aggregates endpoint health across all apps from Azure Resource Graph.
-// Returns { endpoints: [], liveEnabled: false, dataSource: "none" } when Azure is not configured.
 router.get("/global/endpoints", async (_req, res) => {
-  if (!isAzureConfigured()) {
-    res.json(ListGlobalEndpointsResponse.parse({ endpoints: [], liveEnabled: false, dataSource: "none" }));
-    return;
-  }
-
   const endpointResults = await Promise.all(APPS.map((a) => fetchNetworkEndpoints(a, {})));
 
   const rows = APPS.flatMap((app, i) => {

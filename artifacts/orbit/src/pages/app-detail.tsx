@@ -41,7 +41,8 @@ function fmtDataAsOf(iso: string | undefined | null): string | null {
 }
 import { Button } from "@/components/ui/button";
 import { Tooltip as UITooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { useAuth, COST_READER_GROUP } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
+import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { useScope } from "@/lib/scope-context";
 import { AccessDenied } from "@/components/access-denied";
 import { useToast } from "@/hooks/use-toast";

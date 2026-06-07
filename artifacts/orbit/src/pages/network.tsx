@@ -17,7 +17,6 @@ const TONE: Record<EndpointStatus, "ok" | "warn" | "bad" | "muted"> = {
 export default function NetworkPage() {
   const { data, isLoading } = useListGlobalEndpoints();
   const eps = data?.endpoints ?? [];
-  const liveEnabled = data?.liveEnabled ?? false;
   const isEmpty = !isLoading && eps.length === 0;
 
   const unhealthy = eps.filter((e) => e.status === "unhealthy").length;
@@ -46,20 +45,9 @@ export default function NetworkPage() {
             <Network className="h-8 w-8 mx-auto text-muted-foreground/40" />
             <div className="text-[14px] font-semibold text-foreground">No network resources found</div>
             <div className="text-[12px] text-muted-foreground max-w-md mx-auto">
-              {liveEnabled ? (
-                <>
-                  Azure is connected but the Resource Graph query returned no networking resources
-                  (Front Door, Application Gateway, VNets, Network Watchers) in the tracked subscriptions.
-                  Check <code className="bg-muted px-1 rounded">/api/diagnostics</code> for details.
-                </>
-              ) : (
-                <>
-                  Endpoint health is sourced from Azure Resource Graph. Set{" "}
-                  <code className="bg-muted px-1 rounded">AZURE_SUBSCRIPTION_IDS</code>,{" "}
-                  <code className="bg-muted px-1 rounded">AZURE_CLIENT_ID</code>, and{" "}
-                  <code className="bg-muted px-1 rounded">AZURE_TENANT_ID</code> to enable live endpoint monitoring.
-                </>
-              )}
+              Azure Resource Graph returned no networking resources (Front Door, Application Gateway, VNets,
+              Network Watchers) in the tracked subscriptions. Check{" "}
+              <code className="bg-muted px-1 rounded">/api/diagnostics</code> for details.
             </div>
           </div>
         ) : (

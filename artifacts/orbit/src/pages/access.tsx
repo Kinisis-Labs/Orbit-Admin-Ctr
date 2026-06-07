@@ -1,6 +1,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, StatusPill } from "@/components/page-header";
-import { useAuth, COST_READER_GROUP, ADMIN_GROUP } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
+import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { CheckCircle2, XCircle } from "lucide-react";
 
 type GroupDef = {
@@ -44,17 +45,13 @@ const ORBIT_GROUPS: GroupDef[] = [
 ];
 
 export default function Access() {
-  const { hasGroup, user, groups, grantGroup, revokeGroup, mode } = useAuth();
+  const { hasGroup, user, groups } = useAuth();
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Identity & access"
-        subtitle={
-          mode === "mock"
-            ? "Entra ID groups that govern Orbit. Membership of the simulated user can be toggled for groups marked as such."
-            : "Entra ID groups that govern Orbit. Membership is resolved from your real Entra ID token."
-        }
+        subtitle="Entra ID groups that govern Orbit. Membership is resolved from your real Entra ID token."
       />
 
       <div className="bg-card border border-border shadow-sm p-4 text-[13px]">
@@ -79,15 +76,11 @@ export default function Access() {
               <TableHead className="h-8 font-semibold text-foreground">Group</TableHead>
               <TableHead className="h-8 font-semibold text-foreground">Grants</TableHead>
               <TableHead className="h-8 font-semibold text-foreground">My membership</TableHead>
-              {mode === "mock" && (
-                <TableHead className="h-8 font-semibold text-foreground text-right w-[140px]">Simulator</TableHead>
-              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {ORBIT_GROUPS.map((g) => {
               const isMember = hasGroup(g.id);
-              const toggleable = g.id === COST_READER_GROUP.id || g.id === ADMIN_GROUP.id;
               return (
                 <TableRow key={g.id} className="border-b border-border/50 hover:bg-muted/40 align-top">
                   <TableCell className="py-2">
@@ -104,27 +97,6 @@ export default function Access() {
                       <StatusPill tone="muted"><XCircle className="h-3 w-3 mr-1" /> Not a member</StatusPill>
                     )}
                   </TableCell>
-                  {mode === "mock" && (
-                    <TableCell className="py-2 text-right">
-                      {toggleable ? (
-                        <button
-                          type="button"
-                          className="text-primary hover:underline text-[12px]"
-                          onClick={() => {
-                            if (isMember) {
-                              revokeGroup(g.id);
-                            } else {
-                              grantGroup({ id: g.id, displayName: g.displayName, description: g.description });
-                            }
-                          }}
-                        >
-                          {isMember ? "Revoke" : "Grant"}
-                        </button>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                  )}
                 </TableRow>
               );
             })}

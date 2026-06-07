@@ -102,10 +102,7 @@ export default function ActivityLog() {
               <ScrollText className="h-8 w-8 mx-auto text-muted-foreground/40" />
               <div className="text-[14px] font-semibold text-foreground">No activity log data</div>
               <div className="text-[12px] text-muted-foreground max-w-md mx-auto">
-                Activity log data comes from the Azure Activity Log API. Set{" "}
-                <code className="bg-muted px-1 rounded">AZURE_SUBSCRIPTION_IDS</code> along with{" "}
-                <code className="bg-muted px-1 rounded">AZURE_CLIENT_ID</code> and{" "}
-                <code className="bg-muted px-1 rounded">AZURE_TENANT_ID</code> to enable live data.
+                No Azure Activity Log entries found for the selected application.
               </div>
             </div>
           ) : (

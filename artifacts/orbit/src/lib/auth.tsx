@@ -8,75 +8,15 @@ import type { EntraGroup, EntraUser } from "./auth-types";
 
 export type { EntraGroup, EntraUser } from "./auth-types";
 
-/**
- * Identity + Entra ID group memberships.
- *
- * Two runtime modes, decided by the API's `/api/auth/me`:
- * - **entra**: real Microsoft Entra ID sign-in. `user`/`groups` come from the
- *   server session; an unauthenticated visit redirects to `/api/auth/login`.
- * - **mock**: the API has no Entra config (Replit dev preview). A fake user is
- *   used and the cost-readers group can be toggled to demo access control.
- */
-
-// Required group for the Cost Management dashboard. The `id` is a stable
-// client-facing key — the API echoes this same id in Entra mode (see
-// COST_READER_CLIENT_ID in artifacts/api-server/src/routes/auth.ts) so the
-// hasGroup() check below works identically in both modes.
-export const COST_READER_GROUP: EntraGroup = {
-  id: "b7e3-aad-cost-readers",
-  displayName: "Orbit-Cost-Readers",
-  description: "Allowed to view cost, billing, and revenue data in Orbit.",
-};
-
-// Admin group — id must match the client-facing id used in orbitGroups.ts.
-// In mock mode, toggling this on also auto-grants cost-reader (mirroring the
-// server-side behaviour where isAdmin widens requireCostReader).
-export const ADMIN_GROUP: EntraGroup = {
-  id: "orbit-admins",
-  displayName: "Orbit-Admins",
-  description:
-    "Platform administration: feature flags, group management, preferences for all users.",
-};
-
-const STORAGE_KEY = "orbit-mock-groups";
-
 const AUTH_ME = "/api/auth/me";
 const AUTH_LOGIN = "/api/auth/login";
 const AUTH_LOGOUT = "/api/auth/logout";
 
-const MOCK_USER: EntraUser = {
-  id: "user-arielle-mendez",
-  displayName: "Arielle Mendez",
-  userPrincipalName: "arielle.mendez@kinisis.io",
-  jobTitle: "Platform Engineer",
-  initial: "A",
-};
-
-// All groups the mock user could potentially be a member of.
-const MOCK_BASE_GROUPS: EntraGroup[] = [
-  { id: "all-staff", displayName: "All-Staff", description: "Everyone at the company." },
-  { id: "platform-engineering", displayName: "Platform-Engineering", description: "Platform engineering team." },
-];
-
 type MeResponse =
-  | { mode: "mock" }
   | { mode: "entra"; authenticated: false }
   | { mode: "entra"; authenticated: true; user: EntraUser; groups: EntraGroup[] };
 
-function loadStoredGroupIds(): string[] {
-  if (typeof window === "undefined") return [COST_READER_GROUP.id];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [COST_READER_GROUP.id];
-    const parsed: unknown = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.every((v) => typeof v === "string")) return parsed;
-    return [COST_READER_GROUP.id];
-  } catch {
-    return [COST_READER_GROUP.id];
-  }
-}
-
-type AuthError = "denied" | "error" | "expired";
+type AuthError = "denied" | "error" | "expired" | "unavailable";
 
 function parseAuthError(): AuthError | null {
   const v = new URLSearchParams(window.location.search).get("auth");
@@ -84,11 +24,9 @@ function parseAuthError(): AuthError | null {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // null while /api/auth/me is in flight.
   const [mode, setMode] = useState<AuthMode | null>(null);
   const [entra, setEntra] = useState<{ user: EntraUser; groups: EntraGroup[] } | null>(null);
   const [authError, setAuthError] = useState<AuthError | null>(null);
-  const [toggleableIds, setToggleableIds] = useState<string[]>(loadStoredGroupIds);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,16 +37,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           credentials: "same-origin",
           headers: { accept: "application/json" },
         });
-        if (res.status === 401) {
+        if (res.status === 401 || res.status === 503) {
           if (cancelled) return;
-          // A failed/denied callback lands here (no session). Do NOT bounce back
-          // to login — that would loop. Show a stable notice instead.
           if (postCallbackError) {
             setAuthError(postCallbackError);
             setMode("entra");
             return;
           }
-          // Entra mode, not signed in — start the Entra login.
           const returnTo = window.location.pathname + window.location.search;
           window.location.assign(`${AUTH_LOGIN}?returnTo=${encodeURIComponent(returnTo)}`);
           return;
@@ -118,10 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data.mode === "entra" && "authenticated" in data && data.authenticated) {
           setEntra({ user: data.user, groups: data.groups });
           setMode("entra");
-        } else if (data.mode === "entra") {
-          // Entra is configured but the session is absent or expired.
-          // Treat exactly like a 401: redirect to login (or show the
-          // callback-error notice if we just came back from a failed flow).
+        } else {
           if (postCallbackError) {
             setAuthError(postCallbackError);
             setMode("entra");
@@ -129,34 +61,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           const returnTo = window.location.pathname + window.location.search;
           window.location.assign(`${AUTH_LOGIN}?returnTo=${encodeURIComponent(returnTo)}`);
-        } else {
-          // mode === "mock" — dev/no-auth environment, render normally.
-          setMode("mock");
         }
       } catch {
-        // Network/parse error — fall back to mock so dev keeps working.
-        if (!cancelled) setMode("mock");
+        if (!cancelled) setAuthError("unavailable");
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(toggleableIds));
-    } catch {
-      /* ignore */
-    }
-  }, [toggleableIds]);
-
-  const grantGroup = useCallback((group: EntraGroup) => {
-    setToggleableIds((ids) => (ids.includes(group.id) ? ids : [...ids, group.id]));
-  }, []);
-
-  const revokeGroup = useCallback((groupId: string) => {
-    setToggleableIds((ids) => ids.filter((id) => id !== groupId));
   }, []);
 
   const signOut = useCallback(() => {
@@ -180,40 +92,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue | null>(() => {
-    if (mode === null) return null;
-
-    if (mode === "entra" && entra) {
-      const ids = new Set(entra.groups.map((g) => g.id));
-      return {
-        user: entra.user,
-        groups: entra.groups,
-        hasGroup: (id: string) => ids.has(id),
-        grantGroup: () => {},
-        revokeGroup: () => {},
-        mode: "entra",
-        signOut,
-      };
-    }
-
-    // Mock mode: fake user + client-side toggleable groups.
-    // Admin group auto-grants cost-reader (mirrors server-side requireCostReader widening).
-    const hasAdmin = toggleableIds.includes(ADMIN_GROUP.id);
-    const hasCostReader = toggleableIds.includes(COST_READER_GROUP.id);
-    const toggleable: EntraGroup[] = [];
-    if (hasAdmin) toggleable.push(ADMIN_GROUP);
-    if (hasCostReader || hasAdmin) toggleable.push(COST_READER_GROUP);
-    const groups = [...MOCK_BASE_GROUPS, ...toggleable];
-    const groupIds = new Set(groups.map((g) => g.id));
+    if (mode === null || !entra) return null;
+    const ids = new Set(entra.groups.map((g) => g.id));
     return {
-      user: MOCK_USER,
-      groups,
-      hasGroup: (id: string) => groupIds.has(id),
-      grantGroup,
-      revokeGroup,
-      mode: "mock",
-      signOut: () => window.location.reload(),
+      user: entra.user,
+      groups: entra.groups,
+      hasGroup: (id: string) => ids.has(id),
+      mode: "entra",
+      signOut,
     };
-  }, [mode, entra, toggleableIds, grantGroup, revokeGroup, signOut]);
+  }, [mode, entra, signOut]);
 
   if (authError) {
     return <AuthNotice kind={authError} onSignOut={signOut} />;
@@ -261,11 +149,16 @@ function AuthNotice({
   onSignOut: () => void;
 }) {
   const denied = kind === "denied";
+  const unavailable = kind === "unavailable";
   const title = denied
     ? "You don't have access to Orbit"
+    : unavailable
+    ? "Orbit is temporarily unavailable"
     : "Sign-in could not be completed";
   const body = denied
     ? "Your account isn't a member of the Orbit-Authorized-Users group. Ask a Kinisis administrator to grant access, then sign in again."
+    : unavailable
+    ? "Could not reach the Orbit API. Check that the service is running and try again."
     : "Something went wrong while signing you in. Please try again.";
   return (
     <div

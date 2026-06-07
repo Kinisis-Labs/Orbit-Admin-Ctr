@@ -28,7 +28,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { format } from "date-fns";
-import { useAuth, ADMIN_GROUP } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
+import { ADMIN_GROUP } from "@/lib/auth-groups";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 

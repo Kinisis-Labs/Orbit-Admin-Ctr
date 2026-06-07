@@ -2,7 +2,7 @@ import { useListServiceHealth } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, formatDistanceToNow } from "date-fns";
-import { CheckCircle2, AlertTriangle, Wifi } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Activity } from "lucide-react";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import type { ServiceHealthEvent } from "@workspace/api-client-react";
 
@@ -20,10 +20,8 @@ const SEV_TONE: Record<ServiceHealthEvent["severity"], "ok" | "warn" | "bad"> = 
 export default function ServiceHealth() {
   const { data, isLoading } = useListServiceHealth();
   const events = data?.events ?? [];
-  const liveEnabled = data?.liveEnabled ?? false;
   const active = events.filter((e) => e.status === "Active");
-  const notConnected = !isLoading && !liveEnabled;
-  const isEmpty = !isLoading && liveEnabled && events.length === 0;
+  const isEmpty = !isLoading && events.length === 0;
 
   return (
     <div className="space-y-4">
@@ -37,16 +35,12 @@ export default function ServiceHealth() {
           <Skeleton className="h-5 w-64" />
           <Skeleton className="h-4 w-96" />
         </div>
-      ) : notConnected ? (
-        <div className="border shadow-sm p-4 flex items-start gap-3 bg-muted/30 border-border">
-          <Wifi className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+      ) : isEmpty ? (
+        <div className={`border shadow-sm p-4 flex items-start gap-3 bg-emerald-500/5 border-emerald-500/30`}>
+          <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
           <div>
-            <div className="text-[14px] font-semibold text-foreground">Azure service health not connected</div>
-            <div className="text-[12px] text-muted-foreground mt-0.5">
-              Set <code className="bg-muted px-1 rounded">AZURE_SUBSCRIPTION_IDS</code>,{" "}
-              <code className="bg-muted px-1 rounded">AZURE_CLIENT_ID</code>, and{" "}
-              <code className="bg-muted px-1 rounded">AZURE_TENANT_ID</code> to pull live Azure Service Health events.
-            </div>
+            <div className="text-[14px] font-semibold text-foreground">All Azure services nominal</div>
+            <div className="text-[12px] text-muted-foreground mt-0.5">No active incidents affecting Orbit's dependencies.</div>
           </div>
         </div>
       ) : (
@@ -76,7 +70,11 @@ export default function ServiceHealth() {
         {isLoading ? (
           <div className="p-4 space-y-2"><Skeleton className="h-8" /><Skeleton className="h-8" /></div>
         ) : (events?.length ?? 0) === 0 ? (
-          <div className="p-6 text-center text-[13px] text-muted-foreground">No service health events to display.</div>
+          <div className="p-8 text-center space-y-3">
+            <Activity className="h-8 w-8 mx-auto text-muted-foreground/40" />
+            <div className="text-[14px] font-semibold text-foreground">No service health events</div>
+            <div className="text-[12px] text-muted-foreground">No incidents or advisories in the tracked subscriptions.</div>
+          </div>
         ) : (
           <Table className="text-[13px]">
             <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">

@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import { useApps } from "@/hooks/use-apps";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useAuth, COST_READER_GROUP } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
+import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { PageHeader, StatusPill } from "@/components/page-header";
 
 export default function Subscriptions() {

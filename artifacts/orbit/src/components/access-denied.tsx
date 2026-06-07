@@ -2,10 +2,6 @@ import { ShieldAlert, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, type EntraGroup } from "@/lib/auth";
 
-/**
- * Azure-style "no access" page shown when the current user is missing a
- * required Entra ID group membership.
- */
 export function AccessDenied({
   resource,
   requiredGroup,
@@ -13,7 +9,7 @@ export function AccessDenied({
   resource: string;
   requiredGroup: EntraGroup;
 }) {
-  const { user, grantGroup, mode } = useAuth();
+  const { user } = useAuth();
 
   return (
     <div className="max-w-2xl mx-auto mt-10 bg-card border border-border shadow-sm">
@@ -51,27 +47,10 @@ export function AccessDenied({
           <Mail className="h-3.5 w-3.5 mr-1.5" />
           Request access
         </Button>
-        {mode === "mock" ? (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-sm h-8 text-[13px]"
-              onClick={() => grantGroup(requiredGroup)}
-              data-testid="mock-grant-access"
-            >
-              Grant {requiredGroup.displayName} (mock)
-            </Button>
-            <span className="text-[11px] text-muted-foreground">
-              The "Request access" button is illustrative; the mock grant is for demoing the allowed state.
-            </span>
-          </>
-        ) : (
-          <span className="text-[11px] text-muted-foreground">
-            Ask an administrator to add you to{" "}
-            <span className="font-mono">{requiredGroup.displayName}</span> in Entra ID.
-          </span>
-        )}
+        <span className="text-[11px] text-muted-foreground">
+          Ask an administrator to add you to{" "}
+          <span className="font-mono">{requiredGroup.displayName}</span> in Entra ID.
+        </span>
       </div>
     </div>
   );

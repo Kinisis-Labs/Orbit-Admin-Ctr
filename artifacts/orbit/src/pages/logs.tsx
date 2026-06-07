@@ -94,11 +94,9 @@ export default function Logs() {
         ) : isEmpty ? (
           <div className="p-8 text-center space-y-3">
             <Database className="h-8 w-8 mx-auto text-muted-foreground/40" />
-            <div className="text-[14px] font-semibold text-foreground">Log Analytics not connected</div>
+            <div className="text-[14px] font-semibold text-foreground">No results</div>
             <div className="text-[12px] text-muted-foreground max-w-md mx-auto">
-              Set <code className="bg-muted px-1 rounded">AZURE_LOG_ANALYTICS_WORKSPACE_ID</code> to enable KQL
-              log queries against the centralised workspace. The workspace ID is the GUID shown as "Workspace ID"
-              in the Azure portal (not the resource ID).
+              The query returned no log entries. Try adjusting the time range or query filter.
             </div>
           </div>
         ) : (
