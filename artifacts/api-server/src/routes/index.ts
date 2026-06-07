@@ -10,17 +10,18 @@ import appleSubscriptionsRouter from "./appleSubscriptions";
 import budgetAlertLogRouter from "./budgetAlertLog";
 import infraAlertLogRouter from "./infraAlertLog";
 import alertsConfigRouter from "./alertsConfig";
-import { requireAuth, requireCostReader } from "../middlewares/auth";
+import { requireAuth, requireAdmin, requireCostReader } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
 // Public: health + the auth handshake endpoints.
 router.use(healthRouter);
 router.use(authRouter);
-router.use(requireAuth, diagnosticsRouter);
 
-// Protected data routes. In mock mode (no Entra config) requireAuth is a no-op,
-// so the dev preview keeps working without sign-in.
+// Diagnostics exposes sensitive config/credential metadata — admin only.
+router.use(requireAuth, requireAdmin, diagnosticsRouter);
+
+// Protected data routes.
 router.use(requireAuth, orbitRouter);
 router.use(requireAuth, ledgerRouter);
 router.use(requireAuth, usersRouter);

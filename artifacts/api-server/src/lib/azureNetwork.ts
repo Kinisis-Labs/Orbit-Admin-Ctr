@@ -156,7 +156,7 @@ export async function fetchNetworkEndpoints(
       const fqdn = String(row["fqdn"] ?? "");
       const ingressExternal = row["ingressExternal"] === true;
 
-      if (type === "microsoft.app/containerapp") {
+      if (type === "microsoft.app/containerapps") {
         // Only surface Container Apps with external ingress — internal ones have no
         // public endpoint to probe.
         if (!ingressExternal && !fqdn) return [];
