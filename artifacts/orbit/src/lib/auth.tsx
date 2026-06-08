@@ -219,6 +219,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const resetGroups = useCallback(() => {
+    try {
+      localStorage.removeItem(MOCK_LS_KEY);
+    } catch {
+      /* ignore */
+    }
+    setMockExtras(loadMockGroups());
+  }, []);
+
   const value = useMemo<AuthContextValue | null>(() => {
     if (mode === null) return null;
 
@@ -236,6 +245,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         accessContact,
         grantGroup: (id: string) => toggleableIds.has(id) && grantGroup(id),
         revokeGroup: (id: string) => toggleableIds.has(id) && revokeGroup(id),
+        resetGroups,
       };
     }
 
@@ -250,7 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       accessContact,
     };
-  }, [mode, entra, mockExtras, signOut, grantGroup, revokeGroup, accessContact]);
+  }, [mode, entra, mockExtras, signOut, grantGroup, revokeGroup, resetGroups, accessContact]);
 
   if (authError) {
     return (

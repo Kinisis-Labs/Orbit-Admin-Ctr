@@ -2,7 +2,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { CheckCircle2, XCircle, FlaskConical, Mail } from "lucide-react";
+import { CheckCircle2, XCircle, FlaskConical, Mail, RotateCcw } from "lucide-react";
 
 type GroupDef = {
   id: string;
@@ -58,7 +58,7 @@ const ORBIT_GROUPS: GroupDef[] = [
 
 
 export default function Access() {
-  const { hasGroup, user, groups, isMock, grantGroup, revokeGroup, accessContact } = useAuth();
+  const { hasGroup, user, groups, isMock, grantGroup, revokeGroup, resetGroups, accessContact } = useAuth();
 
   return (
     <div className="space-y-4">
@@ -106,7 +106,20 @@ export default function Access() {
       </div>
 
       <div className="bg-card border border-border shadow-sm">
-        <div className="p-2 border-b border-border"><h2 className="text-sm font-semibold px-2">Orbit security groups</h2></div>
+        <div className="p-2 border-b border-border flex items-center justify-between">
+          <h2 className="text-sm font-semibold px-2">Orbit security groups</h2>
+          {isMock && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-[11px] gap-1.5 border-amber-500/40 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 mr-2"
+              onClick={() => resetGroups?.()}
+            >
+              <RotateCcw className="h-3 w-3" />
+              Reset simulator
+            </Button>
+          )}
+        </div>
         <Table className="text-[13px]">
           <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
             <TableRow className="hover:bg-transparent">

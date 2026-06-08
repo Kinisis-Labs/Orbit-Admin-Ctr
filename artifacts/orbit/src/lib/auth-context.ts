@@ -24,6 +24,8 @@ export type AuthContextValue = {
   grantGroup?: (id: string) => void;
   /** Only present in mock mode — revoke a group for the current dev session. */
   revokeGroup?: (id: string) => void;
+  /** Only present in mock mode — revoke all toggled groups and restore fresh defaults in one click. */
+  resetGroups?: () => void;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
