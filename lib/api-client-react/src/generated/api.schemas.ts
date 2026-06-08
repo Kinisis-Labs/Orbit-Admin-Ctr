@@ -1095,6 +1095,18 @@ export interface AppAlertConfig {
   updatedAt?: string | null;
   /** Display name / UPN of the operator who last saved DB overrides */
   updatedBy?: string | null;
+  /** Raw env-var value for CPU threshold (per-app or global) if any env var is set; null when no env var is configured. Useful for surfacing a conflict when source is "db". */
+  cpuEnvValue?: number | null;
+  /** The env-var name that produced cpuEnvValue (e.g. ALERT_CPU_THRESHOLD_PCT__GRAILBABE); null when cpuEnvValue is null. */
+  cpuEnvVarName?: string | null;
+  /** Raw env-var value for memory threshold (per-app or global) if any env var is set; null when no env var is configured. */
+  memoryEnvValue?: number | null;
+  /** The env-var name that produced memoryEnvValue; null when memoryEnvValue is null. */
+  memoryEnvVarName?: string | null;
+  /** Raw env-var value for consecutive checks if any env var is set; null when no env var is configured. */
+  consecutiveChecksEnvValue?: number | null;
+  /** The env-var name that produced consecutiveChecksEnvValue; null when consecutiveChecksEnvValue is null. */
+  consecutiveChecksEnvVarName?: string | null;
 }
 
 export interface AppThresholds {

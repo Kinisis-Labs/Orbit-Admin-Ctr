@@ -42,6 +42,12 @@ router.get("/alerts/config", async (_req, res) => {
       silencedUntil: silencedUntils[i] ?? null,
       updatedAt: t.updatedAt,
       updatedBy: t.updatedBy,
+      cpuEnvValue: t.cpuEnvValue,
+      cpuEnvVarName: t.cpuEnvVarName,
+      memoryEnvValue: t.memoryEnvValue,
+      memoryEnvVarName: t.memoryEnvVarName,
+      consecutiveChecksEnvValue: t.consecutiveChecksEnvValue,
+      consecutiveChecksEnvVarName: t.consecutiveChecksEnvVarName,
     };
   });
 
@@ -167,6 +173,12 @@ router.put("/alerts/config/:appId", requireAdmin, async (req, res) => {
     silencedUntil: await getSilencedUntil(appId),
     updatedAt: t.updatedAt,
     updatedBy: t.updatedBy,
+    cpuEnvValue: t.cpuEnvValue,
+    cpuEnvVarName: t.cpuEnvVarName,
+    memoryEnvValue: t.memoryEnvValue,
+    memoryEnvVarName: t.memoryEnvVarName,
+    consecutiveChecksEnvValue: t.consecutiveChecksEnvValue,
+    consecutiveChecksEnvVarName: t.consecutiveChecksEnvVarName,
   });
 });
 

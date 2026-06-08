@@ -26,12 +26,24 @@ export interface ResolvedThresholds {
   cpuThresholdPct: number;
   cpuIsOverride: boolean;
   cpuSource: ThresholdSource;
+  /** The env-var value (per-app or global) for CPU, if any env var is set. Null when no env var is configured. */
+  cpuEnvValue: number | null;
+  /** The env-var name that produced cpuEnvValue, e.g. ALERT_CPU_THRESHOLD_PCT__GRAILBABE. Null when cpuEnvValue is null. */
+  cpuEnvVarName: string | null;
   memoryThresholdPct: number;
   memoryIsOverride: boolean;
   memorySource: ThresholdSource;
+  /** The env-var value (per-app or global) for memory, if any env var is set. Null when no env var is configured. */
+  memoryEnvValue: number | null;
+  /** The env-var name that produced memoryEnvValue. Null when memoryEnvValue is null. */
+  memoryEnvVarName: string | null;
   consecutiveChecks: number;
   consecutiveChecksIsOverride: boolean;
   consecutiveChecksSource: ThresholdSource;
+  /** The env-var value (per-app or global) for consecutive checks, if any env var is set. Null when no env var is configured. */
+  consecutiveChecksEnvValue: number | null;
+  /** The env-var name that produced consecutiveChecksEnvValue. Null when consecutiveChecksEnvValue is null. */
+  consecutiveChecksEnvVarName: string | null;
   /** ISO string when a DB row exists for this app, null otherwise. */
   updatedAt: string | null;
   /** Display name / UPN of the operator who last saved, or null. */
@@ -128,6 +140,64 @@ function envConsecutiveChecks(appId: string): { value: number; isOverride: boole
 }
 
 /**
+ * Return the raw env-var value and its variable name for CPU threshold, if any env var is set.
+ * Prefers per-app var over global. Returns { value: null, varName: null } when no env var is present.
+ */
+function rawEnvCpu(appId: string): { value: number | null; varName: string | null } {
+  const key = appEnvKey(appId);
+  const perAppName = `ALERT_CPU_THRESHOLD_PCT__${key}`;
+  const perApp = process.env[perAppName];
+  if (perApp !== undefined) {
+    const v = Number(perApp);
+    if (Number.isFinite(v) && v > 0 && v <= 100) return { value: v, varName: perAppName };
+  }
+  const globalEnv = process.env["ALERT_CPU_THRESHOLD_PCT"];
+  if (globalEnv !== undefined) {
+    const v = Number(globalEnv);
+    if (Number.isFinite(v) && v > 0 && v <= 100) return { value: v, varName: "ALERT_CPU_THRESHOLD_PCT" };
+  }
+  return { value: null, varName: null };
+}
+
+/**
+ * Return the raw env-var value and its variable name for memory threshold, if any env var is set.
+ */
+function rawEnvMemory(appId: string): { value: number | null; varName: string | null } {
+  const key = appEnvKey(appId);
+  const perAppName = `ALERT_MEMORY_THRESHOLD_PCT__${key}`;
+  const perApp = process.env[perAppName];
+  if (perApp !== undefined) {
+    const v = Number(perApp);
+    if (Number.isFinite(v) && v > 0 && v <= 100) return { value: v, varName: perAppName };
+  }
+  const globalEnv = process.env["ALERT_MEMORY_THRESHOLD_PCT"];
+  if (globalEnv !== undefined) {
+    const v = Number(globalEnv);
+    if (Number.isFinite(v) && v > 0 && v <= 100) return { value: v, varName: "ALERT_MEMORY_THRESHOLD_PCT" };
+  }
+  return { value: null, varName: null };
+}
+
+/**
+ * Return the raw env-var value and its variable name for consecutive checks, if any env var is set.
+ */
+function rawEnvConsecutiveChecks(appId: string): { value: number | null; varName: string | null } {
+  const key = appEnvKey(appId);
+  const perAppName = `ALERT_INFRA_CONSECUTIVE_CHECKS__${key}`;
+  const perApp = process.env[perAppName];
+  if (perApp !== undefined) {
+    const v = Number(perApp);
+    if (Number.isFinite(v) && v >= 1) return { value: Math.floor(v), varName: perAppName };
+  }
+  const globalEnv = process.env["ALERT_INFRA_CONSECUTIVE_CHECKS"];
+  if (globalEnv !== undefined) {
+    const v = Number(globalEnv);
+    if (Number.isFinite(v) && v >= 1) return { value: Math.floor(v), varName: "ALERT_INFRA_CONSECUTIVE_CHECKS" };
+  }
+  return { value: null, varName: null };
+}
+
+/**
  * Resolve effective thresholds for a single app, checking DB → env → default.
  * Returns synchronous env/default values on DB error (safe fallback).
  */
@@ -147,6 +217,9 @@ export async function resolveThresholds(appId: string): Promise<ResolvedThreshol
   const envCpu = envCpuPct(appId);
   const envMem = envMemoryPct(appId);
   const envConsec = envConsecutiveChecks(appId);
+  const rawCpu = rawEnvCpu(appId);
+  const rawMem = rawEnvMemory(appId);
+  const rawConsec = rawEnvConsecutiveChecks(appId);
 
   const dbCpu = row?.cpuThresholdPct;
   const dbMem = row?.memoryThresholdPct;
@@ -159,14 +232,20 @@ export async function resolveThresholds(appId: string): Promise<ResolvedThreshol
     cpuThresholdPct: dbCpu != null ? dbCpu : envCpu.value,
     cpuIsOverride: dbCpu != null ? true : envCpu.isOverride,
     cpuSource: dbCpu != null ? "db" : (envCpu.isOverride ? "env" : "default"),
+    cpuEnvValue: rawCpu.value,
+    cpuEnvVarName: rawCpu.varName,
 
     memoryThresholdPct: dbMem != null ? dbMem : envMem.value,
     memoryIsOverride: dbMem != null ? true : envMem.isOverride,
     memorySource: dbMem != null ? "db" : (envMem.isOverride ? "env" : "default"),
+    memoryEnvValue: rawMem.value,
+    memoryEnvVarName: rawMem.varName,
 
     consecutiveChecks: dbConsec != null ? dbConsec : envConsec.value,
     consecutiveChecksIsOverride: dbConsec != null ? true : envConsec.isOverride,
     consecutiveChecksSource: dbConsec != null ? "db" : (envConsec.isOverride ? "env" : "default"),
+    consecutiveChecksEnvValue: rawConsec.value,
+    consecutiveChecksEnvVarName: rawConsec.varName,
 
     updatedAt,
     updatedBy,
@@ -195,6 +274,9 @@ export async function resolveThresholdsBulk(
     const envCpu = envCpuPct(appId);
     const envMem = envMemoryPct(appId);
     const envConsec = envConsecutiveChecks(appId);
+    const rawCpu = rawEnvCpu(appId);
+    const rawMem = rawEnvMemory(appId);
+    const rawConsec = rawEnvConsecutiveChecks(appId);
 
     const dbCpu = row?.cpuThresholdPct ?? null;
     const dbMem = row?.memoryThresholdPct ?? null;
@@ -204,14 +286,20 @@ export async function resolveThresholdsBulk(
       cpuThresholdPct: dbCpu != null ? dbCpu : envCpu.value,
       cpuIsOverride: dbCpu != null ? true : envCpu.isOverride,
       cpuSource: dbCpu != null ? "db" : (envCpu.isOverride ? "env" : "default"),
+      cpuEnvValue: rawCpu.value,
+      cpuEnvVarName: rawCpu.varName,
 
       memoryThresholdPct: dbMem != null ? dbMem : envMem.value,
       memoryIsOverride: dbMem != null ? true : envMem.isOverride,
       memorySource: dbMem != null ? "db" : (envMem.isOverride ? "env" : "default"),
+      memoryEnvValue: rawMem.value,
+      memoryEnvVarName: rawMem.varName,
 
       consecutiveChecks: dbConsec != null ? dbConsec : envConsec.value,
       consecutiveChecksIsOverride: dbConsec != null ? true : envConsec.isOverride,
       consecutiveChecksSource: dbConsec != null ? "db" : (envConsec.isOverride ? "env" : "default"),
+      consecutiveChecksEnvValue: rawConsec.value,
+      consecutiveChecksEnvVarName: rawConsec.varName,
 
       updatedAt: row ? row.updatedAt.toISOString() : null,
       updatedBy: row?.updatedBy ?? null,

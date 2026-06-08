@@ -1494,6 +1494,30 @@ components:
           type: string
           nullable: true
           description: Display name / UPN of the operator who last saved DB overrides
+        cpuEnvValue:
+          type: number
+          nullable: true
+          description: Raw env-var value for CPU threshold (per-app or global) if any env var is set; null when no env var is configured. Useful for surfacing a conflict when source is "db".
+        cpuEnvVarName:
+          type: string
+          nullable: true
+          description: The env-var name that produced cpuEnvValue (e.g. ALERT_CPU_THRESHOLD_PCT__GRAILBABE); null when cpuEnvValue is null.
+        memoryEnvValue:
+          type: number
+          nullable: true
+          description: Raw env-var value for memory threshold (per-app or global) if any env var is set; null when no env var is configured.
+        memoryEnvVarName:
+          type: string
+          nullable: true
+          description: The env-var name that produced memoryEnvValue; null when memoryEnvValue is null.
+        consecutiveChecksEnvValue:
+          type: integer
+          nullable: true
+          description: Raw env-var value for consecutive checks if any env var is set; null when no env var is configured.
+        consecutiveChecksEnvVarName:
+          type: string
+          nullable: true
+          description: The env-var name that produced consecutiveChecksEnvValue; null when consecutiveChecksEnvValue is null.
     AppThresholds:
       type: object
       required: [appId, cpuThreshold, memoryThreshold, updatedBy]

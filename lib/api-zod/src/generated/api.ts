@@ -849,7 +849,13 @@ export const ListAlertConfigResponseItem = zod.object({
   "cooldownSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective cooldown (db = Orbit UI override, env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)'),
   "silencedUntil": zod.string().datetime({"offset":true}).nullish().describe('ISO-8601 timestamp at which the app\'s active alert cooldown expires; null when the app is not currently silenced'),
   "updatedAt": zod.string().datetime({"offset":true}).nullish().describe('When a DB override was last saved for this app'),
-  "updatedBy": zod.string().nullish().describe('Display name \/ UPN of the operator who last saved DB overrides')
+  "updatedBy": zod.string().nullish().describe('Display name \/ UPN of the operator who last saved DB overrides'),
+  "cpuEnvValue": zod.number().nullish().describe('Raw env-var value for CPU threshold (per-app or global) if any env var is set; null when no env var is configured. Useful for surfacing a conflict when source is \"db\".'),
+  "cpuEnvVarName": zod.string().nullish().describe('The env-var name that produced cpuEnvValue (e.g. ALERT_CPU_THRESHOLD_PCT__GRAILBABE); null when cpuEnvValue is null.'),
+  "memoryEnvValue": zod.number().nullish().describe('Raw env-var value for memory threshold (per-app or global) if any env var is set; null when no env var is configured.'),
+  "memoryEnvVarName": zod.string().nullish().describe('The env-var name that produced memoryEnvValue; null when memoryEnvValue is null.'),
+  "consecutiveChecksEnvValue": zod.number().nullish().describe('Raw env-var value for consecutive checks if any env var is set; null when no env var is configured.'),
+  "consecutiveChecksEnvVarName": zod.string().nullish().describe('The env-var name that produced consecutiveChecksEnvValue; null when consecutiveChecksEnvValue is null.')
 })
 export const ListAlertConfigResponse = zod.array(ListAlertConfigResponseItem)
 
@@ -893,7 +899,13 @@ export const UpdateAlertConfigResponse = zod.object({
   "cooldownSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective cooldown (db = Orbit UI override, env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)'),
   "silencedUntil": zod.string().datetime({"offset":true}).nullish().describe('ISO-8601 timestamp at which the app\'s active alert cooldown expires; null when the app is not currently silenced'),
   "updatedAt": zod.string().datetime({"offset":true}).nullish().describe('When a DB override was last saved for this app'),
-  "updatedBy": zod.string().nullish().describe('Display name \/ UPN of the operator who last saved DB overrides')
+  "updatedBy": zod.string().nullish().describe('Display name \/ UPN of the operator who last saved DB overrides'),
+  "cpuEnvValue": zod.number().nullish().describe('Raw env-var value for CPU threshold (per-app or global) if any env var is set; null when no env var is configured. Useful for surfacing a conflict when source is \"db\".'),
+  "cpuEnvVarName": zod.string().nullish().describe('The env-var name that produced cpuEnvValue (e.g. ALERT_CPU_THRESHOLD_PCT__GRAILBABE); null when cpuEnvValue is null.'),
+  "memoryEnvValue": zod.number().nullish().describe('Raw env-var value for memory threshold (per-app or global) if any env var is set; null when no env var is configured.'),
+  "memoryEnvVarName": zod.string().nullish().describe('The env-var name that produced memoryEnvValue; null when memoryEnvValue is null.'),
+  "consecutiveChecksEnvValue": zod.number().nullish().describe('Raw env-var value for consecutive checks if any env var is set; null when no env var is configured.'),
+  "consecutiveChecksEnvVarName": zod.string().nullish().describe('The env-var name that produced consecutiveChecksEnvValue; null when consecutiveChecksEnvValue is null.')
 })
 
 

@@ -11,7 +11,7 @@ import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BellOff, Check, ChevronDown, ChevronUp, History, Pencil, RefreshCw, RotateCcw, Settings2, X, ArrowRight } from "lucide-react";
+import { AlertTriangle, BellOff, Check, ChevronDown, ChevronUp, History, Pencil, RefreshCw, RotateCcw, Settings2, X, ArrowRight } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { ADMIN_GROUP } from "@/lib/auth-groups";
 import { cn } from "@/lib/utils";
@@ -123,11 +123,34 @@ function UtilizationIndicator({
 
 type ThresholdField = "cpuThresholdPct" | "memoryThresholdPct" | "consecutiveChecks" | "cooldownHours";
 
-function SourceBadge({ source }: { source: "db" | "env" | "default" | undefined }) {
+function SourceBadge({
+  source,
+  envVarName,
+  envValue,
+}: {
+  source: "db" | "env" | "default" | undefined;
+  envVarName?: string | null;
+  envValue?: number | null;
+}) {
+  const hasConflict = source === "db" && envVarName != null && envValue != null;
+
   if (source === "db") {
     return (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-semibold uppercase tracking-wide">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border text-[10px] font-semibold uppercase tracking-wide",
+          hasConflict
+            ? "border-orange-500/40 bg-orange-500/10 text-orange-600 dark:text-orange-400 cursor-help"
+            : "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+        )}
+        title={
+          hasConflict
+            ? `DB override takes precedence. Env var is being ignored: ${envVarName}=${envValue}`
+            : undefined
+        }
+      >
         db
+        {hasConflict && <AlertTriangle className="h-2.5 w-2.5 shrink-0" />}
       </span>
     );
   }
@@ -176,13 +199,15 @@ interface EditableCellProps {
   field: ThresholdField;
   value: number;
   source: "db" | "env" | "default" | undefined;
+  envVarName?: string | null;
+  envValue?: number | null;
   isPercent?: boolean;
   suffix?: string;
   canEdit: boolean;
   onSaved: () => void;
 }
 
-function EditableCell({ appId, field, value, source, isPercent = false, suffix = "", canEdit, onSaved }: EditableCellProps) {
+function EditableCell({ appId, field, value, source, envVarName, envValue, isPercent = false, suffix = "", canEdit, onSaved }: EditableCellProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value));
   const [saving, setSaving] = useState(false);
@@ -282,7 +307,7 @@ function EditableCell({ appId, field, value, source, isPercent = false, suffix =
       <span className="tabular-nums font-mono text-[12px]">
         {value}{displaySuffix}
       </span>
-      <SourceBadge source={source} />
+      <SourceBadge source={source} envVarName={envVarName} envValue={envValue} />
       {canEdit && (
         <span className="inline-flex items-center gap-0.5 opacity-0 group-hover/cell:opacity-100 transition-opacity">
           <button
@@ -505,10 +530,23 @@ export function AlertConfigTable({ appId }: Props) {
     const source =
       field === "cpuThresholdPct" ? row.cpuSource :
       field === "memoryThresholdPct" ? row.memorySource :
+<<<<<<< HEAD
       field === "consecutiveChecks" ? row.consecutiveChecksSource :
       row.cooldownSource;
     const isPercent = field === "cpuThresholdPct" || field === "memoryThresholdPct";
     const suffix = field === "cooldownHours" ? "h" : isPercent ? "%" : "";
+=======
+      row.consecutiveChecksSource;
+    const envVarName =
+      field === "cpuThresholdPct" ? row.cpuEnvVarName :
+      field === "memoryThresholdPct" ? row.memoryEnvVarName :
+      row.consecutiveChecksEnvVarName;
+    const envValue =
+      field === "cpuThresholdPct" ? row.cpuEnvValue :
+      field === "memoryThresholdPct" ? row.memoryEnvValue :
+      row.consecutiveChecksEnvValue;
+    const isPercent = field !== "consecutiveChecks";
+>>>>>>> 5a54a56 (feat: surface DB-vs-env-var threshold conflict warning in alert config table)
 
     return (
       <EditableCell
@@ -516,6 +554,8 @@ export function AlertConfigTable({ appId }: Props) {
         field={field}
         value={value}
         source={source}
+        envVarName={envVarName}
+        envValue={envValue}
         isPercent={isPercent}
         suffix={suffix}
         canEdit={canEdit}
@@ -726,6 +766,10 @@ export function AlertConfigTable({ appId }: Props) {
           <span className="inline-flex items-center gap-1">
             <SourceBadge source="db" />
             — saved via Orbit UI
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <SourceBadge source="db" envVarName="ALERT_CPU_THRESHOLD_PCT__APPID" envValue={90} />
+            — DB override shadows an env var (hover for details)
           </span>
           <span className="inline-flex items-center gap-1">
             <SourceBadge source="env" />
