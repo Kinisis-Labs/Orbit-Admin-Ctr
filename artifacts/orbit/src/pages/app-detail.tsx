@@ -70,6 +70,15 @@ function parseTabParam(search: string): string {
   return (VALID_TABS as readonly string[]).includes(tab) ? tab : "overview";
 }
 
+function readStoredTab(): string {
+  try {
+    const t = localStorage.getItem(LAST_TAB_KEY) ?? "overview";
+    return (VALID_TABS as readonly string[]).includes(t) ? t : "overview";
+  } catch {
+    return "overview";
+  }
+}
+
 export default function AppDetail() {
   const params = useParams();
   const appId = params.appId!;
@@ -77,15 +86,31 @@ export default function AppDetail() {
   const canSeeCost = hasGroup(COST_READER_GROUP.id) || hasGroup(ADMIN_GROUP.id);
   const [location, setLocation] = useLocation();
   const search = useSearch();
+  const hasTabParam = new URLSearchParams(search).has("tab");
   const activeTab = parseTabParam(search);
 
+  // When navigating to /apps/:appId without an explicit ?tab= (e.g. direct links,
+  // health/alerts pages, browser history), redirect to the last-used tab so the
+  // operator lands where they left off. replace: true keeps the back button clean.
   useEffect(() => {
+    if (!hasTabParam) {
+      const stored = readStoredTab();
+      setLocation(`${location}?tab=${stored}`, { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Only persist the tab when the URL has an explicit ?tab= param.
+  // Without this guard the redirect render would write "overview" back to
+  // localStorage before the redirect fires, defeating the feature.
+  useEffect(() => {
+    if (!hasTabParam) return;
     try {
       localStorage.setItem(LAST_TAB_KEY, activeTab);
     } catch {
       /* ignore */
     }
-  }, [activeTab]);
+  }, [activeTab, hasTabParam]);
 
   function handleTabChange(tab: string) {
     setLocation(`${location}?tab=${tab}`);
