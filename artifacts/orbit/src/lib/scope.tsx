@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { AuthBadge } from "@/components/auth-badge";
 import { ScopeContext, useScope } from "./scope-context";
+import { useInfraViolations } from "@/lib/infra-violation-context";
 import type { UserAuthType } from "@workspace/api-client-react";
 
 const STORAGE_KEY = "orbit-scope";
@@ -56,6 +57,12 @@ export function ScopeSelect({
 }) {
   const { scope, setScope } = useScope();
   const { data: apps } = useApps();
+  const activeViolations = useInfraViolations();
+
+  const violatingAppIds = useMemo(
+    () => new Set(activeViolations.map((v) => v.appId)),
+    [activeViolations],
+  );
 
   const allApps = apps ?? [];
   const filteredApps = authFilter
@@ -122,7 +129,15 @@ export function ScopeSelect({
           )}
           {sortedApps.map((a) => (
             <SelectItem key={a.id} value={a.id}>
-              {a.name}
+              <span className="flex items-center gap-1.5">
+                {violatingAppIds.has(a.id) && (
+                  <span
+                    className="inline-block h-2 w-2 shrink-0 rounded-full bg-destructive"
+                    aria-label="Active violation"
+                  />
+                )}
+                {a.name}
+              </span>
             </SelectItem>
           ))}
         </SelectContent>

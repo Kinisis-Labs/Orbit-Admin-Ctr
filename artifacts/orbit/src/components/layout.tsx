@@ -16,6 +16,7 @@ import { useOverBudgetDays } from "@/hooks/use-over-budget-days";
 import { useInfraThresholdAlerts } from "@/hooks/use-infra-threshold-alerts";
 import type { InfraViolation } from "@/hooks/use-infra-threshold-alerts";
 import { useUnacknowledgedBudgetAlerts } from "@/hooks/use-unacknowledged-budget-alerts";
+import { InfraViolationContext } from "@/lib/infra-violation-context";
 
 type Theme = "dark" | "light";
 
@@ -70,7 +71,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   const { overBudgetCount } = useOverBudgetDays(canSeeCost);
-  const { overThresholdCount, unseenViolationCount, violations: infraViolations } = useInfraThresholdAlerts();
+  const { overThresholdCount, unseenViolationCount, activeViolations, violations: infraViolations } = useInfraThresholdAlerts();
   const { unacknowledgedCount: unacknowledgedBudgetAlerts } = useUnacknowledgedBudgetAlerts(canSeeCost);
 
   const search = useSearch();
@@ -96,6 +97,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const isCostRoute = location === "/cost";
 
   return (
+    <InfraViolationContext.Provider value={{ activeViolations }}>
     <div className="h-screen flex flex-col bg-background text-foreground font-sans overflow-hidden">
       {/* Top Header */}
       <header className="h-12 bg-[#001429] text-white flex items-center px-4 shrink-0 justify-between select-none">
@@ -237,6 +239,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </div>
+    </InfraViolationContext.Provider>
   );
 }
 
