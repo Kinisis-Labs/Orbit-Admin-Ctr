@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useListPlaySubscriptions } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingDown, TrendingUp, ExternalLink, Clock, AlertTriangle } from "lucide-react";
+import { TrendingDown, TrendingUp, ExternalLink, Clock } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
@@ -10,8 +10,6 @@ import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { StaleCacheBanner } from "@/components/stale-cache-banner";
-
-const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 const num = (n: number) => new Intl.NumberFormat("en-US").format(n);
 const usd = (n: number) =>
@@ -45,14 +43,6 @@ export default function PlaySubscriptions() {
     );
   }, [scoped]);
 
-  const oldestDataAsOf = useMemo(() => {
-    const withTimestamp = scoped.filter((r) => !!r.dataAsOf);
-    if (withTimestamp.length === 0) return null;
-    return withTimestamp.reduce((oldest, r) =>
-      new Date(r.dataAsOf!).getTime() < new Date(oldest.dataAsOf!).getTime() ? r : oldest,
-    ).dataAsOf ?? null;
-  }, [scoped]);
-
   const csvRows = scoped.map((r) => [
     r.appName,
     r.packageName,
@@ -79,7 +69,7 @@ export default function PlaySubscriptions() {
         right={<ScopeSelect />}
       />
 
-      <PlayBanner placeholder={isPlaceholder} dataUpdatedAt={dataUpdatedAt} dataAsOf={oldestDataAsOf} />
+      <PlayBanner placeholder={isPlaceholder} dataUpdatedAt={dataUpdatedAt} />
       <StaleCacheBanner source="play" dataAsOf={staleCachedRow?.dataAsOf} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -153,32 +143,10 @@ export default function PlaySubscriptions() {
 }
 
 
-function PlayBanner({
-  placeholder,
-  dataUpdatedAt,
-  dataAsOf,
-}: {
-  placeholder: boolean;
-  dataUpdatedAt: number;
-  dataAsOf: string | null;
-}) {
+function PlayBanner({ placeholder, dataUpdatedAt }: { placeholder: boolean; dataUpdatedAt: number }) {
   const fetchedAt = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
     : null;
-
-  const asOfFormatted = dataAsOf
-    ? new Intl.DateTimeFormat("en-US", {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        timeZoneName: "short",
-      }).format(new Date(dataAsOf))
-    : null;
-
-  const isStale = dataAsOf
-    ? Date.now() - new Date(dataAsOf).getTime() > STALE_THRESHOLD_MS
-    : false;
 
   return (
     <div className="bg-card border border-border shadow-sm p-3 flex items-start gap-3">
@@ -194,17 +162,7 @@ function PlayBanner({
         ) : (
           <>Subscriber states and revenue are pulled live from the Google Play Developer APIs for each tracked Android app.</>
         )}
-        {asOfFormatted && (
-          <span
-            className={`inline-flex items-center gap-1 ml-2 ${
-              isStale ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground/70"
-            }`}
-          >
-            {isStale ? <AlertTriangle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-            as of {asOfFormatted}
-          </span>
-        )}
-        {!asOfFormatted && fetchedAt && (
+        {fetchedAt && (
           <span className="inline-flex items-center gap-1 ml-2 text-muted-foreground/70">
             <Clock className="h-3 w-3" />
             {placeholder ? "Generated" : "Fetched"} at {fetchedAt}
