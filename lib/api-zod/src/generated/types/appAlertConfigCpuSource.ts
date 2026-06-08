@@ -7,7 +7,7 @@
  */
 
 /**
- * Which source provides the effective CPU threshold
+ * Which source provides the effective CPU threshold: db = operator-saved DB override, env = per-app env var (ALERT_CPU_THRESHOLD_PCT__<APPID>), inventory = app built-in baseline from the APPS record, default = global env var or hardcoded 80%
  */
 export type AppAlertConfigCpuSource = typeof AppAlertConfigCpuSource[keyof typeof AppAlertConfigCpuSource];
 
@@ -15,5 +15,6 @@ export type AppAlertConfigCpuSource = typeof AppAlertConfigCpuSource[keyof typeo
 export const AppAlertConfigCpuSource = {
   db: 'db',
   env: 'env',
+  inventory: 'inventory',
   default: 'default',
 } as const;

@@ -20,7 +20,7 @@ import { db, alertThresholdConfigTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger.js";
 
-export type ThresholdSource = "db" | "env" | "default";
+export type ThresholdSource = "db" | "env" | "inventory" | "default";
 
 export interface ResolvedThresholds {
   cpuThresholdPct: number;
@@ -198,10 +198,16 @@ function rawEnvConsecutiveChecks(appId: string): { value: number | null; varName
 }
 
 /**
- * Resolve effective thresholds for a single app, checking DB → env → default.
+ * Resolve effective thresholds for a single app, checking DB → env → inventory → default.
  * Returns synchronous env/default values on DB error (safe fallback).
+ *
+ * Pass inventoryCpu / inventoryMemory to enable "inventory" source tracking when the
+ * resolved value comes from the app's built-in APPS record baseline.
  */
-export async function resolveThresholds(appId: string): Promise<ResolvedThresholds> {
+export async function resolveThresholds(
+  appId: string,
+  inventory?: { cpuThresholdPct?: number | null; memoryThresholdPct?: number | null },
+): Promise<ResolvedThresholds> {
   let row: { cpuThresholdPct: number | null; memoryThresholdPct: number | null; consecutiveChecks: number | null; updatedAt: Date; updatedBy: string | null } | null = null;
   try {
     const rows = await db
@@ -225,19 +231,36 @@ export async function resolveThresholds(appId: string): Promise<ResolvedThreshol
   const dbMem = row?.memoryThresholdPct;
   const dbConsec = row?.consecutiveChecks;
 
+  const invCpu = inventory?.cpuThresholdPct ?? null;
+  const invMem = inventory?.memoryThresholdPct ?? null;
+
   const updatedAt = row ? row.updatedAt.toISOString() : null;
   const updatedBy = row?.updatedBy ?? null;
 
+  function cpuSource(): ThresholdSource {
+    if (dbCpu != null) return "db";
+    if (envCpu.isOverride) return "env";
+    if (invCpu != null) return "inventory";
+    return "default";
+  }
+
+  function memSource(): ThresholdSource {
+    if (dbMem != null) return "db";
+    if (envMem.isOverride) return "env";
+    if (invMem != null) return "inventory";
+    return "default";
+  }
+
   return {
-    cpuThresholdPct: dbCpu != null ? dbCpu : envCpu.value,
+    cpuThresholdPct: dbCpu ?? (envCpu.isOverride ? envCpu.value : (invCpu ?? envCpu.value)),
     cpuIsOverride: dbCpu != null ? true : envCpu.isOverride,
-    cpuSource: dbCpu != null ? "db" : (envCpu.isOverride ? "env" : "default"),
+    cpuSource: cpuSource(),
     cpuEnvValue: rawCpu.value,
     cpuEnvVarName: rawCpu.varName,
 
-    memoryThresholdPct: dbMem != null ? dbMem : envMem.value,
+    memoryThresholdPct: dbMem ?? (envMem.isOverride ? envMem.value : (invMem ?? envMem.value)),
     memoryIsOverride: dbMem != null ? true : envMem.isOverride,
-    memorySource: dbMem != null ? "db" : (envMem.isOverride ? "env" : "default"),
+    memorySource: memSource(),
     memoryEnvValue: rawMem.value,
     memoryEnvVarName: rawMem.varName,
 
@@ -255,9 +278,13 @@ export async function resolveThresholds(appId: string): Promise<ResolvedThreshol
 /**
  * Bulk-resolve thresholds for all given app IDs in a single DB query.
  * Useful in the GET /alerts/config route to avoid N+1 queries.
+ *
+ * Pass inventoryByAppId to enable "inventory" source tracking for apps whose
+ * built-in APPS record defines per-app CPU / memory baseline thresholds.
  */
 export async function resolveThresholdsBulk(
   appIds: string[],
+  inventoryByAppId?: Map<string, { cpuThresholdPct?: number | null; memoryThresholdPct?: number | null }>,
 ): Promise<Map<string, ResolvedThresholds>> {
   let dbRows: Array<{ appId: string; cpuThresholdPct: number | null; memoryThresholdPct: number | null; consecutiveChecks: number | null; updatedAt: Date; updatedBy: string | null }> = [];
   try {
@@ -282,16 +309,32 @@ export async function resolveThresholdsBulk(
     const dbMem = row?.memoryThresholdPct ?? null;
     const dbConsec = row?.consecutiveChecks ?? null;
 
+    const inv = inventoryByAppId?.get(appId);
+    const invCpu = inv?.cpuThresholdPct ?? null;
+    const invMem = inv?.memoryThresholdPct ?? null;
+
+    const cpuSrc: ThresholdSource =
+      dbCpu != null ? "db" :
+      envCpu.isOverride ? "env" :
+      invCpu != null ? "inventory" :
+      "default";
+
+    const memSrc: ThresholdSource =
+      dbMem != null ? "db" :
+      envMem.isOverride ? "env" :
+      invMem != null ? "inventory" :
+      "default";
+
     result.set(appId, {
-      cpuThresholdPct: dbCpu != null ? dbCpu : envCpu.value,
+      cpuThresholdPct: dbCpu ?? (envCpu.isOverride ? envCpu.value : (invCpu ?? envCpu.value)),
       cpuIsOverride: dbCpu != null ? true : envCpu.isOverride,
-      cpuSource: dbCpu != null ? "db" : (envCpu.isOverride ? "env" : "default"),
+      cpuSource: cpuSrc,
       cpuEnvValue: rawCpu.value,
       cpuEnvVarName: rawCpu.varName,
 
-      memoryThresholdPct: dbMem != null ? dbMem : envMem.value,
+      memoryThresholdPct: dbMem ?? (envMem.isOverride ? envMem.value : (invMem ?? envMem.value)),
       memoryIsOverride: dbMem != null ? true : envMem.isOverride,
-      memorySource: dbMem != null ? "db" : (envMem.isOverride ? "env" : "default"),
+      memorySource: memSrc,
       memoryEnvValue: rawMem.value,
       memoryEnvVarName: rawMem.varName,
 

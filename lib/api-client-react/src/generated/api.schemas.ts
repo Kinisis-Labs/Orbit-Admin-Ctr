@@ -1036,7 +1036,7 @@ export interface UpdateAlertConfigBody {
 }
 
 /**
- * Which source provides the effective CPU threshold
+ * Which source provides the effective CPU threshold: db = operator-saved DB override, env = per-app env var (ALERT_CPU_THRESHOLD_PCT__<APPID>), inventory = app built-in baseline from the APPS record, default = global env var or hardcoded 80%
  */
 export type AppAlertConfigCpuSource = typeof AppAlertConfigCpuSource[keyof typeof AppAlertConfigCpuSource];
 
@@ -1044,11 +1044,12 @@ export type AppAlertConfigCpuSource = typeof AppAlertConfigCpuSource[keyof typeo
 export const AppAlertConfigCpuSource = {
   db: 'db',
   env: 'env',
+  inventory: 'inventory',
   default: 'default',
 } as const;
 
 /**
- * Which source provides the effective memory threshold
+ * Which source provides the effective memory threshold: db = operator-saved DB override, env = per-app env var (ALERT_MEMORY_THRESHOLD_PCT__<APPID>), inventory = app built-in baseline from the APPS record, default = global env var or hardcoded 85%
  */
 export type AppAlertConfigMemorySource = typeof AppAlertConfigMemorySource[keyof typeof AppAlertConfigMemorySource];
 
@@ -1056,6 +1057,7 @@ export type AppAlertConfigMemorySource = typeof AppAlertConfigMemorySource[keyof
 export const AppAlertConfigMemorySource = {
   db: 'db',
   env: 'env',
+  inventory: 'inventory',
   default: 'default',
 } as const;
 
@@ -1102,9 +1104,9 @@ export interface AppAlertConfig {
   cooldownHours: number;
   /** True when a per-app ALERT_COOLDOWN_HOURS__<APPID> env var overrides the global default */
   cooldownIsOverride: boolean;
-  /** Which source provides the effective CPU threshold */
+  /** Which source provides the effective CPU threshold: db = operator-saved DB override, env = per-app env var (ALERT_CPU_THRESHOLD_PCT__<APPID>), inventory = app built-in baseline from the APPS record, default = global env var or hardcoded 80% */
   cpuSource?: AppAlertConfigCpuSource;
-  /** Which source provides the effective memory threshold */
+  /** Which source provides the effective memory threshold: db = operator-saved DB override, env = per-app env var (ALERT_MEMORY_THRESHOLD_PCT__<APPID>), inventory = app built-in baseline from the APPS record, default = global env var or hardcoded 85% */
   memorySource?: AppAlertConfigMemorySource;
   /** Which source provides the effective consecutive-checks value */
   consecutiveChecksSource?: AppAlertConfigConsecutiveChecksSource;

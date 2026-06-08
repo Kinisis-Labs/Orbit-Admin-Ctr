@@ -124,10 +124,14 @@ function SourceBadge({
   source,
   envVarName,
   envValue,
+  effectiveValue,
+  suffix = "",
 }: {
-  source: "db" | "env" | "default" | undefined;
+  source: "db" | "env" | "inventory" | "default" | undefined;
   envVarName?: string | null;
   envValue?: number | null;
+  effectiveValue?: number;
+  suffix?: string;
 }) {
   const hasConflict = source === "db" && envVarName != null && envValue != null;
 
@@ -135,32 +139,56 @@ function SourceBadge({
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border text-[10px] font-semibold uppercase tracking-wide",
+          "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border text-[10px] font-semibold uppercase tracking-wide cursor-help",
           hasConflict
-            ? "border-orange-500/40 bg-orange-500/10 text-orange-600 dark:text-orange-400 cursor-help"
+            ? "border-orange-500/40 bg-orange-500/10 text-orange-600 dark:text-orange-400"
             : "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400",
         )}
         title={
           hasConflict
-            ? `DB override takes precedence. Env var is being ignored: ${envVarName}=${envValue}`
-            : undefined
+            ? `DB override (${effectiveValue ?? ""}${suffix}) takes precedence over env var — ${envVarName}=${envValue}${suffix} is currently ignored`
+            : "Value saved by an operator via the Orbit UI"
         }
       >
-        db
+        DB override
         {hasConflict && <AlertTriangle className="h-2.5 w-2.5 shrink-0" />}
       </span>
     );
   }
   if (source === "env") {
     return (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wide">
-        env
+      <span
+        className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wide cursor-help"
+        title={
+          envVarName
+            ? `Set by environment variable: ${envVarName}${envValue != null ? `=${envValue}${suffix}` : ""}. Saving a value here will create a DB override that takes precedence.`
+            : "Set by a per-app environment variable. Saving a value here will create a DB override that takes precedence."
+        }
+      >
+        Env override
+      </span>
+    );
+  }
+  if (source === "inventory") {
+    return (
+      <span
+        className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400 text-[10px] font-semibold uppercase tracking-wide cursor-help"
+        title="Using the app's built-in baseline from the Orbit app inventory. Saving a value here will create a DB override that takes precedence."
+      >
+        Inventory baseline
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
-      default
+    <span
+      className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide cursor-help"
+      title={
+        envVarName
+          ? `Inheriting global env var: ${envVarName}${envValue != null ? `=${envValue}${suffix}` : ""}. Saving a value here will create a DB override that takes precedence.`
+          : "Using built-in default. Saving a value here will create a DB override."
+      }
+    >
+      Default
     </span>
   );
 }
@@ -195,7 +223,7 @@ interface EditableCellProps {
   appId: string;
   field: ThresholdField;
   value: number;
-  source: "db" | "env" | "default" | undefined;
+  source: "db" | "env" | "inventory" | "default" | undefined;
   envVarName?: string | null;
   envValue?: number | null;
   isPercent?: boolean;
@@ -297,50 +325,64 @@ function EditableCell({ appId, field, value, source, envVarName, envValue, isPer
 
   if (editing) {
     return (
-      <span className="inline-flex items-center gap-1">
-        <input
-          ref={inputRef}
-          type="number"
-          min={1}
-          max={isPercent ? 100 : undefined}
-          value={draft}
-          onChange={(e) => { setDraft(e.target.value); setError(null); }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") void commitDraft();
-            if (e.key === "Escape") cancelEdit();
-          }}
-          onBlur={() => { if (!saving && pendingValue === null) void commitDraft(); }}
-          disabled={saving}
-          className={cn(
-            "w-16 h-6 px-1.5 text-[12px] font-mono tabular-nums bg-background border rounded text-foreground focus:outline-none focus:ring-1 focus:ring-ring",
-            error ? "border-destructive" : "border-border",
+      <span className="inline-flex flex-col gap-0.5">
+        <span className="inline-flex items-center gap-1">
+          <input
+            ref={inputRef}
+            type="number"
+            min={1}
+            max={isPercent ? 100 : undefined}
+            value={draft}
+            onChange={(e) => { setDraft(e.target.value); setError(null); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void commitDraft();
+              if (e.key === "Escape") cancelEdit();
+            }}
+            onBlur={() => { if (!saving && pendingValue === null) void commitDraft(); }}
+            disabled={saving}
+            className={cn(
+              "w-16 h-6 px-1.5 text-[12px] font-mono tabular-nums bg-background border rounded text-foreground focus:outline-none focus:ring-1 focus:ring-ring",
+              error ? "border-destructive" : "border-border",
+            )}
+            autoFocus
+          />
+          {displaySuffix && <span className="text-[11px] text-muted-foreground">{displaySuffix}</span>}
+          {saving ? (
+            <span className="text-[11px] text-muted-foreground">saving…</span>
+          ) : (
+            <>
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); void commitDraft(); }}
+                className="text-green-600 dark:text-green-400 hover:opacity-80"
+                aria-label="Confirm"
+              >
+                <Check className="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); cancelEdit(); }}
+                className="text-muted-foreground hover:opacity-80"
+                aria-label="Cancel"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </>
           )}
-          autoFocus
-        />
-        {displaySuffix && <span className="text-[11px] text-muted-foreground">{displaySuffix}</span>}
-        {saving ? (
-          <span className="text-[11px] text-muted-foreground">saving…</span>
-        ) : (
-          <>
-            <button
-              type="button"
-              onMouseDown={(e) => { e.preventDefault(); void commitDraft(); }}
-              className="text-green-600 dark:text-green-400 hover:opacity-80"
-              aria-label="Confirm"
-            >
-              <Check className="h-3 w-3" />
-            </button>
-            <button
-              type="button"
-              onMouseDown={(e) => { e.preventDefault(); cancelEdit(); }}
-              className="text-muted-foreground hover:opacity-80"
-              aria-label="Cancel"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </>
+          {error && <span className="text-[10px] text-destructive">{error}</span>}
+        </span>
+        {source === "env" && (
+          <span className="text-[10px] text-amber-600 dark:text-amber-400">
+            {envVarName
+              ? `Env override active (${envVarName}). Saving will create a DB override.`
+              : "Env override active. Saving will create a DB override."}
+          </span>
         )}
-        {error && <span className="text-[10px] text-destructive">{error}</span>}
+        {source === "inventory" && (
+          <span className="text-[10px] text-violet-600 dark:text-violet-400">
+            Using app inventory baseline. Saving will create a DB override.
+          </span>
+        )}
       </span>
     );
   }
@@ -350,7 +392,7 @@ function EditableCell({ appId, field, value, source, envVarName, envValue, isPer
       <span className="tabular-nums font-mono text-[12px]">
         {value}{displaySuffix}
       </span>
-      <SourceBadge source={source} envVarName={envVarName} envValue={envValue} />
+      <SourceBadge source={source} envVarName={envVarName} envValue={envValue} effectiveValue={value} suffix={displaySuffix} />
       {canEdit && (
         <span className="inline-flex items-center gap-0.5 opacity-0 group-hover/cell:opacity-100 transition-opacity">
           <button

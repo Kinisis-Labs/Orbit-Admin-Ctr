@@ -1471,12 +1471,12 @@ components:
           description: True when a per-app ALERT_COOLDOWN_HOURS__<APPID> env var overrides the global default
         cpuSource:
           type: string
-          enum: [db, env, default]
-          description: Which source provides the effective CPU threshold
+          enum: [db, env, inventory, default]
+          description: "Which source provides the effective CPU threshold: db = operator-saved DB override, env = per-app env var (ALERT_CPU_THRESHOLD_PCT__<APPID>), inventory = app built-in baseline from the APPS record, default = global env var or hardcoded 80%"
         memorySource:
           type: string
-          enum: [db, env, default]
-          description: Which source provides the effective memory threshold
+          enum: [db, env, inventory, default]
+          description: "Which source provides the effective memory threshold: db = operator-saved DB override, env = per-app env var (ALERT_MEMORY_THRESHOLD_PCT__<APPID>), inventory = app built-in baseline from the APPS record, default = global env var or hardcoded 85%"
         consecutiveChecksSource:
           type: string
           enum: [db, env, default]

@@ -14,7 +14,10 @@ router.get("/alerts/channels", (_req, res) => {
 
 router.get("/alerts/config", async (_req, res) => {
   const appIds = APPS.map((a) => a.id);
-  const thresholds = await resolveThresholdsBulk(appIds);
+  const inventoryByAppId = new Map(
+    APPS.map((a) => [a.id, { cpuThresholdPct: a.cpuThreshold ?? null, memoryThresholdPct: a.memoryThreshold ?? null }]),
+  );
+  const thresholds = await resolveThresholdsBulk(appIds, inventoryByAppId);
 
   const [cooldowns, silencedUntils] = await Promise.all([
     Promise.all(APPS.map((app) => resolveCooldownHours(app.id))),
@@ -152,7 +155,10 @@ router.put("/alerts/config/:appId", requireAdmin, async (req, res) => {
     changedBy: updatedBy,
   });
 
-  const t = await resolveThresholds(appId);
+  const t = await resolveThresholds(appId, {
+    cpuThresholdPct: app.cpuThreshold ?? null,
+    memoryThresholdPct: app.memoryThreshold ?? null,
+  });
   const cooldown = await resolveCooldownHours(appId);
 
   res.json({
