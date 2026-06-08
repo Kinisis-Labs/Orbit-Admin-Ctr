@@ -389,7 +389,7 @@ function GlobalCostPanel() {
     query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
   });
 
-  type GlobalSortCol = "amount" | "trend";
+  type GlobalSortCol = "amount" | "trend" | "budget";
   type SortDir = "asc" | "desc";
   const [sortCol, setSortCol] = useState<GlobalSortCol>("amount");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -411,6 +411,12 @@ function GlobalCostPanel() {
     return isNaN(n) ? -Infinity : n;
   }
 
+  const totalApps = data?.byApp.length ?? 0;
+  const maxMtd = useMemo(
+    () => data?.byApp.reduce((m, r) => Math.max(m, r.monthToDate), 0) ?? 0,
+    [data?.byApp],
+  );
+
   const sortedRows = useMemo(() => {
     if (!data?.byApp) return [];
     const rows = [...data.byApp];
@@ -419,6 +425,9 @@ function GlobalCostPanel() {
       if (sortCol === "amount") {
         av = a.monthToDate;
         bv = b.monthToDate;
+      } else if (sortCol === "budget") {
+        av = maxMtd > 0 ? a.monthToDate / maxMtd : 0;
+        bv = maxMtd > 0 ? b.monthToDate / maxMtd : 0;
       } else {
         av = parseTrend(a.trend);
         bv = parseTrend(b.trend);
@@ -426,13 +435,7 @@ function GlobalCostPanel() {
       return sortDir === "desc" ? bv - av : av - bv;
     });
     return rows;
-  }, [data?.byApp, sortCol, sortDir]);
-
-  const totalApps = data?.byApp.length ?? 0;
-  const maxMtd = useMemo(
-    () => data?.byApp.reduce((m, r) => Math.max(m, r.monthToDate), 0) ?? 0,
-    [data?.byApp],
-  );
+  }, [data?.byApp, sortCol, sortDir, maxMtd]);
 
   function SortIcon({ col }: { col: GlobalSortCol }) {
     if (sortCol !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
@@ -465,7 +468,15 @@ function GlobalCostPanel() {
               <SortIcon col="trend" />
             </button>
           </TableHead>
-          <TableHead className="h-8 font-semibold text-foreground w-[160px]"></TableHead>
+          <TableHead className="h-8 font-semibold text-foreground w-[160px]">
+            <button
+              onClick={() => handleSortClick("budget")}
+              className="inline-flex items-center justify-start w-full hover:text-foreground transition-colors"
+            >
+              Budget
+              <SortIcon col="budget" />
+            </button>
+          </TableHead>
         </THead>
         <TableBody>
           {isLoading || !data ? (
