@@ -19,7 +19,7 @@ import { AuthBadge } from "@/components/auth-badge";
 import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
 import { useAuth } from "@/lib/auth";
 import { COST_READER_GROUP } from "@/lib/auth-groups";
-import { getBudgetThreshold } from "@/lib/spend-threshold";
+import { getBudgetThreshold, DEFAULT_BUDGET_THRESHOLD, BUDGET_THRESHOLDS_STORAGE_KEY } from "@/lib/spend-threshold";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { formatDistanceToNow } from "date-fns";
@@ -521,11 +521,11 @@ type BudgetStatus = "over" | "warning" | "ok" | "none";
 
 const BUDGET_STATUS_RANK: Record<BudgetStatus, number> = { over: 0, warning: 1, ok: 2, none: 3 };
 
-function budgetStatus(app: AppSummary): BudgetStatus {
+function budgetStatus(app: AppSummary, threshold: number = DEFAULT_BUDGET_THRESHOLD): BudgetStatus {
   if (app.budget == null) return "none";
   if (app.forecastOverBudget) return "over";
   const pct = app.budget > 0 ? (app.monthToDateCost / app.budget) * 100 : 0;
-  if (pct >= 80) return "warning";
+  if (pct >= threshold) return "warning";
   return "ok";
 }
 
@@ -606,6 +606,20 @@ function BudgetSummaryWidget({
   const { setScope } = useScope();
   const [, navigate] = useLocation();
 
+  const [thresholdVersion, setThresholdVersion] = useState(0);
+  useEffect(() => {
+    const refresh = () => setThresholdVersion((v) => v + 1);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === BUDGET_THRESHOLDS_STORAGE_KEY) refresh();
+    };
+    window.addEventListener("orbit-budget-threshold-changed", refresh);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("orbit-budget-threshold-changed", refresh);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
   const [sparklineRange, setSparklineRange] = useState<7 | 14>(() => {
     try {
       const stored = localStorage.getItem("orbit-budget-sparkline-range");
@@ -658,11 +672,11 @@ function BudgetSummaryWidget({
       return true;
     });
     return [...filtered].sort((a, b) => {
-      const rankDiff = BUDGET_STATUS_RANK[budgetStatus(a)] - BUDGET_STATUS_RANK[budgetStatus(b)];
+      const rankDiff = BUDGET_STATUS_RANK[budgetStatus(a, getBudgetThreshold(a.id))] - BUDGET_STATUS_RANK[budgetStatus(b, getBudgetThreshold(b.id))];
       if (rankDiff !== 0) return rankDiff;
       return b.monthToDateCost - a.monthToDateCost;
     });
-  }, [apps, authFilter, envFilter, budgetBreachFilter]);
+  }, [apps, authFilter, envFilter, budgetBreachFilter, thresholdVersion]);
 
   function goToCost(appId: string) {
     setScope(appId);
@@ -674,10 +688,13 @@ function BudgetSummaryWidget({
   }
 
   const overCount = filteredApps?.filter((a) => a.forecastOverBudget).length ?? 0;
-  const warningCount = filteredApps?.filter((a) => {
-    if (a.forecastOverBudget || a.budget == null) return false;
-    return a.budget > 0 && (a.monthToDateCost / a.budget) * 100 >= 80;
-  }).length ?? 0;
+  const warningCount = useMemo(() => {
+    return filteredApps?.filter((a) => {
+      if (a.forecastOverBudget || a.budget == null) return false;
+      const pct = a.budget > 0 ? (a.monthToDateCost / a.budget) * 100 : 0;
+      return pct >= getBudgetThreshold(a.id);
+    }).length ?? 0;
+  }, [filteredApps, thresholdVersion]);
 
   const totalSpentMTD = filteredApps?.reduce((s, a) => s + a.monthToDateCost, 0) ?? 0;
   const topSpenderId = filteredApps && filteredApps.length >= 2
@@ -723,7 +740,7 @@ function BudgetSummaryWidget({
   const csvRows = useMemo(() => {
     if (!filteredApps) return null;
     const appRows = filteredApps.map((app) => {
-      const status = budgetStatus(app);
+      const status = budgetStatus(app, getBudgetThreshold(app.id));
       const pct = app.budget != null && app.budget > 0
         ? Math.round(Math.min((app.monthToDateCost / app.budget) * 100, 100))
         : null;
@@ -929,7 +946,8 @@ function BudgetSummaryWidget({
               </tr>
             ) : (
               filteredApps.map((app) => {
-                const status = budgetStatus(app);
+                const threshold = getBudgetThreshold(app.id);
+                const status = budgetStatus(app, threshold);
                 const pct = app.budget != null && app.budget > 0
                   ? Math.min((app.monthToDateCost / app.budget) * 100, 100)
                   : null;
@@ -1105,7 +1123,7 @@ function BudgetSummaryWidget({
                                   }`}
                                 />
                               </TooltipTrigger>
-                              <TooltipContent>Alert at {getBudgetThreshold(app.id)}% · {Math.round(pct)}% utilized</TooltipContent>
+                              <TooltipContent>Alert at {threshold}% · {Math.round(pct)}% utilized</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                           <span className="text-[11px] text-muted-foreground tabular-nums">{Math.round(pct)}%</span>
