@@ -792,8 +792,10 @@ function InfraTab({ appId }: { appId: string }) {
 
 function NetworkTab({ appId }: { appId: string }) {
   const { mode } = useAuth();
-  const { data, isLoading, isFetching, queryKey } = useAppNetwork(appId);
+  const { data, isLoading, isFetching, dataUpdatedAt, queryKey } = useAppNetwork(appId);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/network`, queryKey);
+  useSecondsTicker();
+  const updatedLabel = dataUpdatedAt > 0 ? formatSecondsAgo(Date.now() - dataUpdatedAt) : null;
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No network data available</div>;
@@ -810,6 +812,11 @@ function NetworkTab({ appId }: { appId: string }) {
         <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Endpoints</h2>
           <div className="flex items-center gap-2">
+            {updatedLabel && (
+              <span className="text-[11px] text-muted-foreground">
+                {isFetching ? "Refreshing…" : `Updated ${updatedLabel}`}
+              </span>
+            )}
             <DataSourceBadge dataSource={data.endpointsDataSource ?? data.dataSource} />
             {isLiveMode(mode) && (
               <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
