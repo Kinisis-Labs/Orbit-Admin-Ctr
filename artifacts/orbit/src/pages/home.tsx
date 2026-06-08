@@ -51,7 +51,7 @@ function useAppAnomalies(apps: AppSummary[] | undefined, enabled: boolean): Set<
   }, [apps, queries]);
 }
 
-function useAppDailySpend(apps: AppSummary[] | undefined, enabled: boolean): Map<string, DailyCostPoint[]> {
+function useAppDailySpend(apps: AppSummary[] | undefined, enabled: boolean, days: 7 | 14): Map<string, DailyCostPoint[]> {
   const queries = useQueries({
     queries: (apps ?? []).map((app) => ({
       queryKey: getGetCostQueryKey(app.id),
@@ -66,11 +66,11 @@ function useAppDailySpend(apps: AppSummary[] | undefined, enabled: boolean): Map
     (apps ?? []).forEach((app, i) => {
       const daily = queries[i]?.data?.daily;
       if (daily && daily.length > 0) {
-        map.set(app.id, daily.slice(-7));
+        map.set(app.id, daily.slice(-days));
       }
     });
     return map;
-  }, [apps, queries]);
+  }, [apps, queries, days]);
 }
 
 function useAllAppDetails(apps: AppSummary[] | undefined, enabled: boolean): AppDetail[] {
@@ -572,7 +572,25 @@ function BudgetSummaryWidget({
   const { setScope } = useScope();
   const [, navigate] = useLocation();
 
-  const dailySpend = useAppDailySpend(apps, true);
+  const [sparklineRange, setSparklineRange] = useState<7 | 14>(() => {
+    try {
+      const stored = localStorage.getItem("orbit-budget-sparkline-range");
+      return stored === "7" ? 7 : 14;
+    } catch {
+      return 14;
+    }
+  });
+
+  function handleSparklineRange(days: 7 | 14) {
+    setSparklineRange(days);
+    try {
+      localStorage.setItem("orbit-budget-sparkline-range", String(days));
+    } catch {
+      // ignore
+    }
+  }
+
+  const dailySpend = useAppDailySpend(apps, true, sparklineRange);
 
   const [envFilter, setEnvFilter] = useState<EnvFilter>("all");
 
@@ -715,6 +733,10 @@ function BudgetSummaryWidget({
         </div>
         <div className="flex items-center gap-2 pr-2">
           <span className="text-[11px] text-muted-foreground">Month to date</span>
+          <div className="flex items-center gap-0.5">
+            <FilterButton active={sparklineRange === 7} onClick={() => handleSparklineRange(7)}>7d</FilterButton>
+            <FilterButton active={sparklineRange === 14} onClick={() => handleSparklineRange(14)}>14d</FilterButton>
+          </div>
           <CsvToolbar
             handleExport={handleExport}
             handleCopy={handleCopy}
@@ -818,7 +840,7 @@ function BudgetSummaryWidget({
               <th className="text-right font-medium text-muted-foreground px-3 py-2">Forecast</th>
               <th className="text-left font-medium text-muted-foreground px-3 py-2 w-[120px]">Utilization</th>
               <th className="text-left font-medium text-muted-foreground px-3 py-2">Status</th>
-              <th className="text-left font-medium text-muted-foreground px-3 py-2 w-[88px]">7d trend</th>
+              <th className="text-left font-medium text-muted-foreground px-3 py-2 w-[88px]">{sparklineRange}d trend</th>
               <th className="w-8 px-2 py-2" />
             </tr>
           </thead>
