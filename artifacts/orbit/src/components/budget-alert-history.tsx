@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -12,9 +13,9 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Bell, BellOff, Check, Filter, X, CalendarRange, Mail, MessageSquare, StickyNote } from "lucide-react";
-import { format, parseISO, isValid, startOfDay, endOfDay } from "date-fns";
-import { useState, useMemo } from "react";
+import { Bell, BellOff, Check, Filter, X, CalendarRange, Mail, MessageSquare, StickyNote, Bookmark, BookmarkPlus, Trash2, Zap } from "lucide-react";
+import { format, parseISO, isValid, startOfDay, endOfDay, subDays } from "date-fns";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +32,51 @@ const CHANNEL_LABELS: Record<string, string> = {
 
 const ALL_CHANNELS = ["teams", "email"] as const;
 type Channel = (typeof ALL_CHANNELS)[number];
+
+const FILTER_STATE_KEY = "orbit:alert-filter-state";
+const PRESETS_KEY = "orbit:alert-presets";
+
+interface FilterState {
+  channels: Channel[];
+  unacknowledgedOnly: boolean;
+  dateFrom: string;
+  dateTo: string;
+}
+
+interface Preset {
+  id: string;
+  name: string;
+  channels: Channel[];
+  unacknowledgedOnly: boolean;
+  dateFrom: string;
+  dateTo: string;
+}
+
+function loadFilterState(): FilterState | null {
+  try {
+    const raw = localStorage.getItem(FILTER_STATE_KEY);
+    return raw ? (JSON.parse(raw) as FilterState) : null;
+  } catch {
+    return null;
+  }
+}
+
+function loadPresets(): Preset[] {
+  try {
+    const raw = localStorage.getItem(PRESETS_KEY);
+    return raw ? (JSON.parse(raw) as Preset[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePresetsToStorage(presets: Preset[]) {
+  try {
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+  } catch {
+    /* storage quota */
+  }
+}
 
 function ChannelBadge({ channel }: { channel: string }) {
   const label = CHANNEL_LABELS[channel] ?? channel;
@@ -81,7 +127,7 @@ interface Props {
 }
 
 export function BudgetAlertHistory({ appId }: Props) {
-  const [unacknowledgedOnly, setUnacknowledgedOnly] = useState(false);
+  const [unacknowledgedOnly, setUnacknowledgedOnly] = useState(() => loadFilterState()?.unacknowledgedOnly ?? false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -118,6 +164,21 @@ export function BudgetAlertHistory({ appId }: Props) {
     applyParams(next);
   }
 
+  const didRestoreDates = useRef(false);
+  useEffect(() => {
+    if (didRestoreDates.current) return;
+    didRestoreDates.current = true;
+    if (!searchParams.get("alertFrom") && !searchParams.get("alertTo")) {
+      const saved = loadFilterState();
+      if (saved?.dateFrom || saved?.dateTo) {
+        const next = new URLSearchParams(searchParams);
+        if (saved.dateFrom) next.set("alertFrom", saved.dateFrom);
+        if (saved.dateTo) next.set("alertTo", saved.dateTo);
+        applyParams(next);
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const params = {
     ...(appId ? { appId } : {}),
     limit: 50,
@@ -136,11 +197,32 @@ export function BudgetAlertHistory({ appId }: Props) {
     },
   });
 
-  const [selectedChannels, setSelectedChannels] = useState<Set<Channel>>(new Set());
+  const [selectedChannels, setSelectedChannels] = useState<Set<Channel>>(() => {
+    const saved = loadFilterState()?.channels ?? [];
+    return new Set(saved.filter((ch): ch is Channel => (ALL_CHANNELS as readonly string[]).includes(ch)));
+  });
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [dialogNote, setDialogNote] = useState("");
+
+  const [presets, setPresets] = useState<Preset[]>(() => loadPresets());
+  const [savePresetOpen, setSavePresetOpen] = useState(false);
+  const [presetName, setPresetName] = useState("");
+
+  useEffect(() => {
+    const state: FilterState = {
+      channels: Array.from(selectedChannels),
+      unacknowledgedOnly,
+      dateFrom: startInput,
+      dateTo: endInput,
+    };
+    try {
+      localStorage.setItem(FILTER_STATE_KEY, JSON.stringify(state));
+    } catch {
+      /* storage quota */
+    }
+  }, [selectedChannels, unacknowledgedOnly, startInput, endInput]);
 
   function openAcknowledgeDialog(id: number) {
     setPendingId(id);
@@ -170,7 +252,7 @@ export function BudgetAlertHistory({ appId }: Props) {
 
   const isDateFiltered = startDate !== null || endDate !== null;
   const isChannelFiltered = selectedChannels.size > 0;
-  const isFiltered = isDateFiltered || isChannelFiltered;
+  const isFiltered = isDateFiltered || isChannelFiltered || unacknowledgedOnly;
 
   function toggleChannel(ch: Channel) {
     setSelectedChannels((prev) => {
@@ -186,7 +268,7 @@ export function BudgetAlertHistory({ appId }: Props) {
 
   const filteredEntries = useMemo(() => {
     if (!entries) return entries;
-    if (!isFiltered) return entries;
+    if (!isDateFiltered && !isChannelFiltered) return entries;
     return entries.filter((entry) => {
       if (isDateFiltered) {
         const sent = new Date(entry.sentAt);
@@ -199,12 +281,70 @@ export function BudgetAlertHistory({ appId }: Props) {
       }
       return true;
     });
-  }, [entries, startDate, endDate, isDateFiltered, isChannelFiltered, selectedChannels, isFiltered]);
+  }, [entries, startDate, endDate, isDateFiltered, isChannelFiltered, selectedChannels]);
 
   function clearFilter() {
     clearDateRange();
     setSelectedChannels(new Set());
+    setUnacknowledgedOnly(false);
   }
+
+  function applyPreset(preset: Pick<Preset, "channels" | "unacknowledgedOnly" | "dateFrom" | "dateTo">) {
+    setSelectedChannels(new Set(preset.channels));
+    setUnacknowledgedOnly(preset.unacknowledgedOnly);
+    const next = new URLSearchParams(searchParams);
+    if (preset.dateFrom) { next.set("alertFrom", preset.dateFrom); } else { next.delete("alertFrom"); }
+    if (preset.dateTo) { next.set("alertTo", preset.dateTo); } else { next.delete("alertTo"); }
+    applyParams(next);
+  }
+
+  function handleSavePreset() {
+    if (!presetName.trim()) return;
+    const preset: Preset = {
+      id: Date.now().toString(),
+      name: presetName.trim(),
+      channels: Array.from(selectedChannels),
+      unacknowledgedOnly,
+      dateFrom: startInput,
+      dateTo: endInput,
+    };
+    const next = [...presets, preset];
+    setPresets(next);
+    savePresetsToStorage(next);
+    setPresetName("");
+    setSavePresetOpen(false);
+  }
+
+  function handleDeletePreset(id: string) {
+    const next = presets.filter((p) => p.id !== id);
+    setPresets(next);
+    savePresetsToStorage(next);
+  }
+
+  const quickPicks = useMemo(() => [
+    {
+      label: "Teams · 7 d",
+      preset: {
+        channels: ["teams"] as Channel[],
+        unacknowledgedOnly: false,
+        dateFrom: format(subDays(new Date(), 7), "yyyy-MM-dd"),
+        dateTo: "",
+      },
+    },
+    {
+      label: "Email · 30 d",
+      preset: {
+        channels: ["email"] as Channel[],
+        unacknowledgedOnly: false,
+        dateFrom: format(subDays(new Date(), 30), "yyyy-MM-dd"),
+        dateTo: "",
+      },
+    },
+    {
+      label: "Unacknowledged",
+      preset: { channels: [] as Channel[], unacknowledgedOnly: true, dateFrom: "", dateTo: "" },
+    },
+  ], []);
 
   const csvHeaders = appId
     ? ["Sent At", "MTD Spend", "Forecast", "Budget Cap", "Overage %", "Channels", "Acknowledged At", "Acknowledgement note"]
@@ -257,6 +397,8 @@ export function BudgetAlertHistory({ appId }: Props) {
   }, [entries]);
 
   const hasChannelCounts = entries && entries.length > 0 && Object.keys(channelRawCounts).length > 0;
+
+  const hasAnyPresets = presets.length > 0;
 
   return (
     <>
@@ -473,6 +615,92 @@ export function BudgetAlertHistory({ appId }: Props) {
             )}
           </div>
         </div>
+
+        <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border bg-muted/20 flex-wrap">
+          <Zap className="h-3 w-3 text-muted-foreground shrink-0" />
+          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mr-0.5">Quick picks</span>
+          {quickPicks.map((qp) => (
+            <button
+              key={qp.label}
+              onClick={() => applyPreset(qp.preset)}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-card hover:bg-muted/60 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              title={`Apply preset: ${qp.label}`}
+            >
+              {qp.label}
+            </button>
+          ))}
+
+          {hasAnyPresets && (
+            <>
+              <span className="w-px h-3.5 bg-border/60 mx-0.5 shrink-0" />
+              <Bookmark className="h-3 w-3 text-muted-foreground shrink-0" />
+              {presets.map((p) => (
+                <span key={p.id} className="inline-flex items-center gap-0.5 rounded-sm border border-border bg-card text-[11px]">
+                  <button
+                    onClick={() => applyPreset(p)}
+                    className="px-2 py-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                    title={`Apply saved preset: ${p.name}`}
+                  >
+                    {p.name}
+                  </button>
+                  <button
+                    onClick={() => handleDeletePreset(p.id)}
+                    className="pr-1.5 py-0.5 text-muted-foreground/50 hover:text-destructive transition-colors"
+                    title={`Delete preset "${p.name}"`}
+                  >
+                    <Trash2 className="h-2.5 w-2.5" />
+                  </button>
+                </span>
+              ))}
+            </>
+          )}
+
+          <div className="ml-auto flex items-center gap-1">
+            {savePresetOpen ? (
+              <form
+                className="flex items-center gap-1"
+                onSubmit={(e) => { e.preventDefault(); handleSavePreset(); }}
+              >
+                <Input
+                  autoFocus
+                  value={presetName}
+                  onChange={(e) => setPresetName(e.target.value)}
+                  placeholder="Preset name…"
+                  maxLength={40}
+                  className="h-6 text-[11px] w-[140px] px-2 py-0"
+                />
+                <Button type="submit" size="sm" className="h-6 text-[11px] px-2" disabled={!presetName.trim()}>
+                  Save
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[11px] px-1.5 text-muted-foreground"
+                  onClick={() => { setSavePresetOpen(false); setPresetName(""); }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </form>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setSavePresetOpen(true)}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-dashed border-border text-[11px] text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+                  >
+                    <BookmarkPlus className="h-3 w-3" />
+                    Save current
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-[12px]">
+                  Save the current filter combination as a named preset
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </div>
+
         {isLoading ? (
           <div className="p-4 space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (
