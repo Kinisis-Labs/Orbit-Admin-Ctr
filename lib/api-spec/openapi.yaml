@@ -1228,7 +1228,7 @@ components:
         fetchedAt: { type: string, format: date-time, nullable: true, description: "ISO timestamp of when the data was fetched from GitHub. Null when data source is mock." }
     Deployment:
       type: object
-      required: [id, appId, appName, environment, version, status, triggeredBy, startedAt, commitSha, pipeline]
+      required: [id, appId, appName, environment, version, status, triggeredBy, startedAt, commitSha, pipeline, runType]
       properties:
         id: { type: string }
         appId: { type: string }
@@ -1241,6 +1241,7 @@ components:
         durationSec: { type: integer, nullable: true }
         commitSha: { type: string }
         pipeline: { type: string }
+        runType: { type: string, enum: [deploy, ci], description: "Whether this run is a deployment/release workflow or a CI workflow (typecheck, lint, test, etc.)." }
     ActivityEntry:
       type: object
       required: [id, timestamp, actor, action, target, status, category]

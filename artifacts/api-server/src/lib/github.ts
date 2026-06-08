@@ -25,7 +25,10 @@ export type GitHubDeployment = {
   durationSec: number | null;
   commitSha: string;
   pipeline: string;
+  runType: "deploy" | "ci";
 };
+
+const DEPLOY_WORKFLOW_PATTERN = /deploy|release|publish/i;
 
 type CacheEntry = {
   data: GitHubDeployment[];
@@ -98,6 +101,7 @@ async function fetchRunsFromGitHub(
         ? Math.max(0, Math.round((new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 1000))
         : null;
 
+    const workflowName = run.name ?? appRepo;
     return {
       id: String(run.id),
       appId,
@@ -109,7 +113,8 @@ async function fetchRunsFromGitHub(
       startedAt,
       durationSec,
       commitSha: run.head_sha.slice(0, 7),
-      pipeline: run.name ?? appRepo,
+      pipeline: workflowName,
+      runType: DEPLOY_WORKFLOW_PATTERN.test(workflowName) ? "deploy" : "ci",
     };
   });
 }

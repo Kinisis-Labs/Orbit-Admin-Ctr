@@ -739,6 +739,17 @@ export const DeploymentStatus = {
   RolledBack: 'RolledBack',
 } as const;
 
+/**
+ * Whether this run is a deployment/release workflow or a CI workflow (typecheck, lint, test, etc.).
+ */
+export type DeploymentRunType = typeof DeploymentRunType[keyof typeof DeploymentRunType];
+
+
+export const DeploymentRunType = {
+  deploy: 'deploy',
+  ci: 'ci',
+} as const;
+
 export interface Deployment {
   id: string;
   appId: string;
@@ -751,6 +762,8 @@ export interface Deployment {
   durationSec?: number | null;
   commitSha: string;
   pipeline: string;
+  /** Whether this run is a deployment/release workflow or a CI workflow (typecheck, lint, test, etc.). */
+  runType: DeploymentRunType;
 }
 
 export interface ListDeploymentsResponse {

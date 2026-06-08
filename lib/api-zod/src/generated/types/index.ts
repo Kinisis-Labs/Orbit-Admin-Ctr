@@ -39,6 +39,7 @@ export * from './costReportBudgetDataSource';
 export * from './costReportDataSource';
 export * from './dailyCostPoint';
 export * from './deployment';
+export * from './deploymentRunType';
 export * from './deploymentStatus';
 export * from './dismissAnomalyRequest';
 export * from './getAppAlertsParams';

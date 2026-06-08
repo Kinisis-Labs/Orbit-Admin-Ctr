@@ -12,6 +12,7 @@ import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { DataSourceBadge } from "@/components/data-source-badge";
+import { cn } from "@/lib/utils";
 import type { Deployment } from "@workspace/api-client-react";
 
 type DeploymentStatus = Deployment["status"];
@@ -22,6 +23,29 @@ const STATUS_TONE: Record<DeploymentStatus, "ok" | "warn" | "bad" | "info"> = {
   Failed: "bad",
   RolledBack: "warn",
 };
+
+function RunTypeBadge({ runType, status }: { runType: "deploy" | "ci"; status: DeploymentStatus }) {
+  if (runType === "deploy") {
+    return (
+      <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+        Deploy
+      </span>
+    );
+  }
+  const isFailed = status === "Failed" || status === "RolledBack";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium border",
+        isFailed
+          ? "bg-destructive/10 text-destructive border-destructive/30"
+          : "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+      )}
+    >
+      CI
+    </span>
+  );
+}
 
 export default function Deployments() {
   const { scope } = useScope();
@@ -68,14 +92,19 @@ export default function Deployments() {
         d.appName.toLowerCase().includes(f) ||
         d.version.toLowerCase().includes(f) ||
         d.triggeredBy.toLowerCase().includes(f) ||
-        d.commitSha.includes(f),
+        d.commitSha.includes(f) ||
+        d.pipeline.toLowerCase().includes(f),
     );
   }, [deployments, filter]);
 
-  const succeeded = filtered.filter((d) => d.status === "Succeeded").length;
-  const inProgress = filtered.filter((d) => d.status === "InProgress").length;
-  const failed = filtered.filter((d) => d.status === "Failed" || d.status === "RolledBack").length;
-  const successRate = filtered.length ? Math.round((succeeded / filtered.length) * 100) : 0;
+  const deployRuns = filtered.filter((d) => d.runType === "deploy");
+  const ciRuns = filtered.filter((d) => d.runType === "ci");
+
+  const succeeded = deployRuns.filter((d) => d.status === "Succeeded").length;
+  const inProgress = deployRuns.filter((d) => d.status === "InProgress").length;
+  const failed = deployRuns.filter((d) => d.status === "Failed" || d.status === "RolledBack").length;
+  const successRate = deployRuns.length ? Math.round((succeeded / deployRuns.length) * 100) : 0;
+  const ciFailures = ciRuns.filter((d) => d.status === "Failed" || d.status === "RolledBack").length;
 
   return (
     <div className="space-y-4">
@@ -92,24 +121,30 @@ export default function Deployments() {
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Tile title="Total" value={isLoading ? null : filtered.length.toString()} sub="Workflow runs" />
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <Tile title="Total deploys" value={isLoading ? null : deployRuns.length.toString()} sub="Deploy workflows" />
         <Tile title="Success rate" value={isLoading ? null : `${successRate}%`} sub={`${succeeded} succeeded`} />
         <Tile title="In progress" value={isLoading ? null : inProgress.toString()} sub="Active rollouts" />
-        <Tile title="Failed / rolled back" value={isLoading ? null : failed.toString()} sub="Requires review" />
+        <Tile title="Deploy failures" value={isLoading ? null : failed.toString()} sub="Requires review" />
+        <Tile
+          title="CI failures"
+          value={isLoading ? null : ciFailures.toString()}
+          sub={`of ${ciRuns.length} CI runs`}
+          highlight={ciFailures > 0}
+        />
       </div>
 
       <div className="bg-card border border-border shadow-sm flex flex-col">
         <div className="flex items-center justify-between p-2 border-b border-border bg-card gap-2 flex-wrap">
-          <h2 className="text-sm font-semibold px-2">Deployment history</h2>
+          <h2 className="text-sm font-semibold px-2">Workflow run history</h2>
           <div className="flex items-center gap-1">
             <div className="relative">
               <Search className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                placeholder="Filter app, version, commit, deployer"
-                className="h-7 w-72 pl-7 text-[12px] rounded-sm"
+                placeholder="Filter app, pipeline, version, commit, deployer"
+                className="h-7 w-80 pl-7 text-[12px] rounded-sm"
               />
             </div>
             <Button
@@ -138,7 +173,7 @@ export default function Deployments() {
           ) : allEmpty ? (
             <div className="p-8 text-center space-y-3">
               <GitBranch className="h-8 w-8 mx-auto text-muted-foreground/40" />
-              <div className="text-[14px] font-semibold text-foreground">No deployment history available</div>
+              <div className="text-[14px] font-semibold text-foreground">No workflow history available</div>
               <div className="text-[12px] text-muted-foreground max-w-md mx-auto">
                 Set <code className="bg-muted px-1 rounded">GITHUB_TOKEN</code> to pull live GitHub Actions run
                 history. Repos: <code className="bg-muted px-1 rounded">Kinisis-Labs/GrailBabe</code>{" "}
@@ -150,7 +185,8 @@ export default function Deployments() {
               <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
-                  <TableHead className="h-8 font-semibold text-foreground">Env</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground">Type</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground">Pipeline</TableHead>
                   <TableHead className="h-8 font-semibold text-foreground">Version</TableHead>
                   <TableHead className="h-8 font-semibold text-foreground">Status</TableHead>
                   <TableHead className="h-8 font-semibold text-foreground">Triggered by</TableHead>
@@ -160,26 +196,40 @@ export default function Deployments() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((d) => (
-                  <TableRow key={d.id} className="h-8 border-b border-border/50 hover:bg-muted/40">
-                    <TableCell className="py-1 font-medium text-primary">{d.appName}</TableCell>
-                    <TableCell className="py-1 text-muted-foreground">{d.environment}</TableCell>
-                    <TableCell className="py-1 font-mono text-[12px]">{d.version}</TableCell>
-                    <TableCell className="py-1"><StatusPill tone={STATUS_TONE[d.status]}>{d.status}</StatusPill></TableCell>
-                    <TableCell className="py-1 text-muted-foreground">{d.triggeredBy}</TableCell>
-                    <TableCell className="py-1 font-mono text-[12px]">{d.commitSha}</TableCell>
-                    <TableCell className="py-1 text-muted-foreground" title={format(new Date(d.startedAt), "PPpp")}>
-                      {formatDistanceToNow(new Date(d.startedAt), { addSuffix: true })}
-                    </TableCell>
-                    <TableCell className="py-1 text-right tabular-nums">
-                      {d.durationSec != null
-                        ? `${Math.floor(d.durationSec / 60)}m ${d.durationSec % 60}s`
-                        : "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filtered.map((d) => {
+                  const isFailedCi = d.runType === "ci" && (d.status === "Failed" || d.status === "RolledBack");
+                  return (
+                    <TableRow
+                      key={d.id}
+                      className={cn(
+                        "h-8 border-b border-border/50 hover:bg-muted/40",
+                        isFailedCi && "bg-destructive/5 hover:bg-destructive/10",
+                      )}
+                    >
+                      <TableCell className="py-1 font-medium text-primary">{d.appName}</TableCell>
+                      <TableCell className="py-1">
+                        <RunTypeBadge runType={d.runType as "deploy" | "ci"} status={d.status} />
+                      </TableCell>
+                      <TableCell className="py-1 text-muted-foreground text-[12px] max-w-[180px] truncate" title={d.pipeline}>
+                        {d.pipeline}
+                      </TableCell>
+                      <TableCell className="py-1 font-mono text-[12px]">{d.version}</TableCell>
+                      <TableCell className="py-1"><StatusPill tone={STATUS_TONE[d.status]}>{d.status}</StatusPill></TableCell>
+                      <TableCell className="py-1 text-muted-foreground">{d.triggeredBy}</TableCell>
+                      <TableCell className="py-1 font-mono text-[12px]">{d.commitSha}</TableCell>
+                      <TableCell className="py-1 text-muted-foreground" title={format(new Date(d.startedAt), "PPpp")}>
+                        {formatDistanceToNow(new Date(d.startedAt), { addSuffix: true })}
+                      </TableCell>
+                      <TableCell className="py-1 text-right tabular-nums">
+                        {d.durationSec != null
+                          ? `${Math.floor(d.durationSec / 60)}m ${d.durationSec % 60}s`
+                          : "—"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
                 {filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">No deployments match.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-6 text-muted-foreground">No runs match.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -190,11 +240,30 @@ export default function Deployments() {
   );
 }
 
-function Tile({ title, value, sub }: { title: string; value: string | null; sub: string }) {
+function Tile({
+  title,
+  value,
+  sub,
+  highlight,
+}: {
+  title: string;
+  value: string | null;
+  sub: string;
+  highlight?: boolean;
+}) {
   return (
-    <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-      <div className="text-[12px] text-muted-foreground font-medium mb-1 truncate">{title}</div>
-      {value === null ? <Skeleton className="h-7 w-20 mb-1" /> : <div className="text-xl font-semibold tabular-nums mb-1">{value}</div>}
+    <div
+      className={cn(
+        "bg-card border border-border p-3 shadow-sm flex flex-col justify-between",
+        highlight && "border-destructive/50 bg-destructive/5",
+      )}
+    >
+      <div className={cn("text-[12px] font-medium mb-1 truncate", highlight ? "text-destructive" : "text-muted-foreground")}>{title}</div>
+      {value === null ? (
+        <Skeleton className="h-7 w-20 mb-1" />
+      ) : (
+        <div className={cn("text-xl font-semibold tabular-nums mb-1", highlight && "text-destructive")}>{value}</div>
+      )}
       <div className="text-[11px] text-muted-foreground truncate">{sub}</div>
     </div>
   );

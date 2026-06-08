@@ -5,6 +5,7 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { DeploymentRunType } from './deploymentRunType';
 import type { DeploymentStatus } from './deploymentStatus';
 
 export interface Deployment {
@@ -19,4 +20,6 @@ export interface Deployment {
   durationSec?: number | null;
   commitSha: string;
   pipeline: string;
+  /** Whether this run is a deployment/release workflow or a CI workflow (typecheck, lint, test, etc.). */
+  runType: DeploymentRunType;
 }
