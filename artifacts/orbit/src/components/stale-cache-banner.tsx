@@ -19,9 +19,10 @@ export function fmtStaleCacheAsOf(iso: string | undefined | null): string | null
   }
 }
 
-const SOURCE_LABELS: Record<"play" | "apple", { label: string; liveText: string }> = {
+const SOURCE_LABELS: Record<"play" | "apple" | "azure-cost", { label: string; liveText: string }> = {
   play: { label: "Google Play", liveText: "live subscriber counts may differ" },
   apple: { label: "App Store Connect", liveText: "live subscriber counts may differ" },
+  "azure-cost": { label: "Azure Cost Management", liveText: "live costs may differ" },
 };
 
 export function StaleCacheBanner({
@@ -33,7 +34,7 @@ export function StaleCacheBanner({
 }: {
   dataSource?: "live" | "cached" | "mock" | undefined;
   dataAsOf?: string | null;
-  source?: "play" | "apple";
+  source?: "play" | "apple" | "azure-cost";
   label?: string;
   liveText?: string;
 }) {

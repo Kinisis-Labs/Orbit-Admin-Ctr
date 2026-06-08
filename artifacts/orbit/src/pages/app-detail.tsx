@@ -532,7 +532,7 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
         </UITooltip>
       </div>
       </TooltipProvider>
-      <StaleCacheBanner dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
+      <StaleCacheBanner source="azure-cost" dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
       </div>
     </div>
   );
@@ -1099,7 +1099,7 @@ function CostTab({ appId }: { appId: string }) {
           <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
         </div>
       </div>
-      <StaleCacheBanner dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
+      <StaleCacheBanner source="azure-cost" dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         {/* MTD Spend */}
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">

@@ -591,7 +591,7 @@ function AppCost() {
         </div>
       )}
       {!isLoading && data && (
-        <StaleCacheBanner dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
+        <StaleCacheBanner source="azure-cost" dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
       )}
       {isFetching && !isLoading && (
         <div className="h-0.5 w-full overflow-hidden bg-transparent">
