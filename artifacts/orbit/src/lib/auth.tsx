@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessContactContext,
   AuthContext,
@@ -10,6 +10,7 @@ import {
   AUTHORIZED_USERS_GROUP,
   TOGGLEABLE_GROUPS,
 } from "./auth-groups";
+import { toast } from "@/hooks/use-toast";
 
 export type { EntraGroup, EntraUser } from "./auth-types";
 
@@ -70,6 +71,8 @@ function parseAuthError(): AuthError | null {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<AuthMode | null>(null);
   const [entra, setEntra] = useState<{ user: EntraUser; groups: EntraGroup[] } | null>(null);
+  const entraRef = useRef(entra);
+  useEffect(() => { entraRef.current = entra; }, [entra]);
   const [authError, setAuthError] = useState<AuthError | null>(null);
   const [accessContact, setAccessContact] = useState<string>(ORBIT_ACCESS_EMAIL);
 
@@ -153,7 +156,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = (await res.json()) as MeResponse;
         if (data.mode === "entra" && "authenticated" in data) {
           if (data.authenticated) {
+            const prevIds = new Set((entraRef.current?.groups ?? []).map((g) => g.id));
+            const newIds = new Set(data.groups.map((g) => g.id));
+            const changed =
+              prevIds.size !== newIds.size ||
+              [...newIds].some((id) => !prevIds.has(id));
             setEntra({ user: data.user, groups: data.groups });
+            if (changed) {
+              toast({ title: "Access updated", duration: 4000 });
+            }
           } else {
             setAuthError("revoked");
           }
