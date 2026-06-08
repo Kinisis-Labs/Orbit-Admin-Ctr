@@ -20,7 +20,7 @@ function getLatestValue(
   return sorted[0].value;
 }
 
-export function useInfraThresholdAlerts() {
+export function useInfraThresholdAlerts(): { overThresholdCount: number } {
   const { data: configs } = useListAlertConfig();
 
   const infraQueries = useQueries({
@@ -95,4 +95,19 @@ export function useInfraThresholdAlerts() {
 
     toast({ title, description: newViolations.join("\n"), variant: "destructive" });
   }, [configs, infraQueries]);
+
+  const overThresholdCount = (configs ?? []).reduce((count, row, i) => {
+    const infraData = infraQueries[i]?.data as InfrastructureReport | undefined;
+    if (!infraData) return count;
+
+    const cpu = getLatestValue(infraData, "CPU %");
+    const mem = getLatestValue(infraData, "Memory %");
+
+    const cpuOver = cpu !== null && cpu >= row.cpuThresholdPct;
+    const memOver = mem !== null && mem >= row.memoryThresholdPct;
+
+    return cpuOver || memOver ? count + 1 : count;
+  }, 0);
+
+  return { overThresholdCount };
 }

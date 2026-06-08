@@ -68,7 +68,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   const { overBudgetCount } = useOverBudgetDays(canSeeCost);
-  useInfraThresholdAlerts();
+  const { overThresholdCount } = useInfraThresholdAlerts();
 
   const search = useSearch();
   const currentAppId = location.startsWith("/apps/") ? location.split("/")[2] : null;
@@ -151,7 +151,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <nav className="flex flex-col gap-0.5 w-full px-1">
             <NavGroup label="Monitoring" collapsed={navCollapsed} />
             <NavItem href="/" icon={<Home className="h-[18px] w-[18px]" />} label="Home" active={location === "/"} collapsed={navCollapsed} />
-            <NavItem href="/alerts" icon={<Bell className="h-[18px] w-[18px]" />} label="Alerts" active={location === "/alerts"} collapsed={navCollapsed} />
+            <NavItem href="/alerts" icon={<Bell className="h-[18px] w-[18px]" />} label="Alerts" active={location === "/alerts"} collapsed={navCollapsed} alertCount={overThresholdCount} />
             <NavItem href="/deployments" icon={<Rocket className="h-[18px] w-[18px]" />} label="Deployments" active={location === "/deployments"} collapsed={navCollapsed} />
             <NavItem href="/incidents" icon={<AlertOctagon className="h-[18px] w-[18px]" />} label="Incidents" active={location === "/incidents"} collapsed={navCollapsed} />
             <NavItem href="/activity" icon={<Activity className="h-[18px] w-[18px]" />} label="Activity log" active={location === "/activity"} collapsed={navCollapsed} />
@@ -258,6 +258,7 @@ function NavItem({
   trailingIcon,
   trailingTitle,
   overBudgetCount = 0,
+  alertCount = 0,
 }: {
   href: string;
   icon: React.ReactNode;
@@ -267,12 +268,26 @@ function NavItem({
   trailingIcon?: React.ReactNode;
   trailingTitle?: string;
   overBudgetCount?: number;
+  alertCount?: number;
 }) {
-  const hasAlert = overBudgetCount > 0;
+  const hasBudgetAlert = overBudgetCount > 0;
+  const hasInfraAlert = alertCount > 0;
+  const hasAlert = hasBudgetAlert || hasInfraAlert;
+
+  const badgeCount = hasBudgetAlert ? overBudgetCount : alertCount;
+  const collapsedTitle = hasBudgetAlert
+    ? `${label} — ${overBudgetCount} over-budget ${overBudgetCount === 1 ? "app" : "apps"}`
+    : hasInfraAlert
+    ? `${label} — ${alertCount} ${alertCount === 1 ? "app" : "apps"} over infra threshold`
+    : label;
+  const badgeTitle = hasBudgetAlert
+    ? `${overBudgetCount} over-budget ${overBudgetCount === 1 ? "app" : "apps"} in the current window`
+    : `${alertCount} ${alertCount === 1 ? "app" : "apps"} currently over infra threshold`;
+
   return (
     <Link href={href}>
       <div
-        title={collapsed ? (hasAlert ? `${label} — ${overBudgetCount} over-budget ${overBudgetCount === 1 ? "app" : "apps"}` : label) : trailingTitle}
+        title={collapsed ? collapsedTitle : trailingTitle}
         className={`flex items-center gap-3 px-2.5 py-2 rounded-sm cursor-pointer whitespace-nowrap transition-colors
         ${active
           ? "bg-primary/10 text-primary border-l-2 border-primary"
@@ -294,9 +309,9 @@ function NavItem({
         {!collapsed && hasAlert && (
           <span
             className="shrink-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-white text-[10px] font-bold leading-none"
-            title={`${overBudgetCount} over-budget ${overBudgetCount === 1 ? "app" : "apps"} in the current window`}
+            title={badgeTitle}
           >
-            {overBudgetCount > 99 ? "99+" : overBudgetCount}
+            {badgeCount > 99 ? "99+" : badgeCount}
           </span>
         )}
         {!collapsed && !hasAlert && trailingIcon && <div className="shrink-0">{trailingIcon}</div>}
