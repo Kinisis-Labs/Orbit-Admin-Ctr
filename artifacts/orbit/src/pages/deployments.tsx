@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { listDeployments, getListDeploymentsQueryKey } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
@@ -16,6 +16,19 @@ import { cn } from "@/lib/utils";
 import type { Deployment } from "@workspace/api-client-react";
 
 type DeploymentStatus = Deployment["status"];
+type RunTypeFilter = "all" | "deploy" | "ci";
+
+const SESSION_KEY = "deployments-run-type-filter";
+
+function readStoredFilter(): RunTypeFilter {
+  try {
+    const v = sessionStorage.getItem(SESSION_KEY);
+    if (v === "deploy" || v === "ci") return v;
+  } catch {
+    // sessionStorage unavailable
+  }
+  return "all";
+}
 
 const STATUS_TONE: Record<DeploymentStatus, "ok" | "warn" | "bad" | "info"> = {
   Succeeded: "ok",
@@ -47,10 +60,59 @@ function RunTypeBadge({ runType, status }: { runType: "deploy" | "ci"; status: D
   );
 }
 
+const RUN_TYPE_OPTIONS: { value: RunTypeFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "deploy", label: "Deploy" },
+  { value: "ci", label: "CI" },
+];
+
+function RunTypeToggle({
+  value,
+  onChange,
+}: {
+  value: RunTypeFilter;
+  onChange: (v: RunTypeFilter) => void;
+}) {
+  return (
+    <div className="inline-flex items-center rounded-sm border border-border bg-muted/50 p-0.5 gap-0.5">
+      {RUN_TYPE_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          className={cn(
+            "h-6 px-2.5 text-[11px] font-medium rounded-[2px] transition-colors",
+            value === opt.value
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+          aria-pressed={value === opt.value}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function Deployments() {
   const { scope } = useScope();
   const { data: apps, isLoading: appsLoading } = useApps();
   const [filter, setFilter] = useState("");
+  const [runTypeFilter, setRunTypeFilterRaw] = useState<RunTypeFilter>(readStoredFilter);
+
+  const setRunTypeFilter = useCallback((v: RunTypeFilter) => {
+    setRunTypeFilterRaw(v);
+    try {
+      if (v === "all") {
+        sessionStorage.removeItem(SESSION_KEY);
+      } else {
+        sessionStorage.setItem(SESSION_KEY, v);
+      }
+    } catch {
+      // sessionStorage unavailable
+    }
+  }, []);
 
   const selectedApp = apps?.find((a) => a.id === scope);
 
@@ -69,7 +131,8 @@ export default function Deployments() {
 
   const isLoading = appsLoading || deploymentQueries.some((q) => q.isLoading);
   const isFetching = deploymentQueries.some((q) => q.isFetching);
-  const allEmpty = !isLoading && deploymentQueries.every((q) => !q.isLoading && (q.data?.deployments?.length ?? 0) === 0);
+  const allEmpty =
+    !isLoading && deploymentQueries.every((q) => !q.isLoading && (q.data?.deployments?.length ?? 0) === 0);
 
   const dataSource = deploymentQueries[0]?.data?.dataSource ?? undefined;
   const fetchedAt = deploymentQueries[0]?.data?.fetchedAt ?? undefined;
@@ -96,6 +159,11 @@ export default function Deployments() {
         d.pipeline.toLowerCase().includes(f),
     );
   }, [deployments, filter]);
+
+  const tableRows = useMemo(() => {
+    if (runTypeFilter === "all") return filtered;
+    return filtered.filter((d) => d.runType === runTypeFilter);
+  }, [filtered, runTypeFilter]);
 
   const deployRuns = filtered.filter((d) => d.runType === "deploy");
   const ciRuns = filtered.filter((d) => d.runType === "ci");
@@ -131,12 +199,22 @@ export default function Deployments() {
           value={isLoading ? null : ciFailures.toString()}
           sub={`of ${ciRuns.length} CI runs`}
           highlight={ciFailures > 0}
+          onClick={() => setRunTypeFilter(runTypeFilter === "ci" ? "all" : "ci")}
+          active={runTypeFilter === "ci"}
         />
       </div>
 
       <div className="bg-card border border-border shadow-sm flex flex-col">
         <div className="flex items-center justify-between p-2 border-b border-border bg-card gap-2 flex-wrap">
-          <h2 className="text-sm font-semibold px-2">Workflow run history</h2>
+          <div className="flex items-center gap-2 px-2">
+            <h2 className="text-sm font-semibold">Workflow run history</h2>
+            <RunTypeToggle value={runTypeFilter} onChange={setRunTypeFilter} />
+            {runTypeFilter !== "all" && (
+              <span className="text-[11px] text-muted-foreground">
+                {tableRows.length} {tableRows.length === 1 ? "run" : "runs"}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-1">
             <div className="relative">
               <Search className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -168,7 +246,9 @@ export default function Deployments() {
         <div className="overflow-x-auto">
           {isLoading ? (
             <div className="p-4 space-y-2">
-              <Skeleton className="h-8" /><Skeleton className="h-8" /><Skeleton className="h-8" />
+              <Skeleton className="h-8" />
+              <Skeleton className="h-8" />
+              <Skeleton className="h-8" />
             </div>
           ) : allEmpty ? (
             <div className="p-8 text-center space-y-3">
@@ -196,7 +276,7 @@ export default function Deployments() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((d) => {
+                {tableRows.map((d) => {
                   const isFailedCi = d.runType === "ci" && (d.status === "Failed" || d.status === "RolledBack");
                   return (
                     <TableRow
@@ -210,7 +290,10 @@ export default function Deployments() {
                       <TableCell className="py-1">
                         <RunTypeBadge runType={d.runType as "deploy" | "ci"} status={d.status} />
                       </TableCell>
-                      <TableCell className="py-1 text-muted-foreground text-[12px] max-w-[180px] truncate" title={d.pipeline}>
+                      <TableCell
+                        className="py-1 text-muted-foreground text-[12px] max-w-[180px] truncate"
+                        title={d.pipeline}
+                      >
                         {d.pipeline}
                       </TableCell>
                       <TableCell className="py-1 font-mono text-[12px]">
@@ -229,7 +312,9 @@ export default function Deployments() {
                           d.version
                         )}
                       </TableCell>
-                      <TableCell className="py-1"><StatusPill tone={STATUS_TONE[d.status]}>{d.status}</StatusPill></TableCell>
+                      <TableCell className="py-1">
+                        <StatusPill tone={STATUS_TONE[d.status]}>{d.status}</StatusPill>
+                      </TableCell>
                       <TableCell className="py-1 text-muted-foreground">{d.triggeredBy}</TableCell>
                       <TableCell className="py-1 font-mono text-[12px]">{d.commitSha}</TableCell>
                       <TableCell className="py-1 text-muted-foreground" title={format(new Date(d.startedAt), "PPpp")}>
@@ -243,8 +328,12 @@ export default function Deployments() {
                     </TableRow>
                   );
                 })}
-                {filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={9} className="text-center py-6 text-muted-foreground">No runs match.</TableCell></TableRow>
+                {tableRows.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
+                      No runs match.
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
@@ -260,20 +349,38 @@ function Tile({
   value,
   sub,
   highlight,
+  onClick,
+  active,
 }: {
   title: string;
   value: string | null;
   sub: string;
   highlight?: boolean;
+  onClick?: () => void;
+  active?: boolean;
 }) {
   return (
     <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => (e.key === "Enter" || e.key === " ") && onClick() : undefined}
       className={cn(
         "bg-card border border-border p-3 shadow-sm flex flex-col justify-between",
         highlight && "border-destructive/50 bg-destructive/5",
+        onClick && "cursor-pointer select-none transition-colors",
+        onClick && !active && "hover:bg-muted/40",
+        active && "ring-2 ring-primary/40",
       )}
     >
-      <div className={cn("text-[12px] font-medium mb-1 truncate", highlight ? "text-destructive" : "text-muted-foreground")}>{title}</div>
+      <div
+        className={cn(
+          "text-[12px] font-medium mb-1 truncate",
+          highlight ? "text-destructive" : "text-muted-foreground",
+        )}
+      >
+        {title}
+      </div>
       {value === null ? (
         <Skeleton className="h-7 w-20 mb-1" />
       ) : (
