@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { StaleCacheBanner } from "@/components/stale-cache-banner";
+import { RefreshingBar } from "@/components/refreshing-bar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link, useSearch, useLocation } from "wouter";
@@ -784,11 +785,7 @@ function AppCost() {
       {!isLoading && data && (
         <StaleCacheBanner source="azure-cost" dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
       )}
-      {isFetching && !isLoading && (
-        <div className="h-0.5 w-full overflow-hidden bg-transparent">
-          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
-        </div>
-      )}
+      <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
       {!isLoading && data?.daily && (
         <AnomalyAlertBanner
           appId={scope}

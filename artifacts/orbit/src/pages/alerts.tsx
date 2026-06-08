@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { AlertTriangle, ChevronDown, ChevronRight, Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RefreshingBar } from "@/components/refreshing-bar";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { useAuth } from "@/lib/auth";
@@ -213,11 +214,7 @@ export default function Alerts() {
           </div>
         </div>
 
-        {isFetching && !isLoading && (
-          <div className="h-0.5 w-full overflow-hidden bg-transparent">
-            <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
-          </div>
-        )}
+        <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
 
         <div className={`overflow-x-auto transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
           <Table className="text-[13px]">

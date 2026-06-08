@@ -4,6 +4,7 @@ import { useParams, useLocation, useSearch } from "wouter";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { StaleCacheBanner } from "@/components/stale-cache-banner";
+import { RefreshingBar } from "@/components/refreshing-bar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApp } from "@/hooks/use-app";
 import { useAppAlerts } from "@/hooks/use-app-alerts";
@@ -480,11 +481,7 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
       }}
       className="bg-card border border-border shadow-sm p-4 text-[13px] cursor-pointer rounded-sm transition-all hover:border-primary/50 hover:shadow-md hover:ring-1 hover:ring-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      {isFetching && !isLoading && (
-        <div className="h-0.5 w-full overflow-hidden mb-3 -mt-1">
-          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
-        </div>
-      )}
+      <RefreshingBar isFetching={isFetching} isLoading={isLoading} className="mb-3 -mt-1" />
       <div className={`transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
@@ -664,11 +661,7 @@ function InfraTab({ appId }: { appId: string }) {
 
   return (
     <>
-      {isFetching && !isLoading && (
-        <div className="h-0.5 w-full overflow-hidden bg-transparent">
-          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
-        </div>
-      )}
+      <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
     <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <div className="lg:col-span-1 bg-card border border-border shadow-sm flex flex-col">
@@ -793,11 +786,7 @@ function NetworkTab({ appId }: { appId: string }) {
 
   return (
     <>
-      {isFetching && !isLoading && (
-        <div className="h-0.5 w-full overflow-hidden bg-transparent">
-          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
-        </div>
-      )}
+      <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
     <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="lg:col-span-1 bg-card border border-border shadow-sm flex flex-col">
         <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
@@ -891,11 +880,7 @@ function TelemetryTab({ appId }: { appId: string }) {
 
   return (
     <>
-      {isFetching && !isLoading && (
-        <div className="h-0.5 w-full overflow-hidden bg-transparent">
-          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
-        </div>
-      )}
+      <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
     <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground font-medium">Key metrics (last 24 h)</span>
@@ -1092,11 +1077,7 @@ function CostTab({ appId }: { appId: string }) {
 
   return (
     <>
-      {isFetching && !isLoading && (
-        <div className="h-0.5 w-full overflow-hidden bg-transparent">
-          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
-        </div>
-      )}
+      <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
     <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       {forecastOverBudget && (
         <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-sm border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[12px]">
@@ -1317,11 +1298,7 @@ function LedgerTab({ appId }: { appId: string }) {
 
   return (
     <>
-      {isFetching && !isLoading && (
-        <div className="h-0.5 w-full overflow-hidden bg-transparent">
-          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
-        </div>
-      )}
+      <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
     <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <AdminAccessBadge />
       {/* Summary tiles */}
@@ -1512,11 +1489,7 @@ function AlertsTab({ appId }: { appId: string }) {
 
   return (
     <>
-      {isFetching && !isLoading && (
-        <div className="h-0.5 w-full overflow-hidden bg-transparent">
-          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
-        </div>
-      )}
+      <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
     <div className={`bg-card border border-border shadow-sm flex flex-col transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="flex items-center justify-between p-2 border-b border-border bg-card">
         <h2 className="text-sm font-semibold px-2">Alert Rules</h2>
