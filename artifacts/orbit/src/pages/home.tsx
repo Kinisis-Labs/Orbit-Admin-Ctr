@@ -333,6 +333,8 @@ function AuthFilterPills({
 
 type BudgetStatus = "over" | "warning" | "ok" | "none";
 
+const BUDGET_STATUS_RANK: Record<BudgetStatus, number> = { over: 0, warning: 1, ok: 2, none: 3 };
+
 function budgetStatus(app: AppSummary): BudgetStatus {
   if (app.budget == null) return "none";
   if (app.forecastOverBudget) return "over";
@@ -422,11 +424,16 @@ function BudgetSummaryWidget({
 
   const filteredApps = useMemo(() => {
     if (!apps) return undefined;
-    return apps.filter((a) => {
+    const filtered = apps.filter((a) => {
       if (authFilter !== null && a.userAuth !== authFilter) return false;
       if (envFilter !== "all" && a.environment !== envFilter) return false;
       if (budgetBreachFilter && !a.forecastOverBudget) return false;
       return true;
+    });
+    return [...filtered].sort((a, b) => {
+      const rankDiff = BUDGET_STATUS_RANK[budgetStatus(a)] - BUDGET_STATUS_RANK[budgetStatus(b)];
+      if (rankDiff !== 0) return rankDiff;
+      return b.monthToDateCost - a.monthToDateCost;
     });
   }, [apps, authFilter, envFilter, budgetBreachFilter]);
 
