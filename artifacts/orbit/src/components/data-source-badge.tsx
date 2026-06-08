@@ -96,5 +96,9 @@ export function DataSourceBadge({
     );
   }
 
+  if (dataSource === "mock" || dataSource === "placeholder") {
+    return <DemoBadge />;
+  }
+
   return null;
 }
