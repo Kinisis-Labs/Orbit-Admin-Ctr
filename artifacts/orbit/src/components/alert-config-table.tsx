@@ -145,7 +145,7 @@ function UtilizationIndicator({
 // Editable threshold helpers
 // ---------------------------------------------------------------------------
 
-type ThresholdField = "cpuThresholdPct" | "memoryThresholdPct" | "consecutiveChecks";
+type ThresholdField = "cpuThresholdPct" | "memoryThresholdPct" | "consecutiveChecks" | "cooldownHours";
 
 function SourceBadge({ source }: { source: "db" | "env" | "default" | undefined }) {
   if (source === "db") {
@@ -201,17 +201,20 @@ interface EditableCellProps {
   value: number;
   source: "db" | "env" | "default" | undefined;
   isPercent?: boolean;
+  suffix?: string;
   canEdit: boolean;
   onSaved: () => void;
 }
 
-function EditableCell({ appId, field, value, source, isPercent = false, canEdit, onSaved }: EditableCellProps) {
+function EditableCell({ appId, field, value, source, isPercent = false, suffix = "", canEdit, onSaved }: EditableCellProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { mutateAsync } = useUpdateAlertConfig();
+
+  const displaySuffix = suffix || (isPercent ? "%" : "");
 
   function startEdit() {
     setDraft(String(value));
@@ -270,7 +273,7 @@ function EditableCell({ appId, field, value, source, isPercent = false, canEdit,
           )}
           autoFocus
         />
-        {isPercent && <span className="text-[11px] text-muted-foreground">%</span>}
+        {displaySuffix && <span className="text-[11px] text-muted-foreground">{displaySuffix}</span>}
         {saving ? (
           <span className="text-[11px] text-muted-foreground">saving…</span>
         ) : (
@@ -301,7 +304,7 @@ function EditableCell({ appId, field, value, source, isPercent = false, canEdit,
   return (
     <span className="inline-flex items-center gap-1.5 group/cell">
       <span className="tabular-nums font-mono text-[12px]">
-        {value}{isPercent ? "%" : ""}
+        {value}{displaySuffix}
       </span>
       <SourceBadge source={source} />
       {canEdit && (
@@ -440,7 +443,8 @@ function HistoryPanel({ appId, colSpan }: { appId: string; colSpan: number }) {
                     <th className="text-left py-1 pr-4 font-semibold text-muted-foreground w-[120px]">By</th>
                     <th className="text-left py-1 pr-4 font-semibold text-muted-foreground w-[160px]">CPU threshold</th>
                     <th className="text-left py-1 pr-4 font-semibold text-muted-foreground w-[160px]">Memory threshold</th>
-                    <th className="text-left py-1 font-semibold text-muted-foreground w-[140px]">Consecutive checks</th>
+                    <th className="text-left py-1 pr-4 font-semibold text-muted-foreground w-[140px]">Consecutive checks</th>
+                    <th className="text-left py-1 font-semibold text-muted-foreground w-[120px]">Cooldown</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -458,8 +462,11 @@ function HistoryPanel({ appId, colSpan }: { appId: string; colSpan: number }) {
                       <td className="py-1.5 pr-4">
                         <DiffValue oldVal={entry.oldMemoryThresholdPct} newVal={entry.newMemoryThresholdPct} suffix="%" />
                       </td>
-                      <td className="py-1.5">
+                      <td className="py-1.5 pr-4">
                         <DiffValue oldVal={entry.oldConsecutiveChecks} newVal={entry.newConsecutiveChecks} />
+                      </td>
+                      <td className="py-1.5">
+                        <DiffValue oldVal={entry.oldCooldownHours} newVal={entry.newCooldownHours} suffix="h" />
                       </td>
                     </tr>
                   ))}
@@ -522,8 +529,10 @@ export function AlertConfigTable({ appId }: Props) {
     const source =
       field === "cpuThresholdPct" ? row.cpuSource :
       field === "memoryThresholdPct" ? row.memorySource :
-      row.consecutiveChecksSource;
-    const isPercent = field !== "consecutiveChecks";
+      field === "consecutiveChecks" ? row.consecutiveChecksSource :
+      row.cooldownSource;
+    const isPercent = field === "cpuThresholdPct" || field === "memoryThresholdPct";
+    const suffix = field === "cooldownHours" ? "h" : isPercent ? "%" : "";
 
     return (
       <EditableCell
@@ -532,6 +541,7 @@ export function AlertConfigTable({ appId }: Props) {
         value={value}
         source={source}
         isPercent={isPercent}
+        suffix={suffix}
         canEdit={canEdit}
         onSaved={onSaved}
       />
@@ -684,10 +694,7 @@ export function AlertConfigTable({ appId }: Props) {
                       </TableCell>
                       <TableCell className="py-1">
                         <span className="inline-flex flex-wrap items-center gap-1.5">
-                          <span className="tabular-nums font-mono text-[12px]">
-                            {row.cooldownHours}h
-                          </span>
-                          <SourceBadge source={row.cooldownIsOverride ? "env" : (row.cooldownSource ?? "default")} />
+                          {renderThresholdCell(row, "cooldownHours")}
                           <SilencedBadge silencedUntil={row.silencedUntil} />
                         </span>
                       </TableCell>

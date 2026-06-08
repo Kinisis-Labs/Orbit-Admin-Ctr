@@ -27,4 +27,9 @@ export interface UpdateAlertConfigBody {
      * @minimum 1
      */
   consecutiveChecks?: number | null;
+  /**
+     * Minimum hours between repeat alert notifications for this app. Null clears the DB override and reverts to env-var / global default (12h).
+     * @minimum 1
+     */
+  cooldownHours?: number | null;
 }

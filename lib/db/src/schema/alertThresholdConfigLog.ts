@@ -18,6 +18,8 @@ export const alertThresholdConfigLogTable = pgTable("alert_threshold_config_log"
   newMemoryThresholdPct: integer("new_memory_threshold_pct"),
   oldConsecutiveChecks: integer("old_consecutive_checks"),
   newConsecutiveChecks: integer("new_consecutive_checks"),
+  oldCooldownHours: integer("old_cooldown_hours"),
+  newCooldownHours: integer("new_cooldown_hours"),
   changedBy: text("changed_by").notNull(),
   changedAt: timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
 });

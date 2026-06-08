@@ -16,6 +16,7 @@ export const alertThresholdConfigTable = pgTable("alert_threshold_config", {
   cpuThresholdPct: integer("cpu_threshold_pct"),
   memoryThresholdPct: integer("memory_threshold_pct"),
   consecutiveChecks: integer("consecutive_checks"),
+  cooldownHours: integer("cooldown_hours"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   updatedBy: text("updated_by"),
 });

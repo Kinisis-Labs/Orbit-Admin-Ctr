@@ -16,9 +16,14 @@ router.get("/alerts/config", async (_req, res) => {
   const appIds = APPS.map((a) => a.id);
   const thresholds = await resolveThresholdsBulk(appIds);
 
-  const result = APPS.map((app) => {
+  const [cooldowns, silencedUntils] = await Promise.all([
+    Promise.all(APPS.map((app) => resolveCooldownHours(app.id))),
+    Promise.all(APPS.map((app) => getSilencedUntil(app.id))),
+  ]);
+
+  const result = APPS.map((app, i) => {
     const t = thresholds.get(app.id)!;
-    const cooldown = resolveCooldownHours(app.id);
+    const cooldown = cooldowns[i]!;
     return {
       appId: app.id,
       appName: app.name,
@@ -34,7 +39,7 @@ router.get("/alerts/config", async (_req, res) => {
       memorySource: t.memorySource,
       consecutiveChecksSource: t.consecutiveChecksSource,
       cooldownSource: cooldown.source,
-      silencedUntil: getSilencedUntil(app.id),
+      silencedUntil: silencedUntils[i] ?? null,
       updatedAt: t.updatedAt,
       updatedBy: t.updatedBy,
     };
@@ -86,6 +91,9 @@ router.put("/alerts/config/:appId", requireAdmin, async (req, res) => {
   const consec = toNullableInt(body["consecutiveChecks"], "consecutiveChecks", 1);
   if (consec.error) errors.push(consec.error);
 
+  const cooldownField = toNullableInt(body["cooldownHours"], "cooldownHours", 1);
+  if (cooldownField.error) errors.push(cooldownField.error);
+
   if (errors.length > 0) {
     res.status(400).json({ error: "validation error", issues: errors });
     return;
@@ -110,6 +118,7 @@ router.put("/alerts/config/:appId", requireAdmin, async (req, res) => {
       cpuThresholdPct: cpu.value,
       memoryThresholdPct: mem.value,
       consecutiveChecks: consec.value,
+      cooldownHours: cooldownField.value,
       updatedBy,
     })
     .onConflictDoUpdate({
@@ -118,6 +127,7 @@ router.put("/alerts/config/:appId", requireAdmin, async (req, res) => {
         cpuThresholdPct: cpu.value,
         memoryThresholdPct: mem.value,
         consecutiveChecks: consec.value,
+        cooldownHours: cooldownField.value,
         updatedAt: new Date(),
         updatedBy,
       },
@@ -131,11 +141,13 @@ router.put("/alerts/config/:appId", requireAdmin, async (req, res) => {
     newMemoryThresholdPct: mem.value,
     oldConsecutiveChecks: prev?.consecutiveChecks ?? null,
     newConsecutiveChecks: consec.value,
+    oldCooldownHours: prev?.cooldownHours ?? null,
+    newCooldownHours: cooldownField.value,
     changedBy: updatedBy,
   });
 
   const t = await resolveThresholds(appId);
-  const cooldown = resolveCooldownHours(appId);
+  const cooldown = await resolveCooldownHours(appId);
 
   res.json({
     appId: app.id,
@@ -152,7 +164,7 @@ router.put("/alerts/config/:appId", requireAdmin, async (req, res) => {
     memorySource: t.memorySource,
     consecutiveChecksSource: t.consecutiveChecksSource,
     cooldownSource: cooldown.source,
-    silencedUntil: getSilencedUntil(appId),
+    silencedUntil: await getSilencedUntil(appId),
     updatedAt: t.updatedAt,
     updatedBy: t.updatedBy,
   });
@@ -188,6 +200,8 @@ router.get("/alerts/config/:appId/history", async (req, res) => {
       newMemoryThresholdPct: r.newMemoryThresholdPct,
       oldConsecutiveChecks: r.oldConsecutiveChecks,
       newConsecutiveChecks: r.newConsecutiveChecks,
+      oldCooldownHours: r.oldCooldownHours,
+      newCooldownHours: r.newCooldownHours,
       changedBy: r.changedBy,
       changedAt: r.changedAt,
     })),

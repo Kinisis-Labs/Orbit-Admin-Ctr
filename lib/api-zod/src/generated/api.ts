@@ -846,7 +846,7 @@ export const ListAlertConfigResponseItem = zod.object({
   "cpuSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective CPU threshold'),
   "memorySource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective memory threshold'),
   "consecutiveChecksSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective consecutive-checks value'),
-  "cooldownSource": zod.enum(['env', 'default']).optional().describe('Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)'),
+  "cooldownSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective cooldown (db = Orbit UI override, env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)'),
   "silencedUntil": zod.string().datetime({"offset":true}).nullish().describe('ISO-8601 timestamp at which the app\'s active alert cooldown expires; null when the app is not currently silenced'),
   "updatedAt": zod.string().datetime({"offset":true}).nullish().describe('When a DB override was last saved for this app'),
   "updatedBy": zod.string().nullish().describe('Display name \/ UPN of the operator who last saved DB overrides')
@@ -868,10 +868,12 @@ export const updateAlertConfigBodyMemoryThresholdPctMax = 100;
 
 
 
+
 export const UpdateAlertConfigBody = zod.object({
   "cpuThresholdPct": zod.number().min(1).max(updateAlertConfigBodyCpuThresholdPctMax).nullish().describe('CPU alert threshold (percent). Null clears the DB override.'),
   "memoryThresholdPct": zod.number().min(1).max(updateAlertConfigBodyMemoryThresholdPctMax).nullish().describe('Memory alert threshold (percent). Null clears the DB override.'),
-  "consecutiveChecks": zod.number().min(1).nullish().describe('Consecutive over-threshold checks required before a notification fires. Null clears the DB override.')
+  "consecutiveChecks": zod.number().min(1).nullish().describe('Consecutive over-threshold checks required before a notification fires. Null clears the DB override.'),
+  "cooldownHours": zod.number().min(1).nullish().describe('Minimum hours between repeat alert notifications for this app. Null clears the DB override and reverts to env-var \/ global default (12h).')
 }).describe('Per-app infra alert threshold overrides. Pass null for a field to clear the DB override and revert to env-var \/ global default.')
 
 export const UpdateAlertConfigResponse = zod.object({
@@ -888,7 +890,7 @@ export const UpdateAlertConfigResponse = zod.object({
   "cpuSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective CPU threshold'),
   "memorySource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective memory threshold'),
   "consecutiveChecksSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective consecutive-checks value'),
-  "cooldownSource": zod.enum(['env', 'default']).optional().describe('Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)'),
+  "cooldownSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective cooldown (db = Orbit UI override, env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)'),
   "silencedUntil": zod.string().datetime({"offset":true}).nullish().describe('ISO-8601 timestamp at which the app\'s active alert cooldown expires; null when the app is not currently silenced'),
   "updatedAt": zod.string().datetime({"offset":true}).nullish().describe('When a DB override was last saved for this app'),
   "updatedBy": zod.string().nullish().describe('Display name \/ UPN of the operator who last saved DB overrides')
@@ -911,6 +913,8 @@ export const GetAlertConfigHistoryResponseItem = zod.object({
   "newMemoryThresholdPct": zod.number().nullish().describe('Memory threshold set by this change (null = override was cleared)'),
   "oldConsecutiveChecks": zod.number().nullish().describe('Consecutive-checks before this change (null = no prior DB override)'),
   "newConsecutiveChecks": zod.number().nullish().describe('Consecutive-checks set by this change (null = override was cleared)'),
+  "oldCooldownHours": zod.number().nullish().describe('Cooldown hours before this change (null = no prior DB override)'),
+  "newCooldownHours": zod.number().nullish().describe('Cooldown hours set by this change (null = override was cleared)'),
   "changedBy": zod.string().describe('Display name \/ UPN of the operator who made the change'),
   "changedAt": zod.string().datetime({"offset":true}).describe('When the change was recorded')
 })

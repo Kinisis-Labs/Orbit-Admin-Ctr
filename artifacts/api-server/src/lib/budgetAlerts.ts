@@ -60,8 +60,9 @@ import { fetchMonthToDateCost } from "./azureCost.js";
 import { fetchBudgetForAppWithFallback } from "./azureBudgets.js";
 import { fetchAppTimeSeries } from "./azureMonitor.js";
 import { logger } from "./logger.js";
-import { db, budgetAlertLogTable, infraAlertLogTable } from "@workspace/db";
+import { db, budgetAlertLogTable, infraAlertLogTable, alertThresholdConfigTable } from "@workspace/db";
 import { resolveThresholds } from "./alertThresholds.js";
+import { eq } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // Config helpers
@@ -137,13 +138,9 @@ const _lastInfraAlertSentAt = new Map<string, number>();
  */
 const _infraConsecutiveCounts = new Map<string, number>();
 
-function cooldownMs(appId?: string): number {
-  const raw =
-    (appId ? process.env[`ALERT_COOLDOWN_HOURS__${appEnvKey(appId)}`] : undefined) ??
-    process.env["ALERT_COOLDOWN_HOURS"] ??
-    "12";
-  const hours = Number(raw);
-  return (Number.isFinite(hours) && hours > 0 ? hours : 12) * 60 * 60 * 1000;
+async function cooldownMs(appId?: string): Promise<number> {
+  const hours = appId ? (await resolveCooldownHours(appId)).hours : 12;
+  return hours * 60 * 60 * 1000;
 }
 
 /**
@@ -153,8 +150,8 @@ function cooldownMs(appId?: string): number {
  * Checks both the budget and infra (cpu + memory) cooldown maps and returns
  * the latest expiry so the badge persists until *all* active cooldowns clear.
  */
-export function getSilencedUntil(appId: string): string | null {
-  const cdMs = cooldownMs(appId);
+export async function getSilencedUntil(appId: string): Promise<string | null> {
+  const cdMs = await cooldownMs(appId);
   const now = Date.now();
   let maxExpiry = 0;
 
@@ -179,15 +176,30 @@ export function getSilencedUntil(appId: string): string | null {
  * Resolve the effective alert cooldown for an app and report its source.
  *
  * Priority order:
- *   1. ALERT_COOLDOWN_HOURS__<APPID>  — per-app env-var override (isOverride: true)
- *   2. ALERT_COOLDOWN_HOURS           — global env var (isOverride: false)
- *   3. 12h                            — hardcoded default (source: "default")
+ *   1. DB override (set via Orbit UI)   — source: "db", isOverride: true
+ *   2. ALERT_COOLDOWN_HOURS__<APPID>    — per-app env-var override, source: "env", isOverride: true
+ *   3. ALERT_COOLDOWN_HOURS             — global env var, source: "env", isOverride: false
+ *   4. 12h                              — hardcoded default, source: "default"
  */
-export function resolveCooldownHours(appId: string): {
+export async function resolveCooldownHours(appId: string): Promise<{
   hours: number;
-  source: "env" | "default";
+  source: "db" | "env" | "default";
   isOverride: boolean;
-} {
+}> {
+  try {
+    const rows = await db
+      .select({ cooldownHours: alertThresholdConfigTable.cooldownHours })
+      .from(alertThresholdConfigTable)
+      .where(eq(alertThresholdConfigTable.appId, appId))
+      .limit(1);
+    const dbVal = rows[0]?.cooldownHours;
+    if (dbVal !== null && dbVal !== undefined && dbVal > 0) {
+      return { hours: dbVal, source: "db", isOverride: true };
+    }
+  } catch {
+    // DB unavailable — fall through to env/default
+  }
+
   const perApp = process.env[`ALERT_COOLDOWN_HOURS__${appEnvKey(appId)}`];
   if (perApp !== undefined) {
     const v = Number(perApp);
@@ -201,15 +213,15 @@ export function resolveCooldownHours(appId: string): {
   return { hours: 12, source: "default", isOverride: false };
 }
 
-function isBudgetOnCooldown(appId: string): boolean {
+async function isBudgetOnCooldown(appId: string): Promise<boolean> {
   const last = _lastBudgetAlertSentAt.get(appId);
-  return last !== undefined && Date.now() - last < cooldownMs(appId);
+  return last !== undefined && Date.now() - last < await cooldownMs(appId);
 }
 
-function isInfraOnCooldown(appId: string, metric: string): boolean {
+async function isInfraOnCooldown(appId: string, metric: string): Promise<boolean> {
   const key = `${appId}:${metric}`;
   const last = _lastInfraAlertSentAt.get(key);
-  return last !== undefined && Date.now() - last < cooldownMs(appId);
+  return last !== undefined && Date.now() - last < await cooldownMs(appId);
 }
 
 function markBudgetAlertSent(
@@ -471,6 +483,7 @@ async function sendEmailBudgetAlert(
   const { app, mtd, forecast, budget, overage, overagePct } = alert;
   const from = process.env["ALERT_SMTP_FROM"] ?? "orbit@kinisislabs.com";
   const subject = `[Orbit] Budget overrun forecast — ${app.name} (${fmt(forecast)} / ${fmt(budget)})`;
+  const cooldownHrs = Math.round(await cooldownMs(app.id) / 3_600_000);
 
   const html = `
 <p>Hi team,</p>
@@ -484,7 +497,7 @@ async function sendEmailBudgetAlert(
 </table>
 <br>
 <p><a href="https://orbit.kinisislabs.com/apps/${app.id}/cost">View cost details in Orbit →</a></p>
-<p style="color:#888;font-size:12px;">This alert fires when forecast &gt; budget. It will not repeat for ${Math.round(cooldownMs(app.id) / 3_600_000)} hours.</p>
+<p style="color:#888;font-size:12px;">This alert fires when forecast &gt; budget. It will not repeat for ${cooldownHrs} hours.</p>
 `;
 
   const text =
@@ -510,6 +523,7 @@ async function sendEmailInfraAlert(
   const unit = metricUnit(metric);
   const from = process.env["ALERT_SMTP_FROM"] ?? "orbit@kinisislabs.com";
   const subject = `[Orbit] Infra pressure — ${label} high on ${app.name} (${value.toFixed(1)}${unit})`;
+  const cooldownHrs = Math.round(await cooldownMs(app.id) / 3_600_000);
 
   const html = `
 <p>Hi team,</p>
@@ -522,7 +536,7 @@ async function sendEmailInfraAlert(
 </table>
 <br>
 <p><a href="https://orbit.kinisislabs.com/apps/${app.id}/telemetry">View telemetry in Orbit →</a></p>
-<p style="color:#888;font-size:12px;">This alert fires when ${label} stays above ${threshold.toFixed(1)}${unit} for ${consecutiveChecks} consecutive check${consecutiveChecks === 1 ? "" : "s"}. It will not repeat for ${Math.round(cooldownMs(app.id) / 3_600_000)} hours.</p>
+<p style="color:#888;font-size:12px;">This alert fires when ${label} stays above ${threshold.toFixed(1)}${unit} for ${consecutiveChecks} consecutive check${consecutiveChecks === 1 ? "" : "s"}. It will not repeat for ${cooldownHrs} hours.</p>
 `;
 
   const text =
@@ -603,7 +617,7 @@ export async function checkBudgetForecasts(): Promise<{
       "budget-alert: forecast exceeds budget",
     );
 
-    if (isBudgetOnCooldown(app.id)) {
+    if (await isBudgetOnCooldown(app.id)) {
       logger.debug({ appId: app.id }, "budget-alert: on cooldown, skipping notifications");
       continue;
     }
@@ -748,7 +762,7 @@ export async function checkInfraThresholds(): Promise<{
         "infra-alert: threshold breached for required consecutive checks",
       );
 
-      if (isInfraOnCooldown(app.id, kind)) {
+      if (await isInfraOnCooldown(app.id, kind)) {
         logger.debug({ appId: app.id, metric: kind }, "infra-alert: on cooldown, skipping notifications");
         continue;
       }
@@ -836,7 +850,7 @@ export function startBudgetAlertScheduler(): void {
   logger.info(
     {
       intervalMinutes: intervalMs / 60_000,
-      cooldownHours: cooldownMs() / 3_600_000,
+      cooldownHoursDefault: Number(process.env["ALERT_COOLDOWN_HOURS"] ?? 12),
       cpuThresholdPctDefault: Number.isFinite(cpuDefault) ? cpuDefault : 80,
       memoryThresholdPctDefault: Number.isFinite(memDefault) ? memDefault : 85,
       infraConsecutiveChecks: Number.isFinite(consecDefault) ? consecDefault : 2,

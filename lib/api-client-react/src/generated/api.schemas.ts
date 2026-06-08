@@ -1007,6 +1007,11 @@ export interface UpdateAlertConfigBody {
      * @minimum 1
      */
   consecutiveChecks?: number | null;
+  /**
+     * Minimum hours between repeat alert notifications for this app. Null clears the DB override and reverts to env-var / global default (12h).
+     * @minimum 1
+     */
+  cooldownHours?: number | null;
 }
 
 /**
@@ -1046,12 +1051,13 @@ export const AppAlertConfigConsecutiveChecksSource = {
 } as const;
 
 /**
- * Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)
+ * Which source provides the effective cooldown (db = Orbit UI override, env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)
  */
 export type AppAlertConfigCooldownSource = typeof AppAlertConfigCooldownSource[keyof typeof AppAlertConfigCooldownSource];
 
 
 export const AppAlertConfigCooldownSource = {
+  db: 'db',
   env: 'env',
   default: 'default',
 } as const;
@@ -1081,7 +1087,7 @@ export interface AppAlertConfig {
   memorySource?: AppAlertConfigMemorySource;
   /** Which source provides the effective consecutive-checks value */
   consecutiveChecksSource?: AppAlertConfigConsecutiveChecksSource;
-  /** Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in) */
+  /** Which source provides the effective cooldown (db = Orbit UI override, env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in) */
   cooldownSource?: AppAlertConfigCooldownSource;
   /** ISO-8601 timestamp at which the app's active alert cooldown expires; null when the app is not currently silenced */
   silencedUntil?: string | null;
@@ -1148,6 +1154,10 @@ export interface AlertThresholdConfigLogEntry {
   oldConsecutiveChecks?: number | null;
   /** Consecutive-checks set by this change (null = override was cleared) */
   newConsecutiveChecks?: number | null;
+  /** Cooldown hours before this change (null = no prior DB override) */
+  oldCooldownHours?: number | null;
+  /** Cooldown hours set by this change (null = override was cleared) */
+  newCooldownHours?: number | null;
   /** Display name / UPN of the operator who made the change */
   changedBy: string;
   /** When the change was recorded */

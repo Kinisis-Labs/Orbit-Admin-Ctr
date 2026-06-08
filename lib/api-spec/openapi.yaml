@@ -1429,6 +1429,11 @@ components:
           minimum: 1
           nullable: true
           description: Consecutive over-threshold checks required before a notification fires. Null clears the DB override.
+        cooldownHours:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Minimum hours between repeat alert notifications for this app. Null clears the DB override and reverts to env-var / global default (12h).
     AppAlertConfig:
       type: object
       required: [appId, appName, cpuThresholdPct, memoryThresholdPct, cpuIsOverride, memoryIsOverride, consecutiveChecks, consecutiveChecksIsOverride, cooldownHours, cooldownIsOverride]
@@ -1473,8 +1478,8 @@ components:
           description: Which source provides the effective consecutive-checks value
         cooldownSource:
           type: string
-          enum: [env, default]
-          description: Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)
+          enum: [db, env, default]
+          description: Which source provides the effective cooldown (db = Orbit UI override, env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)
         silencedUntil:
           type: string
           format: date-time
@@ -1546,6 +1551,14 @@ components:
           type: integer
           nullable: true
           description: Consecutive-checks set by this change (null = override was cleared)
+        oldCooldownHours:
+          type: integer
+          nullable: true
+          description: Cooldown hours before this change (null = no prior DB override)
+        newCooldownHours:
+          type: integer
+          nullable: true
+          description: Cooldown hours set by this change (null = override was cleared)
         changedBy:
           type: string
           description: Display name / UPN of the operator who made the change

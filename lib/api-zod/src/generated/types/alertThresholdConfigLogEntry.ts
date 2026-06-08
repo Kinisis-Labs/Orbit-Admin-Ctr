@@ -21,6 +21,10 @@ export interface AlertThresholdConfigLogEntry {
   oldConsecutiveChecks?: number | null;
   /** Consecutive-checks set by this change (null = override was cleared) */
   newConsecutiveChecks?: number | null;
+  /** Cooldown hours before this change (null = no prior DB override) */
+  oldCooldownHours?: number | null;
+  /** Cooldown hours set by this change (null = override was cleared) */
+  newCooldownHours?: number | null;
   /** Display name / UPN of the operator who made the change */
   changedBy: string;
   /** When the change was recorded */

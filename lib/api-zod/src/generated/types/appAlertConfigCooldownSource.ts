@@ -7,12 +7,13 @@
  */
 
 /**
- * Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)
+ * Which source provides the effective cooldown (db = Orbit UI override, env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)
  */
 export type AppAlertConfigCooldownSource = typeof AppAlertConfigCooldownSource[keyof typeof AppAlertConfigCooldownSource];
 
 
 export const AppAlertConfigCooldownSource = {
+  db: 'db',
   env: 'env',
   default: 'default',
 } as const;
