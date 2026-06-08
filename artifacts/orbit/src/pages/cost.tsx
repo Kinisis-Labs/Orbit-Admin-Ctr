@@ -3,6 +3,7 @@ import {
   getGetCostQueryKey,
 } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
+import { useBudgetThreshold } from "@/lib/spend-threshold";
 import { BudgetAlertHistory } from "@/components/budget-alert-history";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
@@ -164,6 +165,7 @@ function AppCost() {
   });
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${scope}/cost`, queryKey);
   const budgetPercent = data ? (data.monthToDate / data.budget) * 100 : 0;
+  const budgetThreshold = useBudgetThreshold(scope);
   const net = data ? data.revenue.total - data.monthToDate : 0;
   const marginPct = data && data.revenue.total > 0 ? (net / data.revenue.total) * 100 : null;
   const netClass = net >= 0 ? "text-emerald-500" : "text-destructive";
@@ -332,7 +334,14 @@ function AppCost() {
                 <span className="font-semibold text-foreground tabular-nums">{fmt(data.monthToDate, data.currency)}</span>
                 <span className="text-muted-foreground tabular-nums">{fmt(data.budget, data.currency)}</span>
               </div>
-              <Progress value={budgetPercent} className="h-1.5 rounded-none bg-muted" />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Progress value={budgetPercent} className="h-1.5 rounded-none bg-muted cursor-default" />
+                  </TooltipTrigger>
+                  <TooltipContent>Alert at {budgetThreshold}% · {budgetPercent.toFixed(0)}% utilized</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           )}
         </div>

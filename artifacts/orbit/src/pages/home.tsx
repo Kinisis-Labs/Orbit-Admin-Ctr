@@ -16,6 +16,7 @@ import { AuthBadge } from "@/components/auth-badge";
 import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
 import { useAuth } from "@/lib/auth";
 import { COST_READER_GROUP } from "@/lib/auth-groups";
+import { getBudgetThreshold } from "@/lib/spend-threshold";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { formatDistanceToNow } from "date-fns";
@@ -458,16 +459,23 @@ function BudgetSummaryWidget({
                     <td className="px-3 py-2.5">
                       {pct !== null ? (
                         <div className="flex items-center gap-2">
-                          <Progress
-                            value={pct}
-                            className={`h-1.5 w-20 ${
-                              status === "over"
-                                ? "[&>div]:bg-red-500"
-                                : status === "warning"
-                                ? "[&>div]:bg-amber-500"
-                                : "[&>div]:bg-emerald-500"
-                            }`}
-                          />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Progress
+                                  value={pct}
+                                  className={`h-1.5 w-20 cursor-default ${
+                                    status === "over"
+                                      ? "[&>div]:bg-red-500"
+                                      : status === "warning"
+                                      ? "[&>div]:bg-amber-500"
+                                      : "[&>div]:bg-emerald-500"
+                                  }`}
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent>Alert at {getBudgetThreshold(app.id)}% · {Math.round(pct)}% utilized</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           <span className="text-[11px] text-muted-foreground tabular-nums">{Math.round(pct)}%</span>
                         </div>
                       ) : (
