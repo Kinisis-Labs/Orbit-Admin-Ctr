@@ -37,7 +37,7 @@ function isoDate(ts: string | Date): string {
   return new Date(ts).toISOString().slice(0, 10);
 }
 
-function detectRecentAnomaly(daily: DailyCostPoint[] | undefined | null): {
+export function detectRecentAnomaly(daily: DailyCostPoint[] | undefined | null): {
   date: Date;
   dateKey: string;
   value: number;

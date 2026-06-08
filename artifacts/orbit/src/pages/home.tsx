@@ -1,13 +1,13 @@
 import { useState, useMemo } from "react";
-import { getListAppsQueryKey } from "@workspace/api-client-react";
+import { getListAppsQueryKey, getGetCostQueryKey, getCost } from "@workspace/api-client-react";
 import type { AppSummary } from "@workspace/api-client-react";
 import type { UserAuthType } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
 import { useApp } from "@/hooks/use-app";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
-import { ChevronRight, Bell, TrendingUp, X } from "lucide-react";
+import { ChevronRight, Bell, TrendingUp, X, TriangleAlert } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -21,6 +21,29 @@ import { getBudgetThreshold } from "@/lib/spend-threshold";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { formatDistanceToNow } from "date-fns";
+import { detectRecentAnomaly } from "@/pages/cost";
+
+function useAppAnomalies(apps: AppSummary[] | undefined, enabled: boolean): Set<string> {
+  const queries = useQueries({
+    queries: (apps ?? []).map((app) => ({
+      queryKey: getGetCostQueryKey(app.id),
+      queryFn: () => getCost(app.id),
+      staleTime: 5 * 60 * 1000,
+      enabled,
+    })),
+  });
+
+  return useMemo(() => {
+    const anomalousIds = new Set<string>();
+    (apps ?? []).forEach((app, i) => {
+      const data = queries[i]?.data;
+      if (data?.daily && detectRecentAnomaly(data.daily)) {
+        anomalousIds.add(app.id);
+      }
+    });
+    return anomalousIds;
+  }, [apps, queries]);
+}
 
 function readLastTab(): string {
   try {
@@ -49,6 +72,7 @@ export default function Home() {
   const queryClient = useQueryClient();
 
   const { data: apps, isFetching: appsFetching } = useApps();
+  const appAnomalies = useAppAnomalies(apps, canSeeCost);
 
   const { data: appDetail, isLoading: appDetailLoading, queryKey: appQueryKey } = useApp(scope || undefined);
 
@@ -125,6 +149,7 @@ export default function Home() {
           apps={apps}
           isFetching={appsFetching}
           recentAlerts={recentAlerts}
+          anomalousApps={appAnomalies}
           authFilter={authFilter}
           onAuthBadgeClick={toggleAuthFilter}
         />
@@ -348,12 +373,14 @@ function BudgetSummaryWidget({
   apps,
   isFetching,
   recentAlerts,
+  anomalousApps,
   authFilter,
   onAuthBadgeClick,
 }: {
   apps: AppSummary[] | undefined;
   isFetching: boolean;
   recentAlerts: Map<string, Date>;
+  anomalousApps: Set<string>;
   authFilter: UserAuthType | null;
   onAuthBadgeClick: (v: UserAuthType) => void;
 }) {
@@ -472,6 +499,7 @@ function BudgetSummaryWidget({
                   ? Math.min((app.monthToDateCost / app.budget) * 100, 100)
                   : null;
                 const hasAlert = recentAlerts.has(app.id);
+                const hasAnomaly = anomalousApps.has(app.id);
 
                 return (
                   <tr
@@ -482,6 +510,20 @@ function BudgetSummaryWidget({
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium text-foreground truncate max-w-[140px]">{app.name}</span>
+                        {hasAnomaly && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center shrink-0">
+                                  <TriangleAlert className="h-3 w-3 text-amber-500" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Cost anomaly detected in the last 3 days — click to view
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                         {hasAlert && (
                           <TooltipProvider>
                             <Tooltip>
