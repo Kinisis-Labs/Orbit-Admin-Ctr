@@ -93,6 +93,14 @@ export function DailySpendChart({
     [visibleDataWithPeak, budgetLine],
   );
 
+  const hasAnyPeakAnomaly = useMemo(
+    () =>
+      highlightPeak &&
+      showAnomalies &&
+      visibleDataWithPeak.some((d) => d.isPeak && (d as EnrichedPoint).anomaly?.isAnomaly),
+    [visibleDataWithPeak, highlightPeak, showAnomalies],
+  );
+
   function getCellFill(entry: EnrichedPoint): string {
     if (colorByTrend) {
       return getBarFill(entry.vsLastWeek, threshold);
@@ -244,27 +252,58 @@ export function DailySpendChart({
                 <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_DEFAULT }} />
                 <span>No prior data</span>
               </div>
-              {highlightPeak && (
-                <div className="flex items-center gap-1.5">
-                  <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_PEAK }} />
-                  <span>Peak day</span>
-                </div>
-              )}
-              {hasAnyAnomaly && (
+              {hasAnyPeakAnomaly ? (
                 <div className="flex items-center gap-1.5">
                   <span
                     className="inline-block w-2.5 h-2.5 shrink-0"
-                    style={{ border: `2px solid ${ANOMALY_OUTLINE_COLOR}`, background: "transparent" }}
+                    style={{
+                      background: BAR_COLOR_PEAK,
+                      outline: `2px solid ${ANOMALY_OUTLINE_COLOR}`,
+                      outlineOffset: 1,
+                    }}
                   />
-                  <span>Spend anomaly (&gt;{anomalySigmas}σ above window average)</span>
+                  <span>Peak &amp; anomaly</span>
                 </div>
+              ) : (
+                <>
+                  {highlightPeak && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_PEAK }} />
+                      <span>Peak day</span>
+                    </div>
+                  )}
+                  {hasAnyAnomaly && (
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="inline-block w-2.5 h-2.5 shrink-0"
+                        style={{ border: `2px solid ${ANOMALY_OUTLINE_COLOR}`, background: "transparent" }}
+                      />
+                      <span>Spend anomaly (&gt;{anomalySigmas}σ above window average)</span>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
           {hasAnyAnomaly && !colorByTrend && (
             <div className="flex items-center gap-1.5">
-              <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_ANOMALY }} />
-              <span>Spend anomaly (&gt;{anomalySigmas}σ above window average)</span>
+              {hasAnyPeakAnomaly ? (
+                <span
+                  className="inline-block w-2.5 h-2.5 shrink-0"
+                  style={{
+                    background: BAR_COLOR_PEAK,
+                    outline: `2px solid ${ANOMALY_OUTLINE_COLOR}`,
+                    outlineOffset: 1,
+                  }}
+                />
+              ) : (
+                <span className="inline-block w-2.5 h-2.5 shrink-0" style={{ background: BAR_COLOR_ANOMALY }} />
+              )}
+              <span>
+                {hasAnyPeakAnomaly
+                  ? "Peak & anomaly"
+                  : `Spend anomaly (>${anomalySigmas}σ above window average)`}
+              </span>
             </div>
           )}
           {hasAnyOverBudget && (

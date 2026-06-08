@@ -25,6 +25,7 @@ export function DailySpendTooltip({
   const isDown = vsLastWeek != null && vsLastWeek < 0;
   const anomaly = point.anomaly;
   const showAnomaly = anomaly?.isAnomaly;
+  const isPeakAndAnomaly = point.isPeak && showAnomaly;
 
   return (
     <div
@@ -40,35 +41,54 @@ export function DailySpendTooltip({
     >
       <div className="flex items-center gap-1.5 font-medium text-foreground mb-1">
         {label ? format(new Date(label as string), "MMM d, yyyy") : ""}
-        {point.isPeak && (
+        {isPeakAndAnomaly ? (
           <span
             style={{
               fontSize: 10,
               padding: "1px 5px",
               borderRadius: 3,
-              background: "hsl(38 92% 50% / 0.15)",
-              color: "hsl(38 92% 40%)",
+              background: "hsl(32 98% 46% / 0.18)",
+              color: "hsl(32 98% 34%)",
               fontWeight: 600,
               letterSpacing: "0.02em",
+              border: "1px solid hsl(32 98% 46% / 0.35)",
             }}
           >
-            Peak day
+            Peak &amp; anomaly
           </span>
-        )}
-        {showAnomaly && (
-          <span
-            style={{
-              fontSize: 10,
-              padding: "1px 5px",
-              borderRadius: 3,
-              background: "hsl(32 98% 46% / 0.15)",
-              color: "hsl(32 98% 36%)",
-              fontWeight: 600,
-              letterSpacing: "0.02em",
-            }}
-          >
-            Anomaly
-          </span>
+        ) : (
+          <>
+            {point.isPeak && (
+              <span
+                style={{
+                  fontSize: 10,
+                  padding: "1px 5px",
+                  borderRadius: 3,
+                  background: "hsl(38 92% 50% / 0.15)",
+                  color: "hsl(38 92% 40%)",
+                  fontWeight: 600,
+                  letterSpacing: "0.02em",
+                }}
+              >
+                Peak day
+              </span>
+            )}
+            {showAnomaly && (
+              <span
+                style={{
+                  fontSize: 10,
+                  padding: "1px 5px",
+                  borderRadius: 3,
+                  background: "hsl(32 98% 46% / 0.15)",
+                  color: "hsl(32 98% 36%)",
+                  fontWeight: 600,
+                  letterSpacing: "0.02em",
+                }}
+              >
+                Anomaly
+              </span>
+            )}
+          </>
         )}
       </div>
       <div className="text-foreground tabular-nums">
@@ -76,7 +96,9 @@ export function DailySpendTooltip({
       </div>
       {showAnomaly && anomaly && (
         <div className="tabular-nums mt-0.5" style={{ color: "hsl(32 98% 46%)" }}>
-          {anomaly.vsAvgMultiple.toFixed(1)}× {anomaly.windowLabel} avg
+          {isPeakAndAnomaly
+            ? `Peak day — ${anomaly.vsAvgMultiple.toFixed(1)}× ${anomaly.windowLabel} avg`
+            : `${anomaly.vsAvgMultiple.toFixed(1)}× ${anomaly.windowLabel} avg`}
         </div>
       )}
       {vsLastWeek != null && (
