@@ -38,6 +38,7 @@ import {
 import { format } from "date-fns";
 import { useAuth } from "@/lib/auth";
 import { ADMIN_GROUP } from "@/lib/auth-groups";
+import { readLastTab } from "@/lib/last-tab";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -854,7 +855,7 @@ export default function Health() {
                       </TableCell>
                       <TableCell className="py-1 font-medium">
                         <Link
-                          href={`/apps/${s.appId}?tab=infrastructure`}
+                          href={`/apps/${s.appId}?tab=${readLastTab()}`}
                           onClick={(e: React.MouseEvent) => e.stopPropagation()}
                           className="text-primary hover:underline"
                         >

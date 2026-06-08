@@ -29,6 +29,7 @@ import { CsvToolbar } from "@/components/csv-toolbar";
 import { AdminAccessBadge } from "@/components/admin-access-badge";
 import { LiveBadge, DataSourceBadge } from "@/components/data-source-badge";
 import { CostDataSourceBadge } from "@/components/cost-data-source-badge";
+import { readLastTab } from "@/lib/last-tab";
 
 function useAppAnomalies(apps: AppSummary[] | undefined, enabled: boolean): Set<string> {
   const queries = useQueries({
@@ -203,15 +204,6 @@ function WoWTrendBadge({ trend }: { trend: string | null | undefined }) {
   );
 }
 
-function readLastTab(appId: string): string {
-  try {
-    const perApp = localStorage.getItem(`orbit-last-tab:${appId}`);
-    const t = perApp ?? localStorage.getItem("orbit-last-tab") ?? "overview";
-    return (["overview", "infrastructure", "network", "telemetry", "cost", "ledger", "alerts"] as string[]).includes(t) ? t : "overview";
-  } catch {
-    return "overview";
-  }
-}
 
 const fmt = (amount: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(amount);
@@ -485,10 +477,7 @@ export default function Home() {
                 Refresh
               </Button>
               <Link
-                href={(() => {
-                  const t = readLastTab(scope);
-                  return t !== "overview" ? `/apps/${scope}?tab=${t}` : `/apps/${scope}`;
-                })()}
+                href={`/apps/${scope}?tab=${readLastTab(scope)}`}
                 className="text-[12px] text-primary hover:underline"
               >
                 Open application →
