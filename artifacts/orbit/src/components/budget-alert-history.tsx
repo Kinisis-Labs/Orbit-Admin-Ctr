@@ -101,7 +101,9 @@ function OveragePill({ forecast, budget }: { forecast: number; budget: number })
   );
 }
 
-function AcknowledgedBadge({ at, note }: { at: string; note?: string | null }) {
+function AcknowledgedBadge({ at, note, by }: { at: string; note?: string | null; by?: string | null }) {
+  const hasTooltip = !!(note || by);
+
   const badge = (
     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/30 text-muted-foreground text-[10px] font-medium">
       <Check className="h-2.5 w-2.5" />
@@ -110,13 +112,17 @@ function AcknowledgedBadge({ at, note }: { at: string; note?: string | null }) {
     </span>
   );
 
-  if (!note) return badge;
+  if (!hasTooltip) return badge;
+
+  const tooltipLines: string[] = [];
+  if (by) tooltipLines.push(`Acknowledged by ${by} on ${format(new Date(at), "MMM d, yyyy")}`);
+  if (note) tooltipLines.push(note);
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>{badge}</TooltipTrigger>
       <TooltipContent side="top" className="max-w-[280px] text-[12px] whitespace-pre-wrap break-words">
-        {note}
+        {tooltipLines.join("\n\n")}
       </TooltipContent>
     </Tooltip>
   );
@@ -363,14 +369,15 @@ export function BudgetAlertHistory({ appId }: Props) {
   ], []);
 
   const csvHeaders = appId
-    ? ["Sent At", "MTD Spend", "Forecast", "Budget Cap", "Overage %", "Channels", "Acknowledged At", "Acknowledgement note"]
-    : ["App", "Sent At", "MTD Spend", "Forecast", "Budget Cap", "Overage %", "Channels", "Acknowledged At", "Acknowledgement note"];
+    ? ["Sent At", "MTD Spend", "Forecast", "Budget Cap", "Overage %", "Channels", "Acknowledged At", "Acknowledged By", "Acknowledgement note"]
+    : ["App", "Sent At", "MTD Spend", "Forecast", "Budget Cap", "Overage %", "Channels", "Acknowledged At", "Acknowledged By", "Acknowledgement note"];
 
   const csvRows = filteredEntries?.map((entry) => {
     const overage = entry.budget > 0 ? (((entry.forecast - entry.budget) / entry.budget) * 100).toFixed(1) + "%" : "N/A";
     const sentAt = format(new Date(entry.sentAt), "MMM d, yyyy HH:mm");
     const channels = entry.channels.map((ch) => CHANNEL_LABELS[ch] ?? ch).join("; ");
     const acknowledgedAt = entry.acknowledgedAt ? format(new Date(entry.acknowledgedAt), "MMM d, yyyy HH:mm") : "";
+    const acknowledgedBy = entry.acknowledgedBy ?? "";
     const acknowledgedNote = entry.acknowledgedNote ?? "";
     const base = [
       sentAt,
@@ -380,6 +387,7 @@ export function BudgetAlertHistory({ appId }: Props) {
       overage,
       channels,
       acknowledgedAt,
+      acknowledgedBy,
       acknowledgedNote,
     ];
     return appId ? base : [entry.appName, ...base];
@@ -800,7 +808,7 @@ export function BudgetAlertHistory({ appId }: Props) {
                       </TableCell>
                       <TableCell className="py-1">
                         {isAcked ? (
-                          <AcknowledgedBadge at={entry.acknowledgedAt!} note={entry.acknowledgedNote} />
+                          <AcknowledgedBadge at={entry.acknowledgedAt!} note={entry.acknowledgedNote} by={entry.acknowledgedBy} />
                         ) : (
                           <OveragePill forecast={entry.forecast} budget={entry.budget} />
                         )}

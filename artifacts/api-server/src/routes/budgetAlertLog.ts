@@ -17,6 +17,7 @@ function toEntry(r: typeof budgetAlertLogTable.$inferSelect, appMap: Map<string,
     sentAt: r.sentAt.toISOString(),
     acknowledgedAt: r.acknowledgedAt ? r.acknowledgedAt.toISOString() : null,
     acknowledgedNote: r.acknowledgedNote ?? null,
+    acknowledgedBy: r.acknowledgedBy ?? null,
   };
 }
 
@@ -59,11 +60,16 @@ router.patch("/budget-alerts/log/:id/acknowledge", async (req, res) => {
       ? rawNote.trim().slice(0, 500)
       : null;
 
+  const acknowledgedBy =
+    req.session.user?.displayName ??
+    req.session.user?.userPrincipalName ??
+    "mock-admin";
+
   const appMap = new Map(APPS.map((a) => [a.id, a.name]));
 
   const updated = await db
     .update(budgetAlertLogTable)
-    .set({ acknowledgedAt: new Date(), acknowledgedNote: note })
+    .set({ acknowledgedAt: new Date(), acknowledgedNote: note, acknowledgedBy })
     .where(eq(budgetAlertLogTable.id, id))
     .returning();
 

@@ -15,6 +15,7 @@ export const budgetAlertLogTable = pgTable("budget_alert_log", {
   sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
   acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
   acknowledgedNote: text("acknowledged_note"),
+  acknowledgedBy: text("acknowledged_by"),
 });
 
 export type BudgetAlertLogRow = typeof budgetAlertLogTable.$inferSelect;

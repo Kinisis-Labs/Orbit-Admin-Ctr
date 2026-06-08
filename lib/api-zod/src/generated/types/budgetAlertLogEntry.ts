@@ -24,4 +24,6 @@ export interface BudgetAlertLogEntry {
   acknowledgedAt?: string | null;
   /** Optional freetext note left by the operator when acknowledging. */
   acknowledgedNote?: string | null;
+  /** Display name or UPN of the operator who acknowledged this alert. */
+  acknowledgedBy?: string | null;
 }

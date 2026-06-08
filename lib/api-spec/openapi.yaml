@@ -1394,6 +1394,7 @@ components:
         sentAt: { type: string, format: date-time, description: When the notification was dispatched }
         acknowledgedAt: { type: string, format: date-time, nullable: true, description: When the entry was acknowledged by an operator. Null if not yet acknowledged. }
         acknowledgedNote: { type: string, nullable: true, description: Optional freetext note left by the operator when acknowledging. }
+        acknowledgedBy: { type: string, nullable: true, description: Display name or UPN of the operator who acknowledged this alert. }
     AcknowledgeBudgetAlertBody:
       type: object
       properties:

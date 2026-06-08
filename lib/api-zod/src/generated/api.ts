@@ -790,7 +790,8 @@ export const ListBudgetAlertLogResponseItem = zod.object({
   "channels": zod.array(zod.string()).describe('Notification channels that fired (e.g. \"teams\", \"email\")'),
   "sentAt": zod.string().datetime({"offset":true}).describe('When the notification was dispatched'),
   "acknowledgedAt": zod.string().datetime({"offset":true}).nullish().describe('When the entry was acknowledged by an operator. Null if not yet acknowledged.'),
-  "acknowledgedNote": zod.string().nullish().describe('Optional freetext note left by the operator when acknowledging.')
+  "acknowledgedNote": zod.string().nullish().describe('Optional freetext note left by the operator when acknowledging.'),
+  "acknowledgedBy": zod.string().nullish().describe('Display name or UPN of the operator who acknowledged this alert.')
 })
 export const ListBudgetAlertLogResponse = zod.array(ListBudgetAlertLogResponseItem)
 
@@ -820,7 +821,8 @@ export const AcknowledgeBudgetAlertLogEntryResponse = zod.object({
   "channels": zod.array(zod.string()).describe('Notification channels that fired (e.g. \"teams\", \"email\")'),
   "sentAt": zod.string().datetime({"offset":true}).describe('When the notification was dispatched'),
   "acknowledgedAt": zod.string().datetime({"offset":true}).nullish().describe('When the entry was acknowledged by an operator. Null if not yet acknowledged.'),
-  "acknowledgedNote": zod.string().nullish().describe('Optional freetext note left by the operator when acknowledging.')
+  "acknowledgedNote": zod.string().nullish().describe('Optional freetext note left by the operator when acknowledging.'),
+  "acknowledgedBy": zod.string().nullish().describe('Display name or UPN of the operator who acknowledged this alert.')
 })
 
 
