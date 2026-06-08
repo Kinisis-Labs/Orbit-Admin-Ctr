@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { getListAppsQueryKey, getGetCostQueryKey, getCost } from "@workspace/api-client-react";
 import type { AppSummary } from "@workspace/api-client-react";
 import type { UserAuthType } from "@workspace/api-client-react";
@@ -8,7 +8,7 @@ import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { ChevronRight, Bell, TrendingUp, X, TriangleAlert } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
@@ -79,6 +79,29 @@ export default function Home() {
   const selectedApp = apps?.find((a) => a.id === scope);
 
   const [authFilter, setAuthFilter] = useState<UserAuthType | null>(null);
+  const search = useSearch();
+  const [, navigate] = useLocation();
+
+  const [budgetBreachFilter, setBudgetBreachFilter] = useState<boolean>(() => {
+    const params = new URLSearchParams(search);
+    return params.get("breach") === "1";
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (budgetBreachFilter) {
+      params.set("breach", "1");
+    } else {
+      params.delete("breach");
+    }
+    const qs = params.toString();
+    const next = qs ? `?${qs}` : window.location.pathname;
+    navigate(next, { replace: true });
+  }, [budgetBreachFilter]);
+
+  function toggleBudgetBreachFilter() {
+    setBudgetBreachFilter((prev) => !prev);
+  }
 
   function toggleAuthFilter(value: UserAuthType) {
     setAuthFilter((prev) => (prev === value ? null : value));
@@ -152,6 +175,8 @@ export default function Home() {
           anomalousApps={appAnomalies}
           authFilter={authFilter}
           onAuthBadgeClick={toggleAuthFilter}
+          budgetBreachFilter={budgetBreachFilter}
+          onToggleBudgetBreach={toggleBudgetBreachFilter}
         />
       )}
 
@@ -376,6 +401,8 @@ function BudgetSummaryWidget({
   anomalousApps,
   authFilter,
   onAuthBadgeClick,
+  budgetBreachFilter,
+  onToggleBudgetBreach,
 }: {
   apps: AppSummary[] | undefined;
   isFetching: boolean;
@@ -383,6 +410,8 @@ function BudgetSummaryWidget({
   anomalousApps: Set<string>;
   authFilter: UserAuthType | null;
   onAuthBadgeClick: (v: UserAuthType) => void;
+  budgetBreachFilter: boolean;
+  onToggleBudgetBreach: () => void;
 }) {
   const { setScope } = useScope();
   const [, navigate] = useLocation();
@@ -394,9 +423,10 @@ function BudgetSummaryWidget({
     return apps.filter((a) => {
       if (authFilter !== null && a.userAuth !== authFilter) return false;
       if (envFilter !== "all" && a.environment !== envFilter) return false;
+      if (budgetBreachFilter && !a.forecastOverBudget) return false;
       return true;
     });
-  }, [apps, authFilter, envFilter]);
+  }, [apps, authFilter, envFilter, budgetBreachFilter]);
 
   function goToCost(appId: string) {
     setScope(appId);
@@ -409,11 +439,12 @@ function BudgetSummaryWidget({
     return a.budget > 0 && (a.monthToDateCost / a.budget) * 100 >= 80;
   }).length ?? 0;
 
-  const isFiltered = authFilter !== null || envFilter !== "all";
+  const isFiltered = authFilter !== null || envFilter !== "all" || budgetBreachFilter;
 
   const filterSummaryParts: string[] = [];
   if (authFilter !== null) filterSummaryParts.push(authFilter.charAt(0).toUpperCase() + authFilter.slice(1));
   if (envFilter !== "all") filterSummaryParts.push(envFilter.charAt(0).toUpperCase() + envFilter.slice(1));
+  if (budgetBreachFilter) filterSummaryParts.push("Budget breach");
   const filterSummary = filterSummaryParts.join(" · ");
 
   const appCount = filteredApps?.length ?? apps?.length;
@@ -448,7 +479,7 @@ function BudgetSummaryWidget({
         <span className="text-[11px] text-muted-foreground pr-3">Month to date</span>
       </div>
 
-      <div className="flex items-center gap-3 px-4 py-1.5 border-b border-border bg-muted/20">
+      <div className="flex items-center gap-3 px-4 py-1.5 border-b border-border bg-muted/20 flex-wrap">
         <div className="flex items-center gap-1">
           <span className="text-[11px] text-muted-foreground font-medium mr-0.5">Env:</span>
           <FilterButton active={envFilter === "all"} onClick={() => setEnvFilter("all")}>All</FilterButton>
@@ -456,6 +487,19 @@ function BudgetSummaryWidget({
           <FilterButton active={envFilter === "staging"} onClick={() => setEnvFilter("staging")}>Staging</FilterButton>
           <FilterButton active={envFilter === "dev"} onClick={() => setEnvFilter("dev")}>Dev</FilterButton>
         </div>
+        <div className="w-px h-3.5 bg-border" />
+        <button
+          type="button"
+          onClick={onToggleBudgetBreach}
+          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[11px] font-medium border transition-colors ${
+            budgetBreachFilter
+              ? "bg-red-500/10 text-red-500 border-red-500/30"
+              : "bg-transparent text-muted-foreground border-border hover:bg-muted/60 hover:text-foreground"
+          }`}
+        >
+          <TriangleAlert className={`h-3 w-3 ${budgetBreachFilter ? "text-red-500" : ""}`} />
+          Budget breach
+        </button>
       </div>
 
       <div className="overflow-x-auto">
