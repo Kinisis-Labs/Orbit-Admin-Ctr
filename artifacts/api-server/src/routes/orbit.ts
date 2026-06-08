@@ -452,13 +452,14 @@ router.get("/apps/:appId/network", async (req, res) => {
     fetchAppTimeSeries(app, "network_egress_mbps", 24, { bypassCache }),
   ]);
   const endpoints = liveEndpoints ?? [];
-  const throughput: { name: string; unit: string; points: { timestamp: string; value: number }[] }[] =
+  const throughputAll: { name: string; unit: string; points: { timestamp: string; value: number }[] }[] =
     liveIngressSeries || liveEgressSeries
       ? [
           { name: "Ingress", unit: "MB/s", points: liveIngressSeries ?? [] },
           { name: "Egress", unit: "MB/s", points: liveEgressSeries ?? [] },
         ]
       : [];
+  const throughput = throughputAll.filter((s) => s.points.length > 0);
   const dataSource = (liveIngressSeries !== null || liveEgressSeries !== null) ? "live" : "mock";
   const data = GetNetworkResponse.parse({ endpoints, throughput, dataSource });
   res.json(data);
