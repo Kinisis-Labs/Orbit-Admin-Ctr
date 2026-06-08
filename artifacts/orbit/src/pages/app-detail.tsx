@@ -851,11 +851,13 @@ function NetworkTab({ appId }: { appId: string }) {
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No network data available</div>;
 
+  const hasThroughput = data.throughput.length > 0;
+
   return (
     <>
       <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
-    <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
-      <div className="lg:col-span-1 bg-card border border-border shadow-sm flex flex-col">
+    <div className={`grid grid-cols-1 ${hasThroughput ? "lg:grid-cols-3" : ""} gap-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
+      <div className={`${hasThroughput ? "lg:col-span-1" : ""} bg-card border border-border shadow-sm flex flex-col`}>
         <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Endpoints</h2>
           <div className="flex items-center gap-2">
@@ -900,37 +902,39 @@ function NetworkTab({ appId }: { appId: string }) {
           </Table>
         </div>
       </div>
-      
-      <div className="lg:col-span-2 bg-card border border-border shadow-sm flex flex-col">
-        <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">Throughput</h2>
-          <div className="flex items-center gap-2">
-            <DataSourceBadge dataSource={data.dataSource} />
-            {isLiveMode(mode) && (
-              <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
-            )}
+
+      {hasThroughput && (
+        <div className="lg:col-span-2 bg-card border border-border shadow-sm flex flex-col">
+          <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Throughput</h2>
+            <div className="flex items-center gap-2">
+              <DataSourceBadge dataSource={data.dataSource} />
+              {isLiveMode(mode) && (
+                <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
+              )}
+            </div>
+          </div>
+          <div className="p-4 space-y-6">
+            {data.throughput.map((s, i) => (
+              <div key={i} className="h-56">
+                <h4 className="text-xs font-semibold mb-2 text-foreground">{s.name} ({s.unit})</h4>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={s.points} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="timestamp" tickFormatter={(v) => format(new Date(v), "HH:mm")} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '2px', fontSize: '12px' }}
+                      labelFormatter={(v) => format(new Date(v), "HH:mm:ss")}
+                    />
+                    <Line type="linear" dataKey="value" stroke={i === 0 ? "hsl(var(--chart-2))" : "hsl(var(--primary))"} strokeWidth={1.5} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ))}
           </div>
         </div>
-        <div className="p-4 space-y-6">
-          {data.throughput.map((s, i) => (
-            <div key={i} className="h-56">
-              <h4 className="text-xs font-semibold mb-2 text-foreground">{s.name} ({s.unit})</h4>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={s.points} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="hsl(var(--border))" />
-                  <XAxis dataKey="timestamp" tickFormatter={(v) => format(new Date(v), "HH:mm")} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '2px', fontSize: '12px' }}
-                    labelFormatter={(v) => format(new Date(v), "HH:mm:ss")}
-                  />
-                  <Line type="linear" dataKey="value" stroke={i === 0 ? "hsl(var(--chart-2))" : "hsl(var(--primary))"} strokeWidth={1.5} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
     </div>
     </>
   );
