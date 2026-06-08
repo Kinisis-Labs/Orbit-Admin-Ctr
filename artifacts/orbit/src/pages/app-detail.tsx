@@ -28,7 +28,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { DailySpendChart } from "@/components/daily-spend-chart";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus, BarChart2, Clipboard } from "lucide-react";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus, BarChart2, Clipboard, CheckCircle2 } from "lucide-react";
 import { DataSourceBadge, LiveBadge } from "@/components/data-source-badge";
 
 /**
@@ -996,6 +996,12 @@ function TelemetryTab({ appId }: { appId: string }) {
             <DataSourceBadge dataSource={data.dataSource} />
           </div>
           <div className="p-0">
+            {data.topErrors.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
+                <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                <span className="text-xs">No exceptions in this period</span>
+              </div>
+            ) : (
             <Table className="text-[12px]">
               <TableBody>
                 {data.topErrors.map((err, i) => {
@@ -1046,6 +1052,7 @@ function TelemetryTab({ appId }: { appId: string }) {
                 })}
               </TableBody>
             </Table>
+            )}
           </div>
         </div>
       </div>
