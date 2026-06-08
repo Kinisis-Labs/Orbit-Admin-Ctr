@@ -12,7 +12,7 @@ import { ScopeContext, useScope } from "./scope-context";
 import type { UserAuthType } from "@workspace/api-client-react";
 
 const STORAGE_KEY = "orbit-scope";
-const DEFAULT_SCOPE = "kinisis-labs";
+const DEFAULT_SCOPE = "global";
 
 export function ScopeProvider({ children }: { children: React.ReactNode }) {
   const [scope, setScopeState] = useState<string>(() => {

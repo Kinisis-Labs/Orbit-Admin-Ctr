@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
-import { getListAppsQueryKey, getGetCostQueryKey, getCost } from "@workspace/api-client-react";
-import type { AppSummary } from "@workspace/api-client-react";
+import { getListAppsQueryKey, getGetCostQueryKey, getCost, getGetAppQueryKey, getApp } from "@workspace/api-client-react";
+import type { AppSummary, AppDetail } from "@workspace/api-client-react";
 import type { UserAuthType } from "@workspace/api-client-react";
 import type { DailyCostPoint } from "@/components/daily-spend-utils";
 import { useApps } from "@/hooks/use-apps";
@@ -73,6 +73,22 @@ function useAppDailySpend(apps: AppSummary[] | undefined, enabled: boolean): Map
   }, [apps, queries]);
 }
 
+function useAllAppDetails(apps: AppSummary[] | undefined, enabled: boolean): AppDetail[] {
+  const queries = useQueries({
+    queries: (apps ?? []).map((app) => ({
+      queryKey: getGetAppQueryKey(app.id),
+      queryFn: () => getApp(app.id),
+      staleTime: 3 * 60 * 1000,
+      enabled,
+    })),
+  });
+  return useMemo(
+    () => queries.map((q) => q.data).filter((d): d is AppDetail => d != null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [queries],
+  );
+}
+
 function BudgetSparkline({ data, status }: { data: DailyCostPoint[] | undefined; status: BudgetStatus }) {
   if (!data || data.length === 0) {
     return <span className="inline-block w-[72px] h-[24px]" />;
@@ -132,6 +148,7 @@ const AUTH_TYPES: { value: UserAuthType; label: string }[] = [
 
 export default function Home() {
   const { scope } = useScope();
+  const isGlobal = scope === "global";
   const { hasGroup } = useAuth();
   const canSeeCost = hasGroup(COST_READER_GROUP.id);
   const recentAlerts = useRecentBudgetAlerts(canSeeCost);
@@ -141,9 +158,11 @@ export default function Home() {
   const { data: apps, isFetching: appsFetching } = useApps();
   const appAnomalies = useAppAnomalies(apps, canSeeCost);
 
-  const { data: appDetail, isLoading: appDetailLoading, queryKey: appQueryKey } = useApp(scope || undefined);
+  const allAppDetails = useAllAppDetails(apps, isGlobal);
 
-  const selectedApp = apps?.find((a) => a.id === scope);
+  const { data: appDetail, isLoading: appDetailLoading, queryKey: appQueryKey } = useApp(isGlobal ? undefined : (scope || undefined));
+
+  const selectedApp = isGlobal ? undefined : apps?.find((a) => a.id === scope);
 
   const [authFilter, setAuthFilter] = useState<UserAuthType | null>(null);
   const search = useSearch();
@@ -191,13 +210,40 @@ export default function Home() {
     queryClient.invalidateQueries({ queryKey: appQueryKey });
   }
 
+  const globalTotalAlerts = useMemo(
+    () => allAppDetails.reduce((sum, d) => sum + (d.activeAlerts ?? 0), 0),
+    [allAppDetails],
+  );
+  const globalTotalMTD = useMemo(
+    () => (apps ?? []).reduce((sum, a) => sum + a.monthToDateCost, 0),
+    [apps],
+  );
+  const globalAppsOverBudget = useMemo(
+    () => (apps ?? []).filter((a) => a.forecastOverBudget).length,
+    [apps],
+  );
+  const fleetHealth = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const d of allAppDetails) {
+      const s = d.status ?? "unknown";
+      counts[s] = (counts[s] ?? 0) + 1;
+    }
+    return counts;
+  }, [allAppDetails]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-semibold text-foreground tracking-tight">Dashboard</h1>
+          <h1 className="text-xl font-semibold text-foreground tracking-tight">
+            {isGlobal ? "Dashboard — All Applications" : "Dashboard"}
+          </h1>
           <p className="text-[12px] text-muted-foreground mt-0.5">
-            {selectedApp ? `Scoped to ${selectedApp.name}` : "Select an application"}
+            {isGlobal
+              ? "Organisation-wide fleet overview"
+              : selectedApp
+              ? `Scoped to ${selectedApp.name}`
+              : "Select an application"}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -207,32 +253,60 @@ export default function Home() {
             onToggle={toggleAuthFilter}
             onClear={clearAuthFilter}
           />
-          <ScopeSelect authFilter={authFilter} />
+          <ScopeSelect allowGlobal authFilter={authFilter} />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Tile
-          title="Status"
-          value={appDetailLoading ? null : appDetail ? <StatusBadge status={appDetail.status} /> : "—"}
-          sub={selectedApp ? `${selectedApp.environment} · ${selectedApp.region}` : ""}
-        />
-        <Tile title="Active Alerts" value={appDetailLoading ? null : appDetail?.activeAlerts ?? 0} sub="Open on this application" />
-        <Tile
-          title="Region"
-          value={selectedApp ? selectedApp.region : "—"}
-          sub={selectedApp ? `${selectedApp.environment} environment` : ""}
-        />
-        <Tile
-          title="Resource Group"
-          value={appDetailLoading ? null : appDetail?.resourceGroup ?? "—"}
-          sub={
-            appDetail?.subscriptionId
-              ? `Sub: ${appDetail.subscriptionName ?? appDetail.subscriptionId}`
-              : ""
-          }
-        />
-      </div>
+      {isGlobal ? (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <Tile
+              title="Total Apps"
+              value={apps == null ? null : apps.length}
+              sub="Tracked in this fleet"
+            />
+            <Tile
+              title="Active Alerts"
+              value={allAppDetails.length === 0 && apps && apps.length > 0 ? null : globalTotalAlerts}
+              sub="Open across all apps"
+            />
+            <Tile
+              title="MTD Spend"
+              value={apps == null ? null : fmt(globalTotalMTD)}
+              sub="Sum of month-to-date cost"
+            />
+            <Tile
+              title="Apps Over Budget"
+              value={apps == null ? null : globalAppsOverBudget}
+              sub={globalAppsOverBudget === 1 ? "App forecast exceeds budget" : "Apps forecast over budget"}
+            />
+          </div>
+          <GlobalStrips apps={apps} fleetHealth={fleetHealth} authCounts={authCounts} />
+        </>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <Tile
+            title="Status"
+            value={appDetailLoading ? null : appDetail ? <StatusBadge status={appDetail.status} /> : "—"}
+            sub={selectedApp ? `${selectedApp.environment} · ${selectedApp.region}` : ""}
+          />
+          <Tile title="Active Alerts" value={appDetailLoading ? null : appDetail?.activeAlerts ?? 0} sub="Open on this application" />
+          <Tile
+            title="Region"
+            value={selectedApp ? selectedApp.region : "—"}
+            sub={selectedApp ? `${selectedApp.environment} environment` : ""}
+          />
+          <Tile
+            title="Resource Group"
+            value={appDetailLoading ? null : appDetail?.resourceGroup ?? "—"}
+            sub={
+              appDetail?.subscriptionId
+                ? `Sub: ${appDetail.subscriptionName ?? appDetail.subscriptionId}`
+                : ""
+            }
+          />
+        </div>
+      )}
 
       {canSeeCost && (
         <BudgetSummaryWidget
@@ -247,123 +321,125 @@ export default function Home() {
         />
       )}
 
-      <div className="bg-card border border-border shadow-sm flex flex-col">
-        <div className="flex items-center justify-between p-2 border-b border-border bg-card">
-          <div className="flex items-center gap-2 px-2">
-            <h2 className="text-sm font-semibold">Application Details — {selectedApp?.name ?? ""}</h2>
-            {canSeeCost && scope && recentAlerts.has(scope) && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex items-center">
-                      <Bell className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Budget alert sent{" "}
-                    {formatDistanceToNow(recentAlerts.get(scope)!, { addSuffix: true })}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+      {!isGlobal && (
+        <div className="bg-card border border-border shadow-sm flex flex-col">
+          <div className="flex items-center justify-between p-2 border-b border-border bg-card">
+            <div className="flex items-center gap-2 px-2">
+              <h2 className="text-sm font-semibold">Application Details — {selectedApp?.name ?? ""}</h2>
+              {canSeeCost && scope && recentAlerts.has(scope) && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex items-center">
+                        <Bell className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Budget alert sent{" "}
+                      {formatDistanceToNow(recentAlerts.get(scope)!, { addSuffix: true })}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+            <div className="flex items-center gap-1 pr-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+                onClick={handleRefresh}
+                disabled={appsFetching}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${appsFetching ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+              <Link
+                href={(() => {
+                  const t = readLastTab();
+                  return t !== "overview" ? `/apps/${scope}?tab=${t}` : `/apps/${scope}`;
+                })()}
+                className="text-[12px] text-primary hover:underline"
+              >
+                Open application →
+              </Link>
+            </div>
+          </div>
+          <div className="p-4 text-[13px]">
+            {appDetailLoading || !appDetail ? (
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-1/3" />
+                <Skeleton className="h-5 w-1/2" />
+                <Skeleton className="h-5 w-1/4" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+                <Field label="Resource group" value={appDetail.resourceGroup} mono />
+                <Field
+                  label="Subscription"
+                  value={
+                    appDetail.subscriptionId ? (
+                      <a
+                        href={`https://portal.azure.com/#resource/subscriptions/${appDetail.subscriptionId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-primary hover:underline"
+                      >
+                        {appDetail.subscriptionName ? (
+                          <>
+                            <span className="font-medium">{appDetail.subscriptionName}</span>
+                            <span className="font-mono text-[11px] text-muted-foreground ml-1.5">{appDetail.subscriptionId}</span>
+                          </>
+                        ) : (
+                          <span className="font-mono">{appDetail.subscriptionId}</span>
+                        )}
+                        <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )
+                  }
+                />
+                <Field label="Location" value={appDetail.region} />
+                <Field label="Environment" value={appDetail.environment} />
+                <Field
+                  label="Auth type"
+                  value={
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex">
+                            <AuthBadge
+                              userAuth={appDetail.userAuth}
+                              active={authFilter === appDetail.userAuth}
+                              onClick={() => toggleAuthFilter(appDetail.userAuth)}
+                            />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {authFilter === appDetail.userAuth
+                            ? "Click to clear auth filter"
+                            : "Click to filter apps by this auth type"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  }
+                />
+                <Field label="Owners" value={appDetail.owners?.join(", ") || "Unassigned"} />
+                <Field
+                  label="Tags"
+                  value={
+                    Object.entries(appDetail.tags || {}).length > 0
+                      ? Object.entries(appDetail.tags || {})
+                          .map(([k, v]) => `${k}: ${v}`)
+                          .join(" · ")
+                      : "None"
+                  }
+                />
+              </div>
             )}
           </div>
-          <div className="flex items-center gap-1 pr-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-              onClick={handleRefresh}
-              disabled={appsFetching}
-            >
-              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${appsFetching ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-            <Link
-              href={(() => {
-                const t = readLastTab();
-                return t !== "overview" ? `/apps/${scope}?tab=${t}` : `/apps/${scope}`;
-              })()}
-              className="text-[12px] text-primary hover:underline"
-            >
-              Open application →
-            </Link>
-          </div>
         </div>
-        <div className="p-4 text-[13px]">
-          {appDetailLoading || !appDetail ? (
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-1/3" />
-              <Skeleton className="h-5 w-1/2" />
-              <Skeleton className="h-5 w-1/4" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
-              <Field label="Resource group" value={appDetail.resourceGroup} mono />
-              <Field
-                label="Subscription"
-                value={
-                  appDetail.subscriptionId ? (
-                    <a
-                      href={`https://portal.azure.com/#resource/subscriptions/${appDetail.subscriptionId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-primary hover:underline"
-                    >
-                      {appDetail.subscriptionName ? (
-                        <>
-                          <span className="font-medium">{appDetail.subscriptionName}</span>
-                          <span className="font-mono text-[11px] text-muted-foreground ml-1.5">{appDetail.subscriptionId}</span>
-                        </>
-                      ) : (
-                        <span className="font-mono">{appDetail.subscriptionId}</span>
-                      )}
-                      <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )
-                }
-              />
-              <Field label="Location" value={appDetail.region} />
-              <Field label="Environment" value={appDetail.environment} />
-              <Field
-                label="Auth type"
-                value={
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="inline-flex">
-                          <AuthBadge
-                            userAuth={appDetail.userAuth}
-                            active={authFilter === appDetail.userAuth}
-                            onClick={() => toggleAuthFilter(appDetail.userAuth)}
-                          />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {authFilter === appDetail.userAuth
-                          ? "Click to clear auth filter"
-                          : "Click to filter apps by this auth type"}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                }
-              />
-              <Field label="Owners" value={appDetail.owners?.join(", ") || "Unassigned"} />
-              <Field
-                label="Tags"
-                value={
-                  Object.entries(appDetail.tags || {}).length > 0
-                    ? Object.entries(appDetail.tags || {})
-                        .map(([k, v]) => `${k}: ${v}`)
-                        .join(" · ")
-                    : "None"
-                }
-              />
-            </div>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1020,6 +1096,83 @@ function BudgetSummaryWidget({
           Refreshing…
         </div>
       )}
+    </div>
+  );
+}
+
+const STATUS_ORDER = ["healthy", "degraded", "down", "unknown"] as const;
+const STATUS_LABELS: Record<string, string> = {
+  healthy: "Healthy",
+  degraded: "Degraded",
+  down: "Down",
+  unknown: "Unknown",
+};
+const STATUS_COLORS: Record<string, string> = {
+  healthy: "text-emerald-500",
+  degraded: "text-amber-500",
+  down: "text-red-500",
+  unknown: "text-muted-foreground",
+};
+
+const AUTH_LABELS: Record<UserAuthType, string> = {
+  clerk: "Clerk",
+  entra: "Entra ID",
+  none: "Public",
+};
+
+function GlobalStrips({
+  apps,
+  fleetHealth,
+  authCounts,
+}: {
+  apps: AppSummary[] | undefined;
+  fleetHealth: Record<string, number>;
+  authCounts: Record<string, number>;
+}) {
+  const hasHealthData = Object.keys(fleetHealth).length > 0;
+  const hasApps = apps != null;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <div className="bg-card border border-border shadow-sm p-3 flex flex-col gap-2">
+        <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Fleet Health</div>
+        <div className="flex items-center gap-4 flex-wrap">
+          {!hasApps ? (
+            <Skeleton className="h-5 w-48" />
+          ) : !hasHealthData ? (
+            <span className="text-[12px] text-muted-foreground">Loading…</span>
+          ) : (
+            STATUS_ORDER.filter((s) => (fleetHealth[s] ?? 0) > 0).map((s) => (
+              <div key={s} className="flex items-center gap-1.5">
+                <span className={`text-lg font-semibold tabular-nums ${STATUS_COLORS[s]}`}>
+                  {fleetHealth[s] ?? 0}
+                </span>
+                <span className="text-[12px] text-muted-foreground">{STATUS_LABELS[s]}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="bg-card border border-border shadow-sm p-3 flex flex-col gap-2">
+        <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Identity Landscape</div>
+        <div className="flex items-center gap-4 flex-wrap">
+          {!hasApps ? (
+            <Skeleton className="h-5 w-48" />
+          ) : (
+            (["clerk", "entra", "none"] as UserAuthType[])
+              .filter((t) => (authCounts[t] ?? 0) > 0)
+              .map((t) => (
+                <div key={t} className="flex items-center gap-1.5">
+                  <span className="text-lg font-semibold tabular-nums text-foreground">
+                    {authCounts[t] ?? 0}
+                  </span>
+                  <span className="text-[12px] text-muted-foreground">{AUTH_LABELS[t]}</span>
+                </div>
+              ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }
