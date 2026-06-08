@@ -505,9 +505,30 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
 function isLiveMode(mode: string) {
   return mode === "entra";
 }
+
+function useSecondsTicker(intervalMs = 1000) {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return tick;
+}
+
+function formatSecondsAgo(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  if (s < 5) return "just now";
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  return `${Math.floor(m / 60)}h ago`;
+}
+
 function InfraTab({ appId }: { appId: string }) {
-  const { data, isLoading, isFetching, queryKey } = useAppInfrastructure(appId);
+  const { data, isLoading, isFetching, dataUpdatedAt, queryKey } = useAppInfrastructure(appId);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/infrastructure`, queryKey);
+  useSecondsTicker();
+  const updatedLabel = dataUpdatedAt > 0 ? formatSecondsAgo(Date.now() - dataUpdatedAt) : null;
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No infrastructure data available</div>;
 
@@ -524,6 +545,11 @@ function InfraTab({ appId }: { appId: string }) {
         <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Resources</h2>
           <div className="flex items-center gap-2">
+            {updatedLabel && (
+              <span className="text-[11px] text-muted-foreground">
+                {isFetching ? "Refreshing…" : `Updated ${updatedLabel}`}
+              </span>
+            )}
             {data.dataSource === "live" && (
               <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
             )}
@@ -682,8 +708,10 @@ function NetworkTab({ appId }: { appId: string }) {
 }
 
 function TelemetryTab({ appId }: { appId: string }) {
-  const { data, isLoading, isFetching, queryKey } = useAppTelemetry(appId);
+  const { data, isLoading, isFetching, dataUpdatedAt, queryKey } = useAppTelemetry(appId);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/telemetry`, queryKey);
+  useSecondsTicker();
+  const updatedLabel = dataUpdatedAt > 0 ? formatSecondsAgo(Date.now() - dataUpdatedAt) : null;
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No telemetry data available</div>;
 
@@ -698,6 +726,11 @@ function TelemetryTab({ appId }: { appId: string }) {
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground font-medium">Key metrics (last 24 h)</span>
         <div className="flex items-center gap-2">
+          {updatedLabel && (
+            <span className="text-[11px] text-muted-foreground">
+              {isFetching ? "Refreshing…" : `Updated ${updatedLabel}`}
+            </span>
+          )}
           {data.dataSource === "live" && (
             <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
           )}
