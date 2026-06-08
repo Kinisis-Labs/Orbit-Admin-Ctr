@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { AreaChart, Area, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 import { getListAppsQueryKey, getGetCostQueryKey, getCost, getGetAppQueryKey, getApp, useGetGlobalHealth, getGetGlobalHealthQueryKey, useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey } from "@workspace/api-client-react";
 import type { AppSummary, AppDetail } from "@workspace/api-client-react";
 import type { UserAuthType } from "@workspace/api-client-react";
@@ -22,7 +22,7 @@ import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { getBudgetThreshold, DEFAULT_BUDGET_THRESHOLD, BUDGET_THRESHOLDS_STORAGE_KEY } from "@/lib/spend-threshold";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { detectRecentAnomaly } from "@/pages/cost";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { CsvToolbar } from "@/components/csv-toolbar";
@@ -90,6 +90,48 @@ function useAllAppDetails(apps: AppSummary[] | undefined, enabled: boolean): App
   );
 }
 
+function SparklineTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload: DailyCostPoint }>;
+}) {
+  if (!active || !payload?.length) return null;
+  const point = payload[0].payload;
+  const ts = point.timestamp ? new Date(point.timestamp as string) : null;
+  const formatted = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(point.value);
+  return (
+    <div
+      style={{
+        backgroundColor: "hsl(var(--card))",
+        border: "1px solid hsl(var(--border))",
+        borderRadius: 4,
+        fontSize: 11,
+        padding: "4px 8px",
+        whiteSpace: "nowrap",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+        pointerEvents: "none",
+        lineHeight: 1.4,
+      }}
+    >
+      {ts && (
+        <div style={{ color: "hsl(var(--muted-foreground))", marginBottom: 1 }}>
+          {format(ts, "MMM d")}
+        </div>
+      )}
+      <div style={{ color: "hsl(var(--foreground))", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+        {formatted}
+      </div>
+    </div>
+  );
+}
+
 function BudgetSparkline({ data, status }: { data: DailyCostPoint[] | undefined; status: BudgetStatus }) {
   if (!data || data.length === 0) {
     return <span className="inline-block w-[72px] h-[24px]" />;
@@ -114,6 +156,11 @@ function BudgetSparkline({ data, status }: { data: DailyCostPoint[] | undefined;
               <stop offset="95%" stopColor={color} stopOpacity={0} />
             </linearGradient>
           </defs>
+          <RechartsTooltip
+            content={<SparklineTooltip />}
+            cursor={false}
+            wrapperStyle={{ zIndex: 50 }}
+          />
           <Area
             type="monotone"
             dataKey="value"
