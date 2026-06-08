@@ -5,7 +5,7 @@ import { useApps } from "@/hooks/use-apps";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Search, Download, ScrollText } from "lucide-react";
+import { Search, Download, RefreshCw, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { PageHeader, StatusPill } from "@/components/page-header";
@@ -46,7 +46,12 @@ export default function ActivityLog() {
   });
 
   const isLoading = appsLoading || activityQueries.some((q) => q.isLoading);
+  const isFetching = activityQueries.some((q) => q.isFetching);
   const allEmpty = !isLoading && activityQueries.every((q) => !q.isLoading && (q.data?.length ?? 0) === 0);
+
+  function handleRefresh() {
+    activityQueries.forEach((q) => void q.refetch());
+  }
 
   const entries = useMemo(
     () =>
@@ -87,6 +92,18 @@ export default function ActivityLog() {
               <Search className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter actor, action, target, category" className="h-7 w-80 pl-7 text-[12px] rounded-sm" />
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs px-2 rounded-sm text-primary"
+              onClick={handleRefresh}
+              disabled={isFetching}
+              aria-label="Refresh activity log"
+              title="Refresh activity log now"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5${isFetching ? " animate-spin" : ""}`} />
+              Refresh
+            </Button>
             <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary">
               <Download className="h-3.5 w-3.5 mr-1.5" />
               Export
