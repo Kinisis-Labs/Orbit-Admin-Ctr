@@ -1,11 +1,12 @@
 import { getListAppsQueryKey } from "@workspace/api-client-react";
 import type { AppSummary } from "@workspace/api-client-react";
+import type { UserAuthType } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
 import { useApp } from "@/hooks/use-app";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
-import { ChevronRight, Bell, TrendingUp } from "lucide-react";
+import { ChevronRight, Bell, TrendingUp, X } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -18,6 +19,7 @@ import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { formatDistanceToNow } from "date-fns";
+import { useState, useMemo } from "react";
 
 function readLastTab(): string {
   try {
@@ -30,6 +32,12 @@ function readLastTab(): string {
 
 const fmt = (amount: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(amount);
+
+const AUTH_TYPES: { value: UserAuthType; label: string }[] = [
+  { value: "clerk", label: "Clerk" },
+  { value: "entra", label: "Entra ID" },
+  { value: "none", label: "Public" },
+];
 
 export default function Home() {
   const { scope } = useScope();
@@ -45,6 +53,24 @@ export default function Home() {
 
   const selectedApp = apps?.find((a) => a.id === scope);
 
+  const [authFilter, setAuthFilter] = useState<UserAuthType | null>(null);
+
+  function toggleAuthFilter(value: UserAuthType) {
+    setAuthFilter((prev) => (prev === value ? null : value));
+  }
+
+  function clearAuthFilter() {
+    setAuthFilter(null);
+  }
+
+  const authCounts = useMemo(() => {
+    if (!apps) return {} as Record<UserAuthType, number>;
+    return apps.reduce<Record<string, number>>((acc, a) => {
+      acc[a.userAuth] = (acc[a.userAuth] ?? 0) + 1;
+      return acc;
+    }, {});
+  }, [apps]);
+
   function handleRefresh() {
     queryClient.invalidateQueries({ queryKey: getListAppsQueryKey() });
     queryClient.invalidateQueries({ queryKey: appQueryKey });
@@ -59,7 +85,15 @@ export default function Home() {
             {selectedApp ? `Scoped to ${selectedApp.name}` : "Select an application"}
           </p>
         </div>
-        <ScopeSelect />
+        <div className="flex items-center gap-3 flex-wrap">
+          <AuthFilterPills
+            authCounts={authCounts}
+            authFilter={authFilter}
+            onToggle={toggleAuthFilter}
+            onClear={clearAuthFilter}
+          />
+          <ScopeSelect authFilter={authFilter} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -86,7 +120,13 @@ export default function Home() {
       </div>
 
       {canSeeCost && (
-        <BudgetSummaryWidget apps={apps} isFetching={appsFetching} recentAlerts={recentAlerts} />
+        <BudgetSummaryWidget
+          apps={apps}
+          isFetching={appsFetching}
+          recentAlerts={recentAlerts}
+          authFilter={authFilter}
+          onAuthBadgeClick={toggleAuthFilter}
+        />
       )}
 
       <div className="bg-card border border-border shadow-sm flex flex-col">
@@ -157,7 +197,29 @@ export default function Home() {
               />
               <Field label="Location" value={appDetail.region} />
               <Field label="Environment" value={appDetail.environment} />
-              <Field label="Auth type" value={<AuthBadge userAuth={appDetail.userAuth} />} />
+              <Field
+                label="Auth type"
+                value={
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex">
+                          <AuthBadge
+                            userAuth={appDetail.userAuth}
+                            active={authFilter === appDetail.userAuth}
+                            onClick={() => toggleAuthFilter(appDetail.userAuth)}
+                          />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {authFilter === appDetail.userAuth
+                          ? "Click to clear auth filter"
+                          : "Click to filter apps by this auth type"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                }
+              />
               <Field label="Owners" value={appDetail.owners?.join(", ") || "Unassigned"} />
               <Field
                 label="Tags"
@@ -173,6 +235,45 @@ export default function Home() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function AuthFilterPills({
+  authCounts,
+  authFilter,
+  onToggle,
+  onClear,
+}: {
+  authCounts: Record<string, number>;
+  authFilter: UserAuthType | null;
+  onToggle: (v: UserAuthType) => void;
+  onClear: () => void;
+}) {
+  const hasAny = Object.keys(authCounts).length > 0;
+  if (!hasAny) return null;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {authFilter && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+          title="Clear auth filter"
+        >
+          <X className="h-3 w-3" />
+          <span>Clear</span>
+        </button>
+      )}
+      {AUTH_TYPES.filter((t) => (authCounts[t.value] ?? 0) > 0).map((t) => (
+        <AuthBadge
+          key={t.value}
+          userAuth={t.value}
+          active={authFilter === t.value}
+          onClick={() => onToggle(t.value)}
+        />
+      ))}
     </div>
   );
 }
@@ -220,10 +321,14 @@ function BudgetSummaryWidget({
   apps,
   isFetching,
   recentAlerts,
+  authFilter,
+  onAuthBadgeClick,
 }: {
   apps: AppSummary[] | undefined;
   isFetching: boolean;
   recentAlerts: Map<string, Date>;
+  authFilter: UserAuthType | null;
+  onAuthBadgeClick: (v: UserAuthType) => void;
 }) {
   const { setScope } = useScope();
   const [, navigate] = useLocation();
@@ -233,8 +338,10 @@ function BudgetSummaryWidget({
     navigate("/cost");
   }
 
-  const overCount = apps?.filter((a) => a.forecastOverBudget).length ?? 0;
-  const warningCount = apps?.filter((a) => {
+  const filteredApps = authFilter ? apps?.filter((a) => a.userAuth === authFilter) : apps;
+
+  const overCount = filteredApps?.filter((a) => a.forecastOverBudget).length ?? 0;
+  const warningCount = filteredApps?.filter((a) => {
     if (a.forecastOverBudget || a.budget == null) return false;
     return a.budget > 0 && (a.monthToDateCost / a.budget) * 100 >= 80;
   }).length ?? 0;
@@ -255,6 +362,11 @@ function BudgetSummaryWidget({
               {warningCount} near limit
             </span>
           )}
+          {authFilter && (
+            <span className="text-[11px] text-muted-foreground">
+              — filtered by <AuthBadge userAuth={authFilter} active onClick={() => onAuthBadgeClick(authFilter)} />
+            </span>
+          )}
         </div>
         <span className="text-[11px] text-muted-foreground pr-3">Month to date · all apps</span>
       </div>
@@ -264,6 +376,7 @@ function BudgetSummaryWidget({
           <thead>
             <tr className="border-b border-border bg-muted/30">
               <th className="text-left font-medium text-muted-foreground px-4 py-2 w-[180px]">Application</th>
+              <th className="text-left font-medium text-muted-foreground px-3 py-2">Auth</th>
               <th className="text-right font-medium text-muted-foreground px-3 py-2">Spent MTD</th>
               <th className="text-right font-medium text-muted-foreground px-3 py-2">Budget</th>
               <th className="text-right font-medium text-muted-foreground px-3 py-2">Forecast</th>
@@ -277,6 +390,7 @@ function BudgetSummaryWidget({
               Array.from({ length: 3 }).map((_, i) => (
                 <tr key={i} className="border-b border-border last:border-0">
                   <td className="px-4 py-2.5"><Skeleton className="h-4 w-28" /></td>
+                  <td className="px-3 py-2.5"><Skeleton className="h-4 w-12" /></td>
                   <td className="px-3 py-2.5 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
                   <td className="px-3 py-2.5 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
                   <td className="px-3 py-2.5 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
@@ -285,8 +399,14 @@ function BudgetSummaryWidget({
                   <td className="px-2 py-2.5" />
                 </tr>
               ))
+            ) : filteredApps && filteredApps.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-6 text-center text-[13px] text-muted-foreground">
+                  No apps match the current filter.
+                </td>
+              </tr>
             ) : (
-              apps.map((app) => {
+              (filteredApps ?? []).map((app) => {
                 const status = budgetStatus(app);
                 const pct = app.budget != null && app.budget > 0
                   ? Math.min((app.monthToDateCost / app.budget) * 100, 100)
@@ -315,6 +435,16 @@ function BudgetSummaryWidget({
                           </TooltipProvider>
                         )}
                       </div>
+                    </td>
+                    <td
+                      className="px-3 py-2.5"
+                      onClick={(e) => { e.stopPropagation(); onAuthBadgeClick(app.userAuth); }}
+                    >
+                      <AuthBadge
+                        userAuth={app.userAuth}
+                        active={authFilter === app.userAuth}
+                        onClick={() => onAuthBadgeClick(app.userAuth)}
+                      />
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
                       {fmt(app.monthToDateCost)}

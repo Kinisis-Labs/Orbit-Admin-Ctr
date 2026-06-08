@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { AuthBadge } from "@/components/auth-badge";
 import { ScopeContext, useScope } from "./scope-context";
+import type { UserAuthType } from "@workspace/api-client-react";
 
 const STORAGE_KEY = "orbit-scope";
 const DEFAULT_SCOPE = "kinisis-labs";
@@ -44,9 +45,20 @@ export function ScopeProvider({ children }: { children: React.ReactNode }) {
   return <ScopeContext.Provider value={value}>{children}</ScopeContext.Provider>;
 }
 
-export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
+export function ScopeSelect({
+  id = "scope-select",
+  authFilter,
+}: {
+  id?: string;
+  authFilter?: UserAuthType | null;
+}) {
   const { scope, setScope } = useScope();
   const { data: apps } = useApps();
+
+  const allApps = apps ?? [];
+  const filteredApps = authFilter
+    ? allApps.filter((a) => a.userAuth === authFilter)
+    : allApps;
 
   // If persisted scope refers to an app that no longer exists, fall back to
   // the first app in the list (or the default).
@@ -57,10 +69,18 @@ export function ScopeSelect({ id = "scope-select" }: { id?: string }) {
     }
   }, [apps, scope, setScope]);
 
-  const selectedApp = (apps ?? []).find((a) => a.id === scope);
+  // When a filter is active and the current scope doesn't match, switch to first match.
+  useEffect(() => {
+    if (!authFilter || filteredApps.length === 0) return;
+    if (!filteredApps.some((a) => a.id === scope)) {
+      setScope(filteredApps[0].id);
+    }
+  }, [authFilter, filteredApps, scope, setScope]);
+
+  const selectedApp = allApps.find((a) => a.id === scope);
 
   const collator = new Intl.Collator(undefined, { sensitivity: "base" });
-  const sortedApps = [...(apps ?? [])].sort((a, b) => collator.compare(a.name, b.name));
+  const sortedApps = [...filteredApps].sort((a, b) => collator.compare(a.name, b.name));
 
   return (
     <div className="flex items-center gap-2">
