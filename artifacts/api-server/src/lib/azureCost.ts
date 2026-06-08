@@ -88,7 +88,7 @@ const _rgSubCache = new Map<string, string>();
 // Cache: app id → { result, expiresAt }
 const COST_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 type CostCacheEntry = { result: CostResult; expiresAt: number };
-const _costCache = new Map<string, CostCacheEntry>();
+export const _costCache = new Map<string, CostCacheEntry>();
 
 /** Evict all cached cost entries (e.g. for a forced refresh). */
 export function clearCostCache(): void {

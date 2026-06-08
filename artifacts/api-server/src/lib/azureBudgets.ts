@@ -24,7 +24,7 @@ export type BudgetWithSource = {
 // Cache: appId → { result, expiresAt }
 const BUDGET_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour — budgets are manually set and rarely change
 type BudgetCacheEntry = { result: BudgetResult; expiresAt: number };
-const _budgetCache = new Map<string, BudgetCacheEntry>();
+export const _budgetCache = new Map<string, BudgetCacheEntry>();
 
 // Cache of ConsumptionManagementClient per subscriptionId
 const _consumptionClients = new Map<string, ConsumptionManagementClient>();
