@@ -60,6 +60,7 @@ import { InfraAlertHistory } from "@/components/infra-alert-history";
 import { AlertConfigTable } from "@/components/alert-config-table";
 import { BudgetThresholdPopover, getBudgetBarClass } from "@/components/budget-threshold-popover";
 import { POLL_OPTIONS, type PollValue, usePollingInterval } from "@/hooks/use-polling-interval";
+import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { cn } from "@/lib/utils";
 
 const INFRA_TAB_POLL_INTERVAL_KEY = "orbit:infra-tab:poll-interval";
@@ -643,30 +644,12 @@ function isLiveMode(mode: string) {
   return mode === "entra";
 }
 
-function useSecondsTicker(intervalMs = 1000) {
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return tick;
-}
-
-function formatSecondsAgo(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  if (s < 5) return "just now";
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  return `${Math.floor(m / 60)}h ago`;
-}
 
 function InfraTab({ appId }: { appId: string }) {
   const [pollInterval, setPollInterval] = usePollingInterval(INFRA_TAB_POLL_INTERVAL_KEY);
   const { data, isLoading, isFetching, dataUpdatedAt, queryKey } = useAppInfrastructure(appId, pollInterval);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/infrastructure`, queryKey);
-  useSecondsTicker();
-  const updatedLabel = dataUpdatedAt > 0 ? formatSecondsAgo(Date.now() - dataUpdatedAt) : null;
+  const updatedLabel = useUpdatedAgo(dataUpdatedAt);
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No infrastructure data available</div>;
 
@@ -892,8 +875,7 @@ function NetworkTab({ appId }: { appId: string }) {
 function TelemetryTab({ appId }: { appId: string }) {
   const { data, isLoading, isFetching, dataUpdatedAt, queryKey } = useAppTelemetry(appId);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/telemetry`, queryKey);
-  useSecondsTicker();
-  const updatedLabel = dataUpdatedAt > 0 ? formatSecondsAgo(Date.now() - dataUpdatedAt) : null;
+  const updatedLabel = useUpdatedAgo(dataUpdatedAt);
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No telemetry data available</div>;
 

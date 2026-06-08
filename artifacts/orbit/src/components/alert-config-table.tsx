@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/auth";
 import { ADMIN_GROUP } from "@/lib/auth-groups";
 import { cn } from "@/lib/utils";
 import { POLL_OPTIONS, type PollValue, usePollingInterval } from "@/hooks/use-polling-interval";
+import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 
 const POLL_INTERVAL_KEY = "orbit:alert-table:poll-interval";
 
@@ -53,23 +54,6 @@ const STATUS_COLORS = {
   },
 };
 
-function useSecondsTicker(intervalMs = 1000) {
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return tick;
-}
-
-function formatSecondsAgo(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  if (s < 5) return "just now";
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  return `${Math.floor(m / 60)}h ago`;
-}
 
 function UtilizationIndicator({
   current,
@@ -567,12 +551,7 @@ export function AlertConfigTable({ appId }: Props) {
     return q.dataUpdatedAt > max ? q.dataUpdatedAt : max;
   }, 0);
 
-  useSecondsTicker();
-
-  const updatedLabel =
-    latestUpdateAt > 0
-      ? formatSecondsAgo(Date.now() - latestUpdateAt)
-      : null;
+  const updatedLabel = useUpdatedAgo(latestUpdateAt);
 
   function handleManualRefresh() {
     infraQueries.forEach((q) => void q.refetch());
