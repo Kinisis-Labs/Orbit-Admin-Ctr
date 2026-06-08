@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useApps } from "@/hooks/use-apps";
 import { useApp } from "@/hooks/use-app";
@@ -6,6 +6,7 @@ import {
   Cloud, Search, Settings as SettingsIcon, Home, Bell, DollarSign, LayoutDashboard,
   ChevronRight, Menu, Sun, Moon, Lock, Rocket, AlertOctagon, Activity,
   HeartPulse, Network, FileText, ShieldAlert, Users, Layers, Tags, SlidersHorizontal, UserCheck, Smartphone,
+  ChevronDown,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -154,59 +155,64 @@ export function Layout({ children }: { children: React.ReactNode }) {
           className={`${navCollapsed ? "w-[48px]" : "w-[220px]"} border-r border-border bg-sidebar shrink-0 flex flex-col py-2 transition-all duration-150 z-10 overflow-y-auto group`}
         >
           <nav className="flex flex-col gap-0.5 w-full px-1">
-            <NavGroup label="Monitoring" collapsed={navCollapsed} />
-            <NavItem href="/" icon={<Home className="h-[18px] w-[18px]" />} label="Home" active={location === "/"} collapsed={navCollapsed} />
-            <NavItem href="/alerts" icon={<Bell className="h-[18px] w-[18px]" />} label="Alerts" active={location === "/alerts"} collapsed={navCollapsed} alertCount={overThresholdCount} unseenViolationCount={unseenViolationCount} infraViolations={infraViolations} />
-            <NavItem href="/deployments" icon={<Rocket className="h-[18px] w-[18px]" />} label="Deployments" active={location === "/deployments"} collapsed={navCollapsed} />
-            <NavItem href="/incidents" icon={<AlertOctagon className="h-[18px] w-[18px]" />} label="Incidents" active={location === "/incidents"} collapsed={navCollapsed} />
-            <NavItem href="/activity" icon={<Activity className="h-[18px] w-[18px]" />} label="Activity log" active={location === "/activity"} collapsed={navCollapsed} />
-            <NavItem href="/health" icon={<HeartPulse className="h-[18px] w-[18px]" />} label="Health & SLOs" active={location === "/health"} collapsed={navCollapsed} />
-            <NavItem href="/network" icon={<Network className="h-[18px] w-[18px]" />} label="Network" active={location === "/network"} collapsed={navCollapsed} />
-            <NavItem href="/logs" icon={<FileText className="h-[18px] w-[18px]" />} label="Log search" active={location === "/logs"} collapsed={navCollapsed} />
-            <NavItem href="/service-health" icon={<ShieldAlert className="h-[18px] w-[18px]" />} label="Service health" active={location === "/service-health"} collapsed={navCollapsed} />
-            <NavItem href="/users" icon={<UserCheck className="h-[18px] w-[18px]" />} label="Users & activity" active={location === "/users"} collapsed={navCollapsed} />
+            <NavSection sectionKey="monitoring" label="Monitoring" navCollapsed={navCollapsed}>
+              <NavItem href="/" icon={<Home className="h-[18px] w-[18px]" />} label="Home" active={location === "/"} collapsed={navCollapsed} />
+              <NavItem href="/alerts" icon={<Bell className="h-[18px] w-[18px]" />} label="Alerts" active={location === "/alerts"} collapsed={navCollapsed} alertCount={overThresholdCount} unseenViolationCount={unseenViolationCount} infraViolations={infraViolations} />
+              <NavItem href="/deployments" icon={<Rocket className="h-[18px] w-[18px]" />} label="Deployments" active={location === "/deployments"} collapsed={navCollapsed} />
+              <NavItem href="/incidents" icon={<AlertOctagon className="h-[18px] w-[18px]" />} label="Incidents" active={location === "/incidents"} collapsed={navCollapsed} />
+              <NavItem href="/activity" icon={<Activity className="h-[18px] w-[18px]" />} label="Activity log" active={location === "/activity"} collapsed={navCollapsed} />
+              <NavItem href="/health" icon={<HeartPulse className="h-[18px] w-[18px]" />} label="Health & SLOs" active={location === "/health"} collapsed={navCollapsed} />
+              <NavItem href="/network" icon={<Network className="h-[18px] w-[18px]" />} label="Network" active={location === "/network"} collapsed={navCollapsed} />
+              <NavItem href="/logs" icon={<FileText className="h-[18px] w-[18px]" />} label="Log search" active={location === "/logs"} collapsed={navCollapsed} />
+              <NavItem href="/service-health" icon={<ShieldAlert className="h-[18px] w-[18px]" />} label="Service health" active={location === "/service-health"} collapsed={navCollapsed} />
+              <NavItem href="/users" icon={<UserCheck className="h-[18px] w-[18px]" />} label="Users & activity" active={location === "/users"} collapsed={navCollapsed} />
+            </NavSection>
 
-            <NavGroup label="Cost" collapsed={navCollapsed} />
-            <NavItem
-              href="/cost"
-              icon={<DollarSign className="h-[18px] w-[18px]" />}
-              label="Cost Management"
-              active={isCostRoute}
-              collapsed={navCollapsed}
-              trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
-              trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}
-              unacknowledgedBudgetAlerts={canSeeCost ? unacknowledgedBudgetAlerts : 0}
-            />
-            <NavItem
-              href="/play-subscriptions"
-              icon={<Smartphone className="h-[18px] w-[18px]" />}
-              label="Play subscriptions"
-              active={location === "/play-subscriptions"}
-              collapsed={navCollapsed}
-              trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
-              trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}
-            />
-            <NavItem
-              href="/apple-subscriptions"
-              icon={<Smartphone className="h-[18px] w-[18px]" />}
-              label="App Store subscriptions"
-              active={location === "/apple-subscriptions"}
-              collapsed={navCollapsed}
-              trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
-              trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}
-            />
+            <NavSection sectionKey="cost" label="Cost" navCollapsed={navCollapsed}>
+              <NavItem
+                href="/cost"
+                icon={<DollarSign className="h-[18px] w-[18px]" />}
+                label="Cost Management"
+                active={isCostRoute}
+                collapsed={navCollapsed}
+                trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
+                trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}
+                unacknowledgedBudgetAlerts={canSeeCost ? unacknowledgedBudgetAlerts : 0}
+              />
+              <NavItem
+                href="/play-subscriptions"
+                icon={<Smartphone className="h-[18px] w-[18px]" />}
+                label="Play subscriptions"
+                active={location === "/play-subscriptions"}
+                collapsed={navCollapsed}
+                trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
+                trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}
+              />
+              <NavItem
+                href="/apple-subscriptions"
+                icon={<Smartphone className="h-[18px] w-[18px]" />}
+                label="App Store subscriptions"
+                active={location === "/apple-subscriptions"}
+                collapsed={navCollapsed}
+                trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
+                trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}
+              />
+            </NavSection>
 
-            <NavGroup label="Governance" collapsed={navCollapsed} />
-            <NavItem href="/subscriptions" icon={<Layers className="h-[18px] w-[18px]" />} label="Subscriptions" active={location === "/subscriptions"} collapsed={navCollapsed} />
-            <NavItem href="/tags" icon={<Tags className="h-[18px] w-[18px]" />} label="Tags" active={location === "/tags"} collapsed={navCollapsed} />
-            <NavItem href="/access" icon={<Users className="h-[18px] w-[18px]" />} label="Identity & access" active={location === "/access"} collapsed={navCollapsed} />
+            <NavSection sectionKey="governance" label="Governance" navCollapsed={navCollapsed}>
+              <NavItem href="/subscriptions" icon={<Layers className="h-[18px] w-[18px]" />} label="Subscriptions" active={location === "/subscriptions"} collapsed={navCollapsed} />
+              <NavItem href="/tags" icon={<Tags className="h-[18px] w-[18px]" />} label="Tags" active={location === "/tags"} collapsed={navCollapsed} />
+              <NavItem href="/access" icon={<Users className="h-[18px] w-[18px]" />} label="Identity & access" active={location === "/access"} collapsed={navCollapsed} />
+            </NavSection>
 
-            <NavGroup label="Resources" collapsed={navCollapsed} />
-            <NavItem href="/" icon={<LayoutDashboard className="h-[18px] w-[18px]" />} label="All resources" active={false} collapsed={navCollapsed} />
-            <NavItem href="/" icon={<Cloud className="h-[18px] w-[18px]" />} label="App Services" active={location.startsWith("/apps/")} collapsed={navCollapsed} />
+            <NavSection sectionKey="resources" label="Resources" navCollapsed={navCollapsed}>
+              <NavItem href="/" icon={<LayoutDashboard className="h-[18px] w-[18px]" />} label="All resources" active={false} collapsed={navCollapsed} />
+              <NavItem href="/" icon={<Cloud className="h-[18px] w-[18px]" />} label="App Services" active={location.startsWith("/apps/")} collapsed={navCollapsed} />
+            </NavSection>
 
-            <NavGroup label="Settings" collapsed={navCollapsed} />
-            <NavItem href="/preferences" icon={<SlidersHorizontal className="h-[18px] w-[18px]" />} label="Preferences" active={location === "/preferences"} collapsed={navCollapsed} />
+            <NavSection sectionKey="settings" label="Settings" navCollapsed={navCollapsed}>
+              <NavItem href="/preferences" icon={<SlidersHorizontal className="h-[18px] w-[18px]" />} label="Preferences" active={location === "/preferences"} collapsed={navCollapsed} />
+            </NavSection>
           </nav>
         </aside>
 
@@ -243,14 +249,67 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function NavGroup({ label, collapsed }: { label: string; collapsed: boolean }) {
-  if (collapsed) return <div className="my-2 border-t border-border mx-2" />;
+function getSectionOpen(key: string): boolean {
+  try {
+    const stored = window.localStorage.getItem(`orbit-nav-section-${key}`);
+    if (stored === "0") return false;
+  } catch {
+    // ignore
+  }
+  return true;
+}
+
+function NavSection({
+  sectionKey,
+  label,
+  navCollapsed,
+  children,
+}: {
+  sectionKey: string;
+  label: string;
+  navCollapsed: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState<boolean>(() => getSectionOpen(sectionKey));
+
+  const toggle = useCallback(() => {
+    setOpen((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(`orbit-nav-section-${sectionKey}`, next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, [sectionKey]);
+
+  if (navCollapsed) {
+    return (
+      <>
+        <div className="my-2 border-t border-border mx-2" />
+        {children}
+      </>
+    );
+  }
+
   return (
     <>
       <div className="my-1.5 border-t border-border mx-2" />
-      <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1">
-        {label}
-      </div>
+      <button
+        type="button"
+        onClick={toggle}
+        className="flex items-center justify-between w-full px-3 py-1 group/section hover:text-foreground transition-colors"
+        title={open ? `Collapse ${label}` : `Expand ${label}`}
+      >
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider group-hover/section:text-foreground transition-colors">
+          {label}
+        </span>
+        <ChevronDown
+          className={`h-3 w-3 text-muted-foreground group-hover/section:text-foreground transition-all duration-150 ${open ? "" : "-rotate-90"}`}
+        />
+      </button>
+      {open && children}
     </>
   );
 }
