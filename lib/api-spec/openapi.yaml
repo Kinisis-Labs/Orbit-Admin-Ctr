@@ -1621,3 +1621,4 @@ components:
           description: Notification channels that fired (e.g. "teams", "email")
         sentAt: { type: string, format: date-time, description: When the notification was dispatched }
         acknowledgedAt: { type: string, format: date-time, nullable: true, description: When the entry was acknowledged by an operator. Null if not yet acknowledged. }
+        acknowledgedBy: { type: string, nullable: true, description: Display name (or UPN) of the operator who acknowledged the alert. Null if not yet acknowledged. }

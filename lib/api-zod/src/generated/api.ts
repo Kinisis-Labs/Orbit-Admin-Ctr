@@ -958,7 +958,8 @@ export const ListInfraAlertLogResponseItem = zod.object({
   "threshold": zod.number().describe('Configured threshold (percent) that was exceeded'),
   "channels": zod.array(zod.string()).describe('Notification channels that fired (e.g. \"teams\", \"email\")'),
   "sentAt": zod.string().datetime({"offset":true}).describe('When the notification was dispatched'),
-  "acknowledgedAt": zod.string().datetime({"offset":true}).nullish().describe('When the entry was acknowledged by an operator. Null if not yet acknowledged.')
+  "acknowledgedAt": zod.string().datetime({"offset":true}).nullish().describe('When the entry was acknowledged by an operator. Null if not yet acknowledged.'),
+  "acknowledgedBy": zod.string().nullish().describe('Display name (or UPN) of the operator who acknowledged the alert. Null if not yet acknowledged.')
 })
 export const ListInfraAlertLogResponse = zod.array(ListInfraAlertLogResponseItem)
 
@@ -979,7 +980,8 @@ export const AcknowledgeInfraAlertLogEntryResponse = zod.object({
   "threshold": zod.number().describe('Configured threshold (percent) that was exceeded'),
   "channels": zod.array(zod.string()).describe('Notification channels that fired (e.g. \"teams\", \"email\")'),
   "sentAt": zod.string().datetime({"offset":true}).describe('When the notification was dispatched'),
-  "acknowledgedAt": zod.string().datetime({"offset":true}).nullish().describe('When the entry was acknowledged by an operator. Null if not yet acknowledged.')
+  "acknowledgedAt": zod.string().datetime({"offset":true}).nullish().describe('When the entry was acknowledged by an operator. Null if not yet acknowledged.'),
+  "acknowledgedBy": zod.string().nullish().describe('Display name (or UPN) of the operator who acknowledged the alert. Null if not yet acknowledged.')
 })
 
 

@@ -1219,6 +1219,8 @@ export interface InfraAlertLogEntry {
   sentAt: string;
   /** When the entry was acknowledged by an operator. Null if not yet acknowledged. */
   acknowledgedAt?: string | null;
+  /** Display name (or UPN) of the operator who acknowledged the alert. Null if not yet acknowledged. */
+  acknowledgedBy?: string | null;
 }
 
 /**

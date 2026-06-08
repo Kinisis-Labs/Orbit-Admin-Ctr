@@ -60,11 +60,15 @@ function OverThresholdPill({ value, threshold }: { value: number; threshold: num
   );
 }
 
-function AcknowledgedBadge({ at }: { at: string }) {
+function AcknowledgedBadge({ at, by }: { at: string; by?: string | null }) {
+  const label = by ? `Acknowledged by ${by} on ${format(new Date(at), "MMM d, yyyy 'at' HH:mm")}` : `Acknowledged ${format(new Date(at), "MMM d, yyyy 'at' HH:mm")}`;
   return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/30 text-muted-foreground text-[10px] font-medium">
+    <span
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/30 text-muted-foreground text-[10px] font-medium cursor-default"
+      title={label}
+    >
       <Check className="h-2.5 w-2.5" />
-      Acknowledged {format(new Date(at), "MMM d")}
+      {by ? `Ack'd by ${by}` : `Acknowledged ${format(new Date(at), "MMM d")}`}
     </span>
   );
 }
@@ -309,7 +313,7 @@ export function InfraAlertHistory({ appId }: Props) {
                     </TableCell>
                     <TableCell className="py-1">
                       {isAcked ? (
-                        <AcknowledgedBadge at={entry.acknowledgedAt!} />
+                        <AcknowledgedBadge at={entry.acknowledgedAt!} by={entry.acknowledgedBy} />
                       ) : (
                         <OverThresholdPill value={entry.value} threshold={entry.threshold} />
                       )}

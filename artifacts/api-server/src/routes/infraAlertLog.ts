@@ -16,6 +16,7 @@ function toEntry(r: typeof infraAlertLogTable.$inferSelect, appMap: Map<string, 
     channels: r.channels.split(",").filter(Boolean),
     sentAt: r.sentAt.toISOString(),
     acknowledgedAt: r.acknowledgedAt ? r.acknowledgedAt.toISOString() : null,
+    acknowledgedBy: r.acknowledgedBy ?? null,
   };
 }
 
@@ -54,9 +55,14 @@ router.patch("/infra-alerts/log/:id/acknowledge", async (req, res) => {
 
   const appMap = new Map(APPS.map((a) => [a.id, a.name]));
 
+  const acknowledgedBy =
+    req.session.user?.displayName ??
+    req.session.user?.userPrincipalName ??
+    "mock-admin";
+
   const updated = await db
     .update(infraAlertLogTable)
-    .set({ acknowledgedAt: new Date() })
+    .set({ acknowledgedAt: new Date(), acknowledgedBy })
     .where(eq(infraAlertLogTable.id, id))
     .returning();
 

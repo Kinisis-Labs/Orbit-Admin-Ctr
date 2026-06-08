@@ -15,6 +15,7 @@ export const infraAlertLogTable = pgTable("infra_alert_log", {
   channels: text("channels").notNull(),
   sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
   acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
+  acknowledgedBy: text("acknowledged_by"),
 });
 
 export type InfraAlertLogRow = typeof infraAlertLogTable.$inferSelect;
