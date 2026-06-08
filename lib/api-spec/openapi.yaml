@@ -776,6 +776,11 @@ components:
               description: >-
                 Apple App Store bundle identifier when this app ships a tracked iOS build.
                 Presence flags the app for the App Store subscriptions surface.
+            appleAppId:
+              type: string
+              description: >-
+                Numeric Apple App ID as shown in App Store Connect (e.g. "6741234567").
+                Used to construct direct links into the App Store Connect management console.
             appRepo:
               type: string
               description: >-
@@ -831,6 +836,11 @@ components:
         appName: { type: string }
         environment: { type: string }
         bundleId: { type: string }
+        appleAppId:
+          type: string
+          description: >-
+            Numeric Apple App ID. When present, used to construct a direct link to the
+            app's management page in App Store Connect.
         activeSubscribers: { type: integer, description: Currently active/paying subscribers }
         canceledSubscribers: { type: integer, description: Auto-renew turned off but still within the paid term }
         expiredSubscribers: { type: integer, description: Lapsed/churned subscribers (inactive) }

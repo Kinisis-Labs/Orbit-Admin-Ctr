@@ -79,6 +79,7 @@ export const APPS: AppRecord[] = [
     userAuth: "clerk",
     androidPackage: "com.grailbabe.app",
     iosBundle: "com.kinisislabs.grailbabe",
+    appleAppId: "6741234567",
     appRepo: "GrailBabe",
     cpuThreshold: 75,
     memoryThreshold: 80,

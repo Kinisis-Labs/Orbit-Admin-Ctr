@@ -12,6 +12,7 @@ export type AppleSubscriptionRow = {
   appName: string;
   environment: string;
   bundleId: string;
+  appleAppId?: string;
   activeSubscribers: number;
   canceledSubscribers: number;
   expiredSubscribers: number;
@@ -77,6 +78,7 @@ function placeholderRow(app: AppRecord): AppleSubscriptionRow {
     appName: app.name,
     environment: app.environment,
     bundleId: app.iosBundle ?? "",
+    ...(app.appleAppId ? { appleAppId: app.appleAppId } : {}),
     activeSubscribers: active,
     canceledSubscribers: canceled,
     expiredSubscribers: expired,

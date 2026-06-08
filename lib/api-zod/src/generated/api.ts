@@ -81,6 +81,7 @@ export const GetAppResponse = zod.object({
   "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users. \"clerk\" = consumer app with Clerk-authenticated users (activity ingested via webhooks). \"entra\" = employee-only internal tool authenticated via Entra ID. \"none\" = no end-user authentication (e.g. public marketing site).'),
   "androidPackage": zod.string().optional().describe('Google Play package name when this app ships a tracked Android build. Presence flags the app for the Play subscriptions surface.'),
   "iosBundle": zod.string().optional().describe('Apple App Store bundle identifier when this app ships a tracked iOS build. Presence flags the app for the App Store subscriptions surface.'),
+  "appleAppId": zod.string().optional().describe('Numeric Apple App ID as shown in App Store Connect (e.g. \"6741234567\"). Used to construct direct links into the App Store Connect management console.'),
   "appRepo": zod.string().optional().describe('GitHub repository name (under the Kinisis-Labs org) used to fetch deployment history from GitHub Actions. Absent for apps without a tracked CI\/CD pipeline.'),
   "cpuThreshold": zod.number().optional().describe('CPU utilisation percentage at which the SLO badge turns warning\/critical. Overrides the global default (80%) for this app. Optional.'),
   "memoryThreshold": zod.number().optional().describe('Memory utilisation percentage at which the SLO badge turns warning\/critical. Overrides the global default (85%) for this app. Optional.')
@@ -564,6 +565,7 @@ export const ListAppleSubscriptionsResponseItem = zod.object({
   "appName": zod.string(),
   "environment": zod.string(),
   "bundleId": zod.string(),
+  "appleAppId": zod.string().optional().describe('Numeric Apple App ID. When present, used to construct a direct link to the app\'s management page in App Store Connect.'),
   "activeSubscribers": zod.number().describe('Currently active\/paying subscribers'),
   "canceledSubscribers": zod.number().describe('Auto-renew turned off but still within the paid term'),
   "expiredSubscribers": zod.number().describe('Lapsed\/churned subscribers (inactive)'),

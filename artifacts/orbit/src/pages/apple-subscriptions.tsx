@@ -108,11 +108,15 @@ export default function AppleSubscriptions() {
                 <TableHead className="h-8 font-semibold text-foreground text-right">MRR</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground text-right">Revenue (30d)</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground text-right">Active trend</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right">ASC</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {scoped.map((r) => {
                 const positive = r.activeTrendPct >= 0;
+                const ascUrl = r.appleAppId
+                  ? `https://appstoreconnect.apple.com/apps/${r.appleAppId}/distribution/subscriptions`
+                  : null;
                 return (
                   <TableRow key={r.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
                     <TableCell className="py-1 font-medium text-primary">{r.appName}</TableCell>
@@ -139,11 +143,26 @@ export default function AppleSubscriptions() {
                         {positive ? "+" : ""}{r.activeTrendPct}%
                       </span>
                     </TableCell>
+                    <TableCell className="py-1 text-right">
+                      {ascUrl ? (
+                        <a
+                          href={ascUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Open in App Store Connect"
+                          className="text-primary hover:underline inline-flex items-center gap-1 text-[12px]"
+                        >
+                          Manage <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground text-[12px]">—</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 );
               })}
               {scoped.length === 0 && (
-                <TableRow><TableCell colSpan={9} className="text-center py-6 text-muted-foreground">No App Store apps in scope.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center py-6 text-muted-foreground">No App Store apps in scope.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

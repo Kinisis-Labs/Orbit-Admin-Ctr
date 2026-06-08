@@ -12,6 +12,8 @@ export interface AppleSubscriptionRow {
   appName: string;
   environment: string;
   bundleId: string;
+  /** Numeric Apple App ID. When present, used to construct a direct link to the app's management page in App Store Connect. */
+  appleAppId?: string;
   /** Currently active/paying subscribers */
   activeSubscribers: number;
   /** Auto-renew turned off but still within the paid term */

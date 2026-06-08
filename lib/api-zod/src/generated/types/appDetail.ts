@@ -16,6 +16,8 @@ export type AppDetail = AppSummary & {
   androidPackage?: string;
   /** Apple App Store bundle identifier when this app ships a tracked iOS build. Presence flags the app for the App Store subscriptions surface. */
   iosBundle?: string;
+  /** Numeric Apple App ID as shown in App Store Connect (e.g. "6741234567"). Used to construct direct links into the App Store Connect management console. */
+  appleAppId?: string;
   /** GitHub repository name (under the Kinisis-Labs org) used to fetch deployment history from GitHub Actions. Absent for apps without a tracked CI/CD pipeline. */
   appRepo?: string;
   /** CPU utilisation percentage at which the SLO badge turns warning/critical. Overrides the global default (80%) for this app. Optional. */
