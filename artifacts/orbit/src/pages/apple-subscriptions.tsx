@@ -98,7 +98,7 @@ export default function AppleSubscriptions() {
         }
       />
 
-      <AppleBanner placeholder={isPlaceholder} dataUpdatedAt={dataUpdatedAt} dataAsOf={earliestDataAsOf} />
+      <AppleBanner placeholder={isPlaceholder} isLive={isLive} dataUpdatedAt={dataUpdatedAt} dataAsOf={earliestDataAsOf} />
       <StaleCacheBanner source="apple" dataAsOf={staleCachedRow?.dataAsOf} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -200,7 +200,7 @@ export default function AppleSubscriptions() {
   );
 }
 
-function AppleBanner({ placeholder, dataUpdatedAt, dataAsOf }: { placeholder: boolean; dataUpdatedAt: number; dataAsOf?: string }) {
+function AppleBanner({ placeholder, isLive, dataUpdatedAt, dataAsOf }: { placeholder: boolean; isLive: boolean; dataUpdatedAt: number; dataAsOf?: string }) {
   const timestampMs = dataAsOf ? new Date(dataAsOf).getTime() : dataUpdatedAt ?? 0;
   const ago = useUpdatedAgo(timestampMs);
 
@@ -223,7 +223,15 @@ function AppleBanner({ placeholder, dataUpdatedAt, dataAsOf }: { placeholder: bo
     <div className="bg-card border border-border shadow-sm p-3 flex items-start gap-3">
       <div className="shrink-0 h-8 w-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center text-[11px] font-semibold">AS</div>
       <div className="flex-1 text-[12px] text-muted-foreground">
-        <span className="text-foreground font-semibold">{placeholder ? "Placeholder data." : "App Store Connect–sourced."}</span>{" "}
+        <span className="inline-flex items-center gap-2">
+          <span className="text-foreground font-semibold">{placeholder ? "Placeholder data." : "App Store Connect–sourced."}</span>
+          {isLive && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Live
+            </span>
+          )}
+        </span>{" "}
         {placeholder ? (
           <>
             These figures are representative placeholders. The real feed activates automatically once three App Store Connect credentials
