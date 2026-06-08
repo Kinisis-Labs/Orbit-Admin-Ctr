@@ -449,9 +449,20 @@ function BudgetSummaryWidget({
   }).length ?? 0;
 
   const totalSpentMTD = filteredApps?.reduce((s, a) => s + a.monthToDateCost, 0) ?? 0;
-  const totalBudget = filteredApps?.reduce((s, a) => s + (a.budget ?? 0), 0) ?? 0;
-  const totalForecast = filteredApps?.reduce((s, a) => s + (a.forecast ?? 0), 0) ?? 0;
+  const budgetedApps = filteredApps?.filter((a) => a.budget != null) ?? [];
+  const totalBudget = budgetedApps.reduce((s, a) => s + (a.budget ?? 0), 0);
+  const totalForecast = budgetedApps.reduce((s, a) => s + (a.forecast ?? 0), 0);
   const totalVariance = totalBudget > 0 ? totalBudget - totalForecast : null;
+  const budgetedAppCount = budgetedApps.length;
+  const totalUtilizationPct = totalBudget > 0 ? Math.min((totalSpentMTD / totalBudget) * 100, 100) : null;
+  const totalUtilizationStatus: BudgetStatus =
+    totalBudget === 0
+      ? "none"
+      : totalVariance != null && totalVariance < 0
+      ? "over"
+      : totalUtilizationPct != null && totalUtilizationPct >= 80
+      ? "warning"
+      : "ok";
 
   const appsWithSource = filteredApps?.filter((a) => a.costDataSource != null) ?? [];
   const liveCount = appsWithSource.filter((a) => a.costDataSource === "live").length;
@@ -794,6 +805,64 @@ function BudgetSummaryWidget({
               })
             )}
           </tbody>
+          {filteredApps && filteredApps.length > 0 && (
+            <tfoot>
+              <tr className="border-t-2 border-border bg-muted/40">
+                <td className="px-4 py-2.5">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-semibold text-foreground">Total</span>
+                    {budgetedAppCount < filteredApps.length && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {budgetedAppCount} of {filteredApps.length} apps budgeted
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-3 py-2.5" />
+                <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-foreground">
+                  {fmt(totalSpentMTD)}
+                </td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-foreground">
+                  {totalBudget > 0 ? fmt(totalBudget) : <span className="text-muted-foreground/50">—</span>}
+                </td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-foreground">
+                  {totalForecast > 0 ? fmt(totalForecast) : <span className="text-muted-foreground/50">—</span>}
+                </td>
+                <td className="px-3 py-2.5">
+                  {totalUtilizationPct !== null ? (
+                    <div className="flex items-center gap-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Progress
+                              value={totalUtilizationPct}
+                              className={`h-1.5 w-20 cursor-default ${
+                                totalUtilizationStatus === "over"
+                                  ? "[&>div]:bg-red-500"
+                                  : totalUtilizationStatus === "warning"
+                                  ? "[&>div]:bg-amber-500"
+                                  : "[&>div]:bg-emerald-500"
+                              }`}
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {Math.round(totalUtilizationPct)}% of combined budget spent MTD
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <span className="text-[11px] text-muted-foreground tabular-nums font-semibold">
+                        {Math.round(totalUtilizationPct)}%
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground/50 text-[11px]">—</span>
+                  )}
+                </td>
+                <td className="px-3 py-2.5" />
+                <td className="px-2 py-2.5" />
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
 
