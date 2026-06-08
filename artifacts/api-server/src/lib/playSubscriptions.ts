@@ -94,17 +94,34 @@ async function fetchLivePlaySubscriptions(): Promise<PlaySubscriptionRow[]> {
   throw new Error("Google Play live ingestion not implemented yet");
 }
 
+// In-memory snapshot of the last successful live fetch. If a subsequent live
+// fetch fails, the cached rows are returned with dataSource: "cached" and
+// dataAsOf set to the snapshot timestamp so the frontend can surface a staleness
+// banner. Mirrors the appleSubscriptions cache pattern.
+type Snapshot = { rows: PlaySubscriptionRow[]; fetchedAt: string };
+let snapshot: Snapshot | null = null;
+
 // Aggregate per-app Google Play subscription metrics for the tracked Android
-// apps. Auto-activates the real feed once configured; falls back to placeholder.
+// apps. Auto-activates the real feed once configured; falls back to the last
+// snapshot (cached) and finally to an empty array when no snapshot is available.
 export async function getPlaySubscriptions(): Promise<PlaySubscriptionRow[]> {
   if (isPlayConfigured()) {
     try {
-      return await fetchLivePlaySubscriptions();
+      const rows = await fetchLivePlaySubscriptions();
+      snapshot = { rows, fetchedAt: new Date().toISOString() };
+      return rows;
     } catch (err) {
       logger.warn(
         { err: (err as Error).message },
-        "Google Play configured but live ingestion failed; serving placeholder data",
+        "Google Play configured but live ingestion failed; serving cached snapshot if available",
       );
+      if (snapshot) {
+        return snapshot.rows.map((r) => ({
+          ...r,
+          dataSource: "cached" as const,
+          dataAsOf: snapshot!.fetchedAt,
+        }));
+      }
     }
   }
   return [];
