@@ -8,11 +8,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Cpu, BellOff, Check, Filter, X, CalendarRange } from "lucide-react";
 import { format, parseISO, isValid, startOfDay, endOfDay } from "date-fns";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
 import { CsvToolbar } from "@/components/csv-toolbar";
+import { useSearch, useLocation } from "wouter";
 
 const CHANNEL_LABELS: Record<string, string> = {
   teams: "Teams",
@@ -23,6 +24,23 @@ const METRIC_LABELS: Record<string, string> = {
   cpu: "CPU",
   memory: "Memory",
 };
+
+const FILTER_STATE_KEY = "orbit:infra-alert-filter-state";
+
+interface FilterState {
+  unacknowledgedOnly: boolean;
+  dateFrom: string;
+  dateTo: string;
+}
+
+function loadFilterState(): FilterState | null {
+  try {
+    const raw = localStorage.getItem(FILTER_STATE_KEY);
+    return raw ? (JSON.parse(raw) as FilterState) : null;
+  } catch {
+    return null;
+  }
+}
 
 function ChannelBadge({ channel }: { channel: string }) {
   const label = CHANNEL_LABELS[channel] ?? channel;
@@ -78,9 +96,72 @@ interface Props {
 }
 
 export function InfraAlertHistory({ appId }: Props) {
-  const [unacknowledgedOnly, setUnacknowledgedOnly] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const search = useSearch();
+  const [pathname, navigate] = useLocation();
+
+  const searchParams = useMemo(() => new URLSearchParams(search), [search]);
+  const startInput = searchParams.get("infraFrom") ?? "";
+  const endInput = searchParams.get("infraTo") ?? "";
+  const unackedParam = searchParams.get("infraUnacked") ?? "";
+
+  const unacknowledgedOnly = unackedParam === "1";
+
+  function applyParams(next: URLSearchParams) {
+    const qs = next.toString();
+    navigate(qs ? "?" + qs : pathname, { replace: true });
+  }
+
+  function setStartInput(value: string) {
+    const next = new URLSearchParams(searchParams);
+    if (value) { next.set("infraFrom", value); } else { next.delete("infraFrom"); }
+    applyParams(next);
+  }
+
+  function setEndInput(value: string) {
+    const next = new URLSearchParams(searchParams);
+    if (value) { next.set("infraTo", value); } else { next.delete("infraTo"); }
+    applyParams(next);
+  }
+
+  function setUnacknowledgedOnly(value: boolean) {
+    const next = new URLSearchParams(searchParams);
+    if (value) { next.set("infraUnacked", "1"); } else { next.delete("infraUnacked"); }
+    applyParams(next);
+  }
+
+  const didRestoreFilters = useRef(false);
+  useEffect(() => {
+    if (didRestoreFilters.current) return;
+    didRestoreFilters.current = true;
+    const hasDateParams = !!searchParams.get("infraFrom") || !!searchParams.get("infraTo");
+    const hasUnackedParam = !!searchParams.get("infraUnacked");
+    if (!hasDateParams && !hasUnackedParam) {
+      const saved = loadFilterState();
+      if (saved?.dateFrom || saved?.dateTo || saved?.unacknowledgedOnly) {
+        const next = new URLSearchParams(searchParams);
+        if (saved?.dateFrom) next.set("infraFrom", saved.dateFrom);
+        if (saved?.dateTo) next.set("infraTo", saved.dateTo);
+        if (saved?.unacknowledgedOnly) next.set("infraUnacked", "1");
+        applyParams(next);
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const state: FilterState = {
+      unacknowledgedOnly,
+      dateFrom: startInput,
+      dateTo: endInput,
+    };
+    try {
+      localStorage.setItem(FILTER_STATE_KEY, JSON.stringify(state));
+    } catch {
+      /* storage quota */
+    }
+  }, [unacknowledgedOnly, startInput, endInput]);
 
   const params = {
     ...(appId ? { appId } : {}),
@@ -96,9 +177,6 @@ export function InfraAlertHistory({ appId }: Props) {
       },
     },
   });
-
-  const [startInput, setStartInput] = useState("");
-  const [endInput, setEndInput] = useState("");
 
   const startDate = useMemo(() => {
     if (!startInput) return null;
@@ -126,8 +204,18 @@ export function InfraAlertHistory({ appId }: Props) {
   }, [entries, startDate, endDate, isFiltered]);
 
   function clearFilter() {
-    setStartInput("");
-    setEndInput("");
+    const next = new URLSearchParams(searchParams);
+    next.delete("infraFrom");
+    next.delete("infraTo");
+    next.delete("infraUnacked");
+    applyParams(next);
+  }
+
+  function clearDateRange() {
+    const next = new URLSearchParams(searchParams);
+    next.delete("infraFrom");
+    next.delete("infraTo");
+    applyParams(next);
   }
 
   const csvHeaders = appId
@@ -166,7 +254,7 @@ export function InfraAlertHistory({ appId }: Props) {
 
         <div className="flex items-center gap-1.5 ml-auto flex-wrap">
           <button
-            onClick={() => setUnacknowledgedOnly((v) => !v)}
+            onClick={() => setUnacknowledgedOnly(!unacknowledgedOnly)}
             className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-sm border text-[11px] font-medium transition-colors ${
               unacknowledgedOnly
                 ? "border-primary/40 bg-primary/10 text-primary"
@@ -205,7 +293,7 @@ export function InfraAlertHistory({ appId }: Props) {
             />
             {isFiltered && (
               <button
-                onClick={clearFilter}
+                onClick={clearDateRange}
                 className="ml-1 flex items-center justify-center h-4 w-4 rounded-sm hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Clear date filter"
               >
