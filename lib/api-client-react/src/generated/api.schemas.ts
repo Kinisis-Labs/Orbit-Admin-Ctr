@@ -721,6 +721,14 @@ export interface GlobalHealth {
   currency: string;
 }
 
+export type ListDeploymentsResponseDataSource = typeof ListDeploymentsResponseDataSource[keyof typeof ListDeploymentsResponseDataSource];
+
+
+export const ListDeploymentsResponseDataSource = {
+  live: 'live',
+  mock: 'mock',
+} as const;
+
 export type DeploymentStatus = typeof DeploymentStatus[keyof typeof DeploymentStatus];
 
 
@@ -743,6 +751,13 @@ export interface Deployment {
   durationSec?: number | null;
   commitSha: string;
   pipeline: string;
+}
+
+export interface ListDeploymentsResponse {
+  deployments: Deployment[];
+  dataSource: ListDeploymentsResponseDataSource;
+  /** ISO timestamp of when the data was fetched from GitHub. Null when data source is mock. */
+  fetchedAt?: string | null;
 }
 
 export type ActivityEntryStatus = typeof ActivityEntryStatus[keyof typeof ActivityEntryStatus];

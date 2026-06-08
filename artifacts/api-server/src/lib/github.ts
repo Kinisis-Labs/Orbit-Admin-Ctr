@@ -114,26 +114,35 @@ async function fetchRunsFromGitHub(
   });
 }
 
+export type FetchDeploymentsResult = {
+  runs: GitHubDeployment[];
+  fetchedAt: string | null;
+  dataSource: "live" | "mock";
+};
+
 export async function fetchDeployments(
   appId: string,
   appName: string,
   appRepo: string | undefined | null,
   environment: string,
-): Promise<GitHubDeployment[]> {
-  if (!isConfigured() || !appRepo) return [];
+): Promise<FetchDeploymentsResult> {
+  if (!isConfigured() || !appRepo) {
+    return { runs: [], fetchedAt: null, dataSource: "mock" };
+  }
 
   const cacheKey = `${appId}:${appRepo}`;
   const cached = _cache.get(cacheKey);
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-    return cached.data;
+    return { runs: cached.data, fetchedAt: new Date(cached.fetchedAt).toISOString(), dataSource: "live" };
   }
 
   try {
     const data = await fetchRunsFromGitHub(appId, appName, appRepo, environment);
-    _cache.set(cacheKey, { data, fetchedAt: Date.now() });
-    return data;
+    const now = Date.now();
+    _cache.set(cacheKey, { data, fetchedAt: now });
+    return { runs: data, fetchedAt: new Date(now).toISOString(), dataSource: "live" };
   } catch (err) {
     logger.error({ err, appRepo }, "fetchDeployments error");
-    return [];
+    return { runs: [], fetchedAt: null, dataSource: "mock" };
   }
 }

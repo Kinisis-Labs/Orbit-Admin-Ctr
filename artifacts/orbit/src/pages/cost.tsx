@@ -174,6 +174,10 @@ export default function Cost() {
   const selectedApp = apps?.find((a) => a.id === scope);
   const isGlobal = scope === "global";
 
+  const { data: globalCostSummary, isLoading: globalCostLoading } = useGetGlobalCostSummary({
+    query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000, enabled: isGlobal },
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4 flex-wrap">
@@ -186,6 +190,13 @@ export default function Cost() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {isGlobal && !globalCostLoading && globalCostSummary && (
+            <DataSourceBadge
+              dataSource={globalCostSummary.dataSource}
+              dataAsOf={globalCostSummary.dataAsOf ?? undefined}
+              label="Azure Cost Management"
+            />
+          )}
           <AdminAccessBadge />
           <ScopeSelect allowGlobal />
         </div>

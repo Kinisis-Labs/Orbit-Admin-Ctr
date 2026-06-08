@@ -588,13 +588,14 @@ export const ListAppleSubscriptionsResponse = zod.array(ListAppleSubscriptionsRe
 
 
 /**
- * @summary GitHub Actions workflow runs for this app (last 50 runs). Returns [] when GITHUB_TOKEN is absent.
+ * @summary GitHub Actions workflow runs for this app (last 50 runs). Returns empty deployments array when GITHUB_TOKEN is absent.
  */
 export const ListDeploymentsParams = zod.object({
   "appId": zod.coerce.string()
 })
 
-export const ListDeploymentsResponseItem = zod.object({
+export const ListDeploymentsResponse = zod.object({
+  "deployments": zod.array(zod.object({
   "id": zod.string(),
   "appId": zod.string(),
   "appName": zod.string(),
@@ -606,8 +607,10 @@ export const ListDeploymentsResponseItem = zod.object({
   "durationSec": zod.number().nullish(),
   "commitSha": zod.string(),
   "pipeline": zod.string()
+})),
+  "dataSource": zod.enum(['live', 'mock']),
+  "fetchedAt": zod.string().datetime({"offset":true}).nullish().describe('ISO timestamp of when the data was fetched from GitHub. Null when data source is mock.')
 })
-export const ListDeploymentsResponse = zod.array(ListDeploymentsResponseItem)
 
 
 /**

@@ -390,7 +390,7 @@ paths:
     get:
       operationId: listDeployments
       tags: [apps]
-      summary: GitHub Actions workflow runs for this app (last 50 runs). Returns [] when GITHUB_TOKEN is absent.
+      summary: GitHub Actions workflow runs for this app (last 50 runs). Returns empty deployments array when GITHUB_TOKEN is absent.
       parameters:
         - $ref: "#/components/parameters/AppId"
       responses:
@@ -398,9 +398,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/Deployment" }
+              schema: { $ref: "#/components/schemas/ListDeploymentsResponse" }
   /apps/{appId}/activity:
     get:
       operationId: listActivityLog
@@ -1219,6 +1217,15 @@ components:
         costDataSource: { type: string, enum: [live, cached, mock], description: "Indicates whether the aggregate monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values. live = all apps live, cached = at least one app used a snapshot, mock = no live or cached data." }
         momTrendPct: { type: number, nullable: true, description: "Month-over-month cost trend as a percentage change vs the same elapsed days last month. Positive = higher spend this month, negative = lower spend. Omitted when Azure Cost Management is not configured." }
         currency: { type: string }
+    ListDeploymentsResponse:
+      type: object
+      required: [deployments, dataSource]
+      properties:
+        deployments:
+          type: array
+          items: { $ref: "#/components/schemas/Deployment" }
+        dataSource: { type: string, enum: [live, mock] }
+        fetchedAt: { type: string, format: date-time, nullable: true, description: "ISO timestamp of when the data was fetched from GitHub. Null when data source is mock." }
     Deployment:
       type: object
       required: [id, appId, appName, environment, version, status, triggeredBy, startedAt, commitSha, pipeline]

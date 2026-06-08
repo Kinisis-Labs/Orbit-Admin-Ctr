@@ -725,8 +725,12 @@ router.get("/apps/:appId/deployments", async (req, res) => {
     res.status(404).json({ error: "App not found" });
     return;
   }
-  const runs = await fetchDeployments(app.id, app.name, app.appRepo, app.environment);
-  const data = ListDeploymentsResponse.parse(runs);
+  const result = await fetchDeployments(app.id, app.name, app.appRepo, app.environment);
+  const data = ListDeploymentsResponse.parse({
+    deployments: result.runs,
+    dataSource: result.dataSource,
+    ...(result.fetchedAt ? { fetchedAt: result.fetchedAt } : {}),
+  });
   res.json(data);
 });
 

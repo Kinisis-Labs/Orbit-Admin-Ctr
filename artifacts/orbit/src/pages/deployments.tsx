@@ -11,6 +11,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { PageHeader, StatusPill } from "@/components/page-header";
+import { DataSourceBadge } from "@/components/data-source-badge";
 import type { Deployment } from "@workspace/api-client-react";
 
 type DeploymentStatus = Deployment["status"];
@@ -44,14 +45,17 @@ export default function Deployments() {
 
   const isLoading = appsLoading || deploymentQueries.some((q) => q.isLoading);
   const isFetching = deploymentQueries.some((q) => q.isFetching);
-  const allEmpty = !isLoading && deploymentQueries.every((q) => !q.isLoading && (q.data?.length ?? 0) === 0);
+  const allEmpty = !isLoading && deploymentQueries.every((q) => !q.isLoading && (q.data?.deployments?.length ?? 0) === 0);
+
+  const dataSource = deploymentQueries[0]?.data?.dataSource ?? undefined;
+  const fetchedAt = deploymentQueries[0]?.data?.fetchedAt ?? undefined;
 
   function handleRefresh() {
     deploymentQueries.forEach((q) => void q.refetch());
   }
 
   const deployments = useMemo(
-    () => deploymentQueries.flatMap((q) => q.data ?? []),
+    () => deploymentQueries.flatMap((q) => q.data?.deployments ?? []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [deploymentQueries.map((q) => q.dataUpdatedAt).join(",")],
   );
@@ -78,7 +82,14 @@ export default function Deployments() {
       <PageHeader
         title="Deployments"
         subtitle={selectedApp ? `Release activity for ${selectedApp.name}` : "Release activity"}
-        right={<ScopeSelect />}
+        right={
+          <div className="flex items-center gap-2">
+            {!isLoading && dataSource && (
+              <DataSourceBadge dataSource={dataSource} dataAsOf={fetchedAt} label="GitHub Actions" />
+            )}
+            <ScopeSelect />
+          </div>
+        }
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

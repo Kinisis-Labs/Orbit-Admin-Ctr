@@ -34,7 +34,6 @@ import type {
   AppleSubscriptionRow,
   BudgetAlertLogEntry,
   CostReport,
-  Deployment,
   DismissAnomalyRequest,
   GetAppAlertsParams,
   GetCostParams,
@@ -56,6 +55,7 @@ import type {
   ListAppThresholdsLog403,
   ListAppThresholdsLogParams,
   ListBudgetAlertLogParams,
+  ListDeploymentsResponse,
   ListGlobalAlertsParams,
   ListInfraAlertLogParams,
   LogLine,
@@ -1804,11 +1804,11 @@ export const getListDeploymentsUrl = (appId: string,) => {
 }
 
 /**
- * @summary GitHub Actions workflow runs for this app (last 50 runs). Returns [] when GITHUB_TOKEN is absent.
+ * @summary GitHub Actions workflow runs for this app (last 50 runs). Returns empty deployments array when GITHUB_TOKEN is absent.
  */
-export const listDeployments = async (appId: string, options?: RequestInit): Promise<Deployment[]> => {
+export const listDeployments = async (appId: string, options?: RequestInit): Promise<ListDeploymentsResponse> => {
 
-  return customFetch<Deployment[]>(getListDeploymentsUrl(appId),
+  return customFetch<ListDeploymentsResponse>(getListDeploymentsUrl(appId),
   {
     ...options,
     method: 'GET'
@@ -1851,7 +1851,7 @@ export type ListDeploymentsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary GitHub Actions workflow runs for this app (last 50 runs). Returns [] when GITHUB_TOKEN is absent.
+ * @summary GitHub Actions workflow runs for this app (last 50 runs). Returns empty deployments array when GITHUB_TOKEN is absent.
  */
 
 export function useListDeployments<TData = Awaited<ReturnType<typeof listDeployments>>, TError = ErrorType<unknown>>(

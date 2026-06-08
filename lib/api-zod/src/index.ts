@@ -18,4 +18,5 @@ export {
   // Orval also emits a TS interface with the same name as the Zod schema for response
   // types when a new schema is introduced — re-export from Zod side to win the collision.
   GetGlobalCostSummaryResponse,
+  ListDeploymentsResponse,
 } from "./generated/api";

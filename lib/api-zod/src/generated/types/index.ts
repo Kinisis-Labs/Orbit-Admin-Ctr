@@ -78,6 +78,8 @@ export * from './listAnomalyDismissalsParams';
 export * from './listAppThresholdsLog403';
 export * from './listAppThresholdsLogParams';
 export * from './listBudgetAlertLogParams';
+export * from './listDeploymentsResponse';
+export * from './listDeploymentsResponseDataSource';
 export * from './listGlobalAlertsParams';
 export * from './listInfraAlertLogParams';
 export * from './logLine';
