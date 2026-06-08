@@ -5,6 +5,10 @@ import {
   type AuthMode,
 } from "./auth-context";
 import type { EntraGroup, EntraUser } from "./auth-types";
+import {
+  AUTHORIZED_USERS_GROUP,
+  TOGGLEABLE_GROUPS,
+} from "./auth-groups";
 
 export type { EntraGroup, EntraUser } from "./auth-types";
 
@@ -12,7 +16,46 @@ const AUTH_ME = "/api/auth/me";
 const AUTH_LOGIN = "/api/auth/login";
 const AUTH_LOGOUT = "/api/auth/logout";
 
+const MOCK_LS_KEY = "orbit-mock-groups";
+
+const MOCK_USER: EntraUser = {
+  id: "dev-mock-user",
+  displayName: "Dev User",
+  userPrincipalName: "dev@kinisislabs.com",
+  jobTitle: "Developer",
+  initial: "D",
+};
+
+/** Persist the set of toggled-on group IDs to localStorage. */
+function saveMockGroups(ids: Set<string>) {
+  try {
+    localStorage.setItem(MOCK_LS_KEY, JSON.stringify([...ids]));
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Load the set of toggled-on group IDs from localStorage.
+ * On first load (no key yet) we default to AUTHORIZED_USERS so the app
+ * starts in a usable state, but the user can revoke it too.
+ */
+function loadMockGroups(): Set<string> {
+  try {
+    const raw = localStorage.getItem(MOCK_LS_KEY);
+    if (raw === null) {
+      return new Set([AUTHORIZED_USERS_GROUP.id]);
+    }
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set([AUTHORIZED_USERS_GROUP.id]);
+    return new Set(parsed.filter((x): x is string => typeof x === "string"));
+  } catch {
+    return new Set([AUTHORIZED_USERS_GROUP.id]);
+  }
+}
+
 type MeResponse =
+  | { mode: "mock" }
   | { mode: "entra"; authenticated: false }
   | { mode: "entra"; authenticated: true; user: EntraUser; groups: EntraGroup[] };
 
@@ -27,6 +70,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<AuthMode | null>(null);
   const [entra, setEntra] = useState<{ user: EntraUser; groups: EntraGroup[] } | null>(null);
   const [authError, setAuthError] = useState<AuthError | null>(null);
+
+  // Mock mode — extra toggled groups (AUTHORIZED_USERS is always on)
+  const [mockExtras, setMockExtras] = useState<Set<string>>(() => loadMockGroups());
 
   useEffect(() => {
     let cancelled = false;
@@ -50,6 +96,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         const data = (await res.json()) as MeResponse;
         if (cancelled) return;
+        if (data.mode === "mock") {
+          setMode("mock");
+          return;
+        }
         if (data.mode === "entra" && "authenticated" in data && data.authenticated) {
           setEntra({ user: data.user, groups: data.groups });
           setMode("entra");
@@ -91,17 +141,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
+  const grantGroup = useCallback((id: string) => {
+    setMockExtras((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      saveMockGroups(next);
+      return next;
+    });
+  }, []);
+
+  const revokeGroup = useCallback((id: string) => {
+    setMockExtras((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      saveMockGroups(next);
+      return next;
+    });
+  }, []);
+
   const value = useMemo<AuthContextValue | null>(() => {
-    if (mode === null || !entra) return null;
+    if (mode === null) return null;
+
+    if (mode === "mock") {
+      const toggleableIds = new Set(TOGGLEABLE_GROUPS.map((g) => g.id));
+      const groups: EntraGroup[] = TOGGLEABLE_GROUPS.filter((g) => mockExtras.has(g.id));
+      const ids = new Set(groups.map((g) => g.id));
+      return {
+        user: MOCK_USER,
+        groups,
+        hasGroup: (id: string) => ids.has(id),
+        mode: "mock",
+        isMock: true,
+        signOut,
+        grantGroup: (id: string) => toggleableIds.has(id) && grantGroup(id),
+        revokeGroup: (id: string) => toggleableIds.has(id) && revokeGroup(id),
+      };
+    }
+
+    if (!entra) return null;
     const ids = new Set(entra.groups.map((g) => g.id));
     return {
       user: entra.user,
       groups: entra.groups,
       hasGroup: (id: string) => ids.has(id),
       mode: "entra",
+      isMock: false,
       signOut,
     };
-  }, [mode, entra, signOut]);
+  }, [mode, entra, mockExtras, signOut, grantGroup, revokeGroup]);
 
   if (authError) {
     return <AuthNotice kind={authError} onSignOut={signOut} />;

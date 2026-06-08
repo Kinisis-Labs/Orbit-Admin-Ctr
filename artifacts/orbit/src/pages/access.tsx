@@ -1,8 +1,8 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, StatusPill } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { COST_READER_GROUP } from "@/lib/auth-groups";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle, FlaskConical } from "lucide-react";
 
 type GroupDef = {
   id: string;
@@ -31,9 +31,9 @@ const ORBIT_GROUPS: GroupDef[] = [
     grants: ["Acknowledge alerts", "Trigger refresh / start / restart actions"],
   },
   {
-    id: COST_READER_GROUP.id,
-    displayName: COST_READER_GROUP.displayName,
-    description: COST_READER_GROUP.description,
+    id: "b7e3-aad-cost-readers",
+    displayName: "Orbit-Cost-Readers",
+    description: "Allowed to view cost, billing, and revenue data in Orbit.",
     grants: ["View Cost Management page", "View per-app Cost tab", "View Budgets & Forecasts"],
   },
   {
@@ -44,15 +44,29 @@ const ORBIT_GROUPS: GroupDef[] = [
   },
 ];
 
+
 export default function Access() {
-  const { hasGroup, user, groups } = useAuth();
+  const { hasGroup, user, groups, isMock, grantGroup, revokeGroup } = useAuth();
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Identity & access"
-        subtitle="Entra ID groups that govern Orbit. Membership is resolved from your real Entra ID token."
+        subtitle={
+          isMock
+            ? "Mock/dev mode — use the Simulator column to preview group-restricted surfaces."
+            : "Entra ID groups that govern Orbit. Membership is resolved from your real Entra ID token."
+        }
       />
+
+      {isMock && (
+        <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-400">
+          <FlaskConical className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            <strong>Dev simulator active.</strong> Orbit-Authorized-Users is always granted. Toggle the other groups below to preview access-restricted surfaces. State is saved in localStorage and persists across refreshes.
+          </span>
+        </div>
+      )}
 
       <div className="bg-card border border-border shadow-sm p-4 text-[13px]">
         <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Signed in as</div>
@@ -76,6 +90,14 @@ export default function Access() {
               <TableHead className="h-8 font-semibold text-foreground">Group</TableHead>
               <TableHead className="h-8 font-semibold text-foreground">Grants</TableHead>
               <TableHead className="h-8 font-semibold text-foreground">My membership</TableHead>
+              {isMock && (
+                <TableHead className="h-8 font-semibold text-foreground">
+                  <span className="flex items-center gap-1">
+                    <FlaskConical className="h-3 w-3 text-amber-400" />
+                    Simulator
+                  </span>
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -97,6 +119,29 @@ export default function Access() {
                       <StatusPill tone="muted"><XCircle className="h-3 w-3 mr-1" /> Not a member</StatusPill>
                     )}
                   </TableCell>
+                  {isMock && (
+                    <TableCell className="py-2">
+                      {isMember ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[11px] border-destructive/50 text-destructive hover:bg-destructive/10"
+                          onClick={() => revokeGroup?.(g.id)}
+                        >
+                          Revoke
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[11px] border-primary/50 text-primary hover:bg-primary/10"
+                          onClick={() => grantGroup?.(g.id)}
+                        >
+                          Grant
+                        </Button>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
