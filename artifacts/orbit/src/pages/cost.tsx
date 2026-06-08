@@ -686,6 +686,7 @@ function AppCost() {
         <Tile
           title="Actual cost (MTD)"
           value={isLoading ? null : data ? fmt(data.monthToDate, data.currency) : "$0.00"}
+          badge={!isLoading && data?.momChangePct != null ? <MomTrendBadge pct={data.momChangePct} /> : undefined}
         />
         <Tile title="Forecasted cost" value={isLoading ? null : data ? fmt(data.forecast, data.currency) : "$0.00"} />
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
