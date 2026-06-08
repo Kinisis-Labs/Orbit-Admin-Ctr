@@ -689,8 +689,22 @@ export default function Health() {
                       </TableCell>
                       <TableCell className={`py-1 text-right tabular-nums ${latencyOk ? "" : "text-destructive font-medium"}`}>{s.p95LatencyMs}ms</TableCell>
                       <TableCell className={`py-1 text-right tabular-nums ${errOk ? "" : "text-destructive font-medium"}`}>{s.errorRatePct}%</TableCell>
-                      <TableCell className="py-1"><InfraBadge pct={s.cpuPct} threshold={s.cpuThreshold} /></TableCell>
-                      <TableCell className="py-1"><InfraBadge pct={s.memoryPct} threshold={s.memoryThreshold} /></TableCell>
+                      <TableCell className="py-1">
+                        <Link
+                          href={`/apps/${s.appId}?tab=infrastructure`}
+                          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                        >
+                          <InfraBadge pct={s.cpuPct} threshold={s.cpuThreshold} />
+                        </Link>
+                      </TableCell>
+                      <TableCell className="py-1">
+                        <Link
+                          href={`/apps/${s.appId}?tab=infrastructure`}
+                          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                        >
+                          <InfraBadge pct={s.memoryPct} threshold={s.memoryThreshold} />
+                        </Link>
+                      </TableCell>
                       <TableCell className="py-1">
                         <Link
                           href={`/apps/${s.appId}?tab=infrastructure`}
