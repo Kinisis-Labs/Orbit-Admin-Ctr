@@ -1184,7 +1184,7 @@ function CostTab({ appId }: { appId: string }) {
               threshold={threshold}
               onAnomalyClick={handleAnomalyClick}
               budgetLine={data.budget > 0 ? data.budget / 30 : undefined}
-              sensitivityKey="orbit:anomaly-sigma:app-detail"
+              sensitivityKey={`orbit:anomaly-sigma:app-detail:${appId}`}
             />
           </div>
         </div>

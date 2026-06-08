@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { format } from "date-fns";
 import { DailySpendTooltip } from "@/components/daily-spend-tooltip";
@@ -101,6 +101,10 @@ export function DailySpendChart({
   const [activeSigma, setActiveSigmaState] = useState<number>(() =>
     readSigma(sensitivityKey, anomalySigmas),
   );
+
+  useEffect(() => {
+    setActiveSigmaState(readSigma(sensitivityKey, anomalySigmas));
+  }, [sensitivityKey]);
 
   function setActiveSigma(sigma: number) {
     setActiveSigmaState(sigma);
