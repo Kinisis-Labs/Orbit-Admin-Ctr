@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startBudgetAlertScheduler } from "./lib/budgetAlerts";
 import { startCostSnapshotRefresh } from "./lib/costSnapshotRefresh";
+import { startAnomalyDismissalCleanup } from "./lib/anomalyDismissalCleanup";
 
 function logAzureConfig(): void {
   const ids = process.env.AZURE_SUBSCRIPTION_IDS ?? "";
@@ -43,4 +44,5 @@ app.listen(port, (err) => {
 
   startBudgetAlertScheduler();
   startCostSnapshotRefresh();
+  startAnomalyDismissalCleanup();
 });
