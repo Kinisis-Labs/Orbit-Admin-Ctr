@@ -637,7 +637,7 @@ function ThresholdSettings() {
   );
 }
 
-type SortCol = "cpu" | "memory";
+type SortCol = "cpu" | "memory" | "uptime" | "p95" | "errRate";
 type SortDir = "asc" | "desc";
 
 export default function Health() {
@@ -679,8 +679,13 @@ export default function Health() {
     if (!sortCol) return slos;
     const mul = sortDir === "asc" ? 1 : -1;
     return [...slos].sort((a, b) => {
-      const va = sortCol === "cpu" ? a.cpuPct : a.memoryPct;
-      const vb = sortCol === "cpu" ? b.cpuPct : b.memoryPct;
+      let va: number;
+      let vb: number;
+      if (sortCol === "cpu") { va = a.cpuPct; vb = b.cpuPct; }
+      else if (sortCol === "memory") { va = a.memoryPct; vb = b.memoryPct; }
+      else if (sortCol === "uptime") { va = a.uptimePct; vb = b.uptimePct; }
+      else if (sortCol === "p95") { va = a.p95LatencyMs; vb = b.p95LatencyMs; }
+      else { va = a.errorRatePct; vb = b.errorRatePct; }
       return mul * (va - vb);
     });
   }, [slos, sortCol, sortDir]);
@@ -727,10 +732,49 @@ export default function Health() {
                 <TableHead className="h-8 w-8" />
                 <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground">Env</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground text-right">Uptime</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground p-0 text-right">
+                  <button
+                    type="button"
+                    onClick={() => handleSortClick("uptime")}
+                    className="flex items-center justify-end gap-1 h-full w-full px-4 hover:text-foreground/70 transition-colors"
+                  >
+                    Uptime
+                    {sortCol === "uptime" ? (
+                      sortDir === "asc" ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
+                    )}
+                  </button>
+                </TableHead>
                 <TableHead className="h-8 font-semibold text-foreground">Error budget remaining</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground text-right">P95 latency</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground text-right">Error rate</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground p-0">
+                  <button
+                    type="button"
+                    onClick={() => handleSortClick("p95")}
+                    className="flex items-center justify-end gap-1 h-full w-full px-4 hover:text-foreground/70 transition-colors"
+                  >
+                    P95 latency
+                    {sortCol === "p95" ? (
+                      sortDir === "asc" ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
+                    )}
+                  </button>
+                </TableHead>
+                <TableHead className="h-8 font-semibold text-foreground p-0">
+                  <button
+                    type="button"
+                    onClick={() => handleSortClick("errRate")}
+                    className="flex items-center justify-end gap-1 h-full w-full px-4 hover:text-foreground/70 transition-colors"
+                  >
+                    Error rate
+                    {sortCol === "errRate" ? (
+                      sortDir === "asc" ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
+                    )}
+                  </button>
+                </TableHead>
                 <TableHead className="h-8 font-semibold text-foreground p-0">
                   <button
                     type="button"
