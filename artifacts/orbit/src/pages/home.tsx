@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { getListAppsQueryKey } from "@workspace/api-client-react";
 import type { AppSummary } from "@workspace/api-client-react";
 import type { UserAuthType } from "@workspace/api-client-react";
@@ -20,7 +21,6 @@ import { getBudgetThreshold } from "@/lib/spend-threshold";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { formatDistanceToNow } from "date-fns";
-import { useState, useMemo } from "react";
 
 function readLastTab(): string {
   try {
@@ -318,6 +318,32 @@ function StatusPill({ status }: { status: BudgetStatus }) {
   );
 }
 
+type EnvFilter = "all" | "prod" | "staging" | "dev";
+
+function FilterButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-1.5 py-0.5 rounded-sm text-[11px] font-medium border transition-colors ${
+        active
+          ? "bg-primary/10 text-primary border-primary/30"
+          : "bg-transparent text-muted-foreground border-border hover:bg-muted/60 hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function BudgetSummaryWidget({
   apps,
   isFetching,
@@ -334,12 +360,21 @@ function BudgetSummaryWidget({
   const { setScope } = useScope();
   const [, navigate] = useLocation();
 
+  const [envFilter, setEnvFilter] = useState<EnvFilter>("all");
+
+  const filteredApps = useMemo(() => {
+    if (!apps) return undefined;
+    return apps.filter((a) => {
+      if (authFilter !== null && a.userAuth !== authFilter) return false;
+      if (envFilter !== "all" && a.environment !== envFilter) return false;
+      return true;
+    });
+  }, [apps, authFilter, envFilter]);
+
   function goToCost(appId: string) {
     setScope(appId);
     navigate("/cost");
   }
-
-  const filteredApps = authFilter ? apps?.filter((a) => a.userAuth === authFilter) : apps;
 
   const overCount = filteredApps?.filter((a) => a.forecastOverBudget).length ?? 0;
   const warningCount = filteredApps?.filter((a) => {
@@ -347,12 +382,31 @@ function BudgetSummaryWidget({
     return a.budget > 0 && (a.monthToDateCost / a.budget) * 100 >= 80;
   }).length ?? 0;
 
+  const isFiltered = authFilter !== null || envFilter !== "all";
+
+  const filterSummaryParts: string[] = [];
+  if (authFilter !== null) filterSummaryParts.push(authFilter.charAt(0).toUpperCase() + authFilter.slice(1));
+  if (envFilter !== "all") filterSummaryParts.push(envFilter.charAt(0).toUpperCase() + envFilter.slice(1));
+  const filterSummary = filterSummaryParts.join(" · ");
+
+  const appCount = filteredApps?.length ?? apps?.length;
+
   return (
     <div className="bg-card border border-border shadow-sm flex flex-col">
       <div className="flex items-center justify-between p-2 border-b border-border bg-card">
         <div className="flex items-center gap-2 px-2">
           <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Budget Status</h2>
+          {apps && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-muted text-muted-foreground border border-border">
+              {appCount} {appCount === 1 ? "app" : "apps"}
+            </span>
+          )}
+          {isFiltered && filterSummary && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-primary/10 text-primary border border-primary/30">
+              {filterSummary}
+            </span>
+          )}
           {overCount > 0 && (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-red-500/10 text-red-500 border border-red-500/30">
               {overCount} over forecast
@@ -363,13 +417,18 @@ function BudgetSummaryWidget({
               {warningCount} near limit
             </span>
           )}
-          {authFilter && (
-            <span className="text-[11px] text-muted-foreground">
-              — filtered by <AuthBadge userAuth={authFilter} active onClick={() => onAuthBadgeClick(authFilter)} />
-            </span>
-          )}
         </div>
-        <span className="text-[11px] text-muted-foreground pr-3">Month to date · all apps</span>
+        <span className="text-[11px] text-muted-foreground pr-3">Month to date</span>
+      </div>
+
+      <div className="flex items-center gap-3 px-4 py-1.5 border-b border-border bg-muted/20">
+        <div className="flex items-center gap-1">
+          <span className="text-[11px] text-muted-foreground font-medium mr-0.5">Env:</span>
+          <FilterButton active={envFilter === "all"} onClick={() => setEnvFilter("all")}>All</FilterButton>
+          <FilterButton active={envFilter === "prod"} onClick={() => setEnvFilter("prod")}>Prod</FilterButton>
+          <FilterButton active={envFilter === "staging"} onClick={() => setEnvFilter("staging")}>Staging</FilterButton>
+          <FilterButton active={envFilter === "dev"} onClick={() => setEnvFilter("dev")}>Dev</FilterButton>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -387,7 +446,7 @@ function BudgetSummaryWidget({
             </tr>
           </thead>
           <tbody>
-            {!apps ? (
+            {!filteredApps ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <tr key={i} className="border-b border-border last:border-0">
                   <td className="px-4 py-2.5"><Skeleton className="h-4 w-28" /></td>
@@ -400,14 +459,14 @@ function BudgetSummaryWidget({
                   <td className="px-2 py-2.5" />
                 </tr>
               ))
-            ) : filteredApps && filteredApps.length === 0 ? (
+            ) : filteredApps.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-4 py-6 text-center text-[13px] text-muted-foreground">
-                  No apps match the current filter.
+                  No apps match the active filters.
                 </td>
               </tr>
             ) : (
-              (filteredApps ?? []).map((app) => {
+              filteredApps.map((app) => {
                 const status = budgetStatus(app);
                 const pct = app.budget != null && app.budget > 0
                   ? Math.min((app.monthToDateCost / app.budget) * 100, 100)
