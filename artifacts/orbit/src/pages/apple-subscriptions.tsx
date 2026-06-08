@@ -12,6 +12,7 @@ import { CsvToolbar } from "@/components/csv-toolbar";
 import { format } from "date-fns";
 import { StaleCacheBanner } from "@/components/stale-cache-banner";
 import { AdminAccessBadge } from "@/components/admin-access-badge";
+import { DataSourceBadge } from "@/components/data-source-badge";
 
 const num = (n: number) => new Intl.NumberFormat("en-US").format(n);
 const usd = (n: number) =>
@@ -36,6 +37,17 @@ export default function AppleSubscriptions() {
     { active: 0, canceled: 0, expired: 0, mrr: 0, revenue: 0 },
   );
   const isPlaceholder = scoped.some((r) => r.dataSource === "placeholder");
+  const isLive = scoped.some((r) => r.dataSource === "live");
+  const isCached = scoped.some((r) => r.dataSource === "cached");
+  const badgeDataSource = scoped.length === 0
+    ? undefined
+    : isLive
+    ? "live"
+    : isCached
+    ? "cached"
+    : isPlaceholder
+    ? "placeholder"
+    : undefined;
 
   const staleCachedRow = useMemo(() => {
     const cached = scoped.filter((r) => r.dataSource === "cached" && !!r.dataAsOf);
@@ -70,6 +82,7 @@ export default function AppleSubscriptions() {
         subtitle="Apple App Store subscription financials and subscriber states per Kinisis iOS app."
         right={
           <div className="flex items-center gap-2">
+            <DataSourceBadge dataSource={badgeDataSource} dataAsOf={staleCachedRow?.dataAsOf} label="App Store Connect" />
             <AdminAccessBadge />
             <ScopeSelect />
           </div>
