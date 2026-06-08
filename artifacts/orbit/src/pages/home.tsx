@@ -549,7 +549,29 @@ function BudgetSummaryWidget({
                       />
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
-                      {fmt(app.monthToDateCost)}
+                      <div className="flex items-center justify-end gap-1.5">
+                        {app.costDataSource && app.costDataSource !== "mock" && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={`inline-flex items-center px-1 py-0.5 rounded-sm text-[9px] font-semibold uppercase tracking-wide border cursor-default ${
+                                  app.costDataSource === "live"
+                                    ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+                                    : "bg-amber-500/10 text-amber-500 border-amber-500/30"
+                                }`}>
+                                  {app.costDataSource}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {app.costDataSource === "live"
+                                  ? "Cost figure is from live Azure Cost Management"
+                                  : "Cost figure is from a cached DB snapshot — live Azure data unavailable"}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {fmt(app.monthToDateCost)}
+                      </div>
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
                       {app.budget != null ? fmt(app.budget) : <span className="text-muted-foreground/50">—</span>}

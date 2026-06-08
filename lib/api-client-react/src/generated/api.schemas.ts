@@ -66,6 +66,18 @@ export const AppSummaryEnvironment = {
   dev: 'dev',
 } as const;
 
+/**
+ * Indicates whether the monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values.
+ */
+export type AppSummaryCostDataSource = typeof AppSummaryCostDataSource[keyof typeof AppSummaryCostDataSource];
+
+
+export const AppSummaryCostDataSource = {
+  live: 'live',
+  cached: 'cached',
+  mock: 'mock',
+} as const;
+
 export interface AppSummary {
   id: string;
   name: string;
@@ -79,6 +91,8 @@ export interface AppSummary {
   status: Status;
   activeAlerts: number;
   monthToDateCost: number;
+  /** Indicates whether the monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values. */
+  costDataSource?: AppSummaryCostDataSource;
   /** Monthly budget cap in USD from Azure Cost Management. Only present when a budget is configured in Azure. */
   budget?: number;
   /** Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured. */
@@ -633,6 +647,18 @@ export interface Alert {
   status: AlertStatus;
 }
 
+/**
+ * Indicates whether the aggregate monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values. live = all apps live, cached = at least one app used a snapshot, mock = no live or cached data.
+ */
+export type GlobalHealthCostDataSource = typeof GlobalHealthCostDataSource[keyof typeof GlobalHealthCostDataSource];
+
+
+export const GlobalHealthCostDataSource = {
+  live: 'live',
+  cached: 'cached',
+  mock: 'mock',
+} as const;
+
 export interface GlobalHealth {
   totalApps: number;
   healthy: number;
@@ -640,6 +666,8 @@ export interface GlobalHealth {
   unhealthy: number;
   activeAlerts: number;
   monthToDateCost: number;
+  /** Indicates whether the aggregate monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values. live = all apps live, cached = at least one app used a snapshot, mock = no live or cached data. */
+  costDataSource?: GlobalHealthCostDataSource;
   currency: string;
 }
 

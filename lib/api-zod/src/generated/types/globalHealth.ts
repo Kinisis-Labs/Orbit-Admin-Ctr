@@ -5,6 +5,7 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { GlobalHealthCostDataSource } from './globalHealthCostDataSource';
 
 export interface GlobalHealth {
   totalApps: number;
@@ -13,5 +14,7 @@ export interface GlobalHealth {
   unhealthy: number;
   activeAlerts: number;
   monthToDateCost: number;
+  /** Indicates whether the aggregate monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values. live = all apps live, cached = at least one app used a snapshot, mock = no live or cached data. */
+  costDataSource?: GlobalHealthCostDataSource;
   currency: string;
 }

@@ -700,6 +700,7 @@ components:
         status: { $ref: "#/components/schemas/Status" }
         activeAlerts: { type: integer }
         monthToDateCost: { type: number }
+        costDataSource: { type: string, enum: [live, cached, mock], description: "Indicates whether the monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values." }
         budget: { type: number, description: "Monthly budget cap in USD from Azure Cost Management. Only present when a budget is configured in Azure." }
         forecast: { type: number, description: "Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured." }
         forecastOverBudget: { type: boolean, description: "True when the projected end-of-month spend exceeds the monthly budget cap." }
@@ -1115,6 +1116,7 @@ components:
         unhealthy: { type: integer }
         activeAlerts: { type: integer }
         monthToDateCost: { type: number }
+        costDataSource: { type: string, enum: [live, cached, mock], description: "Indicates whether the aggregate monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values. live = all apps live, cached = at least one app used a snapshot, mock = no live or cached data." }
         currency: { type: string }
     Deployment:
       type: object

@@ -216,6 +216,7 @@ router.get("/apps", async (_req, res) => {
         status: app.status,
         activeAlerts: liveAlerts ? liveAlerts.filter((a) => a.status === "active").length : 0,
         monthToDateCost: mtd,
+        costDataSource: costWS?.source ?? "mock",
         ...(budget !== null ? { budget } : {}),
         ...(forecast !== null ? { forecast } : {}),
         ...(forecast !== null && budget !== null ? { forecastOverBudget: forecast > budget } : {}),
@@ -647,7 +648,11 @@ router.get("/apps/:appId/alerts", async (req, res) => {
 });
 
 // --- global ---
-router.get("/global/health", (_req, res) => {
+router.get("/global/health", async (_req, res) => {
+  const [costResults] = await Promise.all([
+    Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, { billingScope: billingScope(a.id) }))),
+  ]);
+
   const totals = APPS.reduce(
     (acc, a) => {
       acc.totalApps += 1;
@@ -658,10 +663,22 @@ router.get("/global/health", (_req, res) => {
     },
     { totalApps: 0, healthy: 0, degraded: 0, unhealthy: 0 },
   );
+
+  const monthToDateCost = costResults.reduce((sum, ws) => sum + (ws?.result.monthToDate ?? 0), 0);
+
+  // Derive aggregate data source: live > cached > mock
+  const sources = costResults.map((ws) => ws?.source ?? "mock");
+  const costDataSource: "live" | "cached" | "mock" = sources.every((s) => s === "live")
+    ? "live"
+    : sources.some((s) => s === "live" || s === "cached")
+    ? "cached"
+    : "mock";
+
   const data = GetGlobalHealthResponse.parse({
     ...totals,
     activeAlerts: 0,
-    monthToDateCost: 0,
+    monthToDateCost,
+    costDataSource,
     currency: "USD",
   });
   res.json(data);

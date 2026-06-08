@@ -5,6 +5,7 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { AppSummaryCostDataSource } from './appSummaryCostDataSource';
 import type { AppSummaryEnvironment } from './appSummaryEnvironment';
 import type { AppTags } from './appTags';
 import type { Status } from './status';
@@ -23,6 +24,8 @@ export interface AppSummary {
   status: Status;
   activeAlerts: number;
   monthToDateCost: number;
+  /** Indicates whether the monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values. */
+  costDataSource?: AppSummaryCostDataSource;
   /** Monthly budget cap in USD from Azure Cost Management. Only present when a budget is configured in Azure. */
   budget?: number;
   /** Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured. */

@@ -37,6 +37,7 @@ export const ListAppsResponseItem = zod.object({
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),
+  "costDataSource": zod.enum(['live', 'cached', 'mock']).optional().describe('Indicates whether the monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values.'),
   "budget": zod.number().optional().describe('Monthly budget cap in USD from Azure Cost Management. Only present when a budget is configured in Azure.'),
   "forecast": zod.number().optional().describe('Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured.'),
   "forecastOverBudget": zod.boolean().optional().describe('True when the projected end-of-month spend exceeds the monthly budget cap.'),
@@ -68,6 +69,7 @@ export const GetAppResponse = zod.object({
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),
+  "costDataSource": zod.enum(['live', 'cached', 'mock']).optional().describe('Indicates whether the monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values.'),
   "budget": zod.number().optional().describe('Monthly budget cap in USD from Azure Cost Management. Only present when a budget is configured in Azure.'),
   "forecast": zod.number().optional().describe('Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured.'),
   "forecastOverBudget": zod.boolean().optional().describe('True when the projected end-of-month spend exceeds the monthly budget cap.'),
@@ -489,6 +491,7 @@ export const GetGlobalHealthResponse = zod.object({
   "unhealthy": zod.number(),
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),
+  "costDataSource": zod.enum(['live', 'cached', 'mock']).optional().describe('Indicates whether the aggregate monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values. live = all apps live, cached = at least one app used a snapshot, mock = no live or cached data.'),
   "currency": zod.string()
 })
 
