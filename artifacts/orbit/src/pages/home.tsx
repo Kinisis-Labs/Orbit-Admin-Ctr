@@ -564,23 +564,48 @@ function BudgetSummaryWidget({
   const appCount = filteredApps?.length ?? apps?.length;
 
   const csvHeaders = ["Application", "Environment", "Auth", "Spent MTD (USD)", "Budget (USD)", "Forecast (USD)", "Utilization %", "Status", "Budget breach"];
-  const csvRows = useMemo(() => filteredApps?.map((app) => {
-    const status = budgetStatus(app);
-    const pct = app.budget != null && app.budget > 0
-      ? Math.round(Math.min((app.monthToDateCost / app.budget) * 100, 100))
-      : null;
-    return [
-      app.name,
-      app.environment,
-      app.userAuth,
-      app.monthToDateCost.toFixed(2),
-      app.budget != null ? app.budget.toFixed(2) : "",
-      app.forecast != null ? app.forecast.toFixed(2) : "",
-      pct != null ? String(pct) : "",
-      status,
-      app.forecastOverBudget ? "Yes" : "No",
+  const csvRows = useMemo(() => {
+    if (!filteredApps) return null;
+    const appRows = filteredApps.map((app) => {
+      const status = budgetStatus(app);
+      const pct = app.budget != null && app.budget > 0
+        ? Math.round(Math.min((app.monthToDateCost / app.budget) * 100, 100))
+        : null;
+      return [
+        app.name,
+        app.environment,
+        app.userAuth,
+        app.monthToDateCost.toFixed(2),
+        app.budget != null ? app.budget.toFixed(2) : "",
+        app.forecast != null ? app.forecast.toFixed(2) : "",
+        pct != null ? String(pct) : "",
+        status,
+        app.forecastOverBudget ? "Yes" : "No",
+      ];
+    });
+
+    const unbudgetedCount = filteredApps.filter((a) => a.budget == null).length;
+    const totalRow = [
+      "Total",
+      "",
+      "",
+      totalSpentMTD.toFixed(2),
+      totalBudget > 0 ? totalBudget.toFixed(2) : "",
+      totalBudget > 0 ? totalForecast.toFixed(2) : "",
+      totalUtilizationPct != null ? String(Math.round(totalUtilizationPct)) : "",
+      totalUtilizationStatus,
+      "",
     ];
-  }) ?? null, [filteredApps]);
+
+    const rows: string[][] = [...appRows, totalRow];
+    if (unbudgetedCount > 0) {
+      rows.push([
+        `Note: ${unbudgetedCount} app${unbudgetedCount === 1 ? "" : "s"} not included in budget/forecast totals (no budget set)`,
+        "", "", "", "", "", "", "", "",
+      ]);
+    }
+    return rows;
+  }, [filteredApps, totalSpentMTD, totalBudget, totalForecast, totalUtilizationPct, totalUtilizationStatus]);
 
   const { copied, disabled: csvDisabled, handleExport, handleCopy } = useCsvExport(csvRows, csvHeaders, "app-services-budget");
 
