@@ -986,21 +986,40 @@ function BudgetSummaryWidget({
                         )}
                         <div className="flex flex-col items-end gap-0.5">
                           {fmt(app.monthToDateCost)}
-                          {filteredApps.length >= 2 && totalSpentMTD > 0 && (
-                            <span className={`text-[10px] tabular-nums flex items-center gap-1 ${app.id === topSpenderId ? "text-amber-500 font-semibold" : "text-muted-foreground"}`}>
-                              {app.id === topSpenderId && (
+                          {filteredApps.length >= 2 && totalSpentMTD > 0 && (() => {
+                            const sharePct = Math.round((app.monthToDateCost / totalSpentMTD) * 100);
+                            const isTop = app.id === topSpenderId;
+                            return (
+                              <div className="flex items-center gap-1">
+                                {isTop && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="inline-flex items-center px-1 py-0 rounded-sm bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[9px] font-semibold uppercase tracking-wide leading-4 cursor-default">top</span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Highest spend this month</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <span className="inline-flex items-center px-1 py-0 rounded-sm bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[9px] font-semibold uppercase tracking-wide leading-4 cursor-default">top</span>
+                                      <div className="flex items-center gap-1 cursor-default">
+                                        <div className="w-16 h-1 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className={`h-full rounded-full ${isTop ? "bg-amber-500" : "bg-primary/60"}`}
+                                            style={{ width: `${sharePct}%` }}
+                                          />
+                                        </div>
+                                        <span className={`text-[10px] tabular-nums ${isTop ? "text-amber-500 font-semibold" : "text-muted-foreground"}`}>{sharePct}%</span>
+                                      </div>
                                     </TooltipTrigger>
-                                    <TooltipContent>Highest spend this month</TooltipContent>
+                                    <TooltipContent>{sharePct}% of total MTD spend</TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
-                              )}
-                              {Math.round((app.monthToDateCost / totalSpentMTD) * 100)}% of total
-                            </span>
-                          )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     </td>
