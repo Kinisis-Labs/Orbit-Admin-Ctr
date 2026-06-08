@@ -666,9 +666,9 @@ export function AlertConfigTable({ appId }: Props) {
                       </TableCell>
                       <TableCell className="py-1 text-[11px] text-muted-foreground">
                         {row.updatedAt ? (
-                          <span title={row.updatedAt ?? undefined}>
-                            {formatUpdatedAt(row.updatedAt)}
-                            {row.updatedBy && <span className="ml-1 opacity-70">by {row.updatedBy}</span>}
+                          <span className="italic" title={row.updatedAt ?? undefined}>
+                            Last set by {row.updatedBy ?? "unknown"}
+                            {row.updatedAt ? ` on ${formatUpdatedAt(row.updatedAt)}` : ""}
                           </span>
                         ) : (
                           <span className="opacity-40">—</span>
