@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/auth";
 import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { useOverBudgetDays } from "@/hooks/use-over-budget-days";
 import { useInfraThresholdAlerts } from "@/hooks/use-infra-threshold-alerts";
+import { useUnacknowledgedBudgetAlerts } from "@/hooks/use-unacknowledged-budget-alerts";
 
 type Theme = "dark" | "light";
 
@@ -69,6 +70,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const { overBudgetCount } = useOverBudgetDays(canSeeCost);
   const { overThresholdCount } = useInfraThresholdAlerts();
+  const { unacknowledgedCount: unacknowledgedBudgetAlerts } = useUnacknowledgedBudgetAlerts(canSeeCost);
 
   const search = useSearch();
   const currentAppId = location.startsWith("/apps/") ? location.split("/")[2] : null;
@@ -170,7 +172,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               collapsed={navCollapsed}
               trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
               trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}
-              overBudgetCount={canSeeCost ? overBudgetCount : 0}
+              unacknowledgedBudgetAlerts={canSeeCost ? unacknowledgedBudgetAlerts : 0}
             />
             <NavItem
               href="/play-subscriptions"
@@ -259,6 +261,7 @@ function NavItem({
   trailingTitle,
   overBudgetCount = 0,
   alertCount = 0,
+  unacknowledgedBudgetAlerts = 0,
 }: {
   href: string;
   icon: React.ReactNode;
@@ -269,18 +272,28 @@ function NavItem({
   trailingTitle?: string;
   overBudgetCount?: number;
   alertCount?: number;
+  unacknowledgedBudgetAlerts?: number;
 }) {
   const hasBudgetAlert = overBudgetCount > 0;
   const hasInfraAlert = alertCount > 0;
-  const hasAlert = hasBudgetAlert || hasInfraAlert;
+  const hasUnacknowledged = unacknowledgedBudgetAlerts > 0;
+  const hasAlert = hasBudgetAlert || hasInfraAlert || hasUnacknowledged;
 
-  const badgeCount = hasBudgetAlert ? overBudgetCount : alertCount;
-  const collapsedTitle = hasBudgetAlert
+  const badgeCount = hasUnacknowledged
+    ? unacknowledgedBudgetAlerts
+    : hasBudgetAlert
+    ? overBudgetCount
+    : alertCount;
+  const collapsedTitle = hasUnacknowledged
+    ? `${label} — ${unacknowledgedBudgetAlerts} unacknowledged budget ${unacknowledgedBudgetAlerts === 1 ? "alert" : "alerts"}`
+    : hasBudgetAlert
     ? `${label} — ${overBudgetCount} over-budget ${overBudgetCount === 1 ? "app" : "apps"}`
     : hasInfraAlert
     ? `${label} — ${alertCount} ${alertCount === 1 ? "app" : "apps"} over infra threshold`
     : label;
-  const badgeTitle = hasBudgetAlert
+  const badgeTitle = hasUnacknowledged
+    ? `${unacknowledgedBudgetAlerts} unacknowledged budget ${unacknowledgedBudgetAlerts === 1 ? "alert" : "alerts"}`
+    : hasBudgetAlert
     ? `${overBudgetCount} over-budget ${overBudgetCount === 1 ? "app" : "apps"} in the current window`
     : `${alertCount} ${alertCount === 1 ? "app" : "apps"} currently over infra threshold`;
 
