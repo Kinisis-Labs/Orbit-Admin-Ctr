@@ -847,7 +847,14 @@ function BudgetSummaryWidget({
                             </Tooltip>
                           </TooltipProvider>
                         )}
-                        {fmt(app.monthToDateCost)}
+                        <div className="flex flex-col items-end gap-0.5">
+                          {fmt(app.monthToDateCost)}
+                          {filteredApps.length >= 2 && totalSpentMTD > 0 && (
+                            <span className="text-[10px] text-muted-foreground tabular-nums">
+                              {Math.round((app.monthToDateCost / totalSpentMTD) * 100)}% of total
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
