@@ -139,6 +139,12 @@ export async function fetchMonthToDateCost(
   app: AppRecord,
   { bypassCache = false, billingScope = "rg" }: { bypassCache?: boolean; billingScope?: "rg" | "subscription" } = {},
 ): Promise<CostResult | null> {
+  // Evict before the configuration gate so a force-refresh always clears the
+  // stale entry, even when Azure is temporarily unconfigured.
+  if (bypassCache) {
+    _costCache.delete(app.id);
+  }
+
   if (!isAzureConfigured()) return null;
 
   // Return cached result if still fresh.

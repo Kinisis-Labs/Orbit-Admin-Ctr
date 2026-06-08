@@ -83,6 +83,12 @@ export async function fetchBudgetForApp(
   app: AppRecord,
   { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<BudgetResult | null> {
+  // Evict before the configuration gate so a force-refresh always clears the
+  // stale entry, even when Azure is temporarily unconfigured.
+  if (bypassCache) {
+    _budgetCache.delete(app.id);
+  }
+
   if (!isAzureConfigured()) return null;
 
   if (!bypassCache) {

@@ -522,6 +522,11 @@ router.get("/apps/:appId/cost", async (req, res) => {
     res.status(404).json({ error: "App not found" });
     return;
   }
+  // bypassCache is a no-op in mock mode (Azure unconfigured) because
+  // fetchMonthToDateCost and fetchBudgetForApp short-circuit to null before
+  // touching the in-process cache.  In live mode it evicts the cached cost and
+  // budget entries so force-refresh always pulls fresh Azure Cost Management
+  // data rather than serving a stale 30-min (cost) or 1-hour (budget) snapshot.
   const bypassCache = req.query["refresh"] === "true";
   const [costWS, budgetWithSource, rev] = await Promise.all([
     fetchMonthToDateCostWithFallback(app, { bypassCache, billingScope: billingScope(app.id) }),
