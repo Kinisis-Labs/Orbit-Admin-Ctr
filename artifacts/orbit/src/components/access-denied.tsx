@@ -1,6 +1,7 @@
 import { ShieldAlert, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, type EntraGroup } from "@/lib/auth";
+import { ADMIN_GROUP } from "@/lib/auth-groups";
 
 export function AccessDenied({
   resource,
@@ -82,7 +83,7 @@ export function RequireGroup({
   children: React.ReactNode;
 }) {
   const { hasGroup } = useAuth();
-  if (!hasGroup(group.id)) {
+  if (!hasGroup(group.id) && !hasGroup(ADMIN_GROUP.id)) {
     return <AccessDenied resource={resource} requiredGroup={group} />;
   }
   return <>{children}</>;

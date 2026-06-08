@@ -9,6 +9,7 @@ import {
   getGetGlobalCostSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { useQueries } from "@tanstack/react-query";
+import { AdminAccessBadge } from "@/components/admin-access-badge";
 import { useApps } from "@/hooks/use-apps";
 import { useBudgetThreshold } from "@/lib/spend-threshold";
 import { BudgetAlertHistory } from "@/components/budget-alert-history";
@@ -180,7 +181,10 @@ export default function Cost() {
             {isGlobal ? "Cost and revenue across all tracked applications" : `Scoped to ${selectedApp?.name ?? "application"}`}
           </p>
         </div>
-        <ScopeSelect allowGlobal />
+        <div className="flex items-center gap-2">
+          <AdminAccessBadge />
+          <ScopeSelect allowGlobal />
+        </div>
       </div>
 
       {isGlobal ? (

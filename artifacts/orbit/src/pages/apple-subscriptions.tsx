@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { format } from "date-fns";
 import { StaleCacheBanner } from "@/components/stale-cache-banner";
+import { AdminAccessBadge } from "@/components/admin-access-badge";
 
 const num = (n: number) => new Intl.NumberFormat("en-US").format(n);
 const usd = (n: number) =>
@@ -67,7 +68,12 @@ export default function AppleSubscriptions() {
       <PageHeader
         title="App Store subscriptions"
         subtitle="Apple App Store subscription financials and subscriber states per Kinisis iOS app."
-        right={<ScopeSelect />}
+        right={
+          <div className="flex items-center gap-2">
+            <AdminAccessBadge />
+            <ScopeSelect />
+          </div>
+        }
       />
 
       <AppleBanner placeholder={isPlaceholder} dataUpdatedAt={dataUpdatedAt} />

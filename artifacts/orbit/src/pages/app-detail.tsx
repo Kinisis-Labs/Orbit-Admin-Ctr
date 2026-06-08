@@ -51,7 +51,8 @@ import { Tooltip as UITooltip, TooltipTrigger, TooltipContent, TooltipProvider }
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/lib/auth";
-import { COST_READER_GROUP } from "@/lib/auth-groups";
+import { COST_READER_GROUP, ADMIN_GROUP } from "@/lib/auth-groups";
+import { AdminAccessBadge } from "@/components/admin-access-badge";
 import { useScope } from "@/lib/scope-context";
 import { AccessDenied } from "@/components/access-denied";
 import { useToast } from "@/hooks/use-toast";
@@ -73,7 +74,7 @@ export default function AppDetail() {
   const params = useParams();
   const appId = params.appId!;
   const { hasGroup } = useAuth();
-  const canSeeCost = hasGroup(COST_READER_GROUP.id);
+  const canSeeCost = hasGroup(COST_READER_GROUP.id) || hasGroup(ADMIN_GROUP.id);
   const [location, setLocation] = useLocation();
   const search = useSearch();
   const activeTab = parseTabParam(search);
@@ -1053,7 +1054,10 @@ function CostTab({ appId }: { appId: string }) {
         </div>
       )}
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-muted-foreground font-medium">Month-to-date cost breakdown</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground font-medium">Month-to-date cost breakdown</span>
+          <AdminAccessBadge />
+        </div>
         <div className="flex items-center gap-2">
           {data.dataSource === "live" && (
             <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
@@ -1274,6 +1278,7 @@ function LedgerTab({ appId }: { appId: string }) {
         </div>
       )}
     <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
+      <AdminAccessBadge />
       {/* Summary tiles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">

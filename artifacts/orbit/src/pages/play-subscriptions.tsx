@@ -10,6 +10,7 @@ import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { StaleCacheBanner } from "@/components/stale-cache-banner";
+import { AdminAccessBadge } from "@/components/admin-access-badge";
 
 const num = (n: number) => new Intl.NumberFormat("en-US").format(n);
 const usd = (n: number) =>
@@ -66,7 +67,12 @@ export default function PlaySubscriptions() {
       <PageHeader
         title="Play subscriptions"
         subtitle="Google Play subscription financials and subscriber states per Kinisis Android app."
-        right={<ScopeSelect />}
+        right={
+          <div className="flex items-center gap-2">
+            <AdminAccessBadge />
+            <ScopeSelect />
+          </div>
+        }
       />
 
       <PlayBanner placeholder={isPlaceholder} dataUpdatedAt={dataUpdatedAt} />
