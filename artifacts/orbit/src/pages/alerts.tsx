@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { Filter, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScopeSelect } from "@/lib/scope";
@@ -34,6 +34,7 @@ export default function Alerts() {
   const { toast } = useToast();
   const { scope } = useScope();
   const [filter, setFilter] = useState("");
+  const [thresholdsOpen, setThresholdsOpen] = useState(false);
   const { mode } = useAuth();
 
   const { data: apps } = useApps();
@@ -178,7 +179,28 @@ export default function Alerts() {
         </div>
       </div>
       <InfraAlertHistory appId={scope} />
-      <AlertConfigTable appId={scope} />
+      {selectedApp ? (
+        <AlertConfigTable appId={scope} />
+      ) : (
+        <div className="bg-card border border-border shadow-sm flex flex-col">
+          <button
+            type="button"
+            onClick={() => setThresholdsOpen((o) => !o)}
+            className="flex items-center gap-2 p-3 text-left hover:bg-muted/40 transition-colors"
+          >
+            {thresholdsOpen ? (
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            )}
+            <span className="text-sm font-semibold">Infra alert thresholds — all apps</span>
+            <span className="ml-1 text-[11px] text-muted-foreground font-normal">
+              {thresholdsOpen ? "click to collapse" : "click to expand"}
+            </span>
+          </button>
+          {thresholdsOpen && <AlertConfigTable appId={scope} />}
+        </div>
+      )}
     </div>
   );
 }
