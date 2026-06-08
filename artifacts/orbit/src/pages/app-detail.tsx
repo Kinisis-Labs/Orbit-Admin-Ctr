@@ -451,8 +451,9 @@ function MomTrendBadge({ momChangePct }: { momChangePct: number | null }) {
 }
 
 function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: () => void }) {
-  const { data, isLoading, isFetching } = useAppCost(appId);
+  const { data, isLoading, isFetching, dataUpdatedAt } = useAppCost(appId);
   const budgetThreshold = useBudgetThreshold(appId);
+  const updatedLabel = useUpdatedAgo(dataUpdatedAt);
 
   if (isLoading) return <Skeleton className="h-20 w-full" />;
   if (!data) return null;
@@ -486,6 +487,11 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <h3 className="font-semibold text-sm">Cost snapshot</h3>
+          {updatedLabel && (
+            <span className="text-[11px] text-muted-foreground">
+              {isFetching ? "Refreshing…" : `Updated ${updatedLabel}`}
+            </span>
+          )}
           <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
             View details <ArrowRight className="h-3 w-3" />
           </span>
