@@ -5,6 +5,7 @@ import {
   useGetAppThresholds,
   useUpdateAppThresholds,
   useListAppThresholdsLog,
+  listAppThresholdsLog,
   getListSlosQueryKey,
 } from "@workspace/api-client-react";
 import type { AppThresholdsLogEntry } from "@workspace/api-client-react";
@@ -22,7 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi, WifiOff, History, Info, Search, X } from "lucide-react";
+import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi, WifiOff, History, Info, Search, X, Download } from "lucide-react";
 import {
   AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -204,6 +205,7 @@ function ThresholdHistoryContent({ appId }: { appId: string }) {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data, isLoading, isFetching } = useListAppThresholdsLog(
     appId,
@@ -243,6 +245,51 @@ function ThresholdHistoryContent({ appId }: { appId: string }) {
 
   const fmt = (v: number | null | undefined) =>
     v != null ? `${v}%` : <span className="text-muted-foreground italic">—</span>;
+
+  const fmtCsv = (v: number | null | undefined) => (v != null ? `${v}` : "");
+
+  function triggerDownload(entries: AppThresholdsLogEntry[]) {
+    const headers = ["When", "Changed by", "CPU before", "CPU after", "Memory before", "Memory after"];
+    const rows = entries.map((entry) => [
+      format(new Date(entry.changedAt), "yyyy-MM-dd HH:mm:ss"),
+      entry.changedBy,
+      fmtCsv(entry.oldCpuThreshold),
+      fmtCsv(entry.newCpuThreshold),
+      fmtCsv(entry.oldMemoryThreshold),
+      fmtCsv(entry.newMemoryThreshold),
+    ]);
+    const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const csv = [headers, ...rows].map((r) => r.map(escape).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `threshold-history-${appId}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function downloadCsv() {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      // Fetch all pages to guarantee a complete export
+      const accumulated: AppThresholdsLogEntry[] = [...allItems];
+      const pageSize = HISTORY_PAGE_SIZE;
+      let nextOffset = allItems.length;
+      // total is known once at least one page has loaded
+      const knownTotal = data?.total ?? 0;
+      while (accumulated.length < knownTotal) {
+        const page = await listAppThresholdsLog(appId, { limit: pageSize, offset: nextOffset });
+        if (!page.items || page.items.length === 0) break;
+        accumulated.push(...page.items);
+        nextOffset += page.items.length;
+      }
+      triggerDownload(accumulated);
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   if (isLoading && allItems.length === 0) {
     return (
@@ -325,6 +372,20 @@ function ThresholdHistoryContent({ appId }: { appId: string }) {
             Clear
           </Button>
         )}
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-[12px] px-2 ml-auto shrink-0"
+          onClick={downloadCsv}
+          disabled={allItems.length === 0 || isExporting}
+          title="Download complete history as CSV"
+        >
+          {isExporting ? (
+            <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Exporting…</>
+          ) : (
+            <><Download className="h-3 w-3 mr-1" />Download CSV</>
+          )}
+        </Button>
       </div>
       {filteredItems.length === 0 ? (
         <p className="text-[13px] text-muted-foreground px-2 py-6 text-center">
