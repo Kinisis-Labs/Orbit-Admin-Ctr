@@ -703,7 +703,7 @@ export default function Health() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Health & SLOs" subtitle="Service-level objectives and error budget burn across all applications" right={<DataSourceBadge dataSource={dataSource} dataAsOf={dataAsOf} />} />
+      <PageHeader title="Health & SLOs" subtitle="Service-level objectives and error budget burn across all applications" right={<DataSourceBadge dataSource={dataSource} dataAsOf={dataAsOf} staleThresholdMs={5 * 60 * 1000} />} />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         <Tile title="Meeting 99.9% uptime" value={isLoading ? null : `${meetingUptime} / ${slos?.length ?? 0}`} sub="Across tracked applications" />
@@ -717,7 +717,7 @@ export default function Health() {
       <div className="bg-card border border-border shadow-sm">
         <div className="p-2 border-b border-border flex items-center justify-between">
           <h2 className="text-sm font-semibold px-2">Per-application SLOs</h2>
-          {!isLoading && <div className="pr-2"><DataSourceBadge dataSource={dataSource} dataAsOf={dataAsOf} /></div>}
+          {!isLoading && <div className="pr-2"><DataSourceBadge dataSource={dataSource} dataAsOf={dataAsOf} staleThresholdMs={5 * 60 * 1000} /></div>}
         </div>
         {isLoading ? (
           <div className="p-4 space-y-2"><Skeleton className="h-8" /><Skeleton className="h-8" /></div>

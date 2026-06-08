@@ -21,7 +21,7 @@ export function DemoBadge({ className }: { className?: string }) {
   );
 }
 
-const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 function fmtDataAsOf(iso: string | undefined | null): string | null {
   if (!iso) return null;
@@ -42,19 +42,21 @@ interface DataSourceBadgeProps {
   dataSource: "live" | "cached" | "mock" | "placeholder" | "none" | undefined;
   dataAsOf?: string | null;
   label?: string;
+  staleThresholdMs?: number;
 }
 
 export function DataSourceBadge({
   dataSource,
   dataAsOf,
   label = "Azure Monitor",
+  staleThresholdMs = DEFAULT_STALE_THRESHOLD_MS,
 }: DataSourceBadgeProps) {
   if (!dataSource) return null;
 
   if (dataSource === "live") {
     const asOf = fmtDataAsOf(dataAsOf);
     const isStale = dataAsOf
-      ? Date.now() - new Date(dataAsOf).getTime() > STALE_THRESHOLD_MS
+      ? Date.now() - new Date(dataAsOf).getTime() > staleThresholdMs
       : false;
     return (
       <span className="inline-flex items-center gap-1.5 select-none flex-wrap">
