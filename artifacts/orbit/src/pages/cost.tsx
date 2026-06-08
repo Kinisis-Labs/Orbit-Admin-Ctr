@@ -497,8 +497,6 @@ function AppCost() {
       return false;
     }
   });
-  const [copiedDaily, setCopiedDaily] = useState(false);
-
   useEffect(() => {
     try {
       setShowDailyTable(localStorage.getItem(LS_DAILY_TABLE_KEY(scope)) === "1");
@@ -612,63 +610,23 @@ function AppCost() {
     navigate(qs ? `/cost?${qs}` : "/cost", { replace: true });
   }
 
-  function buildDailyCsv() {
+  const dailyCsvHeaders = ["Date", "Spend (USD)", "vs Last Week (%)"];
+  const dailyCsvRows = useMemo(() => {
     if (!data?.daily?.length) return null;
-    const headers = ["Date", "Spend (USD)", "vs Last Week (%)"];
-    const rows = [...data.daily].reverse().map((day) => {
+    return [...data.daily].reverse().map((day) => {
       const dateLabel = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(day.timestamp as string));
       const pct = day.vsLastWeek;
       const pctLabel = pct == null ? "" : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
       return [dateLabel, day.value.toFixed(2), pctLabel];
     });
-    return [headers, ...rows]
-      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-  }
+  }, [data?.daily]);
 
-  function handleDailyExport() {
-    const csv = buildDailyCsv();
-    if (!csv) return;
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `daily-spend-${selectedApp?.name ?? scope}-${new Date().toISOString().slice(0, 10)}.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function handleDailyCopy() {
-    const csv = buildDailyCsv();
-    if (!csv) return;
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(csv).then(() => {
-        setCopiedDaily(true);
-        setTimeout(() => setCopiedDaily(false), 2000);
-      }).catch(() => fallbackCopyDaily(csv));
-    } else {
-      fallbackCopyDaily(csv);
-    }
-  }
-
-  function fallbackCopyDaily(text: string) {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    try {
-      document.execCommand("copy");
-      setCopiedDaily(true);
-      setTimeout(() => setCopiedDaily(false), 2000);
-    } catch {
-      // clipboard unavailable — silently skip
-    } finally {
-      document.body.removeChild(ta);
-    }
-  }
+  const {
+    copied: copiedDaily,
+    disabled: dailyCsvDisabled,
+    handleExport: handleDailyExport,
+    handleCopy: handleDailyCopy,
+  } = useCsvExport(dailyCsvRows, dailyCsvHeaders, `daily-spend-${selectedApp?.name ?? scope}`);
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -817,7 +775,7 @@ function AppCost() {
                 <CsvToolbar
                   handleExport={handleDailyExport}
                   handleCopy={handleDailyCopy}
-                  disabled={false}
+                  disabled={dailyCsvDisabled}
                   copied={copiedDaily}
                 />
               )}
