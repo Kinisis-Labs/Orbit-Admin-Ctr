@@ -165,3 +165,15 @@ jobs:
 
             echo "Timed out after ~4 minutes waiting for revision $REVISION to reach Running state."
             exit 1
+
+      - name: Smoke-test /api/healthz
+        run: |
+          echo "Sending smoke-test request to https://orbit.kinisislabs.com/api/healthz"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://orbit.kinisislabs.com/api/healthz)
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
+            echo "Smoke test passed ✓"
+          else
+            echo "Smoke test FAILED — /api/healthz returned HTTP $STATUS"
+            exit 1
+          fi
