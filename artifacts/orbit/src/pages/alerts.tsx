@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { useAppAlerts } from "@/hooks/use-app-alerts";
 import { useApps } from "@/hooks/use-apps";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight, Filter, Search } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScopeSelect } from "@/lib/scope";
@@ -20,6 +21,7 @@ import { InfraAlertHistory } from "@/components/infra-alert-history";
 import { AlertConfigTable } from "@/components/alert-config-table";
 import { ViolationLogPanel } from "@/components/violation-log-panel";
 import { markAllViolationsSeen } from "@/hooks/use-violation-log";
+import { useActiveInfraViolations } from "@/hooks/use-active-infra-violations";
 
 type AlertRow = {
   id: string;
@@ -57,6 +59,7 @@ export default function Alerts() {
     setThresholdsOpen(open);
   };
   const { mode } = useAuth();
+  const activeViolations = useActiveInfraViolations();
 
   const { data: apps } = useApps();
   const selectedApp = apps?.find((a) => a.id === scope);
@@ -105,6 +108,72 @@ export default function Alerts() {
         </div>
         <ScopeSelect />
       </div>
+
+      {activeViolations.length > 0 && (
+        <div className="border border-destructive/40 bg-destructive/8 rounded-sm shadow-sm overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-destructive/30 bg-destructive/12">
+            <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+            <h2 className="text-sm font-semibold text-destructive">
+              Active infra violations
+            </h2>
+            <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-white text-[10px] font-bold leading-none">
+              {activeViolations.length}
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <Table className="text-[13px]">
+              <TableHeader className="bg-destructive/6 border-b border-destructive/20">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-8 font-semibold text-foreground w-[180px]">App</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground w-[90px]">Metric</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground">Current vs threshold</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground w-[120px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {activeViolations.map((v) => {
+                  const over = v.value - v.threshold;
+                  const pct = v.threshold > 0 ? (over / v.threshold) * 100 : 0;
+                  const pillColor = pct > 25
+                    ? "border-destructive/40 bg-destructive/10 text-destructive"
+                    : "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400";
+                  const metricLabel = v.metric === "cpu" ? "CPU" : "Memory";
+                  const metricColor = v.metric === "cpu"
+                    ? "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                    : "border-purple-500/40 bg-purple-500/10 text-purple-600 dark:text-purple-400";
+                  return (
+                    <TableRow
+                      key={`${v.appId}:${v.metric}`}
+                      className="h-9 border-b border-destructive/15 last:border-0 hover:bg-destructive/5"
+                    >
+                      <TableCell className="py-1 font-medium">{v.appName}</TableCell>
+                      <TableCell className="py-1">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border text-[10px] font-semibold ${metricColor}`}>
+                          {metricLabel}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-1">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border text-[10px] font-semibold ${pillColor}`}>
+                          {v.value.toFixed(1)}%&nbsp;
+                          <span className="opacity-70">(+{over.toFixed(1)}% over {v.threshold.toFixed(0)}%)</span>
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-1 text-right">
+                        <Link
+                          href={`/apps/${v.appId}?tab=infrastructure`}
+                          className="text-[11px] text-primary hover:underline whitespace-nowrap"
+                        >
+                          View infrastructure →
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
 
       <div className="bg-card border border-border shadow-sm flex flex-col">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2 border-b border-border bg-card gap-2">

@@ -114,16 +114,20 @@ function getLatestValue(
   return sorted[0].value;
 }
 
-export interface InfraViolation {
+export interface ActiveViolation {
+  appId: string;
   appName: string;
-  metric: "CPU" | "Memory";
-  valuePct: number;
-  thresholdPct: number;
+  metric: "cpu" | "mem";
+  value: number;
+  threshold: number;
 }
+
+export type InfraViolation = ActiveViolation;
 
 export function useInfraThresholdAlerts(): {
   overThresholdCount: number;
   unseenViolationCount: number;
+  activeViolations: ActiveViolation[];
   violations: InfraViolation[];
 } {
   const { data: configs } = useListAlertConfig();
@@ -250,7 +254,7 @@ export function useInfraThresholdAlerts(): {
     dismissToast = dismiss;
   }, [configs, infraQueries]);
 
-  const violations: InfraViolation[] = [];
+  const activeViolations: ActiveViolation[] = [];
   let overThresholdCount = 0;
 
   (configs ?? []).forEach((row, i) => {
@@ -266,12 +270,24 @@ export function useInfraThresholdAlerts(): {
     if (cpuOver || memOver) overThresholdCount += 1;
 
     if (cpuOver && cpu !== null) {
-      violations.push({ appName: row.appName, metric: "CPU", valuePct: cpu, thresholdPct: row.cpuThresholdPct });
+      activeViolations.push({
+        appId: row.appId,
+        appName: row.appName,
+        metric: "cpu",
+        value: cpu,
+        threshold: row.cpuThresholdPct,
+      });
     }
     if (memOver && mem !== null) {
-      violations.push({ appName: row.appName, metric: "Memory", valuePct: mem, thresholdPct: row.memoryThresholdPct });
+      activeViolations.push({
+        appId: row.appId,
+        appName: row.appName,
+        metric: "mem",
+        value: mem,
+        threshold: row.memoryThresholdPct,
+      });
     }
   });
 
-  return { overThresholdCount, unseenViolationCount: unseenCount, violations };
+  return { overThresholdCount, unseenViolationCount: unseenCount, activeViolations, violations: activeViolations };
 }
