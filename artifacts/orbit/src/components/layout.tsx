@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/auth";
 import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { useOverBudgetDays } from "@/hooks/use-over-budget-days";
 import { useInfraThresholdAlerts } from "@/hooks/use-infra-threshold-alerts";
+import type { InfraViolation } from "@/hooks/use-infra-threshold-alerts";
 import { useUnacknowledgedBudgetAlerts } from "@/hooks/use-unacknowledged-budget-alerts";
 
 type Theme = "dark" | "light";
@@ -69,7 +70,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   const { overBudgetCount } = useOverBudgetDays(canSeeCost);
-  const { overThresholdCount, unseenViolationCount } = useInfraThresholdAlerts();
+  const { overThresholdCount, unseenViolationCount, violations: infraViolations } = useInfraThresholdAlerts();
   const { unacknowledgedCount: unacknowledgedBudgetAlerts } = useUnacknowledgedBudgetAlerts(canSeeCost);
 
   const search = useSearch();
@@ -153,7 +154,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <nav className="flex flex-col gap-0.5 w-full px-1">
             <NavGroup label="Monitoring" collapsed={navCollapsed} />
             <NavItem href="/" icon={<Home className="h-[18px] w-[18px]" />} label="Home" active={location === "/"} collapsed={navCollapsed} />
-            <NavItem href="/alerts" icon={<Bell className="h-[18px] w-[18px]" />} label="Alerts" active={location === "/alerts"} collapsed={navCollapsed} alertCount={overThresholdCount} unseenViolationCount={unseenViolationCount} />
+            <NavItem href="/alerts" icon={<Bell className="h-[18px] w-[18px]" />} label="Alerts" active={location === "/alerts"} collapsed={navCollapsed} alertCount={overThresholdCount} unseenViolationCount={unseenViolationCount} infraViolations={infraViolations} />
             <NavItem href="/deployments" icon={<Rocket className="h-[18px] w-[18px]" />} label="Deployments" active={location === "/deployments"} collapsed={navCollapsed} />
             <NavItem href="/incidents" icon={<AlertOctagon className="h-[18px] w-[18px]" />} label="Incidents" active={location === "/incidents"} collapsed={navCollapsed} />
             <NavItem href="/activity" icon={<Activity className="h-[18px] w-[18px]" />} label="Activity log" active={location === "/activity"} collapsed={navCollapsed} />
@@ -251,6 +252,18 @@ function NavGroup({ label, collapsed }: { label: string; collapsed: boolean }) {
   );
 }
 
+const MAX_VIOLATION_LINES = 5;
+
+function buildViolationTooltip(violations: InfraViolation[]): string {
+  const shown = violations.slice(0, MAX_VIOLATION_LINES);
+  const rest = violations.length - shown.length;
+  const lines = shown.map(
+    (v) => `${v.appName} — ${v.metric} ${v.valuePct.toFixed(1)}%`
+  );
+  if (rest > 0) lines.push(`+${rest} more`);
+  return lines.join("\n");
+}
+
 function NavItem({
   href,
   icon,
@@ -263,6 +276,7 @@ function NavItem({
   alertCount = 0,
   unseenViolationCount = 0,
   unacknowledgedBudgetAlerts = 0,
+  infraViolations = [],
 }: {
   href: string;
   icon: React.ReactNode;
@@ -275,6 +289,7 @@ function NavItem({
   alertCount?: number;
   unseenViolationCount?: number;
   unacknowledgedBudgetAlerts?: number;
+  infraViolations?: InfraViolation[];
 }) {
   const hasBudgetAlert = overBudgetCount > 0;
   const hasInfraAlert = alertCount > 0;
@@ -289,10 +304,18 @@ function NavItem({
     : hasInfraAlert
     ? alertCount
     : unseenViolationCount;
+
+  const infraDetail =
+    hasInfraAlert && infraViolations.length > 0
+      ? buildViolationTooltip(infraViolations)
+      : null;
+
   const collapsedTitle = hasUnacknowledged
     ? `${label} — ${unacknowledgedBudgetAlerts} unacknowledged budget ${unacknowledgedBudgetAlerts === 1 ? "alert" : "alerts"}`
     : hasBudgetAlert
     ? `${label} — ${overBudgetCount} over-budget ${overBudgetCount === 1 ? "app" : "apps"}`
+    : infraDetail
+    ? `${label} — ${infraDetail}`
     : hasInfraAlert
     ? `${label} — ${alertCount} ${alertCount === 1 ? "app" : "apps"} over infra threshold`
     : hasUnseenViolation
@@ -302,6 +325,8 @@ function NavItem({
     ? `${unacknowledgedBudgetAlerts} unacknowledged budget ${unacknowledgedBudgetAlerts === 1 ? "alert" : "alerts"}`
     : hasBudgetAlert
     ? `${overBudgetCount} over-budget ${overBudgetCount === 1 ? "app" : "apps"} in the current window`
+    : infraDetail
+    ? infraDetail
     : hasInfraAlert
     ? `${alertCount} ${alertCount === 1 ? "app" : "apps"} currently over infra threshold`
     : `${unseenViolationCount} unseen threshold ${unseenViolationCount === 1 ? "violation" : "violations"}`;
