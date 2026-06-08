@@ -1,11 +1,12 @@
 import { getListAppsQueryKey } from "@workspace/api-client-react";
+import type { AppSummary } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
 import { useApp } from "@/hooks/use-app";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
-import { ChevronRight, Bell } from "lucide-react";
-import { Link } from "wouter";
+import { ChevronRight, Bell, TrendingUp } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
@@ -15,6 +16,7 @@ import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
 import { useAuth } from "@/lib/auth";
 import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
 import { formatDistanceToNow } from "date-fns";
 
 function readLastTab(): string {
@@ -25,6 +27,9 @@ function readLastTab(): string {
     return "overview";
   }
 }
+
+const fmt = (amount: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(amount);
 
 export default function Home() {
   const { scope } = useScope();
@@ -79,6 +84,10 @@ export default function Home() {
           }
         />
       </div>
+
+      {canSeeCost && (
+        <BudgetSummaryWidget apps={apps} isFetching={appsFetching} recentAlerts={recentAlerts} />
+      )}
 
       <div className="bg-card border border-border shadow-sm flex flex-col">
         <div className="flex items-center justify-between p-2 border-b border-border bg-card">
@@ -164,6 +173,197 @@ export default function Home() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+type BudgetStatus = "over" | "warning" | "ok" | "none";
+
+function budgetStatus(app: AppSummary): BudgetStatus {
+  if (app.budget == null) return "none";
+  if (app.forecastOverBudget) return "over";
+  const pct = app.budget > 0 ? (app.monthToDateCost / app.budget) * 100 : 0;
+  if (pct >= 80) return "warning";
+  return "ok";
+}
+
+function StatusPill({ status }: { status: BudgetStatus }) {
+  if (status === "over") {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wide bg-red-500/10 text-red-500 border border-red-500/30">
+        Over forecast
+      </span>
+    );
+  }
+  if (status === "warning") {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wide bg-amber-500/10 text-amber-500 border border-amber-500/30">
+        ≥ 80%
+      </span>
+    );
+  }
+  if (status === "ok") {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-semibold uppercase tracking-wide bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">
+        On track
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium uppercase tracking-wide bg-muted text-muted-foreground border border-border">
+      No budget
+    </span>
+  );
+}
+
+function BudgetSummaryWidget({
+  apps,
+  isFetching,
+  recentAlerts,
+}: {
+  apps: AppSummary[] | undefined;
+  isFetching: boolean;
+  recentAlerts: Map<string, Date>;
+}) {
+  const { setScope } = useScope();
+  const [, navigate] = useLocation();
+
+  function goToCost(appId: string) {
+    setScope(appId);
+    navigate("/cost");
+  }
+
+  const overCount = apps?.filter((a) => a.forecastOverBudget).length ?? 0;
+  const warningCount = apps?.filter((a) => {
+    if (a.forecastOverBudget || a.budget == null) return false;
+    return a.budget > 0 && (a.monthToDateCost / a.budget) * 100 >= 80;
+  }).length ?? 0;
+
+  return (
+    <div className="bg-card border border-border shadow-sm flex flex-col">
+      <div className="flex items-center justify-between p-2 border-b border-border bg-card">
+        <div className="flex items-center gap-2 px-2">
+          <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+          <h2 className="text-sm font-semibold">Budget Status</h2>
+          {overCount > 0 && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-red-500/10 text-red-500 border border-red-500/30">
+              {overCount} over forecast
+            </span>
+          )}
+          {overCount === 0 && warningCount > 0 && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/30">
+              {warningCount} near limit
+            </span>
+          )}
+        </div>
+        <span className="text-[11px] text-muted-foreground pr-3">Month to date · all apps</span>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr className="border-b border-border bg-muted/30">
+              <th className="text-left font-medium text-muted-foreground px-4 py-2 w-[180px]">Application</th>
+              <th className="text-right font-medium text-muted-foreground px-3 py-2">Spent MTD</th>
+              <th className="text-right font-medium text-muted-foreground px-3 py-2">Budget</th>
+              <th className="text-right font-medium text-muted-foreground px-3 py-2">Forecast</th>
+              <th className="text-left font-medium text-muted-foreground px-3 py-2 w-[120px]">Utilization</th>
+              <th className="text-left font-medium text-muted-foreground px-3 py-2">Status</th>
+              <th className="w-8 px-2 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {!apps ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <tr key={i} className="border-b border-border last:border-0">
+                  <td className="px-4 py-2.5"><Skeleton className="h-4 w-28" /></td>
+                  <td className="px-3 py-2.5 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
+                  <td className="px-3 py-2.5 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
+                  <td className="px-3 py-2.5 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
+                  <td className="px-3 py-2.5"><Skeleton className="h-3 w-full" /></td>
+                  <td className="px-3 py-2.5"><Skeleton className="h-5 w-16" /></td>
+                  <td className="px-2 py-2.5" />
+                </tr>
+              ))
+            ) : (
+              apps.map((app) => {
+                const status = budgetStatus(app);
+                const pct = app.budget != null && app.budget > 0
+                  ? Math.min((app.monthToDateCost / app.budget) * 100, 100)
+                  : null;
+                const hasAlert = recentAlerts.has(app.id);
+
+                return (
+                  <tr
+                    key={app.id}
+                    className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                    onClick={() => goToCost(app.id)}
+                  >
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-foreground truncate max-w-[140px]">{app.name}</span>
+                        {hasAlert && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Bell className="h-3 w-3 text-amber-500 shrink-0" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Budget alert sent {formatDistanceToNow(recentAlerts.get(app.id)!, { addSuffix: true })}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
+                      {fmt(app.monthToDateCost)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
+                      {app.budget != null ? fmt(app.budget) : <span className="text-muted-foreground/50">—</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
+                      {app.forecast != null ? fmt(app.forecast) : <span className="text-muted-foreground/50">—</span>}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {pct !== null ? (
+                        <div className="flex items-center gap-2">
+                          <Progress
+                            value={pct}
+                            className={`h-1.5 w-20 ${
+                              status === "over"
+                                ? "[&>div]:bg-red-500"
+                                : status === "warning"
+                                ? "[&>div]:bg-amber-500"
+                                : "[&>div]:bg-emerald-500"
+                            }`}
+                          />
+                          <span className="text-[11px] text-muted-foreground tabular-nums">{Math.round(pct)}%</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/50 text-[11px]">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <StatusPill status={status} />
+                    </td>
+                    <td className="px-2 py-2.5 text-muted-foreground/40">
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {isFetching && (
+        <div className="px-4 py-1.5 border-t border-border bg-muted/20 text-[11px] text-muted-foreground flex items-center gap-1.5">
+          <RefreshCw className="h-3 w-3 animate-spin" />
+          Refreshing…
+        </div>
+      )}
     </div>
   );
 }
