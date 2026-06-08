@@ -770,8 +770,9 @@ function TelemetryTab({ appId }: { appId: string }) {
         </div>
         
         <div className="lg:col-span-1 bg-card border border-border shadow-sm flex flex-col">
-          <div className="p-3 border-b border-border bg-card">
+          <div className="p-3 border-b border-border bg-card flex justify-between items-center">
             <h2 className="text-sm font-semibold">Top Exceptions</h2>
+            <DataSourceBadge dataSource={data.dataSource} />
           </div>
           <div className="p-0">
             <Table className="text-[12px]">
