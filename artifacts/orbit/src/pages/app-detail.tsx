@@ -252,7 +252,16 @@ export default function AppDetail() {
                 <div className="flex flex-col gap-3">
                   <div className="grid grid-cols-3 gap-2">
                     <div className="text-muted-foreground font-medium">Subscription</div>
-                    <div className="col-span-2 text-primary hover:underline cursor-pointer truncate">{app.subscriptionId}</div>
+                    <div className="col-span-2 text-primary hover:underline cursor-pointer truncate">
+                      {app.subscriptionName ? (
+                        <span>
+                          <span className="font-medium">{app.subscriptionName}</span>
+                          <span className="font-mono text-[11px] text-muted-foreground ml-1.5">{app.subscriptionId}</span>
+                        </span>
+                      ) : (
+                        app.subscriptionId
+                      )}
+                    </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     <div className="text-muted-foreground font-medium">Tags</div>
