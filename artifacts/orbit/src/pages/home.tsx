@@ -770,7 +770,21 @@ function BudgetSummaryWidget({
                       )}
                     </td>
                     <td className="px-3 py-2.5">
-                      <StatusPill status={status} />
+                      <div className="flex items-center gap-1.5">
+                        {status === "over" && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex shrink-0">
+                                  <TriangleAlert className="h-3 w-3 text-amber-500" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Forecast exceeds budget cap</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        <StatusPill status={status} />
+                      </div>
                     </td>
                     <td className="px-2 py-2.5 text-muted-foreground/40">
                       <ChevronRight className="h-3.5 w-3.5" />
