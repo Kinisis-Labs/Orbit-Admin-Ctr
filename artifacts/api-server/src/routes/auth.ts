@@ -6,6 +6,48 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
+/**
+ * Fetches all group object IDs the signed-in user belongs to via the Microsoft
+ * Graph /me/memberOf endpoint. Used as a fallback when the ID token contains
+ * the `_claim_names.groups` overage marker (user is a member of more groups
+ * than the token can carry — roughly 200+).
+ *
+ * The access token must have been issued with the
+ * `https://graph.microsoft.com/User.Read` delegated scope so that its audience
+ * is `https://graph.microsoft.com`; otherwise Graph will reject it with 401.
+ *
+ * /memberOf returns pages of directory objects (groups, roles, admin units…).
+ * We extract only the `id` field and follow @odata.nextLink until exhausted.
+ */
+async function fetchGraphGroupIds(accessToken: string): Promise<string[]> {
+  const groupIds: string[] = [];
+  // $select=id reduces payload; $top=999 is within Graph's supported max
+  let url: string | null =
+    "https://graph.microsoft.com/v1.0/me/memberOf?$select=id&$top=999";
+
+  while (url) {
+    const resp = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => "(unreadable)");
+      throw new Error(
+        `Graph /me/memberOf responded ${resp.status}: ${body}`,
+      );
+    }
+    const data = (await resp.json()) as {
+      value?: Array<{ id?: string }>;
+      "@odata.nextLink"?: string;
+    };
+    for (const item of data.value ?? []) {
+      if (typeof item.id === "string") groupIds.push(item.id);
+    }
+    url = data["@odata.nextLink"] ?? null;
+  }
+
+  return groupIds;
+}
+
 const str = (v: unknown): string | undefined =>
   typeof v === "string" ? v : undefined;
 
@@ -111,7 +153,7 @@ router.get("/auth/callback", async (req, res, next) => {
       return;
     }
 
-    const groupIds = Array.isArray(claims.groups)
+    let groupIds = Array.isArray(claims.groups)
       ? claims.groups.filter((g): g is string => typeof g === "string")
       : [];
     const claimNames = claims._claim_names;
@@ -121,12 +163,28 @@ router.get("/auth/callback", async (req, res, next) => {
       typeof claimNames === "object" &&
       "groups" in claimNames
     ) {
-      // Groups "overage": the user is in too many groups for the token to carry
-      // the claim. Group-based gating needs a Microsoft Graph fallback (or app
-      // roles) — deferred. Treat as no special groups for now.
+      // Groups "overage": the user is a member of more groups than the token
+      // can carry (~200+ groups). Fall back to the Microsoft Graph /memberOf
+      // API using the access token acquired in the same OIDC exchange.
+      // Requires the https://graph.microsoft.com/User.Read scope (included in
+      // the default ENTRA_SCOPES) so the access token has a Graph audience.
       logger.warn(
-        "Entra groups claim overage; group-based gating may be incomplete",
+        "Entra groups claim overage detected; fetching group list from Graph",
       );
+      try {
+        const accessToken = tokens.access_token;
+        if (!accessToken) throw new Error("No access token in token response");
+        groupIds = await fetchGraphGroupIds(accessToken);
+        logger.info(
+          { count: groupIds.length },
+          "Graph /memberOf returned groups for overage user",
+        );
+      } catch (err) {
+        logger.error(
+          { err },
+          "Failed to fetch groups from Graph; user will have no group memberships",
+        );
+      }
     }
 
     const authorized =

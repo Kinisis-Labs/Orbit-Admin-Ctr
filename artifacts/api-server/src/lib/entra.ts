@@ -40,7 +40,9 @@ export function getEntraConfig(): EntraConfig | null {
     engineerGroupId: process.env.ENTRA_ENGINEER_GROUP_ID,
     costReaderGroupId: process.env.ENTRA_COST_READER_GROUP_ID,
     finopsGroupId: process.env.ENTRA_FINOPS_GROUP_ID,
-    scopes: process.env.ENTRA_SCOPES ?? "openid profile email",
+    scopes:
+      process.env.ENTRA_SCOPES ??
+      "openid profile email https://graph.microsoft.com/User.Read",
   };
 }
 
