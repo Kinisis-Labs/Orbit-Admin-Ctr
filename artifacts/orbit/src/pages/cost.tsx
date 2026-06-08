@@ -31,6 +31,7 @@ import { Link, useSearch, useLocation } from "wouter";
 import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, TriangleAlert, ArrowUp, ArrowDown, ArrowUpDown, Filter, Users, RotateCcw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DataSourceBadge } from "@/components/data-source-badge";
+import { CostDataSourceBadge } from "@/components/cost-data-source-badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -985,7 +986,7 @@ function AppCost() {
           {data.dataSource === "live" && (
             <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
           )}
-          <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
+          <CostDataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
         </div>
       )}
       {!isLoading && data && (
