@@ -33,7 +33,7 @@ import { useScope } from "@/lib/scope-context";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useMemo, useState, useEffect, useRef } from "react";
-import { DailySpendChart, type DailyCostPoint, type DailySpendRange } from "@/components/daily-spend-chart";
+import { DailySpendChart, type DailyCostPoint, type DailySpendRange, readSigma } from "@/components/daily-spend-chart";
 import { computeAnomalies } from "@/components/daily-spend-utils";
 import { format, parseISO, isValid } from "date-fns";
 
@@ -44,12 +44,13 @@ const fmtInt = (n: number) => new Intl.NumberFormat("en-US").format(n);
 const ANOMALY_SIGMAS = 2;
 const ANOMALY_WINDOW = 30;
 const ANOMALY_RECENT_DAYS = 3;
+const SENSITIVITY_KEY = "orbit:anomaly-sigma:cost";
 
 function isoDate(ts: string | Date): string {
   return new Date(ts).toISOString().slice(0, 10);
 }
 
-export function detectRecentAnomaly(daily: DailyCostPoint[] | undefined | null): {
+export function detectRecentAnomaly(daily: DailyCostPoint[] | undefined | null, sigmas = ANOMALY_SIGMAS): {
   date: Date;
   dateKey: string;
   value: number;
@@ -60,7 +61,7 @@ export function detectRecentAnomaly(daily: DailyCostPoint[] | undefined | null):
   if (!daily || daily.length < 3) return null;
 
   const window = daily.slice(-ANOMALY_WINDOW);
-  const enriched = computeAnomalies(window, ANOMALY_WINDOW, ANOMALY_SIGMAS);
+  const enriched = computeAnomalies(window, ANOMALY_WINDOW, sigmas);
 
   const now = new Date();
   const cutoff = new Date(now);
@@ -95,11 +96,13 @@ function AnomalyAlertBanner({
   anomaly,
   formatCurrency,
   onViewInChart,
+  sigmas,
 }: {
   appId: string;
   anomaly: ReturnType<typeof detectRecentAnomaly>;
   formatCurrency: (v: number) => string;
   onViewInChart?: () => void;
+  sigmas?: number;
 }) {
   // Optimistic localStorage check — prevents a visible flash on repeat visits
   const [dismissedLocally, setDismissedLocally] = useState<boolean>(() => {
@@ -147,6 +150,9 @@ function AnomalyAlertBanner({
           )}
           .
         </span>
+        {sigmas != null && (
+          <span className="ml-1.5 text-[11px] font-medium opacity-70">({sigmas}σ sensitivity)</span>
+        )}
         {onViewInChart && (
           <button
             onClick={onViewInChart}
@@ -604,8 +610,9 @@ function AppCost() {
 
   const chartRef = useRef<HTMLDivElement>(null);
   const [chartRange, setChartRange] = useState<DailySpendRange>(30);
+  const [activeSigma, setActiveSigma] = useState<number>(() => readSigma(SENSITIVITY_KEY, ANOMALY_SIGMAS));
 
-  const anomaly = useMemo(() => detectRecentAnomaly(data?.daily), [data?.daily]);
+  const anomaly = useMemo(() => detectRecentAnomaly(data?.daily, activeSigma), [data?.daily, activeSigma]);
 
   function handleViewInChart() {
     if (!anomaly || !data?.daily) return;
@@ -758,6 +765,7 @@ function AppCost() {
           anomaly={anomaly}
           formatCurrency={(v) => fmt(v, data.currency)}
           onViewInChart={anomaly ? handleViewInChart : undefined}
+          sigmas={activeSigma}
         />
       )}
       <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
@@ -883,6 +891,7 @@ function AppCost() {
               range={chartRange}
               onRangeChange={setChartRange}
               sensitivityKey="orbit:anomaly-sigma:cost"
+              onSigmaChange={setActiveSigma}
             />
           ) : (
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No daily data available</div>

@@ -22,7 +22,7 @@ const SIGMA_OPTIONS = [
   { label: "High", sigma: 1.5, title: "High sensitivity — more alerts (1.5σ)" },
 ] as const;
 
-function readSigma(key: string | undefined, defaultSigma: number): number {
+export function readSigma(key: string | undefined, defaultSigma: number): number {
   if (!key) return defaultSigma;
   try {
     const stored = localStorage.getItem(key);
@@ -72,6 +72,7 @@ export function DailySpendChart({
   budgetLine,
   range: rangeProp,
   onRangeChange,
+  onSigmaChange,
 }: {
   daily: DailyCostPoint[];
   formatCurrency: (v: number) => string;
@@ -86,6 +87,7 @@ export function DailySpendChart({
   budgetLine?: number;
   range?: Range;
   onRangeChange?: (r: Range) => void;
+  onSigmaChange?: (sigma: number) => void;
 }) {
   const maxDays = daily.length;
   const defaultRange: Range = maxDays >= 30 ? 30 : maxDays >= 14 ? 14 : 7;
@@ -109,6 +111,7 @@ export function DailySpendChart({
   function setActiveSigma(sigma: number) {
     setActiveSigmaState(sigma);
     writeSigma(sensitivityKey, sigma);
+    onSigmaChange?.(sigma);
   }
 
   const visibleData = useMemo(() => {
