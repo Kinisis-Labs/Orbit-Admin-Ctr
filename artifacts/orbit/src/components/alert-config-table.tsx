@@ -18,7 +18,9 @@ import { cn } from "@/lib/utils";
 import { POLL_OPTIONS, type PollValue, usePollingInterval } from "@/hooks/use-polling-interval";
 import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 
-const POLL_INTERVAL_KEY = "orbit:alert-table:poll-interval";
+function pollIntervalKey(appId: string | undefined): string {
+  return `orbit:alert-table:poll-interval:${appId ?? "global"}`;
+}
 
 function getLatestValue(report: InfrastructureReport | undefined, seriesName: string): number | null {
   if (!report) return null;
@@ -548,7 +550,7 @@ export function AlertConfigTable({ appId }: Props) {
   const [, navigate] = useLocation();
   const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
 
-  const [pollInterval, setPollInterval] = usePollingInterval(POLL_INTERVAL_KEY);
+  const [pollInterval, setPollInterval] = usePollingInterval(pollIntervalKey(appId));
 
   const rows = appId ? data?.filter((r) => r.appId === appId) : data;
 
