@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useSpendThreshold, useBudgetThreshold, DEFAULT_SPEND_THRESHOLD, DEFAULT_BUDGET_THRESHOLD } from "@/lib/spend-threshold";
+import { useSpendThreshold, useBudgetThreshold, setBudgetThreshold, DEFAULT_SPEND_THRESHOLD, DEFAULT_BUDGET_THRESHOLD } from "@/lib/spend-threshold";
 import { useParams, useLocation, useSearch } from "wouter";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
@@ -47,6 +47,8 @@ function buildAppInsightsFailuresUrl(resourceId: string, exceptionMessage: strin
 
 import { Button } from "@/components/ui/button";
 import { Tooltip as UITooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/lib/auth";
 import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { useScope } from "@/lib/scope-context";
@@ -401,14 +403,12 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
                 {formatCurrency(data.budget)}
               </div>
               <div className="space-y-1 mt-0.5">
-                <TooltipProvider>
-                  <UITooltip>
-                    <TooltipTrigger asChild>
-                      <Progress value={barUtilPct} className={`h-1.5 rounded-none bg-muted ${budgetBarClass} cursor-pointer`} />
-                    </TooltipTrigger>
-                    <TooltipContent>Alert at {budgetThreshold}% · {rawUtilPct.toFixed(0)}% utilized</TooltipContent>
-                  </UITooltip>
-                </TooltipProvider>
+                <BudgetThresholdPopover
+                  appId={appId}
+                  utilPct={barUtilPct}
+                  rawUtilPct={rawUtilPct}
+                  budgetThreshold={budgetThreshold}
+                />
                 <div className="text-[11px] text-muted-foreground tabular-nums">{rawUtilPct.toFixed(0)}% of cap used MTD</div>
               </div>
             </button>
@@ -816,6 +816,71 @@ function getBudgetBarClass(utilPct: number, budgetThreshold: number): string {
   return "";
 }
 
+function BudgetThresholdPopover({
+  appId,
+  utilPct,
+  rawUtilPct,
+  budgetThreshold,
+  className,
+}: {
+  appId: string;
+  utilPct: number;
+  rawUtilPct: number;
+  budgetThreshold: number;
+  className?: string;
+}) {
+  const [draft, setDraft] = useState(budgetThreshold);
+
+  useEffect(() => { setDraft(budgetThreshold); }, [budgetThreshold]);
+
+  function handleCommit(value: number) {
+    setBudgetThreshold(appId, value);
+    window.dispatchEvent(new Event("orbit-budget-threshold-changed"));
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={`block w-full text-left ${className ?? ""}`}
+          title={`Alert at ${budgetThreshold}% · click to adjust`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Progress
+            value={utilPct}
+            className={`h-1.5 rounded-none bg-muted ${getBudgetBarClass(utilPct, budgetThreshold)} cursor-pointer`}
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-3" align="start" onClick={(e) => e.stopPropagation()}>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] font-semibold text-foreground">Alert threshold</span>
+            <span className="text-[12px] font-semibold tabular-nums text-foreground">{draft}%</span>
+          </div>
+          <Slider
+            min={10}
+            max={100}
+            step={5}
+            value={[draft]}
+            onValueChange={([v]) => setDraft(v)}
+            onValueCommit={([v]) => handleCommit(v)}
+          />
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>10%</span>
+            <span>{rawUtilPct.toFixed(0)}% utilized now</span>
+            <span>100%</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground leading-snug">
+            The budget bar turns amber when MTD spend exceeds this threshold.
+          </p>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function CostTab({ appId }: { appId: string }) {
   const { data, isLoading, isFetching, queryKey } = useAppCost(appId);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/cost`, queryKey);
@@ -888,17 +953,12 @@ function CostTab({ appId }: { appId: string }) {
             {formatCurrency(data.budget)}
           </div>
           <div className="space-y-1 mt-1.5">
-            <TooltipProvider>
-              <UITooltip>
-                <TooltipTrigger asChild>
-                  <Progress
-                    value={barBudgetUtilPct}
-                    className={`h-1.5 rounded-none bg-muted ${getBudgetBarClass(barBudgetUtilPct, budgetThreshold)} cursor-default`}
-                  />
-                </TooltipTrigger>
-                <TooltipContent>Alert at {budgetThreshold}% · {rawBudgetUtilPct.toFixed(0)}% utilized</TooltipContent>
-              </UITooltip>
-            </TooltipProvider>
+            <BudgetThresholdPopover
+              appId={appId}
+              utilPct={barBudgetUtilPct}
+              rawUtilPct={rawBudgetUtilPct}
+              budgetThreshold={budgetThreshold}
+            />
             <div className="text-[11px] text-muted-foreground tabular-nums">{rawBudgetUtilPct.toFixed(0)}% of cap used MTD</div>
           </div>
         </div>
