@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
-import { getListAppsQueryKey, getGetCostQueryKey, getCost, getGetAppQueryKey, getApp, useGetGlobalHealth, getGetGlobalHealthQueryKey } from "@workspace/api-client-react";
+import { getListAppsQueryKey, getGetCostQueryKey, getCost, getGetAppQueryKey, getApp, useGetGlobalHealth, getGetGlobalHealthQueryKey, useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey } from "@workspace/api-client-react";
 import type { AppSummary, AppDetail } from "@workspace/api-client-react";
 import type { UserAuthType } from "@workspace/api-client-react";
 import type { DailyCostPoint } from "@/components/daily-spend-utils";
@@ -641,6 +641,15 @@ function BudgetSummaryWidget({
 
   const dailySpend = useAppDailySpend(apps, true, sparklineRange);
 
+  const { data: globalCostSummary } = useGetGlobalCostSummary({ query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 } });
+  const trendByAppId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of globalCostSummary?.byApp ?? []) {
+      if (item.trend) map.set(item.appId, item.trend);
+    }
+    return map;
+  }, [globalCostSummary?.byApp]);
+
   const [envFilter, setEnvFilterRaw] = useState<EnvFilter>(() => {
     try {
       const stored = localStorage.getItem("orbit-budget-env-filter");
@@ -932,6 +941,7 @@ function BudgetSummaryWidget({
               <th className="text-right font-medium text-muted-foreground px-3 py-2">Forecast</th>
               <th className="text-left font-medium text-muted-foreground px-3 py-2 w-[120px]">Utilization</th>
               <th className="text-left font-medium text-muted-foreground px-3 py-2">Status</th>
+              <th className="text-right font-medium text-muted-foreground px-3 py-2 w-[60px]">WoW</th>
               <th className="text-left font-medium text-muted-foreground px-3 py-2 w-[88px]">{sparklineRange}d trend</th>
               <th className="w-8 px-2 py-2" />
             </tr>
@@ -947,6 +957,7 @@ function BudgetSummaryWidget({
                   <td className="px-3 py-2.5 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
                   <td className="px-3 py-2.5"><Skeleton className="h-3 w-full" /></td>
                   <td className="px-3 py-2.5"><Skeleton className="h-5 w-16" /></td>
+                  <td className="px-3 py-2.5" />
                   <td className="px-3 py-2.5"><Skeleton className="h-6 w-[72px]" /></td>
                   <td className="px-2 py-2.5" />
                 </tr>
@@ -1145,6 +1156,29 @@ function BudgetSummaryWidget({
                         <StatusPill status={status} />
                       </div>
                     </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums" onClick={(e) => e.stopPropagation()}>
+                      {(() => {
+                        const trend = trendByAppId.get(app.id) ?? null;
+                        if (!trend) return <span className="text-muted-foreground/50 text-[11px]">—</span>;
+                        const isPos = trend.startsWith("+");
+                        const isNeg = trend.startsWith("-");
+                        const cls = isPos
+                          ? "text-red-500"
+                          : isNeg
+                          ? "text-emerald-500"
+                          : "text-muted-foreground";
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={`font-mono text-[11px] font-medium ${cls}`}>{trend}</span>
+                              </TooltipTrigger>
+                              <TooltipContent>Week-over-week cost change</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })()}
+                    </td>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <BudgetSparkline data={dailySpend.get(app.id)} status={status} />
                     </td>
@@ -1209,6 +1243,7 @@ function BudgetSummaryWidget({
                     <span className="text-muted-foreground/50 text-[11px]">—</span>
                   )}
                 </td>
+                <td className="px-3 py-2.5" />
                 <td className="px-3 py-2.5" />
                 <td className="px-2 py-2.5" />
               </tr>
