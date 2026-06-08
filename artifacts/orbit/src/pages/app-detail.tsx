@@ -79,16 +79,21 @@ const INFRA_TAB_POLL_INTERVAL_KEY = "orbit:infra-tab:poll-interval";
 
 const VALID_TABS = ["overview", "infrastructure", "network", "telemetry", "cost", "ledger", "alerts"] as const;
 
-const LAST_TAB_KEY = "orbit-last-tab";
+const GLOBAL_LAST_TAB_KEY = "orbit-last-tab";
+
+function lastTabKey(appId: string): string {
+  return `orbit-last-tab:${appId}`;
+}
 
 function parseTabParam(search: string): string {
   const tab = new URLSearchParams(search).get("tab") ?? "";
   return (VALID_TABS as readonly string[]).includes(tab) ? tab : "overview";
 }
 
-function readStoredTab(): string {
+function readStoredTab(appId: string): string {
   try {
-    const t = localStorage.getItem(LAST_TAB_KEY) ?? "overview";
+    const perApp = localStorage.getItem(lastTabKey(appId));
+    const t = perApp ?? localStorage.getItem(GLOBAL_LAST_TAB_KEY) ?? "overview";
     return (VALID_TABS as readonly string[]).includes(t) ? t : "overview";
   } catch {
     return "overview";
@@ -110,7 +115,7 @@ export default function AppDetail() {
   // operator lands where they left off. replace: true keeps the back button clean.
   useEffect(() => {
     if (!hasTabParam) {
-      const stored = readStoredTab();
+      const stored = readStoredTab(appId);
       setLocation(`${location}?tab=${stored}`, { replace: true });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -122,11 +127,11 @@ export default function AppDetail() {
   useEffect(() => {
     if (!hasTabParam) return;
     try {
-      localStorage.setItem(LAST_TAB_KEY, activeTab);
+      localStorage.setItem(lastTabKey(appId), activeTab);
     } catch {
       /* ignore */
     }
-  }, [activeTab, hasTabParam]);
+  }, [activeTab, hasTabParam, appId]);
 
   function handleTabChange(tab: string) {
     setLocation(`${location}?tab=${tab}`);

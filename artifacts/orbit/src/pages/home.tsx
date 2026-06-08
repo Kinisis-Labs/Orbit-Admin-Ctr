@@ -203,9 +203,10 @@ function WoWTrendBadge({ trend }: { trend: string | null | undefined }) {
   );
 }
 
-function readLastTab(): string {
+function readLastTab(appId: string): string {
   try {
-    const t = localStorage.getItem("orbit-last-tab") ?? "overview";
+    const perApp = localStorage.getItem(`orbit-last-tab:${appId}`);
+    const t = perApp ?? localStorage.getItem("orbit-last-tab") ?? "overview";
     return (["overview", "infrastructure", "network", "telemetry", "cost", "ledger", "alerts"] as string[]).includes(t) ? t : "overview";
   } catch {
     return "overview";
@@ -485,7 +486,7 @@ export default function Home() {
               </Button>
               <Link
                 href={(() => {
-                  const t = readLastTab();
+                  const t = readLastTab(scope);
                   return t !== "overview" ? `/apps/${scope}?tab=${t}` : `/apps/${scope}`;
                 })()}
                 className="text-[12px] text-primary hover:underline"
