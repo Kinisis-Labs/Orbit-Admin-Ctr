@@ -20,8 +20,6 @@ import {
   clearBudgetThresholds,
 } from "@/lib/spend-threshold";
 
-const CROSS_TAB_SYNC_DELAY_MS = 1500;
-
 type Theme = "dark" | "light";
 type Density = "comfortable" | "compact";
 
@@ -41,8 +39,12 @@ export default function Preferences() {
     return {};
   });
 
-  const spendSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const budgetSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputFocusedRef = useRef(false);
+  const pendingSpendSyncRef = useRef(false);
+  const pendingBudgetSyncRef = useRef(false);
+
+  const refreshSpendRef = useRef<() => void>(() => {});
+  const refreshBudgetRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (!apps) return;
@@ -71,20 +73,20 @@ export default function Preferences() {
         return next;
       });
     };
+    refreshSpendRef.current = refreshSpend;
     const onSpendStorage = (e: StorageEvent) => {
       if (e.key !== SPEND_THRESHOLDS_STORAGE_KEY) return;
-      if (spendSyncTimer.current !== null) clearTimeout(spendSyncTimer.current);
-      spendSyncTimer.current = setTimeout(() => {
-        spendSyncTimer.current = null;
+      if (inputFocusedRef.current) {
+        pendingSpendSyncRef.current = true;
+      } else {
         refreshSpend();
-      }, CROSS_TAB_SYNC_DELAY_MS);
+      }
     };
     window.addEventListener("orbit-spend-threshold-changed", refreshSpend);
     window.addEventListener("storage", onSpendStorage);
     return () => {
       window.removeEventListener("orbit-spend-threshold-changed", refreshSpend);
       window.removeEventListener("storage", onSpendStorage);
-      if (spendSyncTimer.current !== null) clearTimeout(spendSyncTimer.current);
     };
   }, [apps]);
 
@@ -97,20 +99,20 @@ export default function Preferences() {
         return next;
       });
     };
+    refreshBudgetRef.current = refreshBudget;
     const onBudgetStorage = (e: StorageEvent) => {
       if (e.key !== BUDGET_THRESHOLDS_STORAGE_KEY) return;
-      if (budgetSyncTimer.current !== null) clearTimeout(budgetSyncTimer.current);
-      budgetSyncTimer.current = setTimeout(() => {
-        budgetSyncTimer.current = null;
+      if (inputFocusedRef.current) {
+        pendingBudgetSyncRef.current = true;
+      } else {
         refreshBudget();
-      }, CROSS_TAB_SYNC_DELAY_MS);
+      }
     };
     window.addEventListener("orbit-budget-threshold-changed", refreshBudget);
     window.addEventListener("storage", onBudgetStorage);
     return () => {
       window.removeEventListener("orbit-budget-threshold-changed", refreshBudget);
       window.removeEventListener("storage", onBudgetStorage);
-      if (budgetSyncTimer.current !== null) clearTimeout(budgetSyncTimer.current);
     };
   }, [apps]);
 
@@ -121,6 +123,24 @@ export default function Preferences() {
   }, [theme]);
 
   useEffect(() => { localStorage.setItem("orbit-density", density); }, [density]);
+
+  const handleThresholdFocus = () => {
+    inputFocusedRef.current = true;
+  };
+
+  const flushPendingSyncs = () => {
+    setTimeout(() => {
+      if (inputFocusedRef.current) return;
+      if (pendingSpendSyncRef.current) {
+        pendingSpendSyncRef.current = false;
+        refreshSpendRef.current();
+      }
+      if (pendingBudgetSyncRef.current) {
+        pendingBudgetSyncRef.current = false;
+        refreshBudgetRef.current();
+      }
+    }, 0);
+  };
 
   const handleThresholdChange = (appId: string, raw: string) => {
     setThresholds((prev) => ({ ...prev, [appId]: raw }));
@@ -137,6 +157,8 @@ export default function Preferences() {
       setThresholds((prev) => ({ ...prev, [appId]: String(DEFAULT_SPEND_THRESHOLD) }));
       window.dispatchEvent(new Event("orbit-spend-threshold-changed"));
     }
+    inputFocusedRef.current = false;
+    flushPendingSyncs();
   };
 
   const handleBudgetThresholdChange = (appId: string, raw: string) => {
@@ -154,6 +176,8 @@ export default function Preferences() {
       setBudgetThresholds((prev) => ({ ...prev, [appId]: String(DEFAULT_BUDGET_THRESHOLD) }));
       window.dispatchEvent(new Event("orbit-budget-threshold-changed"));
     }
+    inputFocusedRef.current = false;
+    flushPendingSyncs();
   };
 
   const reset = () => {
@@ -226,6 +250,7 @@ export default function Preferences() {
                   max={999}
                   value={thresholds[app.id] ?? String(DEFAULT_SPEND_THRESHOLD)}
                   onChange={(e) => handleThresholdChange(app.id, e.target.value)}
+                  onFocus={handleThresholdFocus}
                   onBlur={(e) => handleThresholdBlur(app.id, e.target.value)}
                   className="h-8 w-[90px] rounded-sm text-[13px] text-right"
                 />
@@ -254,6 +279,7 @@ export default function Preferences() {
                   max={100}
                   value={budgetThresholds[app.id] ?? String(DEFAULT_BUDGET_THRESHOLD)}
                   onChange={(e) => handleBudgetThresholdChange(app.id, e.target.value)}
+                  onFocus={handleThresholdFocus}
                   onBlur={(e) => handleBudgetThresholdBlur(app.id, e.target.value)}
                   className="h-8 w-[90px] rounded-sm text-[13px] text-right"
                 />
