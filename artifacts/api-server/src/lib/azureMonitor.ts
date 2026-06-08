@@ -150,8 +150,16 @@ const METRIC_QUERIES: Record<
 
 // Cache resolved App Insights resource IDs per app to avoid repeated Resource
 // Graph queries when multiple metrics are fetched in parallel for the same app.
+// Entries carry an expiry timestamp so stale null results (e.g. component not
+// yet deployed, or temporarily unavailable) self-heal without a server restart.
+type AppInsightsCacheEntry = { id: string | null; expiresAt: number };
 /** @internal Exported for unit tests only — do not use in production code. */
-export const _appInsightsIdCache = new Map<string, string | null>();
+export const _appInsightsIdCache = new Map<string, AppInsightsCacheEntry>();
+
+/** TTL for a cache entry whose Resource Graph query returned a valid resource ID. */
+const APP_INSIGHTS_ID_TTL_MS = 60 * 60 * 1000; // 60 minutes
+/** TTL for a cache entry whose Resource Graph query returned null (not found / error). */
+const APP_INSIGHTS_NULL_TTL_MS = 2 * 60 * 1000; // 2 minutes
 
 // Shared TTL for all in-process caches (5 minutes).
 const METRICS_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -175,7 +183,8 @@ export const _timeSeriesCache = new Map<string, TimeSeriesCacheEntry>();
  *   without going through the full `fetchAppTimeSeries` path.
  */
 export function evictAppTimeSeries(appId: string): void {
-  const cachedResourceId = _appInsightsIdCache.get(appId);
+  const cachedEntry = _appInsightsIdCache.get(appId);
+  const cachedResourceId = cachedEntry?.id;
   if (!cachedResourceId) return;
   const prefix = `${cachedResourceId}:`;
   for (const key of _timeSeriesCache.keys()) {
@@ -196,9 +205,13 @@ export async function resolveAppInsightsResourceId(
 ): Promise<string | null> {
   if (bypassCache) {
     _appInsightsIdCache.delete(app.id);
-  }
-  if (_appInsightsIdCache.has(app.id)) {
-    return _appInsightsIdCache.get(app.id) ?? null;
+  } else {
+    const entry = _appInsightsIdCache.get(app.id);
+    if (entry && Date.now() < entry.expiresAt) {
+      return entry.id;
+    }
+    // Entry missing or expired — fall through to a fresh lookup.
+    if (entry) _appInsightsIdCache.delete(app.id);
   }
 
   // Include the app's own subscription so App Insights is found even when
@@ -224,10 +237,11 @@ export async function resolveAppInsightsResourceId(
     });
     const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
     const id = rows.length === 0 ? null : String(rows[0]?.["id"] ?? "");
-    _appInsightsIdCache.set(app.id, id);
+    const ttl = id !== null ? APP_INSIGHTS_ID_TTL_MS : APP_INSIGHTS_NULL_TTL_MS;
+    _appInsightsIdCache.set(app.id, { id, expiresAt: Date.now() + ttl });
     return id;
   } catch {
-    _appInsightsIdCache.set(app.id, null);
+    _appInsightsIdCache.set(app.id, { id: null, expiresAt: Date.now() + APP_INSIGHTS_NULL_TTL_MS });
     return null;
   }
 }

@@ -13,6 +13,11 @@ const OTHER_RESOURCE_ID = "/subscriptions/00000000/resourceGroups/rg-other/provi
 const FAKE_POINTS = [{ timestamp: "2026-06-08T10:00:00Z", value: 1.5 }];
 const FUTURE = Date.now() + 5 * 60 * 1000;
 
+/** Helper: store a valid resource ID entry that has not yet expired. */
+function setIdEntry(appId: string, id: string | null): void {
+  _appInsightsIdCache.set(appId, { id, expiresAt: FUTURE });
+}
+
 describe("evictAppTimeSeries", () => {
   beforeEach(() => {
     _appInsightsIdCache.clear();
@@ -20,7 +25,7 @@ describe("evictAppTimeSeries", () => {
   });
 
   test("evicts all _timeSeriesCache entries for the app's resource ID", () => {
-    _appInsightsIdCache.set(APP_ID, RESOURCE_ID);
+    setIdEntry(APP_ID, RESOURCE_ID);
     _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
     _timeSeriesCache.set(`${RESOURCE_ID}:p95_latency_ms:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
     _timeSeriesCache.set(`${RESOURCE_ID}:error_rate_pct:48`, { result: FAKE_POINTS, expiresAt: FUTURE });
@@ -31,7 +36,7 @@ describe("evictAppTimeSeries", () => {
   });
 
   test("does not touch cache entries belonging to a different resource ID", () => {
-    _appInsightsIdCache.set(APP_ID, RESOURCE_ID);
+    setIdEntry(APP_ID, RESOURCE_ID);
     _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
     _timeSeriesCache.set(`${OTHER_RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
 
@@ -50,7 +55,7 @@ describe("evictAppTimeSeries", () => {
   });
 
   test("is a no-op when the app's resource ID is null (lookup previously failed)", () => {
-    _appInsightsIdCache.set(APP_ID, null);
+    setIdEntry(APP_ID, null);
     _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
 
     evictAppTimeSeries(APP_ID);
@@ -59,7 +64,7 @@ describe("evictAppTimeSeries", () => {
   });
 
   test("eviction uses the resource-ID present at call time, before the ID cache is cleared", () => {
-    _appInsightsIdCache.set(APP_ID, RESOURCE_ID);
+    setIdEntry(APP_ID, RESOURCE_ID);
     _timeSeriesCache.set(`${RESOURCE_ID}:cpu_pct:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
     _timeSeriesCache.set(`${RESOURCE_ID}:memory_pct:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
 
@@ -73,7 +78,7 @@ describe("evictAppTimeSeries", () => {
   });
 
   test("clearing the resource-ID cache first makes eviction a no-op (demonstrates why order matters)", () => {
-    _appInsightsIdCache.set(APP_ID, RESOURCE_ID);
+    setIdEntry(APP_ID, RESOURCE_ID);
     _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
 
     // Wrong order: clear ID cache first, then try to evict — entries survive.
@@ -84,7 +89,7 @@ describe("evictAppTimeSeries", () => {
   });
 
   test("is idempotent — calling twice leaves the cache in the same state", () => {
-    _appInsightsIdCache.set(APP_ID, RESOURCE_ID);
+    setIdEntry(APP_ID, RESOURCE_ID);
     _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
 
     evictAppTimeSeries(APP_ID);
