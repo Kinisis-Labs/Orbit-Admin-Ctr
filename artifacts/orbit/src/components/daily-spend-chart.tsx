@@ -73,6 +73,7 @@ export function DailySpendChart({
   range: rangeProp,
   onRangeChange,
   onSigmaChange,
+  highlightDate,
 }: {
   daily: DailyCostPoint[];
   formatCurrency: (v: number) => string;
@@ -88,6 +89,7 @@ export function DailySpendChart({
   range?: Range;
   onRangeChange?: (r: Range) => void;
   onSigmaChange?: (sigma: number) => void;
+  highlightDate?: string;
 }) {
   const maxDays = daily.length;
   const defaultRange: Range = maxDays >= 30 ? 30 : maxDays >= 14 ? 14 : 7;
@@ -237,11 +239,14 @@ export function DailySpendChart({
                 {visibleDataWithPeak.map((entry, idx) => {
                   const isClickableAnomaly =
                     colorByTrend && (entry as EnrichedPoint).anomaly?.isAnomaly && !!onAnomalyClick;
+                  const entryDateKey = new Date(entry.timestamp as string).toISOString().slice(0, 10);
+                  const isPulsing = highlightDate != null && entryDateKey === highlightDate;
                   return (
                     <Cell
                       key={idx}
                       fill={entry.isPeak ? BAR_COLOR_PEAK : getCellFill(entry as EnrichedPoint)}
                       style={isClickableAnomaly ? { cursor: "pointer" } : undefined}
+                      className={isPulsing ? "anomaly-bar-pulse" : undefined}
                     />
                   );
                 })}

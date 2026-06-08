@@ -231,3 +231,11 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
 }
+
+@keyframes anomaly-bar-pulse {
+  0%, 100% { filter: drop-shadow(0 0 0px transparent); }
+  35%       { filter: drop-shadow(0 0 7px hsl(32 98% 55%)) drop-shadow(0 0 3px hsl(32 98% 70%)); }
+}
+.anomaly-bar-pulse {
+  animation: anomaly-bar-pulse 0.55s ease-in-out 3;
+}

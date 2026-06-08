@@ -690,6 +690,7 @@ function AppCost() {
   const chartRef = useRef<HTMLDivElement>(null);
   const [chartRange, setChartRange] = useState<DailySpendRange>(30);
   const [activeSigma, setActiveSigma] = useState<number>(() => readSigma(SENSITIVITY_KEY, ANOMALY_SIGMAS));
+  const [highlightDate, setHighlightDate] = useState<string | undefined>(undefined);
 
   const anomaly = useMemo(() => detectRecentAnomaly(data?.daily, activeSigma), [data?.daily, activeSigma]);
 
@@ -700,9 +701,13 @@ function AppCost() {
     if (!isVisible) {
       setChartRange(30);
     }
+    setHighlightDate(anomaly.dateKey);
     setTimeout(() => {
       chartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
+    setTimeout(() => {
+      setHighlightDate(undefined);
+    }, 1650);
   }
 
   const breakdownHeaders = ["Service", "Resource Group", "Environment", "Cost (USD)", "% of Total", "Trend", "Budget breach"];
@@ -999,6 +1004,7 @@ function AppCost() {
               onRangeChange={setChartRange}
               sensitivityKey="orbit:anomaly-sigma:cost"
               onSigmaChange={setActiveSigma}
+              highlightDate={highlightDate}
             />
           ) : (
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No daily data available</div>
