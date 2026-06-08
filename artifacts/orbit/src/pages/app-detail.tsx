@@ -1221,6 +1221,7 @@ function CostTab({ appId }: { appId: string }) {
           <div className="text-[11px] text-muted-foreground mt-0.5">
             {headroom >= 0 ? "Remaining vs forecast" : "Overrun vs budget"}
           </div>
+          {data.dataSource === "live" && <LiveBadge className="mt-1.5" />}
         </div>
       </div>
 
