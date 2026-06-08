@@ -6,6 +6,14 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
+const DEFAULT_ACCESS_CONTACT = "orbit-access@kinisislabs.com";
+
+/** Contact address for access-request emails. Configurable via ORBIT_ACCESS_CONTACT env var. */
+function getAccessContact(): string {
+  const v = process.env.ORBIT_ACCESS_CONTACT?.trim();
+  return v && v.length > 0 ? v : DEFAULT_ACCESS_CONTACT;
+}
+
 /**
  * Fetches all group object IDs the signed-in user belongs to via the Microsoft
  * Graph /me/memberOf endpoint. Used as a fallback when the ID token contains
@@ -135,12 +143,12 @@ router.get("/auth/me", async (req, res, next) => {
   try {
     const cfg = getEntraConfig();
     if (!cfg) {
-      res.json({ mode: "mock" });
+      res.json({ mode: "mock", accessContact: getAccessContact() });
       return;
     }
     const u = req.session.user;
     if (!u) {
-      res.status(401).json({ mode: "entra", authenticated: false });
+      res.status(401).json({ mode: "entra", authenticated: false, accessContact: getAccessContact() });
       return;
     }
 
@@ -219,6 +227,7 @@ router.get("/auth/me", async (req, res, next) => {
             initial: (u.displayName?.[0] ?? "?").toUpperCase(),
           },
           groups,
+          accessContact: getAccessContact(),
         });
         return;
       } catch (err) {
@@ -258,6 +267,7 @@ router.get("/auth/me", async (req, res, next) => {
         initial: (u.displayName?.[0] ?? "?").toUpperCase(),
       },
       groups,
+      accessContact: getAccessContact(),
     });
   } catch (err) {
     next(err);

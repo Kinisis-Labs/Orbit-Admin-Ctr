@@ -55,9 +55,9 @@ function loadMockGroups(): Set<string> {
 }
 
 type MeResponse =
-  | { mode: "mock" }
-  | { mode: "entra"; authenticated: false }
-  | { mode: "entra"; authenticated: true; user: EntraUser; groups: EntraGroup[] };
+  | { mode: "mock"; accessContact?: string }
+  | { mode: "entra"; authenticated: false; accessContact?: string }
+  | { mode: "entra"; authenticated: true; user: EntraUser; groups: EntraGroup[]; accessContact?: string };
 
 type AuthError = "denied" | "error" | "expired" | "unavailable";
 
@@ -70,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<AuthMode | null>(null);
   const [entra, setEntra] = useState<{ user: EntraUser; groups: EntraGroup[] } | null>(null);
   const [authError, setAuthError] = useState<AuthError | null>(null);
+  const [accessContact, setAccessContact] = useState<string>(ORBIT_ACCESS_EMAIL);
 
   // Mock mode — extra toggled groups (AUTHORIZED_USERS is always on)
   const [mockExtras, setMockExtras] = useState<Set<string>>(() => loadMockGroups());
@@ -85,6 +86,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         if (res.status === 401 || res.status === 503) {
           if (cancelled) return;
+          // Try to read accessContact from the 401 body before handling the error.
+          try {
+            const body = (await res.clone().json()) as MeResponse;
+            if (body.accessContact) setAccessContact(body.accessContact);
+          } catch {
+            /* ignore — body may not be JSON */
+          }
           if (postCallbackError) {
             setAuthError(postCallbackError);
             setMode("entra");
@@ -96,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         const data = (await res.json()) as MeResponse;
         if (cancelled) return;
+        if (data.accessContact) setAccessContact(data.accessContact);
         if (data.mode === "mock") {
           setMode("mock");
           return;
@@ -191,7 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [mode, entra, mockExtras, signOut, grantGroup, revokeGroup]);
 
   if (authError) {
-    return <AuthNotice kind={authError} onSignOut={signOut} />;
+    return <AuthNotice kind={authError} onSignOut={signOut} accessContact={accessContact} />;
   }
 
   if (!value) {
@@ -238,10 +247,10 @@ const NOTICE_BTN_PRIMARY: React.CSSProperties = {
 const REQUEST_ACCESS_SUBJECT = "Request access to Orbit";
 const REQUEST_ACCESS_BODY =
   "Hi,\n\nI successfully signed in with my Microsoft account but do not have access to Orbit.\n\nPlease add me to the Orbit-Authorized-Users group.\n\nThanks";
-const ORBIT_ACCESS_EMAIL = "orbit-access@kinisislabs.com";
+export const ORBIT_ACCESS_EMAIL = "orbit-access@kinisislabs.com";
 
-function DeniedNotice({ onSignOut }: { onSignOut: () => void }) {
-  const mailtoHref = `mailto:${ORBIT_ACCESS_EMAIL}?subject=${encodeURIComponent(REQUEST_ACCESS_SUBJECT)}&body=${encodeURIComponent(REQUEST_ACCESS_BODY)}`;
+function DeniedNotice({ onSignOut, accessContact }: { onSignOut: () => void; accessContact: string }) {
+  const mailtoHref = `mailto:${accessContact}?subject=${encodeURIComponent(REQUEST_ACCESS_SUBJECT)}&body=${encodeURIComponent(REQUEST_ACCESS_BODY)}`;
   return (
     <div
       style={{
@@ -346,10 +355,10 @@ function DeniedNotice({ onSignOut }: { onSignOut: () => void }) {
           Once access is granted, sign back in with the same Microsoft account.
           If you believe this is a mistake, contact{" "}
           <a
-            href={`mailto:${ORBIT_ACCESS_EMAIL}`}
+            href={`mailto:${accessContact}`}
             style={{ color: "#60a5fa", textDecoration: "none" }}
           >
-            {ORBIT_ACCESS_EMAIL}
+            {accessContact}
           </a>
           .
         </p>
@@ -361,12 +370,14 @@ function DeniedNotice({ onSignOut }: { onSignOut: () => void }) {
 function AuthNotice({
   kind,
   onSignOut,
+  accessContact,
 }: {
   kind: AuthError;
   onSignOut: () => void;
+  accessContact: string;
 }) {
   if (kind === "denied") {
-    return <DeniedNotice onSignOut={onSignOut} />;
+    return <DeniedNotice onSignOut={onSignOut} accessContact={accessContact} />;
   }
   const unavailable = kind === "unavailable";
   const title = unavailable

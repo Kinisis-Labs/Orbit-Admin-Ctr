@@ -97,6 +97,12 @@ Optional RBAC group env (shared, GUID object ids — only resolve membership whe
 
 Entra app registration checklist: register both the dev and prod redirect URIs (Web platform), enable the **groups claim** (Token configuration → add groups claim → Security groups, for ID tokens), and create a client secret. The groups claim emits group **object IDs** (GUIDs) — every `ENTRA_*_GROUP_ID` must be those GUIDs.
 
+### Access-request contact — configurable without redeploy
+
+The contact address shown on the access-denied screen is served via `/api/auth/me` (`accessContact` field). Set `ORBIT_ACCESS_CONTACT` on the Container App to override it without a code change or frontend redeploy. Falls back to `orbit-access@kinisislabs.com` when unset.
+
+- `ORBIT_ACCESS_CONTACT` — email address shown on the "Access not granted" screen and used for the "Request access" mailto link (e.g. `it-helpdesk@kinisislabs.com`)
+
 ### Budget overrun alerts — config-gated, opt-in
 
 A background scheduler (`lib/budgetAlerts.ts`) fires when `forecast > budget` for any tracked app. It starts automatically after server listen; if no channel is configured it logs a single info message and exits. Safe in dev with no env vars set.
