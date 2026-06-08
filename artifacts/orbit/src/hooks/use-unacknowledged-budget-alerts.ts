@@ -7,8 +7,8 @@ export function useUnacknowledgedBudgetAlerts(enabled = true) {
   const { data, isLoading } = useQuery({
     ...baseOptions,
     enabled,
-    staleTime: 60 * 1000,
-    refetchInterval: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
   });
 
   return {
