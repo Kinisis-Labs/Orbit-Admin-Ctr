@@ -3,7 +3,16 @@ import { useQueryClient } from "@tanstack/react-query";
 
 export const FORCE_REFRESH_COOLDOWN_MS = 30_000;
 
-export function useForceRefresh(url: string, queryKey: readonly unknown[]) {
+export interface SideEffectRefresh {
+  url: string;
+  queryKey: readonly unknown[];
+}
+
+export function useForceRefresh(
+  url: string,
+  queryKey: readonly unknown[],
+  sideEffectRefreshes?: SideEffectRefresh[],
+) {
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
@@ -24,6 +33,17 @@ export function useForceRefresh(url: string, queryKey: readonly unknown[]) {
       if (res.ok) {
         const data: unknown = await res.json();
         queryClient.setQueryData([...queryKey], data);
+      }
+      if (sideEffectRefreshes && sideEffectRefreshes.length > 0) {
+        await Promise.all(
+          sideEffectRefreshes.map(async (side) => {
+            const sideRes = await fetch(`${side.url}?refresh=true`, { credentials: "same-origin" });
+            if (sideRes.ok) {
+              const sideData: unknown = await sideRes.json();
+              queryClient.setQueryData([...side.queryKey], sideData);
+            }
+          }),
+        );
       }
     } finally {
       setIsRefreshing(false);

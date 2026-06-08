@@ -185,13 +185,16 @@ export function appStoreApps(): AppRecord[] {
 
 
 // --- /apps ---
-router.get("/apps", async (_req, res) => {
+router.get("/apps", async (req, res) => {
+  const bypassCache = req.query["refresh"] === "true";
   // Fetch live cost, alert counts, budgets, and subscription names for all apps in parallel.
   // Falls back to static inventory values when Azure is unconfigured.
+  // Pass bypassCache when the caller supplies ?refresh=true so cost/budget figures
+  // reflect the latest data instead of serving from the in-process cache.
   const [alertResults, costWithSourceResults, budgetWithSourceResults] = await Promise.all([
     Promise.all(APPS.map((a) => fetchActiveAlerts(a, {}))),
-    Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, { billingScope: billingScope(a.id) }))),
-    Promise.all(APPS.map((a) => fetchBudgetForAppWithFallback(a, {}))),
+    Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, { bypassCache, billingScope: billingScope(a.id) }))),
+    Promise.all(APPS.map((a) => fetchBudgetForAppWithFallback(a, { bypassCache }))),
   ]);
 
   // Resolve subscription names from Azure once (cached; returns empty map in mock mode).

@@ -17,6 +17,7 @@ import {
   useSyncStripeSales,
   useListUserActivity,
   UserAuthType,
+  getListAppsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -1062,7 +1063,9 @@ function TelemetryTab({ appId }: { appId: string }) {
 
 function CostTab({ appId }: { appId: string }) {
   const { data, isLoading, isFetching, queryKey } = useAppCost(appId);
-  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/cost`, queryKey);
+  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/cost`, queryKey, [
+    { url: "/api/apps", queryKey: getListAppsQueryKey() },
+  ]);
   const threshold = useSpendThreshold(appId);
   const budgetThreshold = useBudgetThreshold(appId);
   const { setScope } = useScope();

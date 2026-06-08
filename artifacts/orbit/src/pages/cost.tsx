@@ -9,6 +9,7 @@ import {
   getGetGlobalCostSummaryQueryKey,
   useGetGlobalHealth,
   getGetGlobalHealthQueryKey,
+  getListAppsQueryKey,
 } from "@workspace/api-client-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUnacknowledgedBudgetAlerts } from "@/hooks/use-unacknowledged-budget-alerts";
@@ -593,7 +594,9 @@ function AppCost() {
   const { data, isLoading, isFetching } = useGetCost(scope, undefined, {
     query: { queryKey, staleTime: 5 * 60 * 1000 },
   });
-  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${scope}/cost`, queryKey);
+  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${scope}/cost`, queryKey, [
+    { url: "/api/apps", queryKey: getListAppsQueryKey() },
+  ]);
   const budgetPercent = data ? (data.monthToDate / data.budget) * 100 : 0;
   const budgetThreshold = useBudgetThreshold(scope);
   const net = data ? data.revenue.total - data.monthToDate : 0;
