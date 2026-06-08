@@ -28,8 +28,16 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { DailySpendChart } from "@/components/daily-spend-chart";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus, BarChart2 } from "lucide-react";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus, BarChart2, Clipboard } from "lucide-react";
 import { DataSourceBadge, LiveBadge } from "@/components/data-source-badge";
+
+/**
+ * Build the raw KQL query for a given exception message, scoped to the
+ * `exceptions` table. Used both for the portal deep-link and the clipboard.
+ */
+function buildExceptionKql(exceptionMessage: string): string {
+  return `exceptions\n| where outerMessage contains "${exceptionMessage.replace(/"/g, '\\"').slice(0, 200)}"\n| order by timestamp desc\n| limit 100`;
+}
 
 /**
  * Build an Azure Portal deep-link to the App Insights Failures blade for the
@@ -40,7 +48,7 @@ function buildAppInsightsFailuresUrl(resourceId: string, exceptionMessage: strin
   // Encode the exception message into a KQL query scoped to the `exceptions` table.
   // The Logs blade deep-link opens directly in the App Insights context and
   // pre-populates the query editor so operators can run or refine it immediately.
-  const kql = `exceptions\n| where outerMessage contains "${exceptionMessage.replace(/"/g, '\\"').slice(0, 200)}"\n| order by timestamp desc\n| limit 100`;
+  const kql = buildExceptionKql(exceptionMessage);
   const encoded = encodeURIComponent(kql);
   const encodedId = encodeURIComponent(resourceId);
   return `https://portal.azure.com/#blade/Microsoft_Azure_Monitoring_Logs/LogsBlade/resourceId/${encodedId}/source/LogsBlade.AnalyticsShareLinkToQuery/query/${encoded}/timespan/P1D`;
@@ -875,6 +883,7 @@ function NetworkTab({ appId }: { appId: string }) {
 function TelemetryTab({ appId }: { appId: string }) {
   const { data, isLoading, isFetching, dataUpdatedAt, queryKey } = useAppTelemetry(appId);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/telemetry`, queryKey);
+  const { toast } = useToast();
   const updatedLabel = useUpdatedAgo(dataUpdatedAt);
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No telemetry data available</div>;
@@ -990,24 +999,41 @@ function TelemetryTab({ appId }: { appId: string }) {
             <Table className="text-[12px]">
               <TableBody>
                 {data.topErrors.map((err, i) => {
-                  const drillUrl = data.appInsightsResourceId
-                    ? buildAppInsightsFailuresUrl(data.appInsightsResourceId, err.message)
+                  const hasInsights = !!data.appInsightsResourceId;
+                  const drillUrl = hasInsights
+                    ? buildAppInsightsFailuresUrl(data.appInsightsResourceId!, err.message)
                     : null;
                   return (
                     <TableRow key={i} className="hover:bg-muted/40 border-b border-border/50">
                       <TableCell className="py-2.5">
                         <div className="flex items-start justify-between gap-1 mb-1">
                           <div className="font-mono text-xs text-destructive break-all line-clamp-2 leading-tight flex-1">{err.message}</div>
-                          {drillUrl && (
-                            <a
-                              href={drillUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="Open in App Insights Failures"
-                              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-0.5"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
+                          {hasInsights && (
+                            <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                              <button
+                                type="button"
+                                title="Copy KQL query"
+                                className="text-muted-foreground hover:text-foreground transition-colors"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(buildExceptionKql(err.message)).then(() => {
+                                    toast({ description: "KQL copied" });
+                                  });
+                                }}
+                              >
+                                <Clipboard className="h-3 w-3" />
+                              </button>
+                              {drillUrl && (
+                                <a
+                                  href={drillUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Open in App Insights Failures"
+                                  className="text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              )}
+                            </div>
                           )}
                         </div>
                         <div className="flex justify-between text-muted-foreground text-[10px]">
