@@ -16,6 +16,11 @@ appId?: string;
  */
 limit?: number;
 /**
+ * Number of entries to skip for pagination (default 0).
+ * @minimum 0
+ */
+offset?: number;
+/**
  * When true, only return entries that have not yet been acknowledged.
  */
 unacknowledgedOnly?: boolean;

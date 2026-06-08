@@ -34,7 +34,7 @@ export function useUnacknowledgedBudgetAlerts(enabled = true) {
   });
 
   return {
-    unacknowledgedCount: data?.length ?? 0,
+    unacknowledgedCount: data?.total ?? 0,
     isLoading,
   };
 }

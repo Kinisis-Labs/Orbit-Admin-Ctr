@@ -33,6 +33,7 @@ import type {
   AppThresholdsLogPage,
   AppleSubscriptionRow,
   BudgetAlertLogEntry,
+  BudgetAlertLogPage,
   CostReport,
   DismissAnomalyRequest,
   GetAppAlertsParams,
@@ -45,6 +46,7 @@ import type {
   GlobalHealth,
   HealthStatus,
   InfraAlertLogEntry,
+  InfraAlertLogPage,
   InfrastructureReport,
   IngestSaleRequest,
   IngestSaleResult,
@@ -2597,9 +2599,9 @@ export const getListBudgetAlertLogUrl = (params?: ListBudgetAlertLogParams,) => 
 /**
  * @summary Recent budget-overrun notifications that were dispatched by the scheduler
  */
-export const listBudgetAlertLog = async (params?: ListBudgetAlertLogParams, options?: RequestInit): Promise<BudgetAlertLogEntry[]> => {
+export const listBudgetAlertLog = async (params?: ListBudgetAlertLogParams, options?: RequestInit): Promise<BudgetAlertLogPage> => {
 
-  return customFetch<BudgetAlertLogEntry[]>(getListBudgetAlertLogUrl(params),
+  return customFetch<BudgetAlertLogPage>(getListBudgetAlertLogUrl(params),
   {
     ...options,
     method: 'GET'
@@ -3056,9 +3058,9 @@ export const getListInfraAlertLogUrl = (params?: ListInfraAlertLogParams,) => {
 /**
  * @summary Recent infra-pressure notifications (CPU / memory threshold breaches) dispatched by the scheduler
  */
-export const listInfraAlertLog = async (params?: ListInfraAlertLogParams, options?: RequestInit): Promise<InfraAlertLogEntry[]> => {
+export const listInfraAlertLog = async (params?: ListInfraAlertLogParams, options?: RequestInit): Promise<InfraAlertLogPage> => {
 
-  return customFetch<InfraAlertLogEntry[]>(getListInfraAlertLogUrl(params),
+  return customFetch<InfraAlertLogPage>(getListInfraAlertLogUrl(params),
   {
     ...options,
     method: 'GET'

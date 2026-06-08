@@ -1019,6 +1019,12 @@ export interface BudgetAlertLogEntry {
   acknowledgedBy?: string | null;
 }
 
+export interface BudgetAlertLogPage {
+  entries: BudgetAlertLogEntry[];
+  /** Total number of matching entries (used for pagination) */
+  total: number;
+}
+
 export interface AcknowledgeBudgetAlertBody {
   /**
      * Optional freetext note (e.g. "spike from load test, safe to ignore")
@@ -1255,6 +1261,12 @@ export interface InfraAlertLogEntry {
   acknowledgedBy?: string | null;
 }
 
+export interface InfraAlertLogPage {
+  entries: InfraAlertLogEntry[];
+  /** Total number of matching entries (used for pagination) */
+  total: number;
+}
+
 /**
  * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
  */
@@ -1359,6 +1371,11 @@ appId?: string;
  */
 limit?: number;
 /**
+ * Number of entries to skip for pagination (default 0).
+ * @minimum 0
+ */
+offset?: number;
+/**
  * When true, only return entries that have not yet been acknowledged.
  */
 unacknowledgedOnly?: boolean;
@@ -1377,6 +1394,11 @@ appId?: string;
  * Maximum number of entries to return (default 50, max 200).
  */
 limit?: number;
+/**
+ * Number of entries to skip for pagination (default 0).
+ * @minimum 0
+ */
+offset?: number;
 /**
  * When true, only return entries that have not yet been acknowledged.
  */

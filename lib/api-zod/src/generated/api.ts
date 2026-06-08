@@ -793,14 +793,21 @@ export const GetGlobalCostSummaryResponse = zod.object({
 /**
  * @summary Recent budget-overrun notifications that were dispatched by the scheduler
  */
+export const listBudgetAlertLogQueryOffsetDefault = 0;
+export const listBudgetAlertLogQueryOffsetMin = 0;
+
+
+
 export const ListBudgetAlertLogQueryParams = zod.object({
   "appId": zod.coerce.string().optional().describe('Filter to a specific app. Omit to return entries for all apps.'),
   "limit": zod.coerce.number().optional().describe('Maximum number of entries to return (default 50, max 200).'),
+  "offset": zod.coerce.number().min(listBudgetAlertLogQueryOffsetMin).default(listBudgetAlertLogQueryOffsetDefault).describe('Number of entries to skip for pagination (default 0).'),
   "unacknowledgedOnly": zod.coerce.boolean().optional().describe('When true, only return entries that have not yet been acknowledged.'),
   "since": zod.coerce.string().datetime({"offset":true}).optional().describe('ISO 8601 datetime. When set, only return entries with sentAt >= since.')
 })
 
-export const ListBudgetAlertLogResponseItem = zod.object({
+export const ListBudgetAlertLogResponse = zod.object({
+  "entries": zod.array(zod.object({
   "id": zod.number(),
   "appId": zod.string(),
   "appName": zod.string(),
@@ -812,8 +819,9 @@ export const ListBudgetAlertLogResponseItem = zod.object({
   "acknowledgedAt": zod.string().datetime({"offset":true}).nullish().describe('When the entry was acknowledged by an operator. Null if not yet acknowledged.'),
   "acknowledgedNote": zod.string().nullish().describe('Optional freetext note left by the operator when acknowledging.'),
   "acknowledgedBy": zod.string().nullish().describe('Display name or UPN of the operator who acknowledged this alert.')
+})),
+  "total": zod.number().describe('Total number of matching entries (used for pagination)')
 })
-export const ListBudgetAlertLogResponse = zod.array(ListBudgetAlertLogResponseItem)
 
 
 /**
@@ -962,14 +970,21 @@ export const GetAlertConfigHistoryResponse = zod.array(GetAlertConfigHistoryResp
 /**
  * @summary Recent infra-pressure notifications (CPU / memory threshold breaches) dispatched by the scheduler
  */
+export const listInfraAlertLogQueryOffsetDefault = 0;
+export const listInfraAlertLogQueryOffsetMin = 0;
+
+
+
 export const ListInfraAlertLogQueryParams = zod.object({
   "appId": zod.coerce.string().optional().describe('Filter to a specific app. Omit to return entries for all apps.'),
   "limit": zod.coerce.number().optional().describe('Maximum number of entries to return (default 50, max 200).'),
+  "offset": zod.coerce.number().min(listInfraAlertLogQueryOffsetMin).default(listInfraAlertLogQueryOffsetDefault).describe('Number of entries to skip for pagination (default 0).'),
   "unacknowledgedOnly": zod.coerce.boolean().optional().describe('When true, only return entries that have not yet been acknowledged.'),
   "since": zod.coerce.string().datetime({"offset":true}).optional().describe('ISO 8601 datetime. When set, only return entries with sentAt >= since.')
 })
 
-export const ListInfraAlertLogResponseItem = zod.object({
+export const ListInfraAlertLogResponse = zod.object({
+  "entries": zod.array(zod.object({
   "id": zod.number(),
   "appId": zod.string(),
   "appName": zod.string(),
@@ -980,8 +995,9 @@ export const ListInfraAlertLogResponseItem = zod.object({
   "sentAt": zod.string().datetime({"offset":true}).describe('When the notification was dispatched'),
   "acknowledgedAt": zod.string().datetime({"offset":true}).nullish().describe('When the entry was acknowledged by an operator. Null if not yet acknowledged.'),
   "acknowledgedBy": zod.string().nullish().describe('Display name (or UPN) of the operator who acknowledged the alert. Null if not yet acknowledged.')
+})),
+  "total": zod.number().describe('Total number of matching entries (used for pagination)')
 })
-export const ListInfraAlertLogResponse = zod.array(ListInfraAlertLogResponseItem)
 
 
 /**

@@ -1,4 +1,5 @@
-import { useListBudgetAlertLog, useAcknowledgeBudgetAlertLogEntry, getListBudgetAlertLogQueryKey, useGetAlertChannelStatus } from "@workspace/api-client-react";
+import { useListBudgetAlertLog, listBudgetAlertLog, useAcknowledgeBudgetAlertLogEntry, getListBudgetAlertLogQueryKey, useGetAlertChannelStatus } from "@workspace/api-client-react";
+import type { BudgetAlertLogEntry } from "@workspace/api-client-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Bell, BellOff, Check, Filter, X, CalendarRange, Mail, MessageSquare, StickyNote, Bookmark, BookmarkPlus, Trash2, Zap } from "lucide-react";
+import { AlertTriangle, Bell, BellOff, Check, Download, Filter, Loader2, X, CalendarRange, Mail, MessageSquare, StickyNote, Bookmark, BookmarkPlus, Trash2, Zap } from "lucide-react";
 import { format, parseISO, isValid, startOfDay, endOfDay, subDays } from "date-fns";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -221,7 +222,8 @@ export function BudgetAlertHistory({ appId }: Props) {
     ...(unacknowledgedOnly ? { unacknowledgedOnly: true } : {}),
   };
 
-  const { data: entries, isLoading } = useListBudgetAlertLog(params);
+  const { data, isLoading } = useListBudgetAlertLog(params);
+  const entries = data?.entries;
   const { mutate: acknowledge, isPending: isAcknowledging } = useAcknowledgeBudgetAlertLogEntry({
     mutation: {
       onSuccess: () => {
@@ -400,8 +402,79 @@ export function BudgetAlertHistory({ appId }: Props) {
     () => toast({ title: "No alerts to export", description: "There are no alert records in the current view." }),
   );
 
-  const total = entries?.length ?? 0;
+  const total = data?.total ?? 0;
   const shown = filteredEntries?.length ?? 0;
+  const hasMore = total > (entries?.length ?? 0);
+  const [isExporting, setIsExporting] = useState(false);
+
+  function buildCsvRows(rows: BudgetAlertLogEntry[]) {
+    return rows.map((entry) => {
+      const overage = entry.budget > 0 ? (((entry.forecast - entry.budget) / entry.budget) * 100).toFixed(1) + "%" : "N/A";
+      const sentAt = format(new Date(entry.sentAt), "MMM d, yyyy HH:mm");
+      const channels = entry.channels.map((ch) => CHANNEL_LABELS[ch] ?? ch).join("; ");
+      const acknowledgedAt = entry.acknowledgedAt ? format(new Date(entry.acknowledgedAt), "MMM d, yyyy HH:mm") : "";
+      const acknowledgedBy = entry.acknowledgedBy ?? "";
+      const acknowledgedNote = entry.acknowledgedNote ?? "";
+      const base = [
+        sentAt,
+        entry.mtd.toFixed(2),
+        entry.forecast.toFixed(2),
+        entry.budget.toFixed(2),
+        overage,
+        channels,
+        acknowledgedAt,
+        acknowledgedBy,
+        acknowledgedNote,
+      ];
+      return appId ? base : [entry.appName, ...base];
+    });
+  }
+
+  function triggerCsvDownload(rows: BudgetAlertLogEntry[]) {
+    const builtRows = buildCsvRows(rows);
+    const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const csv = [csvHeaders, ...builtRows].map((r) => r.map(escape).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `budget-alert-history${appId ? `-${entries?.[0]?.appName ?? appId}` : ""}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleLoadAllAndExport() {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const pageSize = 200;
+      let offset = 0;
+      const accumulated: BudgetAlertLogEntry[] = [];
+      const knownTotal = total;
+      while (accumulated.length < knownTotal) {
+        const page = await listBudgetAlertLog({ ...params, limit: pageSize, offset });
+        if (!page.entries || page.entries.length === 0) break;
+        accumulated.push(...page.entries);
+        offset += page.entries.length;
+      }
+      // Apply client-side date + channel filters
+      const filtered = accumulated.filter((entry) => {
+        if (isDateFiltered) {
+          const sent = new Date(entry.sentAt);
+          if (startDate && sent < startDate) return false;
+          if (endDate && sent > endDate) return false;
+        }
+        if (isChannelFiltered) {
+          const hasChannel = entry.channels.some((ch) => selectedChannels.has(ch as Channel));
+          if (!hasChannel) return false;
+        }
+        return true;
+      });
+      triggerCsvDownload(filtered);
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   const channelDefs: { key: Channel; label: string; Icon: React.ElementType }[] = [
     { key: "teams", label: "Teams", Icon: MessageSquare },
@@ -628,13 +701,38 @@ export function BudgetAlertHistory({ appId }: Props) {
             )}
 
             {!isLoading && (
-              <div className="flex items-center gap-1">
-                <CsvToolbar
-                  handleExport={handleExport}
-                  handleCopy={handleCopy}
-                  disabled={csvDisabled}
-                  copied={copied}
-                />
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                {hasMore && !isExporting && (
+                  <p className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="h-3 w-3 shrink-0" />
+                    {entries?.length ?? 0} of {total} entries loaded — export will fetch all
+                  </p>
+                )}
+                {hasMore ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[12px] px-2"
+                    onClick={handleLoadAllAndExport}
+                    disabled={isExporting || total === 0}
+                    title={`Only ${entries?.length ?? 0} of ${total} entries are loaded. Clicking will fetch all ${total} entries then download.`}
+                  >
+                    {isExporting ? (
+                      <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Exporting…</>
+                    ) : (
+                      <><Download className="h-3 w-3 mr-1" />Load all & export</>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <CsvToolbar
+                      handleExport={handleExport}
+                      handleCopy={handleCopy}
+                      disabled={csvDisabled}
+                      copied={copied}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>

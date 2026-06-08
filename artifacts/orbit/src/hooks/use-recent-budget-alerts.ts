@@ -38,9 +38,9 @@ export function useRecentBudgetAlerts(enabled = true, appId?: string): Map<strin
 
   return useMemo(() => {
     const map = new Map<string, Date>();
-    if (!entries) return map;
+    if (!entries?.entries) return map;
 
-    for (const entry of entries) {
+    for (const entry of entries.entries) {
       const sentAt = new Date(entry.sentAt);
       const existing = map.get(entry.appId);
       if (!existing || sentAt > existing) {

@@ -1,14 +1,16 @@
 import {
   useListInfraAlertLog,
+  listInfraAlertLog,
   useAcknowledgeInfraAlertLogEntry,
   getListInfraAlertLogQueryKey,
 } from "@workspace/api-client-react";
+import type { InfraAlertLogEntry } from "@workspace/api-client-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Cpu, MemoryStick, BellOff, Check, Filter, X, CalendarRange } from "lucide-react";
+import { AlertTriangle, Cpu, Download, Loader2, MemoryStick, BellOff, Check, Filter, X, CalendarRange } from "lucide-react";
 import { format, parseISO, isValid, startOfDay, endOfDay } from "date-fns";
-import { useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
@@ -184,7 +186,8 @@ export function InfraAlertHistory({ appId }: Props) {
     ...(unacknowledgedOnly ? { unacknowledgedOnly: true } : {}),
   };
 
-  const { data: entries, isLoading } = useListInfraAlertLog(params);
+  const { data, isLoading } = useListInfraAlertLog(params);
+  const entries = data?.entries;
   const { mutate: acknowledge, isPending: isAcknowledging } = useAcknowledgeInfraAlertLogEntry({
     mutation: {
       onSuccess: () => {
@@ -267,8 +270,73 @@ export function InfraAlertHistory({ appId }: Props) {
     () => toast({ title: "No alerts to export", description: "There are no infra alert records in the current view." }),
   );
 
-  const total = entries?.length ?? 0;
+  const total = data?.total ?? 0;
   const shown = filteredEntries?.length ?? 0;
+  const hasMore = total > (entries?.length ?? 0);
+  const [isExporting, setIsExporting] = useState(false);
+
+  function buildCsvRows(rows: InfraAlertLogEntry[]) {
+    return rows.map((entry) => {
+      const sentAt = format(new Date(entry.sentAt), "MMM d, yyyy HH:mm");
+      const metricLabel = METRIC_LABELS[entry.metric] ?? entry.metric;
+      const channels = entry.channels.map((ch) => CHANNEL_LABELS[ch] ?? ch).join("; ");
+      const acknowledgedAt = entry.acknowledgedAt
+        ? format(new Date(entry.acknowledgedAt), "MMM d, yyyy HH:mm")
+        : "";
+      const acknowledgedBy = entry.acknowledgedBy ?? "";
+      const base = [
+        sentAt,
+        metricLabel,
+        `${entry.value.toFixed(1)}%`,
+        `${entry.threshold.toFixed(0)}%`,
+        channels,
+        acknowledgedAt,
+        acknowledgedBy,
+      ];
+      return appId ? base : [entry.appName, ...base];
+    });
+  }
+
+  function triggerCsvDownload(rows: InfraAlertLogEntry[]) {
+    const builtRows = buildCsvRows(rows);
+    const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const csv = [csvHeaders, ...builtRows].map((r) => r.map(escape).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `infra-alert-history${appId ? `-${entries?.[0]?.appName ?? appId}` : ""}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleLoadAllAndExport() {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const pageSize = 200;
+      let offset = 0;
+      const accumulated: InfraAlertLogEntry[] = [];
+      const knownTotal = total;
+      while (accumulated.length < knownTotal) {
+        const page = await listInfraAlertLog({ ...params, limit: pageSize, offset });
+        if (!page.entries || page.entries.length === 0) break;
+        accumulated.push(...page.entries);
+        offset += page.entries.length;
+      }
+      // Apply client-side date + metric filters
+      const filtered = accumulated.filter((entry) => {
+        const sent = new Date(entry.sentAt);
+        if (startDate && sent < startDate) return false;
+        if (endDate && sent > endDate) return false;
+        if (metricFilter && entry.metric !== metricFilter) return false;
+        return true;
+      });
+      triggerCsvDownload(filtered);
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   return (
     <div className="bg-card border border-border shadow-sm flex flex-col">
@@ -364,13 +432,38 @@ export function InfraAlertHistory({ appId }: Props) {
           )}
 
           {!isLoading && (
-            <div className="flex items-center gap-1">
-              <CsvToolbar
-                handleExport={handleExport}
-                handleCopy={handleCopy}
-                disabled={csvDisabled}
-                copied={copied}
-              />
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              {hasMore && !isExporting && (
+                <p className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
+                  <AlertTriangle className="h-3 w-3 shrink-0" />
+                  {entries?.length ?? 0} of {total} entries loaded — export will fetch all
+                </p>
+              )}
+              {hasMore ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[12px] px-2"
+                  onClick={handleLoadAllAndExport}
+                  disabled={isExporting || total === 0}
+                  title={`Only ${entries?.length ?? 0} of ${total} entries are loaded. Clicking will fetch all ${total} entries then download.`}
+                >
+                  {isExporting ? (
+                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Exporting…</>
+                  ) : (
+                    <><Download className="h-3 w-3 mr-1" />Load all & export</>
+                  )}
+                </Button>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <CsvToolbar
+                    handleExport={handleExport}
+                    handleCopy={handleCopy}
+                    disabled={csvDisabled}
+                    copied={copied}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

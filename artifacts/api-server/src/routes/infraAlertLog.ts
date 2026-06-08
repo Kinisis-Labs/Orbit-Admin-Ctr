@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, infraAlertLogTable } from "@workspace/db";
-import { and, desc, eq, gte, isNull } from "drizzle-orm";
+import { and, count, desc, eq, gte, isNull } from "drizzle-orm";
 import { APPS } from "./orbit.js";
 
 const router: IRouter = Router();
@@ -26,6 +26,8 @@ router.get("/infra-alerts/log", async (req, res) => {
   const sinceDate = sinceRaw ? new Date(sinceRaw) : undefined;
   const rawLimit = Number(req.query["limit"]);
   const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(Math.ceil(rawLimit), 200) : 50;
+  const rawOffset = Number(req.query["offset"]);
+  const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? Math.floor(rawOffset) : 0;
   const unacknowledgedOnly = req.query["unacknowledgedOnly"] === "true";
 
   const appMap = new Map(APPS.map((a) => [a.id, a.name]));
@@ -36,14 +38,24 @@ router.get("/infra-alerts/log", async (req, res) => {
     sinceDate && !isNaN(sinceDate.getTime()) ? gte(infraAlertLogTable.sentAt, sinceDate) : undefined,
   );
 
-  const rows = await db
-    .select()
-    .from(infraAlertLogTable)
-    .where(whereClause)
-    .orderBy(desc(infraAlertLogTable.sentAt))
-    .limit(limit);
+  const [rows, countResult] = await Promise.all([
+    db
+      .select()
+      .from(infraAlertLogTable)
+      .where(whereClause)
+      .orderBy(desc(infraAlertLogTable.sentAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ total: count() })
+      .from(infraAlertLogTable)
+      .where(whereClause),
+  ]);
 
-  res.json(rows.map((r) => toEntry(r, appMap)));
+  res.json({
+    entries: rows.map((r) => toEntry(r, appMap)),
+    total: countResult[0]?.total ?? 0,
+  });
 });
 
 router.patch("/infra-alerts/log/:id/acknowledge", async (req, res) => {

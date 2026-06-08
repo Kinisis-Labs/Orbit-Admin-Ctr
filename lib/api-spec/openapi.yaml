@@ -545,6 +545,11 @@ paths:
           required: false
           description: Maximum number of entries to return (default 50, max 200).
           schema: { type: integer }
+        - name: offset
+          in: query
+          required: false
+          description: Number of entries to skip for pagination (default 0).
+          schema: { type: integer, minimum: 0, default: 0 }
         - name: unacknowledgedOnly
           in: query
           required: false
@@ -560,9 +565,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/BudgetAlertLogEntry" }
+              schema: { $ref: "#/components/schemas/BudgetAlertLogPage" }
   /budget-alerts/log/{id}/acknowledge:
     patch:
       operationId: acknowledgeBudgetAlertLogEntry
@@ -665,6 +668,11 @@ paths:
           required: false
           description: Maximum number of entries to return (default 50, max 200).
           schema: { type: integer }
+        - name: offset
+          in: query
+          required: false
+          description: Number of entries to skip for pagination (default 0).
+          schema: { type: integer, minimum: 0, default: 0 }
         - name: unacknowledgedOnly
           in: query
           required: false
@@ -680,9 +688,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/InfraAlertLogEntry" }
+              schema: { $ref: "#/components/schemas/InfraAlertLogPage" }
   /infra-alerts/log/{id}/acknowledge:
     patch:
       operationId: acknowledgeInfraAlertLogEntry
@@ -1431,6 +1437,16 @@ components:
         dataSource: { type: string, enum: [live, cached, mock] }
         dataAsOf: { type: string, format: date-time, nullable: true, description: "Timestamp of the most recent live or cached data point across all apps." }
         wowTrend: { type: string, nullable: true, description: "Spend-weighted week-over-week percentage change across all apps (e.g. '+8.2%' or '-3.1%'). Null when insufficient data." }
+    BudgetAlertLogPage:
+      type: object
+      required: [entries, total]
+      properties:
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/BudgetAlertLogEntry" }
+        total:
+          type: integer
+          description: Total number of matching entries (used for pagination)
     BudgetAlertLogEntry:
       type: object
       required: [id, appId, appName, mtd, forecast, budget, channels, sentAt]
@@ -1659,6 +1675,16 @@ components:
         total:
           type: integer
           description: Total number of history entries for this app (used for pagination)
+    InfraAlertLogPage:
+      type: object
+      required: [entries, total]
+      properties:
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/InfraAlertLogEntry" }
+        total:
+          type: integer
+          description: Total number of matching entries (used for pagination)
     InfraAlertLogEntry:
       type: object
       required: [id, appId, appName, metric, value, threshold, channels, sentAt]
