@@ -1272,7 +1272,7 @@ components:
           description: Consecutive over-threshold checks required before a notification fires. Null clears the DB override.
     AppAlertConfig:
       type: object
-      required: [appId, appName, cpuThresholdPct, memoryThresholdPct, cpuIsOverride, memoryIsOverride, consecutiveChecks, consecutiveChecksIsOverride]
+      required: [appId, appName, cpuThresholdPct, memoryThresholdPct, cpuIsOverride, memoryIsOverride, consecutiveChecks, consecutiveChecksIsOverride, cooldownHours, cooldownIsOverride]
       properties:
         appId: { type: string }
         appName: { type: string }
@@ -1294,6 +1294,12 @@ components:
         consecutiveChecksIsOverride:
           type: boolean
           description: True when a per-app DB or env-var value overrides the global default
+        cooldownHours:
+          type: number
+          description: Effective alert cooldown window in hours (minimum time between repeat notifications)
+        cooldownIsOverride:
+          type: boolean
+          description: True when a per-app ALERT_COOLDOWN_HOURS__<APPID> env var overrides the global default
         cpuSource:
           type: string
           enum: [db, env, default]
@@ -1306,6 +1312,10 @@ components:
           type: string
           enum: [db, env, default]
           description: Which source provides the effective consecutive-checks value
+        cooldownSource:
+          type: string
+          enum: [env, default]
+          description: Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)
         updatedAt:
           type: string
           format: date-time

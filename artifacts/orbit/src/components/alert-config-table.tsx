@@ -529,7 +529,7 @@ export function AlertConfigTable({ appId }: Props) {
     infraQueries.forEach((q) => void q.refetch());
   }
 
-  const colCount = (appId ? 0 : 1) + 7;
+  const colCount = (appId ? 0 : 1) + 8;
 
   return (
     <div className="bg-card border border-border shadow-sm flex flex-col">
@@ -611,6 +611,7 @@ export function AlertConfigTable({ appId }: Props) {
                 <TableHead className="h-8 font-semibold text-foreground w-[220px]">Memory threshold</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground w-[200px]">Current memory</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground w-[200px]">Consecutive checks</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground w-[160px]">Cooldown</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground">Last updated</TableHead>
                 <TableHead className="h-8 w-16" />
               </TableRow>
@@ -654,6 +655,14 @@ export function AlertConfigTable({ appId }: Props) {
                       </TableCell>
                       <TableCell className="py-1">
                         {renderThresholdCell(row, "consecutiveChecks")}
+                      </TableCell>
+                      <TableCell className="py-1">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="tabular-nums font-mono text-[12px]">
+                            {row.cooldownHours}h
+                          </span>
+                          <SourceBadge source={row.cooldownIsOverride ? "env" : (row.cooldownSource ?? "default")} />
+                        </span>
                       </TableCell>
                       <TableCell className="py-1 text-[11px] text-muted-foreground">
                         {row.updatedAt ? (

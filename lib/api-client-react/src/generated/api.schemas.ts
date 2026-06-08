@@ -884,6 +884,17 @@ export const AppAlertConfigConsecutiveChecksSource = {
   default: 'default',
 } as const;
 
+/**
+ * Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)
+ */
+export type AppAlertConfigCooldownSource = typeof AppAlertConfigCooldownSource[keyof typeof AppAlertConfigCooldownSource];
+
+
+export const AppAlertConfigCooldownSource = {
+  env: 'env',
+  default: 'default',
+} as const;
+
 export interface AppAlertConfig {
   appId: string;
   appName: string;
@@ -899,12 +910,18 @@ export interface AppAlertConfig {
   consecutiveChecks: number;
   /** True when a per-app DB or env-var value overrides the global default */
   consecutiveChecksIsOverride: boolean;
+  /** Effective alert cooldown window in hours (minimum time between repeat notifications) */
+  cooldownHours: number;
+  /** True when a per-app ALERT_COOLDOWN_HOURS__<APPID> env var overrides the global default */
+  cooldownIsOverride: boolean;
   /** Which source provides the effective CPU threshold */
   cpuSource?: AppAlertConfigCpuSource;
   /** Which source provides the effective memory threshold */
   memorySource?: AppAlertConfigMemorySource;
   /** Which source provides the effective consecutive-checks value */
   consecutiveChecksSource?: AppAlertConfigConsecutiveChecksSource;
+  /** Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in) */
+  cooldownSource?: AppAlertConfigCooldownSource;
   /** When a DB override was last saved for this app */
   updatedAt?: string | null;
   /** Display name / UPN of the operator who last saved DB overrides */

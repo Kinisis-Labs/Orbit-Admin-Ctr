@@ -16,6 +16,7 @@ export * from './apiByName';
 export * from './apiUsage';
 export * from './appAlertConfig';
 export * from './appAlertConfigConsecutiveChecksSource';
+export * from './appAlertConfigCooldownSource';
 export * from './appAlertConfigCpuSource';
 export * from './appAlertConfigMemorySource';
 export * from './appDetail';

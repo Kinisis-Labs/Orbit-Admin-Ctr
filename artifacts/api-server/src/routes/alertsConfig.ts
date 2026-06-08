@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { APPS } from "./orbit.js";
 import { resolveThresholdsBulk, resolveThresholds } from "../lib/alertThresholds.js";
+import { resolveCooldownHours } from "../lib/budgetAlerts.js";
 import { db, alertThresholdConfigTable, alertThresholdConfigLogTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth.js";
@@ -13,6 +14,7 @@ router.get("/alerts/config", async (_req, res) => {
 
   const result = APPS.map((app) => {
     const t = thresholds.get(app.id)!;
+    const cooldown = resolveCooldownHours(app.id);
     return {
       appId: app.id,
       appName: app.name,
@@ -22,9 +24,12 @@ router.get("/alerts/config", async (_req, res) => {
       memoryIsOverride: t.memoryIsOverride,
       consecutiveChecks: t.consecutiveChecks,
       consecutiveChecksIsOverride: t.consecutiveChecksIsOverride,
+      cooldownHours: cooldown.hours,
+      cooldownIsOverride: cooldown.isOverride,
       cpuSource: t.cpuSource,
       memorySource: t.memorySource,
       consecutiveChecksSource: t.consecutiveChecksSource,
+      cooldownSource: cooldown.source,
       updatedAt: t.updatedAt,
       updatedBy: t.updatedBy,
     };
@@ -125,6 +130,7 @@ router.put("/alerts/config/:appId", requireAdmin, async (req, res) => {
   });
 
   const t = await resolveThresholds(appId);
+  const cooldown = resolveCooldownHours(appId);
 
   res.json({
     appId: app.id,
@@ -135,9 +141,12 @@ router.put("/alerts/config/:appId", requireAdmin, async (req, res) => {
     memoryIsOverride: t.memoryIsOverride,
     consecutiveChecks: t.consecutiveChecks,
     consecutiveChecksIsOverride: t.consecutiveChecksIsOverride,
+    cooldownHours: cooldown.hours,
+    cooldownIsOverride: cooldown.isOverride,
     cpuSource: t.cpuSource,
     memorySource: t.memorySource,
     consecutiveChecksSource: t.consecutiveChecksSource,
+    cooldownSource: cooldown.source,
     updatedAt: t.updatedAt,
     updatedBy: t.updatedBy,
   });

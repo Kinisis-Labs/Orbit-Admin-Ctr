@@ -763,9 +763,12 @@ export const ListAlertConfigResponseItem = zod.object({
   "memoryIsOverride": zod.boolean().describe('True when a per-app DB or env-var value overrides the global default'),
   "consecutiveChecks": zod.number().describe('Number of consecutive over-threshold scheduler checks required before a notification fires'),
   "consecutiveChecksIsOverride": zod.boolean().describe('True when a per-app DB or env-var value overrides the global default'),
+  "cooldownHours": zod.number().describe('Effective alert cooldown window in hours (minimum time between repeat notifications)'),
+  "cooldownIsOverride": zod.boolean().describe('True when a per-app ALERT_COOLDOWN_HOURS__<APPID> env var overrides the global default'),
   "cpuSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective CPU threshold'),
   "memorySource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective memory threshold'),
   "consecutiveChecksSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective consecutive-checks value'),
+  "cooldownSource": zod.enum(['env', 'default']).optional().describe('Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)'),
   "updatedAt": zod.string().datetime({"offset":true}).nullish().describe('When a DB override was last saved for this app'),
   "updatedBy": zod.string().nullish().describe('Display name \/ UPN of the operator who last saved DB overrides')
 })
@@ -801,9 +804,12 @@ export const UpdateAlertConfigResponse = zod.object({
   "memoryIsOverride": zod.boolean().describe('True when a per-app DB or env-var value overrides the global default'),
   "consecutiveChecks": zod.number().describe('Number of consecutive over-threshold scheduler checks required before a notification fires'),
   "consecutiveChecksIsOverride": zod.boolean().describe('True when a per-app DB or env-var value overrides the global default'),
+  "cooldownHours": zod.number().describe('Effective alert cooldown window in hours (minimum time between repeat notifications)'),
+  "cooldownIsOverride": zod.boolean().describe('True when a per-app ALERT_COOLDOWN_HOURS__<APPID> env var overrides the global default'),
   "cpuSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective CPU threshold'),
   "memorySource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective memory threshold'),
   "consecutiveChecksSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective consecutive-checks value'),
+  "cooldownSource": zod.enum(['env', 'default']).optional().describe('Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)'),
   "updatedAt": zod.string().datetime({"offset":true}).nullish().describe('When a DB override was last saved for this app'),
   "updatedBy": zod.string().nullish().describe('Display name \/ UPN of the operator who last saved DB overrides')
 })

@@ -139,6 +139,32 @@ function cooldownMs(appId?: string): number {
   return (Number.isFinite(hours) && hours > 0 ? hours : 12) * 60 * 60 * 1000;
 }
 
+/**
+ * Resolve the effective alert cooldown for an app and report its source.
+ *
+ * Priority order:
+ *   1. ALERT_COOLDOWN_HOURS__<APPID>  — per-app env-var override (isOverride: true)
+ *   2. ALERT_COOLDOWN_HOURS           — global env var (isOverride: false)
+ *   3. 12h                            — hardcoded default (source: "default")
+ */
+export function resolveCooldownHours(appId: string): {
+  hours: number;
+  source: "env" | "default";
+  isOverride: boolean;
+} {
+  const perApp = process.env[`ALERT_COOLDOWN_HOURS__${appEnvKey(appId)}`];
+  if (perApp !== undefined) {
+    const v = Number(perApp);
+    if (Number.isFinite(v) && v > 0) return { hours: v, source: "env", isOverride: true };
+  }
+  const global = process.env["ALERT_COOLDOWN_HOURS"];
+  if (global !== undefined) {
+    const v = Number(global);
+    if (Number.isFinite(v) && v > 0) return { hours: v, source: "env", isOverride: false };
+  }
+  return { hours: 12, source: "default", isOverride: false };
+}
+
 function isBudgetOnCooldown(appId: string): boolean {
   const last = _lastBudgetAlertSentAt.get(appId);
   return last !== undefined && Date.now() - last < cooldownMs(appId);
