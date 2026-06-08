@@ -418,15 +418,17 @@ router.get("/apps/:appId/infrastructure", async (req, res) => {
     return;
   }
   const bypassCache = req.query["refresh"] === "true";
-  const [liveResources, liveCpuSeries, liveMemSeries] = await Promise.all([
+  const [liveResources, liveCpuSeries, liveMemSeries, liveDiskIopsSeries] = await Promise.all([
     fetchResourcesByResourceGroup(app, { bypassCache }),
     fetchAppTimeSeries(app, "cpu_pct", 24, { bypassCache }),
     fetchAppTimeSeries(app, "memory_pct", 24, { bypassCache }),
+    fetchAppTimeSeries(app, "disk_iops", 24, { bypassCache }),
   ]);
   const resources = liveResources ?? [];
   const series = liveResources ? [
     { name: "CPU %", unit: "%", points: liveCpuSeries ?? [] },
     { name: "Memory %", unit: "%", points: liveMemSeries ?? [] },
+    { name: "Disk IOPS", unit: "ops/s", points: liveDiskIopsSeries ?? [] },
   ] : [];
   const data = GetInfrastructureResponse.parse({ resources, series, dataSource: liveResources ? "live" : "mock" });
   res.json(data);
@@ -440,9 +442,19 @@ router.get("/apps/:appId/network", async (req, res) => {
     return;
   }
   const bypassCache = req.query["refresh"] === "true";
-  const liveEndpoints = await fetchNetworkEndpoints(app, { bypassCache });
+  const [liveEndpoints, liveIngressSeries, liveEgressSeries] = await Promise.all([
+    fetchNetworkEndpoints(app, { bypassCache }),
+    fetchAppTimeSeries(app, "network_ingress_mbps", 24, { bypassCache }),
+    fetchAppTimeSeries(app, "network_egress_mbps", 24, { bypassCache }),
+  ]);
   const endpoints = liveEndpoints ?? [];
-  const throughput: { name: string; unit: string; points: { timestamp: string; value: number }[] }[] = [];
+  const throughput: { name: string; unit: string; points: { timestamp: string; value: number }[] }[] =
+    liveIngressSeries || liveEgressSeries
+      ? [
+          { name: "Ingress", unit: "MB/s", points: liveIngressSeries ?? [] },
+          { name: "Egress", unit: "MB/s", points: liveEgressSeries ?? [] },
+        ]
+      : [];
   const data = GetNetworkResponse.parse({ endpoints, throughput });
   res.json(data);
 });

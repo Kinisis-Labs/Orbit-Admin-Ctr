@@ -115,6 +115,35 @@ const METRIC_QUERIES: Record<
     | summarize value = avg(value) by bin(timestamp, 1h)
     | order by timestamp asc
   `,
+  // Disk Transfers/sec (reads + writes combined) from the _Total logical disk
+  // instance. Aggregated as average over each hourly bucket.
+  disk_iops: (resourceId, hours) => `
+    performanceCounters
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(${hours}h)
+    | where category == "LogicalDisk" and counter == "Disk Transfers/sec" and instance == "_Total"
+    | summarize value = avg(value) by bin(timestamp, 1h)
+    | order by timestamp asc
+  `,
+  // Network bytes received per second, converted to MB/s (÷ 1 048 576).
+  // Uses the first NIC interface found; summed across interfaces if multiple.
+  network_ingress_mbps: (resourceId, hours) => `
+    performanceCounters
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(${hours}h)
+    | where category == "Network Interface" and counter == "Bytes Received/sec"
+    | summarize value = avg(value) / (1024.0 * 1024.0) by bin(timestamp, 1h)
+    | order by timestamp asc
+  `,
+  // Network bytes sent per second, converted to MB/s.
+  network_egress_mbps: (resourceId, hours) => `
+    performanceCounters
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(${hours}h)
+    | where category == "Network Interface" and counter == "Bytes Sent/sec"
+    | summarize value = avg(value) / (1024.0 * 1024.0) by bin(timestamp, 1h)
+    | order by timestamp asc
+  `,
 };
 
 // Cache resolved App Insights resource IDs per app to avoid repeated Resource
