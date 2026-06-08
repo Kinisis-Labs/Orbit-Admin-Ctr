@@ -76,6 +76,7 @@ export * from './metricPoint';
 export * from './metricSeries';
 export * from './networkEndpoint';
 export * from './networkReport';
+export * from './networkReportDataSource';
 export * from './playSubscriptionRow';
 export * from './playSubscriptionRowDataSource';
 export * from './postLedgerEntryRequest';

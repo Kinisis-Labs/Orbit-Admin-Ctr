@@ -455,7 +455,8 @@ router.get("/apps/:appId/network", async (req, res) => {
           { name: "Egress", unit: "MB/s", points: liveEgressSeries ?? [] },
         ]
       : [];
-  const data = GetNetworkResponse.parse({ endpoints, throughput });
+  const dataSource = liveEndpoints !== null ? "live" : "mock";
+  const data = GetNetworkResponse.parse({ endpoints, throughput, dataSource });
   res.json(data);
 });
 

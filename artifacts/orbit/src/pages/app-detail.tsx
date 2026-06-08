@@ -402,6 +402,14 @@ function DataSourceBadge({
       </span>
     );
   }
+  if (dataSource === "mock") {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/50 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide select-none">
+        <WifiOff className="h-3 w-3" />
+        Demo data
+      </span>
+    );
+  }
   return null;
 }
 
@@ -657,9 +665,12 @@ function NetworkTab({ appId }: { appId: string }) {
       <div className="lg:col-span-1 bg-card border border-border shadow-sm flex flex-col">
         <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Endpoints</h2>
-          {isLiveMode(mode) && (
-            <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
-          )}
+          <div className="flex items-center gap-2">
+            <DataSourceBadge dataSource={data.dataSource} />
+            {isLiveMode(mode) && (
+              <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
+            )}
+          </div>
         </div>
         <div className="p-0 overflow-y-auto max-h-[500px]">
           <Table className="text-[12px]">

@@ -216,7 +216,8 @@ export const GetNetworkResponse = zod.object({
   "timestamp": zod.string().datetime({"offset":true}),
   "value": zod.number()
 }))
-}))
+})),
+  "dataSource": zod.enum(['live', 'mock']).describe('Whether the data came from a real Azure source or is seeded mock data.')
 })
 
 

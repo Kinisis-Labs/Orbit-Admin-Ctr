@@ -237,9 +237,22 @@ export interface NetworkEndpoint {
   region: string;
 }
 
+/**
+ * Whether the data came from a real Azure source or is seeded mock data.
+ */
+export type NetworkReportDataSource = typeof NetworkReportDataSource[keyof typeof NetworkReportDataSource];
+
+
+export const NetworkReportDataSource = {
+  live: 'live',
+  mock: 'mock',
+} as const;
+
 export interface NetworkReport {
   endpoints: NetworkEndpoint[];
   throughput: MetricSeries[];
+  /** Whether the data came from a real Azure source or is seeded mock data. */
+  dataSource: NetworkReportDataSource;
 }
 
 export interface CostByService {

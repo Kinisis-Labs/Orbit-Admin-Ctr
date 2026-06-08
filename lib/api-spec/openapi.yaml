@@ -847,7 +847,7 @@ components:
         region: { type: string }
     NetworkReport:
       type: object
-      required: [endpoints, throughput]
+      required: [endpoints, throughput, dataSource]
       properties:
         endpoints:
           type: array
@@ -855,6 +855,10 @@ components:
         throughput:
           type: array
           items: { $ref: "#/components/schemas/MetricSeries" }
+        dataSource:
+          type: string
+          enum: [live, mock]
+          description: "Whether the data came from a real Azure source or is seeded mock data."
     CostByService:
       type: object
       required: [service, amount]

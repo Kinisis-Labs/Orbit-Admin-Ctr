@@ -7,8 +7,11 @@
  */
 import type { MetricSeries } from './metricSeries';
 import type { NetworkEndpoint } from './networkEndpoint';
+import type { NetworkReportDataSource } from './networkReportDataSource';
 
 export interface NetworkReport {
   endpoints: NetworkEndpoint[];
   throughput: MetricSeries[];
+  /** Whether the data came from a real Azure source or is seeded mock data. */
+  dataSource: NetworkReportDataSource;
 }
