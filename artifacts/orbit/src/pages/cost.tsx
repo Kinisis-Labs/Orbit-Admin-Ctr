@@ -20,8 +20,8 @@ import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { useCsvExport } from "@/hooks/use-csv-export";
-import { useMemo, useState } from "react";
-import { DailySpendChart, type DailyCostPoint } from "@/components/daily-spend-chart";
+import { useMemo, useState, useRef } from "react";
+import { DailySpendChart, type DailyCostPoint, type DailySpendRange } from "@/components/daily-spend-chart";
 import { computeAnomalies } from "@/components/daily-spend-utils";
 import { format, parseISO, isValid } from "date-fns";
 
@@ -78,13 +78,14 @@ function detectRecentAnomaly(daily: DailyCostPoint[] | undefined | null): {
 const LS_KEY_PREFIX = "orbit-cost-anomaly-dismissed-";
 
 function AnomalyAlertBanner({
-  daily,
+  anomaly,
   formatCurrency,
+  onViewInChart,
 }: {
-  daily: DailyCostPoint[] | undefined | null;
+  anomaly: ReturnType<typeof detectRecentAnomaly>;
   formatCurrency: (v: number) => string;
+  onViewInChart?: () => void;
 }) {
-  const anomaly = useMemo(() => detectRecentAnomaly(daily), [daily]);
   const [dismissed, setDismissed] = useState<string | null>(() => {
     try {
       return localStorage.getItem(LS_KEY_PREFIX + (anomaly?.dateKey ?? "")) ?? null;
@@ -116,8 +117,17 @@ function AnomalyAlertBanner({
           {anomaly.excess > 0 && (
             <>, an estimated <span className="font-semibold">{formatCurrency(anomaly.excess)}</span> above baseline</>
           )}
-          . Check the Daily Spend chart below.
+          .
         </span>
+        {onViewInChart && (
+          <button
+            onClick={onViewInChart}
+            className="ml-2 inline-flex items-center gap-1 text-[12px] font-semibold underline underline-offset-2 decoration-amber-500/60 hover:decoration-amber-600 dark:decoration-amber-400/60 dark:hover:decoration-amber-300 transition-colors"
+          >
+            <CalendarSearch className="h-3 w-3 shrink-0" />
+            View in chart
+          </button>
+        )}
       </div>
       <button
         onClick={dismiss}
@@ -193,6 +203,23 @@ function AppCost() {
     if (!trend) return -Infinity;
     const n = parseFloat(trend.replace(/[^0-9.\-+]/g, ""));
     return isNaN(n) ? -Infinity : n;
+  }
+
+  const chartRef = useRef<HTMLDivElement>(null);
+  const [chartRange, setChartRange] = useState<DailySpendRange>(30);
+
+  const anomaly = useMemo(() => detectRecentAnomaly(data?.daily), [data?.daily]);
+
+  function handleViewInChart() {
+    if (!anomaly || !data?.daily) return;
+    const visibleSlice = data.daily.slice(-chartRange);
+    const isVisible = visibleSlice.some((d) => isoDate(d.timestamp as string) === anomaly.dateKey);
+    if (!isVisible) {
+      setChartRange(30);
+    }
+    setTimeout(() => {
+      chartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
   }
 
   const breakdownHeaders = ["Service", "Resource Group", "Environment", "Cost (USD)", "% of Total", "Trend"];
@@ -337,8 +364,9 @@ function AppCost() {
       )}
       {!isLoading && data?.daily && (
         <AnomalyAlertBanner
-          daily={data.daily}
+          anomaly={anomaly}
           formatCurrency={(v) => fmt(v, data.currency)}
+          onViewInChart={anomaly ? handleViewInChart : undefined}
         />
       )}
       <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
@@ -421,7 +449,7 @@ function AppCost() {
         </div>
       </div>
 
-      <div className="bg-card border border-border shadow-sm flex flex-col">
+      <div ref={chartRef} className="bg-card border border-border shadow-sm flex flex-col">
         <div className="p-3 border-b border-border bg-card flex items-center justify-between">
           <h2 className="text-sm font-semibold">Daily Spend</h2>
           {!isLoading && data && data.daily.length > 0 && (
@@ -456,6 +484,8 @@ function AppCost() {
               highlightPeak
               colorByTrend
               showLegend
+              range={chartRange}
+              onRangeChange={setChartRange}
             />
           ) : (
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No daily data available</div>

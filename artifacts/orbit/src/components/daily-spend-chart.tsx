@@ -5,7 +5,7 @@ import { DailySpendTooltip } from "@/components/daily-spend-tooltip";
 import { computeAnomalies } from "@/components/daily-spend-utils";
 import type { DailyCostPoint, EnrichedPoint, DailySpendRange as Range } from "@/components/daily-spend-utils";
 
-export type { DailyCostPoint, EnrichedPoint } from "@/components/daily-spend-utils";
+export type { DailyCostPoint, EnrichedPoint, DailySpendRange } from "@/components/daily-spend-utils";
 
 const BAR_COLOR_DEFAULT = "hsl(var(--primary))";
 const BAR_COLOR_UP_MILD = "hsl(38 92% 50%)";
@@ -42,6 +42,8 @@ export function DailySpendChart({
   anomalySigmas = 2,
   onAnomalyClick,
   budgetLine,
+  range: rangeProp,
+  onRangeChange,
 }: {
   daily: DailyCostPoint[];
   formatCurrency: (v: number) => string;
@@ -53,10 +55,19 @@ export function DailySpendChart({
   anomalySigmas?: number;
   onAnomalyClick?: (date: Date) => void;
   budgetLine?: number;
+  range?: Range;
+  onRangeChange?: (r: Range) => void;
 }) {
   const maxDays = daily.length;
   const defaultRange: Range = maxDays >= 30 ? 30 : maxDays >= 14 ? 14 : 7;
-  const [range, setRange] = useState<Range>(defaultRange);
+  const isControlled = rangeProp !== undefined;
+  const [internalRange, setInternalRange] = useState<Range>(rangeProp ?? defaultRange);
+  const range = isControlled ? rangeProp! : internalRange;
+
+  function setRange(r: Range) {
+    if (!isControlled) setInternalRange(r);
+    onRangeChange?.(r);
+  }
 
   const visibleData = useMemo(() => {
     const sliced = daily.slice(-range);
