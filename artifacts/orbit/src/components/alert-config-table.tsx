@@ -105,6 +105,15 @@ function UtilizationIndicator({
 // Editable threshold helpers
 // ---------------------------------------------------------------------------
 
+const LARGE_CHANGE_THRESHOLD = 20;
+
+const FIELD_LABELS: Record<string, string> = {
+  cpuThresholdPct: "CPU threshold",
+  memoryThresholdPct: "Memory threshold",
+  consecutiveChecks: "Consecutive checks",
+  cooldownHours: "Cooldown",
+};
+
 type ThresholdField = "cpuThresholdPct" | "memoryThresholdPct" | "consecutiveChecks" | "cooldownHours";
 
 function SourceBadge({
@@ -196,20 +205,24 @@ function EditableCell({ appId, field, value, source, envVarName, envValue, isPer
   const [draft, setDraft] = useState(String(value));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingValue, setPendingValue] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { mutateAsync } = useUpdateAlertConfig();
 
   const displaySuffix = suffix || (isPercent ? "%" : "");
+  const fieldLabel = FIELD_LABELS[field] ?? field;
 
   function startEdit() {
     setDraft(String(value));
     setError(null);
+    setPendingValue(null);
     setEditing(true);
     setTimeout(() => inputRef.current?.select(), 0);
   }
 
   function cancelEdit() {
     setEditing(false);
+    setPendingValue(null);
     setError(null);
   }
 
@@ -219,6 +232,7 @@ function EditableCell({ appId, field, value, source, envVarName, envValue, isPer
     try {
       await mutateAsync({ appId, data: { [field]: newValue } });
       setEditing(false);
+      setPendingValue(null);
       onSaved();
     } catch {
       setError("Save failed");
@@ -233,7 +247,48 @@ function EditableCell({ appId, field, value, source, envVarName, envValue, isPer
       setError(isPercent ? "Must be 1–100" : "Must be ≥ 1");
       return;
     }
-    await save(Math.round(parsed));
+    const rounded = Math.round(parsed);
+    if (Math.abs(rounded - value) > LARGE_CHANGE_THRESHOLD) {
+      setPendingValue(rounded);
+      return;
+    }
+    await save(rounded);
+  }
+
+  if (editing && pendingValue !== null) {
+    return (
+      <span className="inline-flex flex-wrap items-center gap-1">
+        <span className="text-[11px] text-muted-foreground">
+          Set {fieldLabel} to{" "}
+          <span className="font-mono font-semibold text-foreground">
+            {pendingValue}{displaySuffix}
+          </span>
+          ?{" "}
+          <span className="opacity-60">(was {value}{displaySuffix})</span>
+        </span>
+        {saving ? (
+          <span className="text-[11px] text-muted-foreground">saving…</span>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => void save(pendingValue)}
+              className="inline-flex items-center gap-0.5 h-5 px-1.5 rounded border border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400 text-[10px] font-semibold hover:bg-green-500/20 transition-colors"
+            >
+              Confirm
+            </button>
+            <button
+              type="button"
+              onClick={cancelEdit}
+              className="inline-flex items-center gap-0.5 h-5 px-1.5 rounded border border-border bg-muted/40 text-muted-foreground text-[10px] font-semibold hover:bg-muted/60 transition-colors"
+            >
+              Cancel
+            </button>
+          </>
+        )}
+        {error && <span className="text-[10px] text-destructive">{error}</span>}
+      </span>
+    );
   }
 
   if (editing) {
@@ -250,7 +305,7 @@ function EditableCell({ appId, field, value, source, envVarName, envValue, isPer
             if (e.key === "Enter") void commitDraft();
             if (e.key === "Escape") cancelEdit();
           }}
-          onBlur={() => { if (!saving) void commitDraft(); }}
+          onBlur={() => { if (!saving && pendingValue === null) void commitDraft(); }}
           disabled={saving}
           className={cn(
             "w-16 h-6 px-1.5 text-[12px] font-mono tabular-nums bg-background border rounded text-foreground focus:outline-none focus:ring-1 focus:ring-ring",
