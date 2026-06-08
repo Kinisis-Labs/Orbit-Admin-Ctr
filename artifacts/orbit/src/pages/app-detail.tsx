@@ -626,7 +626,7 @@ function OverviewUserTile({ appId, onGoToUsers }: { appId: string; onGoToUsers: 
         <span className="text-[11px] text-muted-foreground">Clerk · anonymous rollups</span>
       </div>
       <TooltipProvider delayDuration={600}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <UITooltip>
             <TooltipTrigger asChild>
               <button type="button" onClick={onGoToUsers} className={tileClass}>
@@ -666,6 +666,28 @@ function OverviewUserTile({ appId, onGoToUsers }: { appId: string; onGoToUsers: 
                 <div className="text-[12px] text-muted-foreground font-medium">MAU</div>
                 <div className="text-xl font-semibold tabular-nums">{fmt(row.mau)}</div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">Active in last 30 days</div>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Go to Users tab</TooltipContent>
+          </UITooltip>
+
+          <UITooltip>
+            <TooltipTrigger asChild>
+              <button type="button" onClick={onGoToUsers} className={tileClass}>
+                <div className="text-[12px] text-muted-foreground font-medium">New (7d)</div>
+                <div className="text-xl font-semibold tabular-nums">{fmt(row.newLast7d)}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">Registered in last 7 days</div>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Go to Users tab</TooltipContent>
+          </UITooltip>
+
+          <UITooltip>
+            <TooltipTrigger asChild>
+              <button type="button" onClick={onGoToUsers} className={tileClass}>
+                <div className="text-[12px] text-muted-foreground font-medium">Inactive 30d</div>
+                <div className="text-xl font-semibold tabular-nums">{fmt(row.inactive30d)}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">No activity in 30 days</div>
               </button>
             </TooltipTrigger>
             <TooltipContent>Go to Users tab</TooltipContent>
