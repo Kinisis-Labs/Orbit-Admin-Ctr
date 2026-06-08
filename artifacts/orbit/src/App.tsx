@@ -62,8 +62,7 @@ function Router() {
         <Route path="/access" component={Access} />
         <Route path="/preferences" component={Preferences} />
         <Route path="/apps/:appId" component={AppDetail} />
-        <Route path="/cost/budgets"><Redirect to="/cost" /></Route>
-        <Route path="/cost/forecasts"><Redirect to="/cost" /></Route>
+        <Route path="/cost/:rest*"><Redirect to="/cost" /></Route>
         <Route component={NotFound} />
       </Switch>
     </Layout>
