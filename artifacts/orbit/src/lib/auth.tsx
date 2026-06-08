@@ -8,6 +8,7 @@ import {
 import type { EntraGroup, EntraUser } from "./auth-types";
 import {
   AUTHORIZED_USERS_GROUP,
+  COST_READER_GROUP,
   TOGGLEABLE_GROUPS,
 } from "./auth-groups";
 import { toast } from "@/hooks/use-toast";
@@ -39,20 +40,22 @@ function saveMockGroups(ids: Set<string>) {
 
 /**
  * Load the set of toggled-on group IDs from localStorage.
- * On first load (no key yet) we default to AUTHORIZED_USERS so the app
- * starts in a usable state, but the user can revoke it too.
+ * On first load (no key yet) we default to AUTHORIZED_USERS + COST_READER so
+ * the Budget Status widget and anomaly badges are visible immediately in the
+ * dev preview without any manual simulator toggling.
  */
 function loadMockGroups(): Set<string> {
+  const FRESH_DEFAULTS = new Set([AUTHORIZED_USERS_GROUP.id, COST_READER_GROUP.id]);
   try {
     const raw = localStorage.getItem(MOCK_LS_KEY);
     if (raw === null) {
-      return new Set([AUTHORIZED_USERS_GROUP.id]);
+      return FRESH_DEFAULTS;
     }
     const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return new Set([AUTHORIZED_USERS_GROUP.id]);
+    if (!Array.isArray(parsed)) return FRESH_DEFAULTS;
     return new Set(parsed.filter((x): x is string => typeof x === "string"));
   } catch {
-    return new Set([AUTHORIZED_USERS_GROUP.id]);
+    return FRESH_DEFAULTS;
   }
 }
 

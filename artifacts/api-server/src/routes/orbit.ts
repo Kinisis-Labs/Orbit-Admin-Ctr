@@ -558,6 +558,48 @@ function computeMomChangePct(
   return Math.round((normalized * 60 - 25) * 10) / 10; // -25 .. +35, 1 dp
 }
 
+/**
+ * Generates a 30-day daily cost series for mock mode.
+ *
+ * GrailBabe gets a realistic baseline (~$48-58/day) with a synthetic spike 2
+ * days ago that reliably triggers detectRecentAnomaly (>mean+2σ), so the amber
+ * badge is always visible in the dev preview without needing Azure configured.
+ * Other apps get a stable baseline with no spike so only GrailBabe lights up.
+ */
+function mockDailySeries(
+  appId: string,
+  today = new Date(),
+): { timestamp: string; value: number }[] {
+  // Small deterministic jitter pattern (index 0 = oldest day).
+  const JITTER = [2, -3, 1, 4, -2, 3, -1, 2, -4, 3, 1, -2, 4, -3, 2, 1, -1, 3, -2, 4, 2, -3, 1, -1, 3, -4, 2, 1, 3, -2];
+
+  const baseByApp: Record<string, number> = {
+    grailbabe: 52,
+    orbit: 18,
+    "kinisis-labs": 4,
+  };
+  const base = baseByApp[appId] ?? 30;
+
+  const series: { timestamp: string; value: number }[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const timestamp = d.toISOString().slice(0, 10) + "T00:00:00Z";
+    const dayIndex = 29 - i; // 0 = oldest, 29 = today
+
+    let value = base + JITTER[dayIndex % JITTER.length]!;
+
+    // GrailBabe: inject a ~2.2× spike 2 days ago so it falls inside the
+    // 3-day recency window and is >mean+2σ across the 30-day window.
+    if (appId === "grailbabe" && i === 2) {
+      value = Math.round(base * 2.25);
+    }
+
+    series.push({ timestamp, value: Math.max(0, value) });
+  }
+  return series;
+}
+
 function buildRevenueDto(r: { stripe: number; appStore: number; playStore: number }) {
   const bySource = [
     { source: "stripe" as const, label: REVENUE_SOURCE_LABELS.stripe, amount: Number(r.stripe.toFixed(2)) },
@@ -606,12 +648,16 @@ router.get("/apps/:appId/cost", async (req, res) => {
   // indicator renders a consistent reading per app in the Replit dev preview.
   const momChangePct = computeMomChangePct(app.id, mtd, costWS?.source ?? "mock", priorMonthTotal);
 
+  // costWS is null when Azure Cost Management is not configured (mock mode).
+  // Serve a synthetic daily series so anomaly badges render in the dev preview.
+  const daily = costWS == null ? mockDailySeries(app.id) : [];
+
   const data = GetCostResponse.parse({
     currency: "USD",
     monthToDate: mtd,
     forecast,
     budget,
-    daily: [],
+    daily,
     byService,
     apiUsage: { totalCalls: 0, costPerMillion: 0, cost: 0, byApi: [] },
     revenue: buildRevenueDto(rev),
