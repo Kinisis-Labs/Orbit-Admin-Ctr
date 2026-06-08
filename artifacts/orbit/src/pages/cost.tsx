@@ -57,6 +57,8 @@ export function detectRecentAnomaly(daily: DailyCostPoint[] | undefined | null, 
   dateKey: string;
   value: number;
   vsAvgMultiple: number;
+  windowLabel: string;
+  isPeak: boolean;
   excess: number;
   currency?: string;
 } | null {
@@ -78,14 +80,21 @@ export function detectRecentAnomaly(daily: DailyCostPoint[] | undefined | null, 
 
   const hit = recent[0];
   const vsAvgMultiple = hit.anomaly!.vsAvgMultiple;
+  const windowLabel = hit.anomaly!.windowLabel;
   const mean = vsAvgMultiple > 0 ? hit.value / vsAvgMultiple : 0;
   const excess = hit.value - mean;
+
+  const maxValue = Math.max(...enriched.map((d) => d.value));
+  const hasVariance = enriched.some((d) => d.value !== maxValue);
+  const isPeak = hasVariance && hit.value === maxValue;
 
   return {
     date: new Date(hit.timestamp),
     dateKey: isoDate(hit.timestamp),
     value: hit.value,
     vsAvgMultiple,
+    windowLabel,
+    isPeak,
     excess,
   };
 }
@@ -140,15 +149,19 @@ function AnomalyAlertBanner({
   }
 
   const dateLabel = format(anomaly.date, "EEE, MMM d");
-  const multipleLabel = `${anomaly.vsAvgMultiple.toFixed(1)}×`;
+  const multipleLabel = `${anomaly.vsAvgMultiple.toFixed(1)}× ${anomaly.windowLabel} avg`;
+  const isPeak = anomaly.isPeak;
 
   return (
     <div className="flex items-start gap-3 px-3 py-2.5 rounded-sm border border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-300">
       <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
       <div className="flex-1 min-w-0 text-[13px] leading-snug">
-        <span className="font-semibold">Cost anomaly detected{appName ? ` — ${appName}` : ""} — </span>
+        <span className="font-semibold">
+          {isPeak ? "Peak & anomaly" : "Cost anomaly detected"}
+          {appName ? ` — ${appName}` : ""}{" — "}
+        </span>
         <span>
-          {dateLabel} was {multipleLabel} the 30-day average
+          {dateLabel}: {multipleLabel}
           {anomaly.excess > 0 && (
             <>, an estimated <span className="font-semibold">{formatCurrency(anomaly.excess)}</span> above baseline</>
           )}
