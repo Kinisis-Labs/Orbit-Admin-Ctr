@@ -11,6 +11,7 @@ import budgetAlertLogRouter from "./budgetAlertLog";
 import infraAlertLogRouter from "./infraAlertLog";
 import alertsConfigRouter from "./alertsConfig";
 import anomalyDismissalsRouter from "./anomalyDismissals";
+import alertSseRouter from "./alertSse";
 import { requireAuth, requireCostReader } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -36,5 +37,7 @@ router.use(requireAuth, infraAlertLogRouter);
 router.use(requireAuth, alertsConfigRouter);
 // Anomaly dismissals — cost surface, but dismissal itself is operational (not financial).
 router.use(requireAuth, anomalyDismissalsRouter);
+// SSE stream for instant alert push — gated by requireAuth only (stream carries no data, just a signal).
+router.use(requireAuth, alertSseRouter);
 
 export default router;

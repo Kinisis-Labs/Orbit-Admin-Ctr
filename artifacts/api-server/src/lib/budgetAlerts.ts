@@ -63,6 +63,7 @@ import { logger } from "./logger.js";
 import { db, budgetAlertLogTable, infraAlertLogTable, alertThresholdConfigTable } from "@workspace/db";
 import { resolveThresholds } from "./alertThresholds.js";
 import { eq } from "drizzle-orm";
+import { broadcastAlertEvent } from "./alertSse.js";
 
 // ---------------------------------------------------------------------------
 // Config helpers
@@ -239,6 +240,9 @@ function markBudgetAlertSent(
       budget: String(alert.budget),
       channels: channels.join(","),
     })
+    .then(() => {
+      broadcastAlertEvent("budget");
+    })
     .catch((err: unknown) => {
       logger.error({ err, appId }, "budget-alert: failed to persist alert log row");
     });
@@ -261,6 +265,9 @@ function markInfraAlertSent(
       value: String(value),
       threshold: String(threshold),
       channels: channels.join(","),
+    })
+    .then(() => {
+      broadcastAlertEvent("infra");
     })
     .catch((err: unknown) => {
       logger.error({ err, appId, metric }, "infra-alert: failed to persist alert log row");
