@@ -43,7 +43,12 @@ export default function Deployments() {
   });
 
   const isLoading = appsLoading || deploymentQueries.some((q) => q.isLoading);
+  const isFetching = deploymentQueries.some((q) => q.isFetching);
   const allEmpty = !isLoading && deploymentQueries.every((q) => !q.isLoading && (q.data?.length ?? 0) === 0);
+
+  function handleRefresh() {
+    deploymentQueries.forEach((q) => void q.refetch());
+  }
 
   const deployments = useMemo(
     () => deploymentQueries.flatMap((q) => q.data ?? []),
@@ -96,8 +101,16 @@ export default function Deployments() {
                 className="h-7 w-72 pl-7 text-[12px] rounded-sm"
               />
             </div>
-            <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary">
-              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs px-2 rounded-sm text-primary"
+              onClick={handleRefresh}
+              disabled={isFetching}
+              aria-label="Refresh deployments"
+              title="Refresh deployment history now"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5${isFetching ? " animate-spin" : ""}`} />
               Refresh
             </Button>
             <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary">

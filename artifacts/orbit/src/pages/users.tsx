@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useListUserActivity } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingDown, TrendingUp, ExternalLink } from "lucide-react";
+import { TrendingDown, TrendingUp, ExternalLink, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
@@ -11,7 +11,7 @@ const fmt = (n: number) => new Intl.NumberFormat("en-US").format(n);
 
 export default function Users() {
   const { scope } = useScope();
-  const { data, isLoading } = useListUserActivity();
+  const { data, isLoading, isFetching, refetch } = useListUserActivity();
 
   const activity = useMemo(() => data ?? [], [data]);
   const scopedActivity = activity.filter((a) => a.appId === scope);
@@ -51,7 +51,23 @@ export default function Users() {
       </div>
 
       <div className="bg-card border border-border shadow-sm">
-        <div className="p-2 border-b border-border"><h2 className="text-sm font-semibold px-2">Engagement by application</h2></div>
+        <div className="flex items-center justify-between p-2 border-b border-border">
+          <h2 className="text-sm font-semibold px-2">Engagement by application</h2>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            aria-label="Refresh user activity"
+            title="Refresh user activity now"
+            className={`flex items-center justify-center rounded p-1 transition-colors mr-1 ${
+              isFetching
+                ? "cursor-not-allowed text-primary opacity-60"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            }`}
+          >
+            <RefreshCw className={`h-3.5 w-3.5${isFetching ? " animate-spin" : ""}`} />
+          </button>
+        </div>
         {isLoading ? (
           <div className="p-4 space-y-2"><Skeleton className="h-8" /><Skeleton className="h-8" /></div>
         ) : (
