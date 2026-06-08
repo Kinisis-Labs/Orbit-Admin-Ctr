@@ -252,14 +252,26 @@ export default function AppDetail() {
                 <div className="flex flex-col gap-3">
                   <div className="grid grid-cols-3 gap-2">
                     <div className="text-muted-foreground font-medium">Subscription</div>
-                    <div className="col-span-2 text-primary hover:underline cursor-pointer truncate">
-                      {app.subscriptionName ? (
-                        <span>
-                          <span className="font-medium">{app.subscriptionName}</span>
-                          <span className="font-mono text-[11px] text-muted-foreground ml-1.5">{app.subscriptionId}</span>
-                        </span>
+                    <div className="col-span-2 truncate">
+                      {app.subscriptionId ? (
+                        <a
+                          href={`https://portal.azure.com/#resource/subscriptions/${app.subscriptionId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-primary hover:underline"
+                        >
+                          {app.subscriptionName ? (
+                            <>
+                              <span className="font-medium">{app.subscriptionName}</span>
+                              <span className="font-mono text-[11px] text-muted-foreground ml-1.5">{app.subscriptionId}</span>
+                            </>
+                          ) : (
+                            <span className="font-mono">{app.subscriptionId}</span>
+                          )}
+                          <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        </a>
                       ) : (
-                        app.subscriptionId
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </div>
                   </div>

@@ -9,7 +9,7 @@ import { useApp } from "@/hooks/use-app";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
-import { ChevronRight, Bell, TrendingUp, X, TriangleAlert, Smartphone } from "lucide-react";
+import { ChevronRight, Bell, TrendingUp, X, TriangleAlert, Wifi, Smartphone, ExternalLink } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -302,16 +302,27 @@ export default function Home() {
               <Field
                 label="Subscription"
                 value={
-                  appDetail.subscriptionName ? (
-                    <span>
-                      <span className="font-medium">{appDetail.subscriptionName}</span>
-                      <span className="font-mono text-[11px] text-muted-foreground ml-1.5">{appDetail.subscriptionId}</span>
-                    </span>
+                  appDetail.subscriptionId ? (
+                    <a
+                      href={`https://portal.azure.com/#resource/subscriptions/${appDetail.subscriptionId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      {appDetail.subscriptionName ? (
+                        <>
+                          <span className="font-medium">{appDetail.subscriptionName}</span>
+                          <span className="font-mono text-[11px] text-muted-foreground ml-1.5">{appDetail.subscriptionId}</span>
+                        </>
+                      ) : (
+                        <span className="font-mono">{appDetail.subscriptionId}</span>
+                      )}
+                      <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+                    </a>
                   ) : (
-                    appDetail.subscriptionId
+                    <span className="text-muted-foreground">—</span>
                   )
                 }
-                mono={!appDetail.subscriptionName}
               />
               <Field label="Location" value={appDetail.region} />
               <Field label="Environment" value={appDetail.environment} />
