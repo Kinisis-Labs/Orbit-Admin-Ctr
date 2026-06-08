@@ -18,7 +18,7 @@ function fmtDataAsOf(iso: string | undefined | null): string | null {
 }
 
 interface DataSourceBadgeProps {
-  dataSource: "live" | "cached" | "mock" | "placeholder" | undefined;
+  dataSource: "live" | "cached" | "mock" | "placeholder" | "none" | undefined;
   dataAsOf?: string | null;
   label?: string;
 }

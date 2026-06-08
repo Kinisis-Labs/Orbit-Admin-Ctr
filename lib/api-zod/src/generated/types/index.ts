@@ -115,4 +115,5 @@ export * from './updateAlertConfigBody';
 export * from './updateAppThresholds403';
 export * from './updateAppThresholdsBody';
 export * from './userActivityRow';
+export * from './userActivityRowDataSource';
 export * from './userAuthType';

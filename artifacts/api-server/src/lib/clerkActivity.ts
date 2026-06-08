@@ -40,6 +40,7 @@ export type UserActivityRow = {
   inactive30d: number;
   newLast7d: number;
   dauTrendPct: number;
+  dataSource: "live" | "demo";
 };
 
 function num(v: unknown): number {
@@ -257,9 +258,19 @@ export async function recordEvent(
   });
 }
 
+// Returns true when at least one real (non-seeded) Clerk webhook event exists in
+// the DB. A single row in clerk_events means real webhook traffic has arrived.
+async function hasRealClerkEvents(): Promise<boolean> {
+  const r = await db.execute(
+    sql`select 1 from clerk_events limit 1`,
+  );
+  return (r.rows?.length ?? 0) > 0;
+}
+
 // Aggregate per-app activity for the Clerk-backed consumer apps.
 export async function getActivity(): Promise<UserActivityRow[]> {
   const apps = clerkApps();
+  const dataSource: "live" | "demo" = (await hasRealClerkEvents()) ? "live" : "demo";
   const out: UserActivityRow[] = [];
   for (const app of apps) {
     const c = await computeCounts(db, app.id);
@@ -274,6 +285,7 @@ export async function getActivity(): Promise<UserActivityRow[]> {
       inactive30d: Math.max(0, c.totalMembers - c.mau),
       newLast7d: c.newLast7d,
       dauTrendPct: await dauTrend(db, app.id, c.dau),
+      dataSource,
     });
   }
   return out;

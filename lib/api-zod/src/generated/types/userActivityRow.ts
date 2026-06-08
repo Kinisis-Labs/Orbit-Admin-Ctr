@@ -5,6 +5,7 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { UserActivityRowDataSource } from './userActivityRowDataSource';
 
 export interface UserActivityRow {
   appId: string;
@@ -17,4 +18,6 @@ export interface UserActivityRow {
   inactive30d: number;
   newLast7d: number;
   dauTrendPct: number;
+  /** live = real Clerk webhook events exist in DB; demo = seeded/placeholder data only */
+  dataSource: UserActivityRowDataSource;
 }

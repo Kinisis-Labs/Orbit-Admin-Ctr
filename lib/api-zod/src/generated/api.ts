@@ -538,7 +538,8 @@ export const ListUserActivityResponseItem = zod.object({
   "mau": zod.number(),
   "inactive30d": zod.number(),
   "newLast7d": zod.number(),
-  "dauTrendPct": zod.number()
+  "dauTrendPct": zod.number(),
+  "dataSource": zod.enum(['live', 'demo']).describe('live = real Clerk webhook events exist in DB; demo = seeded\/placeholder data only')
 })
 export const ListUserActivityResponse = zod.array(ListUserActivityResponseItem)
 

@@ -825,7 +825,7 @@ components:
                 Overrides the global default (85%) for this app. Optional.
     UserActivityRow:
       type: object
-      required: [appId, appName, environment, totalMembers, dau, wau, mau, inactive30d, newLast7d, dauTrendPct]
+      required: [appId, appName, environment, totalMembers, dau, wau, mau, inactive30d, newLast7d, dauTrendPct, dataSource]
       properties:
         appId: { type: string }
         appName: { type: string }
@@ -837,6 +837,7 @@ components:
         inactive30d: { type: integer }
         newLast7d: { type: integer }
         dauTrendPct: { type: number }
+        dataSource: { type: string, enum: [live, demo], description: "live = real Clerk webhook events exist in DB; demo = seeded/placeholder data only" }
     PlaySubscriptionRow:
       type: object
       required: [appId, appName, environment, packageName, activeSubscribers, canceledSubscribers, expiredSubscribers, mrr, revenueLast30d, currency, activeTrendPct, dataSource]

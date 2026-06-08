@@ -138,6 +138,17 @@ export type AppDetail = AppSummary & {
   memoryThreshold?: number;
 };
 
+/**
+ * live = real Clerk webhook events exist in DB; demo = seeded/placeholder data only
+ */
+export type UserActivityRowDataSource = typeof UserActivityRowDataSource[keyof typeof UserActivityRowDataSource];
+
+
+export const UserActivityRowDataSource = {
+  live: 'live',
+  demo: 'demo',
+} as const;
+
 export interface UserActivityRow {
   appId: string;
   appName: string;
@@ -149,6 +160,8 @@ export interface UserActivityRow {
   inactive30d: number;
   newLast7d: number;
   dauTrendPct: number;
+  /** live = real Clerk webhook events exist in DB; demo = seeded/placeholder data only */
+  dataSource: UserActivityRowDataSource;
 }
 
 export type PlaySubscriptionRowDataSource = typeof PlaySubscriptionRowDataSource[keyof typeof PlaySubscriptionRowDataSource];

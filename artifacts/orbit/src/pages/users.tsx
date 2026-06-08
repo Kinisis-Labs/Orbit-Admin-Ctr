@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useListUserActivity } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingDown, TrendingUp, ExternalLink, RefreshCw } from "lucide-react";
+import { TrendingDown, TrendingUp, ExternalLink, RefreshCw, Wifi } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
@@ -28,12 +28,32 @@ export default function Users() {
   );
   const stickiness = totals.mau > 0 ? (totals.dau / totals.mau) * 100 : 0;
 
+  const isLoaded = !isLoading && data != null;
+  const isLive = isLoaded && activity.some((a) => a.dataSource === "live");
+  const liveBadge = isLoaded ? (
+    isLive ? (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
+        <Wifi className="h-3 w-3" />
+        Live
+      </span>
+    ) : (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
+        Demo
+      </span>
+    )
+  ) : null;
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Users & activity"
         subtitle="Active vs inactive end users per Kinisis consumer app. Source of truth: Clerk webhook ingestion (anonymous counts)."
-        right={<ScopeSelect />}
+        right={
+          <div className="flex items-center gap-2">
+            {liveBadge}
+            <ScopeSelect />
+          </div>
+        }
       />
 
       <ClerkBanner />
