@@ -127,7 +127,6 @@ interface Props {
 }
 
 export function BudgetAlertHistory({ appId }: Props) {
-  const [unacknowledgedOnly, setUnacknowledgedOnly] = useState(() => loadFilterState()?.unacknowledgedOnly ?? false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -139,6 +138,17 @@ export function BudgetAlertHistory({ appId }: Props) {
   const searchParams = useMemo(() => new URLSearchParams(search), [search]);
   const startInput = searchParams.get("alertFrom") ?? "";
   const endInput = searchParams.get("alertTo") ?? "";
+  const channelsParam = searchParams.get("alertChannels") ?? "";
+  const unackedParam = searchParams.get("alertUnacked") ?? "";
+
+  const selectedChannels = useMemo<Set<Channel>>(() => {
+    if (!channelsParam) return new Set<Channel>();
+    return new Set(
+      channelsParam.split(",").filter((ch): ch is Channel => (ALL_CHANNELS as readonly string[]).includes(ch)),
+    );
+  }, [channelsParam]);
+
+  const unacknowledgedOnly = unackedParam === "1";
 
   function applyParams(next: URLSearchParams) {
     const qs = next.toString();
@@ -164,16 +174,36 @@ export function BudgetAlertHistory({ appId }: Props) {
     applyParams(next);
   }
 
-  const didRestoreDates = useRef(false);
+  function setUnacknowledgedOnly(value: boolean) {
+    const next = new URLSearchParams(searchParams);
+    if (value) { next.set("alertUnacked", "1"); } else { next.delete("alertUnacked"); }
+    applyParams(next);
+  }
+
+  function toggleChannel(ch: Channel) {
+    const next = new URLSearchParams(searchParams);
+    const current = new Set(selectedChannels);
+    if (current.has(ch)) { current.delete(ch); } else { current.add(ch); }
+    const arr = Array.from(current);
+    if (arr.length > 0) { next.set("alertChannels", arr.join(",")); } else { next.delete("alertChannels"); }
+    applyParams(next);
+  }
+
+  const didRestoreFilters = useRef(false);
   useEffect(() => {
-    if (didRestoreDates.current) return;
-    didRestoreDates.current = true;
-    if (!searchParams.get("alertFrom") && !searchParams.get("alertTo")) {
+    if (didRestoreFilters.current) return;
+    didRestoreFilters.current = true;
+    const hasDateParams = !!searchParams.get("alertFrom") || !!searchParams.get("alertTo");
+    const hasChannelParams = !!searchParams.get("alertChannels");
+    const hasUnackedParam = !!searchParams.get("alertUnacked");
+    if (!hasDateParams && !hasChannelParams && !hasUnackedParam) {
       const saved = loadFilterState();
-      if (saved?.dateFrom || saved?.dateTo) {
+      if (saved?.dateFrom || saved?.dateTo || (saved?.channels?.length ?? 0) > 0 || saved?.unacknowledgedOnly) {
         const next = new URLSearchParams(searchParams);
-        if (saved.dateFrom) next.set("alertFrom", saved.dateFrom);
-        if (saved.dateTo) next.set("alertTo", saved.dateTo);
+        if (saved?.dateFrom) next.set("alertFrom", saved.dateFrom);
+        if (saved?.dateTo) next.set("alertTo", saved.dateTo);
+        if (saved?.channels?.length) next.set("alertChannels", saved.channels.join(","));
+        if (saved?.unacknowledgedOnly) next.set("alertUnacked", "1");
         applyParams(next);
       }
     }
@@ -195,11 +225,6 @@ export function BudgetAlertHistory({ appId }: Props) {
         setPendingId(null);
       },
     },
-  });
-
-  const [selectedChannels, setSelectedChannels] = useState<Set<Channel>>(() => {
-    const saved = loadFilterState()?.channels ?? [];
-    return new Set(saved.filter((ch): ch is Channel => (ALL_CHANNELS as readonly string[]).includes(ch)));
   });
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -254,18 +279,6 @@ export function BudgetAlertHistory({ appId }: Props) {
   const isChannelFiltered = selectedChannels.size > 0;
   const isFiltered = isDateFiltered || isChannelFiltered || unacknowledgedOnly;
 
-  function toggleChannel(ch: Channel) {
-    setSelectedChannels((prev) => {
-      const next = new Set(prev);
-      if (next.has(ch)) {
-        next.delete(ch);
-      } else {
-        next.add(ch);
-      }
-      return next;
-    });
-  }
-
   const filteredEntries = useMemo(() => {
     if (!entries) return entries;
     if (!isDateFiltered && !isChannelFiltered) return entries;
@@ -284,17 +297,20 @@ export function BudgetAlertHistory({ appId }: Props) {
   }, [entries, startDate, endDate, isDateFiltered, isChannelFiltered, selectedChannels]);
 
   function clearFilter() {
-    clearDateRange();
-    setSelectedChannels(new Set());
-    setUnacknowledgedOnly(false);
+    const next = new URLSearchParams(searchParams);
+    next.delete("alertFrom");
+    next.delete("alertTo");
+    next.delete("alertChannels");
+    next.delete("alertUnacked");
+    applyParams(next);
   }
 
   function applyPreset(preset: Pick<Preset, "channels" | "unacknowledgedOnly" | "dateFrom" | "dateTo">) {
-    setSelectedChannels(new Set(preset.channels));
-    setUnacknowledgedOnly(preset.unacknowledgedOnly);
     const next = new URLSearchParams(searchParams);
     if (preset.dateFrom) { next.set("alertFrom", preset.dateFrom); } else { next.delete("alertFrom"); }
     if (preset.dateTo) { next.set("alertTo", preset.dateTo); } else { next.delete("alertTo"); }
+    if (preset.channels.length) { next.set("alertChannels", preset.channels.join(",")); } else { next.delete("alertChannels"); }
+    if (preset.unacknowledgedOnly) { next.set("alertUnacked", "1"); } else { next.delete("alertUnacked"); }
     applyParams(next);
   }
 
@@ -513,7 +529,7 @@ export function BudgetAlertHistory({ appId }: Props) {
 
           <div className="flex items-center gap-1.5 ml-auto flex-wrap">
             <button
-              onClick={() => setUnacknowledgedOnly((v) => !v)}
+              onClick={() => setUnacknowledgedOnly(!unacknowledgedOnly)}
               className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-sm border text-[11px] font-medium transition-colors ${
                 unacknowledgedOnly
                   ? "border-primary/40 bg-primary/10 text-primary"
