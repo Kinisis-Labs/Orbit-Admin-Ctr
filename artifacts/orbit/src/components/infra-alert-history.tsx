@@ -6,9 +6,9 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Cpu, BellOff, Check, Filter, X, CalendarRange } from "lucide-react";
+import { Cpu, MemoryStick, BellOff, Check, Filter, X, CalendarRange } from "lucide-react";
 import { format, parseISO, isValid, startOfDay, endOfDay } from "date-fns";
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
@@ -27,10 +27,13 @@ const METRIC_LABELS: Record<string, string> = {
 
 const FILTER_STATE_KEY = "orbit:infra-alert-filter-state";
 
+type MetricFilter = "cpu" | "memory" | "";
+
 interface FilterState {
   unacknowledgedOnly: boolean;
   dateFrom: string;
   dateTo: string;
+  metricFilter: MetricFilter;
 }
 
 function loadFilterState(): FilterState | null {
@@ -106,8 +109,11 @@ export function InfraAlertHistory({ appId }: Props) {
   const startInput = searchParams.get("infraFrom") ?? "";
   const endInput = searchParams.get("infraTo") ?? "";
   const unackedParam = searchParams.get("infraUnacked") ?? "";
+  const metricParam = searchParams.get("infraMetric") ?? "";
 
   const unacknowledgedOnly = unackedParam === "1";
+  const metricFilter: MetricFilter =
+    metricParam === "cpu" || metricParam === "memory" ? metricParam : "";
 
   function applyParams(next: URLSearchParams) {
     const qs = next.toString();
@@ -132,19 +138,27 @@ export function InfraAlertHistory({ appId }: Props) {
     applyParams(next);
   }
 
+  function setMetricFilter(value: MetricFilter) {
+    const next = new URLSearchParams(searchParams);
+    if (value) { next.set("infraMetric", value); } else { next.delete("infraMetric"); }
+    applyParams(next);
+  }
+
   const didRestoreFilters = useRef(false);
   useEffect(() => {
     if (didRestoreFilters.current) return;
     didRestoreFilters.current = true;
     const hasDateParams = !!searchParams.get("infraFrom") || !!searchParams.get("infraTo");
     const hasUnackedParam = !!searchParams.get("infraUnacked");
-    if (!hasDateParams && !hasUnackedParam) {
+    const hasMetricParam = !!searchParams.get("infraMetric");
+    if (!hasDateParams && !hasUnackedParam && !hasMetricParam) {
       const saved = loadFilterState();
-      if (saved?.dateFrom || saved?.dateTo || saved?.unacknowledgedOnly) {
+      if (saved?.dateFrom || saved?.dateTo || saved?.unacknowledgedOnly || saved?.metricFilter) {
         const next = new URLSearchParams(searchParams);
         if (saved?.dateFrom) next.set("infraFrom", saved.dateFrom);
         if (saved?.dateTo) next.set("infraTo", saved.dateTo);
         if (saved?.unacknowledgedOnly) next.set("infraUnacked", "1");
+        if (saved?.metricFilter) next.set("infraMetric", saved.metricFilter);
         applyParams(next);
       }
     }
@@ -155,13 +169,14 @@ export function InfraAlertHistory({ appId }: Props) {
       unacknowledgedOnly,
       dateFrom: startInput,
       dateTo: endInput,
+      metricFilter,
     };
     try {
       localStorage.setItem(FILTER_STATE_KEY, JSON.stringify(state));
     } catch {
       /* storage quota */
     }
-  }, [unacknowledgedOnly, startInput, endInput]);
+  }, [unacknowledgedOnly, startInput, endInput, metricFilter]);
 
   const params = {
     ...(appId ? { appId } : {}),
@@ -190,7 +205,8 @@ export function InfraAlertHistory({ appId }: Props) {
     return isValid(d) ? endOfDay(d) : null;
   }, [endInput]);
 
-  const isFiltered = startDate !== null || endDate !== null;
+  const isDateFiltered = startDate !== null || endDate !== null;
+  const isFiltered = isDateFiltered || !!metricFilter;
 
   const filteredEntries = useMemo(() => {
     if (!entries) return entries;
@@ -199,15 +215,17 @@ export function InfraAlertHistory({ appId }: Props) {
       const sent = new Date(entry.sentAt);
       if (startDate && sent < startDate) return false;
       if (endDate && sent > endDate) return false;
+      if (metricFilter && entry.metric !== metricFilter) return false;
       return true;
     });
-  }, [entries, startDate, endDate, isFiltered]);
+  }, [entries, startDate, endDate, metricFilter, isFiltered]);
 
   function clearFilter() {
     const next = new URLSearchParams(searchParams);
     next.delete("infraFrom");
     next.delete("infraTo");
     next.delete("infraUnacked");
+    next.delete("infraMetric");
     applyParams(next);
   }
 
@@ -271,6 +289,33 @@ export function InfraAlertHistory({ appId }: Props) {
             <Filter className="h-3 w-3" />
             {unacknowledgedOnly ? "Unacknowledged only" : "All"}
           </button>
+
+          <div className="inline-flex items-center rounded-sm border border-border overflow-hidden">
+            <button
+              onClick={() => setMetricFilter(metricFilter === "cpu" ? "" : "cpu")}
+              className={`inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium transition-colors border-r border-border ${
+                metricFilter === "cpu"
+                  ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                  : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
+              }`}
+              title={metricFilter === "cpu" ? "Showing CPU alerts only — click to clear" : "Filter to CPU alerts only"}
+            >
+              <Cpu className="h-3 w-3" />
+              CPU
+            </button>
+            <button
+              onClick={() => setMetricFilter(metricFilter === "memory" ? "" : "memory")}
+              className={`inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium transition-colors ${
+                metricFilter === "memory"
+                  ? "bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                  : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
+              }`}
+              title={metricFilter === "memory" ? "Showing Memory alerts only — click to clear" : "Filter to Memory alerts only"}
+            >
+              <MemoryStick className="h-3 w-3" />
+              Memory
+            </button>
+          </div>
 
           <div className="flex items-center gap-1 rounded-sm border border-border bg-muted/30 px-2 py-1">
             <CalendarRange className="h-3 w-3 text-muted-foreground shrink-0" />
@@ -365,12 +410,18 @@ export function InfraAlertHistory({ appId }: Props) {
       ) : filteredEntries && filteredEntries.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
           <CalendarRange className="h-6 w-6 opacity-40" />
-          <p className="text-sm">No alerts in this date range.</p>
+          <p className="text-sm">
+            {metricFilter && !isDateFiltered
+              ? `No ${METRIC_LABELS[metricFilter] ?? metricFilter} alerts on record.`
+              : metricFilter
+                ? `No ${METRIC_LABELS[metricFilter] ?? metricFilter} alerts in this date range.`
+                : "No alerts in this date range."}
+          </p>
           <button
             onClick={clearFilter}
             className="text-[12px] text-primary hover:underline"
           >
-            Clear filter to see all {total} notification{total === 1 ? "" : "s"}
+            Clear filter{isFiltered ? "s" : ""} to see all {total} notification{total === 1 ? "" : "s"}
           </button>
         </div>
       ) : (
