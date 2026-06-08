@@ -70,11 +70,7 @@ export default function PlaySubscriptions() {
       />
 
       <PlayBanner placeholder={isPlaceholder} />
-      <StaleCacheBanner
-        dataAsOf={staleCachedRow?.dataAsOf}
-        label="Google Play"
-        liveText="live subscriber counts may differ"
-      />
+      <StaleCacheBanner source="play" dataAsOf={staleCachedRow?.dataAsOf} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <Tile title="Active subscribers" value={isLoading ? null : num(totals.active)} sub="Currently paying" />

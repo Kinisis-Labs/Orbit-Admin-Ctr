@@ -19,17 +19,29 @@ export function fmtStaleCacheAsOf(iso: string | undefined | null): string | null
   }
 }
 
+const SOURCE_LABELS: Record<"play" | "apple", { label: string; liveText: string }> = {
+  play: { label: "Google Play", liveText: "live subscriber counts may differ" },
+  apple: { label: "App Store Connect", liveText: "live subscriber counts may differ" },
+};
+
 export function StaleCacheBanner({
   dataSource,
   dataAsOf,
-  label = "Azure Cost Management",
-  liveText = "live costs may differ",
+  source,
+  label: labelProp,
+  liveText: liveTextProp,
 }: {
   dataSource?: "live" | "cached" | "mock" | undefined;
   dataAsOf?: string | null;
+  source?: "play" | "apple";
   label?: string;
   liveText?: string;
 }) {
+  const { label: sourceLabel, liveText: sourceLiveText } = source
+    ? SOURCE_LABELS[source]
+    : { label: undefined, liveText: undefined };
+  const label = labelProp ?? sourceLabel ?? "Azure Cost Management";
+  const liveText = liveTextProp ?? sourceLiveText ?? "live costs may differ";
   if (dataSource !== undefined && dataSource !== "cached") return null;
   if (!dataAsOf) return null;
   const ageMs = Date.now() - new Date(dataAsOf).getTime();
