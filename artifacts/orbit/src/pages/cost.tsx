@@ -217,8 +217,57 @@ function GlobalCostPanel() {
     query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
   });
 
+  type GlobalSortCol = "amount" | "trend";
+  type SortDir = "asc" | "desc";
+  const [sortCol, setSortCol] = useState<GlobalSortCol>("amount");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  function handleSortClick(col: GlobalSortCol) {
+    setSortCol((prev) => {
+      if (prev === col) {
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+        return col;
+      }
+      setSortDir("desc");
+      return col;
+    });
+  }
+
+  function parseTrend(trend: string | undefined | null): number {
+    if (!trend) return -Infinity;
+    const n = parseFloat(trend.replace(/[^0-9.\-+]/g, ""));
+    return isNaN(n) ? -Infinity : n;
+  }
+
+  const sortedRows = useMemo(() => {
+    if (!data?.byApp) return [];
+    const rows = [...data.byApp];
+    rows.sort((a, b) => {
+      let av: number, bv: number;
+      if (sortCol === "amount") {
+        av = a.monthToDate;
+        bv = b.monthToDate;
+      } else {
+        av = parseTrend(a.trend);
+        bv = parseTrend(b.trend);
+      }
+      return sortDir === "desc" ? bv - av : av - bv;
+    });
+    return rows;
+  }, [data?.byApp, sortCol, sortDir]);
+
   const totalApps = data?.byApp.length ?? 0;
-  const maxMtd = data?.byApp.reduce((m, r) => Math.max(m, r.monthToDate), 0) ?? 0;
+  const maxMtd = useMemo(
+    () => data?.byApp.reduce((m, r) => Math.max(m, r.monthToDate), 0) ?? 0,
+    [data?.byApp],
+  );
+
+  function SortIcon({ col }: { col: GlobalSortCol }) {
+    if (sortCol !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return sortDir === "desc"
+      ? <ArrowDown className="h-3 w-3 ml-1 text-foreground" />
+      : <ArrowUp className="h-3 w-3 ml-1 text-foreground" />;
+  }
 
   return (
     <Panel title="Cost by Application">
@@ -226,15 +275,31 @@ function GlobalCostPanel() {
         <THead>
           <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
           <TableHead className="h-8 font-semibold text-foreground">Env</TableHead>
-          <TableHead className="h-8 font-semibold text-foreground text-right w-[130px]">Cost (MTD)</TableHead>
-          <TableHead className="h-8 font-semibold text-foreground text-right w-[80px]">WoW</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[130px]">
+            <button
+              onClick={() => handleSortClick("amount")}
+              className="inline-flex items-center justify-end w-full hover:text-foreground transition-colors"
+            >
+              Cost (MTD)
+              <SortIcon col="amount" />
+            </button>
+          </TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[80px]">
+            <button
+              onClick={() => handleSortClick("trend")}
+              className="inline-flex items-center justify-end w-full hover:text-foreground transition-colors"
+            >
+              WoW
+              <SortIcon col="trend" />
+            </button>
+          </TableHead>
           <TableHead className="h-8 font-semibold text-foreground w-[160px]"></TableHead>
         </THead>
         <TableBody>
           {isLoading || !data ? (
             <SkeletonRows cols={5} rows={3} />
           ) : (
-            data.byApp.map((row) => {
+            sortedRows.map((row) => {
               const trend = row.trend ?? null;
               const isPos = trend?.startsWith("+");
               const isNeg = trend?.startsWith("-");
