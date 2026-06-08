@@ -10,6 +10,8 @@ import {
   useGetGlobalHealth,
   getGetGlobalHealthQueryKey,
 } from "@workspace/api-client-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useUnacknowledgedBudgetAlerts } from "@/hooks/use-unacknowledged-budget-alerts";
 import { useQueries } from "@tanstack/react-query";
 import { AdminAccessBadge } from "@/components/admin-access-badge";
 import { useApps } from "@/hooks/use-apps";
@@ -474,6 +476,8 @@ function AppCost() {
   const net = data ? data.revenue.total - data.monthToDate : 0;
   const marginPct = data && data.revenue.total > 0 ? (net / data.revenue.total) * 100 : null;
   const netClass = net >= 0 ? "text-emerald-500" : "text-destructive";
+  const { unacknowledgedCount } = useUnacknowledgedBudgetAlerts();
+  const [activeTab, setActiveTab] = useState("overview");
 
   const [showDailyTable, setShowDailyTable] = useState(() => {
     try {
@@ -639,8 +643,22 @@ function AppCost() {
   }
 
   return (
-    <>
-      {dateFilter && (
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <TabsList className="flex h-10 w-full justify-start rounded-none border-b border-border bg-transparent p-0">
+        <TabsTrigger value="overview" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">Overview</TabsTrigger>
+        <TabsTrigger value="budgets" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">
+          <span className="inline-flex items-center gap-1.5">
+            Budgets
+            {unacknowledgedCount > 0 && (
+              <span className="inline-flex items-center justify-center h-4 min-w-[1rem] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-none">
+                {unacknowledgedCount}
+              </span>
+            )}
+          </span>
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="overview" className="mt-4 space-y-4">
+        {dateFilter && (
         <div className="flex items-center gap-2 px-3 py-2 border border-amber-500/30 bg-amber-500/8 rounded-sm text-[13px]">
           <CalendarSearch className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
           <span className="text-foreground font-medium">
@@ -965,10 +983,13 @@ function AppCost() {
           </Table>
         </Panel>
 
-      <BudgetAlertHistory appId={scope} />
       </div>
       </div>
-    </>
+      </TabsContent>
+      <TabsContent value="budgets" className="mt-4">
+        <BudgetAlertHistory appId={scope} />
+      </TabsContent>
+    </Tabs>
   );
 }
 
