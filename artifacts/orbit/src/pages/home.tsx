@@ -353,6 +353,10 @@ export default function Home() {
           onAuthBadgeClick={toggleAuthFilter}
           budgetBreachFilter={budgetBreachFilter}
           onToggleBudgetBreach={toggleBudgetBreachFilter}
+          onClearAllFilters={() => {
+            clearAuthFilter();
+            setBudgetBreachFilter(false);
+          }}
         />
       )}
 
@@ -594,6 +598,7 @@ function BudgetSummaryWidget({
   onAuthBadgeClick,
   budgetBreachFilter,
   onToggleBudgetBreach,
+  onClearAllFilters,
 }: {
   apps: AppSummary[] | undefined;
   isFetching: boolean;
@@ -603,6 +608,7 @@ function BudgetSummaryWidget({
   onAuthBadgeClick: (v: UserAuthType) => void;
   budgetBreachFilter: boolean;
   onToggleBudgetBreach: () => void;
+  onClearAllFilters: () => void;
 }) {
   const { setScope } = useScope();
   const [, navigate] = useLocation();
@@ -749,6 +755,11 @@ function BudgetSummaryWidget({
 
   const isFiltered = authFilter !== null || envFilter !== "all" || budgetBreachFilter;
 
+  function clearAllFilters() {
+    setEnvFilter("all");
+    onClearAllFilters();
+  }
+
   const filterSummaryParts: string[] = [];
   if (authFilter !== null) filterSummaryParts.push(authFilter.charAt(0).toUpperCase() + authFilter.slice(1));
   if (envFilter !== "all") filterSummaryParts.push(envFilter.charAt(0).toUpperCase() + envFilter.slice(1));
@@ -818,6 +829,17 @@ function BudgetSummaryWidget({
             <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-primary/10 text-primary border border-primary/30">
               {filterSummary}
             </span>
+          )}
+          {isFiltered && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              title="Clear all filters"
+            >
+              <X className="h-3 w-3" />
+              <span>Clear all</span>
+            </button>
           )}
           {overCount > 0 && (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-red-500/10 text-red-500 border border-red-500/30">
