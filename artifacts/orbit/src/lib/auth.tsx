@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
+  AccessContactContext,
   AuthContext,
   type AuthContextValue,
   type AuthMode,
@@ -235,31 +236,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       accessContact,
     };
-  }, [mode, entra, mockExtras, signOut, grantGroup, revokeGroup]);
+  }, [mode, entra, mockExtras, signOut, grantGroup, revokeGroup, accessContact]);
 
   if (authError) {
-    return <AuthNotice kind={authError} onSignOut={signOut} accessContact={accessContact} />;
+    return (
+      <AccessContactContext.Provider value={accessContact}>
+        <AuthNotice kind={authError} onSignOut={signOut} />
+      </AccessContactContext.Provider>
+    );
   }
 
   if (!value) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "grid",
-          placeItems: "center",
-          color: "#94a3b8",
-          fontFamily: "system-ui, sans-serif",
-          background: "#0b1120",
-          fontSize: 14,
-        }}
-      >
-        Signing in…
-      </div>
+      <AccessContactContext.Provider value={accessContact}>
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "grid",
+            placeItems: "center",
+            color: "#94a3b8",
+            fontFamily: "system-ui, sans-serif",
+            background: "#0b1120",
+            fontSize: 14,
+          }}
+        >
+          Signing in…
+        </div>
+      </AccessContactContext.Provider>
     );
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AccessContactContext.Provider value={accessContact}>
+      <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    </AccessContactContext.Provider>
+  );
 }
 
 const NOTICE_BTN: React.CSSProperties = {
@@ -287,7 +298,8 @@ const REQUEST_ACCESS_BODY =
   "Hi,\n\nI successfully signed in with my Microsoft account but do not have access to Orbit.\n\nPlease add me to the Orbit-Authorized-Users group.\n\nThanks";
 export const ORBIT_ACCESS_EMAIL = "orbit-access@kinisislabs.com";
 
-function DeniedNotice({ onSignOut, accessContact }: { onSignOut: () => void; accessContact: string }) {
+function DeniedNotice({ onSignOut }: { onSignOut: () => void }) {
+  const accessContact = useContext(AccessContactContext);
   const mailtoHref = `mailto:${accessContact}?subject=${encodeURIComponent(REQUEST_ACCESS_SUBJECT)}&body=${encodeURIComponent(REQUEST_ACCESS_BODY)}`;
   return (
     <div
@@ -473,14 +485,12 @@ function RevokedNotice() {
 function AuthNotice({
   kind,
   onSignOut,
-  accessContact,
 }: {
   kind: AuthError;
   onSignOut: () => void;
-  accessContact: string;
 }) {
   if (kind === "denied") {
-    return <DeniedNotice onSignOut={onSignOut} accessContact={accessContact} />;
+    return <DeniedNotice onSignOut={onSignOut} />;
   }
   if (kind === "revoked") {
     return <RevokedNotice />;

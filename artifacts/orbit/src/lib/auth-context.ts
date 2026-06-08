@@ -3,6 +3,14 @@ import type { EntraGroup, EntraUser } from "./auth-types";
 
 export type AuthMode = "entra" | "mock";
 
+/**
+ * A dedicated context that carries only the access-contact address.
+ * AuthProvider always mounts this wrapper, so components rendered in the
+ * auth-error path (DeniedNotice, AuthNotice) can read it even before the
+ * full AuthContext.Provider is mounted.
+ */
+export const AccessContactContext = createContext<string>("orbit-access@kinisislabs.com");
+
 export type AuthContextValue = {
   user: EntraUser;
   groups: EntraGroup[];
