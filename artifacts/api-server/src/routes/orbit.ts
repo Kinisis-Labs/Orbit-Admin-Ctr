@@ -140,7 +140,7 @@ const APP_BILLING_SCOPE: Record<string, "rg" | "subscription"> = {
   "kinisis-labs": "rg",      // shares sub-sharedplatf 893689ff with platform subscription
 };
 
-function billingScope(appId: string): "rg" | "subscription" {
+export function billingScope(appId: string): "rg" | "subscription" {
   return APP_BILLING_SCOPE[appId] ?? "rg";
 }
 
