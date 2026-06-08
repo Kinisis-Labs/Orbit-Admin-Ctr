@@ -1030,7 +1030,7 @@ function TelemetryTab({ appId }: { appId: string }) {
                         </div>
                         <div className="flex justify-between text-muted-foreground text-[10px]">
                           <span>Count: {err.count}</span>
-                          <span>{format(new Date(err.lastSeen), "MM/dd HH:mm")}</span>
+                          <span title={format(new Date(err.lastSeen), "MM/dd HH:mm")}>{formatDistanceToNow(new Date(err.lastSeen), { addSuffix: true })}</span>
                         </div>
                       </TableCell>
                     </TableRow>
