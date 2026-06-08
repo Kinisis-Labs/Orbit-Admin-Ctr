@@ -25,24 +25,26 @@ const SOURCE_LABELS: Record<"play" | "apple" | "azure-cost", { label: string; li
   "azure-cost": { label: "Azure Cost Management", liveText: "live costs may differ" },
 };
 
+type StaleCacheBannerProps = {
+  dataSource?: "live" | "cached" | "mock" | undefined;
+  dataAsOf?: string | null;
+} & (
+  | { source: "play" | "apple" | "azure-cost"; label?: string; liveText?: string }
+  | { source?: never; label: string; liveText: string }
+);
+
 export function StaleCacheBanner({
   dataSource,
   dataAsOf,
   source,
   label: labelProp,
   liveText: liveTextProp,
-}: {
-  dataSource?: "live" | "cached" | "mock" | undefined;
-  dataAsOf?: string | null;
-  source?: "play" | "apple" | "azure-cost";
-  label?: string;
-  liveText?: string;
-}) {
+}: StaleCacheBannerProps) {
   const { label: sourceLabel, liveText: sourceLiveText } = source
     ? SOURCE_LABELS[source]
     : { label: undefined, liveText: undefined };
-  const label = labelProp ?? sourceLabel ?? "Azure Cost Management";
-  const liveText = liveTextProp ?? sourceLiveText ?? "live costs may differ";
+  const label = labelProp ?? sourceLabel;
+  const liveText = liveTextProp ?? sourceLiveText;
   if (dataSource !== undefined && dataSource !== "cached") return null;
   if (!dataAsOf) return null;
   const ageMs = Date.now() - new Date(dataAsOf).getTime();
