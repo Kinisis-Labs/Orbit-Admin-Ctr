@@ -3,6 +3,25 @@ import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azu
 import { logger } from "./logger.js";
 import type { AppRecord } from "../routes/orbit.js";
 
+/** A UUID-shaped GUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx). */
+function isGuid(s: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+}
+
+/**
+ * Returns the shared-infra subscription ID from AZURE_SUB_SHARED_INFRA if it is set
+ * and is a valid GUID; otherwise returns null.
+ *
+ * Used to include the shared-platform subscription (which hosts the Orbit Container App
+ * `ca-orbit-prod-v2`, Front Door `afd-shared-prod`, and associated VNets/Network Watchers)
+ * in every network Resource Graph query regardless of which app is being queried.
+ */
+export function getSharedInfraSubscriptionId(): string | null {
+  const val = process.env.AZURE_SUB_SHARED_INFRA;
+  if (val && isGuid(val)) return val;
+  return null;
+}
+
 export type NetworkEndpoint = {
   name: string;
   status: "healthy" | "degraded" | "unhealthy" | "unknown";
@@ -94,12 +113,25 @@ export async function fetchNetworkEndpoints(
     }
   }
 
-  // Include the app's own subscription so resources are found even when
-  // the app lives in a dedicated sub not listed in AZURE_SUBSCRIPTION_IDS.
+  // Build the subscription list:
+  //   1. Start with the global list (AZURE_SUBSCRIPTION_IDS).
+  //   2. Add the app's own subscription if it is a valid GUID (guards against the
+  //      placeholder "a1f4-shared-platform" fallback in the APPS inventory — invalid
+  //      GUIDs would cause Azure Resource Graph to throw and return null for all apps).
+  //   3. Add AZURE_SUB_SHARED_INFRA if set and valid (covers shared-platform resources:
+  //      ca-orbit-prod-v2, afd-shared-prod, and shared VNets/Network Watchers).
+  //   Deduplicate so each sub is queried exactly once.
   const globalSubs = getSubscriptionIds();
-  const subscriptionIds = app.subscriptionId
-    ? [...new Set([...globalSubs, app.subscriptionId])]
-    : globalSubs;
+  const sharedInfraSub = getSharedInfraSubscriptionId();
+  const appSub = app.subscriptionId && isGuid(app.subscriptionId) ? app.subscriptionId : null;
+
+  const subscriptionIds = [
+    ...new Set([
+      ...globalSubs,
+      ...(appSub ? [appSub] : []),
+      ...(sharedInfraSub ? [sharedInfraSub] : []),
+    ]),
+  ];
 
   // Query subscription-wide — shared resources (Front Door, Container Apps Envs) live
   // in different RGs from the compute RG.  Container Apps is the primary source of truth

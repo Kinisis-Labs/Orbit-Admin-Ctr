@@ -6,7 +6,7 @@ import {
   getSubscriptionIds,
   isAzureConfigured,
 } from "../lib/azure.js";
-import { normalizeResourceGraphRows } from "../lib/azureNetwork.js";
+import { normalizeResourceGraphRows, getSharedInfraSubscriptionId } from "../lib/azureNetwork.js";
 import { logger } from "../lib/logger.js";
 import { requireAdmin } from "../middlewares/auth.js";
 
@@ -107,7 +107,18 @@ async function checkNetworkResourceGraph(): Promise<CheckResult> {
   if (!isAzureConfigured()) {
     return { status: "not_configured", detail: "AZURE_SUBSCRIPTION_IDS not set" };
   }
-  const subs = getSubscriptionIds();
+
+  // Mirror the exact subscription-list logic used by fetchNetworkEndpoints so diagnostics
+  // reflect the real query: global subs + AZURE_SUB_SHARED_INFRA (if set and valid).
+  const globalSubs = getSubscriptionIds();
+  const sharedInfraSub = getSharedInfraSubscriptionId();
+  const subs = [...new Set([...globalSubs, ...(sharedInfraSub ? [sharedInfraSub] : [])])];
+
+  logger.info(
+    { subscriptions: subs, sharedInfraIncluded: !!sharedInfraSub },
+    "checkNetworkResourceGraph querying subscriptions",
+  );
+
   try {
     const client = new ResourceGraphClient(getAzureCredential());
     const result = await client.resources({
@@ -133,23 +144,30 @@ async function checkNetworkResourceGraph(): Promise<CheckResult> {
       `,
     });
     const rows = normalizeResourceGraphRows(result.data);
+    const subsDetail = `queried ${subs.length} subscription(s): ${subs.join(", ")}` +
+      (sharedInfraSub ? ` (includes AZURE_SUB_SHARED_INFRA)` : "");
     if (rows.length === 0) {
       return {
         status: "ok",
-        detail: `Query succeeded but found 0 networking resources across ${subs.length} subscription(s). ` +
-          `Verify that Container Apps / Front Door / Network Watchers exist in subscriptions: ${subs.join(", ")}`,
+        detail: `Query succeeded but found 0 networking resources — ${subsDetail}. ` +
+          `Verify that Container Apps / Front Door / Network Watchers exist in those subscriptions. ` +
+          `If shared-platform resources are missing, set AZURE_SUB_SHARED_INFRA to the sub-sharedplatform GUID.`,
       };
     }
     const summary = rows.map((r) => `${r["type"]}/${r["name"]} (${r["resourceGroup"]}, ${r["location"]})`).join("; ");
-    return { status: "ok", detail: `Found ${rows.length} resource(s): ${summary}` };
+    return { status: "ok", detail: `Found ${rows.length} resource(s) [${subsDetail}]: ${summary}` };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     const isAuthError = msg.includes("AuthorizationFailed") || msg.includes("does not have authorization");
+    logger.error(
+      { err, subscriptions: subs },
+      "checkNetworkResourceGraph Resource Graph query failed",
+    );
     return {
       status: "error",
       detail: isAuthError
         ? `Missing 'Reader' role on subscription(s) ${subs.join(", ")} for managed identity id-orbit-api-prod`
-        : msg,
+        : `Resource Graph error (queried subs: ${subs.join(", ")}): ${msg}`,
     };
   }
 }
@@ -222,6 +240,7 @@ router.get("/diagnostics", requireAdmin, async (_req, res) => {
       AZURE_SUB_GRAILBABE: envVar("AZURE_SUB_GRAILBABE"),
       AZURE_SUB_ORBIT: envVar("AZURE_SUB_ORBIT"),
       AZURE_SUB_KINISIS_LABS: envVar("AZURE_SUB_KINISIS_LABS"),
+      AZURE_SUB_SHARED_INFRA: envVar("AZURE_SUB_SHARED_INFRA"),
       ENTRA_TENANT_ID: envVar("ENTRA_TENANT_ID"),
       ENTRA_CLIENT_ID: envVar("ENTRA_CLIENT_ID"),
       ENTRA_CLIENT_SECRET: envVar("ENTRA_CLIENT_SECRET"),
