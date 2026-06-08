@@ -22,7 +22,12 @@ const ORBIT_GROUPS: GroupDef[] = [
     id: "orbit-admins",
     displayName: "Orbit-Admins",
     description: "Platform administration: feature flags, group management, preferences for all users.",
-    grants: ["Edit feature flags", "Manage Entra group simulation", "View audit log"],
+    grants: [
+      "Edit feature flags",
+      "Manage Entra group simulation",
+      "View audit log",
+      "All FinOps surfaces (implicit cost-reader access): Cost Management, per-app Cost & Ledger tabs, Play Subscriptions, App Store Subscriptions",
+    ],
   },
   {
     id: "orbit-engineers",
@@ -34,7 +39,14 @@ const ORBIT_GROUPS: GroupDef[] = [
     id: "b7e3-aad-cost-readers",
     displayName: "Orbit-Cost-Readers",
     description: "Allowed to view cost, billing, and revenue data in Orbit.",
-    grants: ["View Cost Management page", "View per-app Cost tab", "View Budgets & Forecasts"],
+    grants: [
+      "View Cost Management page",
+      "View per-app Cost tab",
+      "View Budgets & Forecasts",
+      "View per-app Ledger tab",
+      "View Play Subscriptions page",
+      "View App Store Subscriptions page",
+    ],
   },
   {
     id: "orbit-finops",
