@@ -108,7 +108,17 @@ export function ScopeSelect({
           className="h-8 w-[260px] rounded-sm border-border bg-card text-[13px]"
         >
           {isGlobal ? (
-            <span className="text-foreground">Global — All Apps</span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-foreground">Global — All Apps</span>
+              {violatingAppIds.size > 0 && (
+                <span
+                  className="inline-flex items-center rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold leading-none text-destructive-foreground"
+                  aria-label={`${violatingAppIds.size} app${violatingAppIds.size === 1 ? "" : "s"} violating`}
+                >
+                  {violatingAppIds.size} {violatingAppIds.size === 1 ? "violation" : "violations"}
+                </span>
+              )}
+            </span>
           ) : selectedApp ? (
             <span className="flex items-center gap-1.5 min-w-0">
               <span className="truncate">
