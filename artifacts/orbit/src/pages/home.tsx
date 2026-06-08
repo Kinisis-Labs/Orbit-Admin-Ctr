@@ -164,7 +164,28 @@ export default function Home() {
 
   const selectedApp = isGlobal ? undefined : apps?.find((a) => a.id === scope);
 
-  const [authFilter, setAuthFilter] = useState<UserAuthType | null>(null);
+  const [authFilter, setAuthFilterRaw] = useState<UserAuthType | null>(() => {
+    try {
+      const stored = localStorage.getItem("orbit-budget-auth-filter");
+      if (stored === "clerk" || stored === "entra" || stored === "none") return stored;
+    } catch {
+      // ignore
+    }
+    return null;
+  });
+
+  function setAuthFilter(value: UserAuthType | null) {
+    setAuthFilterRaw(value);
+    try {
+      if (value === null) {
+        localStorage.removeItem("orbit-budget-auth-filter");
+      } else {
+        localStorage.setItem("orbit-budget-auth-filter", value);
+      }
+    } catch {
+      // ignore
+    }
+  }
   const search = useSearch();
   const [, navigate] = useLocation();
 
@@ -190,7 +211,7 @@ export default function Home() {
   }
 
   function toggleAuthFilter(value: UserAuthType) {
-    setAuthFilter((prev) => (prev === value ? null : value));
+    setAuthFilter(authFilter === value ? null : value);
   }
 
   function clearAuthFilter() {
@@ -592,7 +613,28 @@ function BudgetSummaryWidget({
 
   const dailySpend = useAppDailySpend(apps, true, sparklineRange);
 
-  const [envFilter, setEnvFilter] = useState<EnvFilter>("all");
+  const [envFilter, setEnvFilterRaw] = useState<EnvFilter>(() => {
+    try {
+      const stored = localStorage.getItem("orbit-budget-env-filter");
+      if (stored === "prod" || stored === "staging" || stored === "dev") return stored;
+    } catch {
+      // ignore
+    }
+    return "all";
+  });
+
+  function setEnvFilter(value: EnvFilter) {
+    setEnvFilterRaw(value);
+    try {
+      if (value === "all") {
+        localStorage.removeItem("orbit-budget-env-filter");
+      } else {
+        localStorage.setItem("orbit-budget-env-filter", value);
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   const filteredApps = useMemo(() => {
     if (!apps) return undefined;
