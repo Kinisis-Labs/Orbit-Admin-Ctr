@@ -818,6 +818,15 @@ export const AcknowledgeBudgetAlertLogEntryResponse = zod.object({
 
 
 /**
+ * @summary Which notification channels (Teams, Email) are currently configured and ready to fire
+ */
+export const GetAlertChannelStatusResponse = zod.object({
+  "teams": zod.boolean().describe('True when ALERT_TEAMS_WEBHOOK_URL (global or per-app) is set'),
+  "email": zod.boolean().describe('True when ALERT_SMTP_HOST + ALERT_SMTP_FROM + ALERT_EMAIL_TO are all set')
+}).describe('Which notification channels are currently configured (env vars present). No secrets are exposed.')
+
+
+/**
  * @summary Effective CPU / memory / consecutive-checks thresholds per app, including override source
  */
 export const ListAlertConfigResponseItem = zod.object({

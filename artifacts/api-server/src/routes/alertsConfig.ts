@@ -1,12 +1,16 @@
 import { Router, type IRouter } from "express";
 import { APPS } from "./orbit.js";
 import { resolveThresholdsBulk, resolveThresholds } from "../lib/alertThresholds.js";
-import { resolveCooldownHours } from "../lib/budgetAlerts.js";
+import { resolveCooldownHours, getAlertChannelStatus } from "../lib/budgetAlerts.js";
 import { db, alertThresholdConfigTable, alertThresholdConfigLogTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth.js";
 
 const router: IRouter = Router();
+
+router.get("/alerts/channels", (_req, res) => {
+  res.json(getAlertChannelStatus());
+});
 
 router.get("/alerts/config", async (_req, res) => {
   const appIds = APPS.map((a) => a.id);

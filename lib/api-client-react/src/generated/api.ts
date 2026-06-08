@@ -23,6 +23,7 @@ import type {
   AcknowledgeBudgetAlertBody,
   ActivityEntry,
   Alert,
+  AlertChannelStatus,
   AlertThresholdConfigLogEntry,
   AnomalyDismissalsResponse,
   AppAlertConfig,
@@ -2655,6 +2656,83 @@ export const useAcknowledgeBudgetAlertLogEntry = <TError = ErrorType<void>,
       > => {
       return useMutation(getAcknowledgeBudgetAlertLogEntryMutationOptions(options));
     }
+
+export const getGetAlertChannelStatusUrl = () => {
+
+
+
+
+  return `/api/alerts/channels`
+}
+
+/**
+ * @summary Which notification channels (Teams, Email) are currently configured and ready to fire
+ */
+export const getAlertChannelStatus = async ( options?: RequestInit): Promise<AlertChannelStatus> => {
+
+  return customFetch<AlertChannelStatus>(getGetAlertChannelStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAlertChannelStatusQueryKey = () => {
+    return [
+    `/api/alerts/channels`
+    ] as const;
+    }
+
+
+export const getGetAlertChannelStatusQueryOptions = <TData = Awaited<ReturnType<typeof getAlertChannelStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAlertChannelStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAlertChannelStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAlertChannelStatus>>> = ({ signal }) => getAlertChannelStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAlertChannelStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAlertChannelStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getAlertChannelStatus>>>
+export type GetAlertChannelStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Which notification channels (Teams, Email) are currently configured and ready to fire
+ */
+
+export function useGetAlertChannelStatus<TData = Awaited<ReturnType<typeof getAlertChannelStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAlertChannelStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAlertChannelStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getListAlertConfigUrl = () => {
 

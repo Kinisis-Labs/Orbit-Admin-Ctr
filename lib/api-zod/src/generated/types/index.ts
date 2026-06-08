@@ -10,6 +10,7 @@ export * from './acknowledgeBudgetAlertBody';
 export * from './activityEntry';
 export * from './activityEntryStatus';
 export * from './alert';
+export * from './alertChannelStatus';
 export * from './alertSource';
 export * from './alertStatus';
 export * from './alertThresholdConfigLogEntry';

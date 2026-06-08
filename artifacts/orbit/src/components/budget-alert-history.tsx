@@ -1,4 +1,4 @@
-import { useListBudgetAlertLog, useAcknowledgeBudgetAlertLogEntry, getListBudgetAlertLogQueryKey } from "@workspace/api-client-react";
+import { useListBudgetAlertLog, useAcknowledgeBudgetAlertLogEntry, getListBudgetAlertLogQueryKey, useGetAlertChannelStatus } from "@workspace/api-client-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -84,6 +84,8 @@ export function BudgetAlertHistory({ appId }: Props) {
   const [unacknowledgedOnly, setUnacknowledgedOnly] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const { data: channelStatus } = useGetAlertChannelStatus();
 
   const search = useSearch();
   const [pathname, navigate] = useLocation();
@@ -310,8 +312,44 @@ export function BudgetAlertHistory({ appId }: Props) {
           <Bell className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           <h2 className="text-sm font-semibold">Alerts sent</h2>
 
-          {hasChannelCounts && (
+          {channelStatus && (
             <div className="flex items-center gap-1">
+              {channelDefs.map(({ key, label, Icon }) => {
+                const configured = channelStatus[key];
+                return (
+                  <Tooltip key={key}>
+                    <TooltipTrigger asChild>
+                      <span
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border text-[10px] font-medium ${
+                          configured
+                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                            : "border-border bg-muted/30 text-muted-foreground/50"
+                        }`}
+                      >
+                        <Icon className="h-2.5 w-2.5 shrink-0" />
+                        {label}
+                        {configured ? (
+                          <Check className="h-2.5 w-2.5 shrink-0" />
+                        ) : (
+                          <span className="text-[9px] opacity-60">off</span>
+                        )}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-[12px]">
+                      {configured
+                        ? `${label} channel is configured and will receive alerts`
+                        : key === "teams"
+                          ? "Teams not configured — set ALERT_TEAMS_WEBHOOK_URL to enable"
+                          : "Email not configured — set ALERT_SMTP_HOST, ALERT_SMTP_FROM, and ALERT_EMAIL_TO to enable"}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          )}
+
+          {hasChannelCounts && (
+            <div className="flex items-center gap-1 pl-1 border-l border-border/50">
               {channelDefs
                 .filter(({ key }) => (channelRawCounts[key] ?? 0) > 0)
                 .map(({ key, label, Icon }) => {

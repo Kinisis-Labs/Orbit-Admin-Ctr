@@ -114,6 +114,13 @@ export function isBudgetAlertsConfigured(): boolean {
   return isSmtpConfigured() || hasAnyTeamsConfig();
 }
 
+export function getAlertChannelStatus(): { teams: boolean; email: boolean } {
+  return {
+    teams: hasAnyTeamsConfig(),
+    email: isSmtpConfigured(),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // In-memory deduplication: appId → timestamp of last sent alert
 // Budget and infra use separate maps so they don't share cooldown state.

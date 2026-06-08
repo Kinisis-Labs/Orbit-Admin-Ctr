@@ -962,6 +962,16 @@ export interface AcknowledgeBudgetAlertBody {
 }
 
 /**
+ * Which notification channels are currently configured (env vars present). No secrets are exposed.
+ */
+export interface AlertChannelStatus {
+  /** True when ALERT_TEAMS_WEBHOOK_URL (global or per-app) is set */
+  teams: boolean;
+  /** True when ALERT_SMTP_HOST + ALERT_SMTP_FROM + ALERT_EMAIL_TO are all set */
+  email: boolean;
+}
+
+/**
  * Per-app infra alert threshold overrides. Pass null for a field to clear the DB override and revert to env-var / global default.
  */
 export interface UpdateAlertConfigBody {

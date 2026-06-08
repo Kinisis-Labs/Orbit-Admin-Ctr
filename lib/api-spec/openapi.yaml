@@ -570,6 +570,17 @@ paths:
               schema: { $ref: "#/components/schemas/BudgetAlertLogEntry" }
         "404":
           description: Entry not found
+  /alerts/channels:
+    get:
+      operationId: getAlertChannelStatus
+      tags: [alerts]
+      summary: Which notification channels (Teams, Email) are currently configured and ready to fire
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AlertChannelStatus" }
   /alerts/config:
     get:
       operationId: listAlertConfig
@@ -1379,6 +1390,17 @@ components:
           type: string
           maxLength: 500
           description: Optional freetext note (e.g. "spike from load test, safe to ignore")
+    AlertChannelStatus:
+      type: object
+      required: [teams, email]
+      description: Which notification channels are currently configured (env vars present). No secrets are exposed.
+      properties:
+        teams:
+          type: boolean
+          description: True when ALERT_TEAMS_WEBHOOK_URL (global or per-app) is set
+        email:
+          type: boolean
+          description: True when ALERT_SMTP_HOST + ALERT_SMTP_FROM + ALERT_EMAIL_TO are all set
     UpdateAlertConfigBody:
       type: object
       description: Per-app infra alert threshold overrides. Pass null for a field to clear the DB override and revert to env-var / global default.
