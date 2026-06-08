@@ -468,9 +468,10 @@ function ThresholdRow({ appId, appName, canEditThresholds }: { appId: string; ap
 
   const dirty = cpu !== "" || mem !== "";
 
-  const auditLine = data?.updatedBy
-    ? `Last set by ${data.updatedBy}${data.updatedAt ? ` on ${format(new Date(data.updatedAt), "MMM d, yyyy 'at' HH:mm")}` : ""}`
-    : null;
+  const auditLine =
+    data?.updatedBy && data.updatedBy !== "system"
+      ? `Last set by ${data.updatedBy}${data.updatedAt ? ` on ${format(new Date(data.updatedAt), "MMM d, yyyy 'at' HH:mm")}` : ""}`
+      : null;
 
   return (
     <div className="flex flex-col border-b border-border last:border-b-0">
