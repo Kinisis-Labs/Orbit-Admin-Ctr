@@ -40,9 +40,12 @@ export function getEntraConfig(): EntraConfig | null {
     engineerGroupId: process.env.ENTRA_ENGINEER_GROUP_ID,
     costReaderGroupId: process.env.ENTRA_COST_READER_GROUP_ID,
     finopsGroupId: process.env.ENTRA_FINOPS_GROUP_ID,
+    // offline_access is required so Entra issues a refresh token; without it
+    // the delegated access token cannot be silently renewed and group re-checks
+    // will fail after the initial token expires (~60-90 min).
     scopes:
       process.env.ENTRA_SCOPES ??
-      "openid profile email https://graph.microsoft.com/User.Read",
+      "openid profile email offline_access https://graph.microsoft.com/User.Read",
   };
 }
 

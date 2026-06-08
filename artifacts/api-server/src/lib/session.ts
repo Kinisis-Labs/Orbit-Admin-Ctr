@@ -14,6 +14,31 @@ export interface SessionUser {
   isCostReader: boolean;
   isAdmin: boolean;
   isEngineer: boolean;
+  /**
+   * The delegated Graph access token acquired during sign-in (or last refresh).
+   * Stored server-side (Postgres session store) only — never sent to the
+   * browser. Used to re-fetch group membership at configurable intervals so
+   * that badge changes take effect without requiring a full sign-out/sign-in.
+   */
+  accessToken?: string;
+  /**
+   * Unix timestamp (ms) at which the current access token expires.
+   * Computed as Date.now() + expires_in * 1000 at token issuance/renewal.
+   * Used to decide whether a token refresh is needed before a Graph re-check.
+   */
+  tokenExpiresAt?: number;
+  /**
+   * The refresh token issued alongside the access token (requires the
+   * offline_access scope). Used to silently obtain a fresh access token when
+   * the current one is near expiry, so group re-checks keep working throughout
+   * the session without forcing a full sign-out.
+   */
+  refreshToken?: string;
+  /**
+   * Unix timestamp (ms) of the last Graph group-membership re-check.
+   * Populated at sign-in and updated whenever /auth/me triggers a re-check.
+   */
+  groupsLastChecked?: number;
 }
 
 declare module "express-session" {
