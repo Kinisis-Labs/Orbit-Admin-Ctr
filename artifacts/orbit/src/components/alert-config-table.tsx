@@ -15,33 +15,9 @@ import { BellOff, Check, ChevronDown, ChevronUp, History, Pencil, RefreshCw, Rot
 import { useAuth } from "@/lib/auth";
 import { ADMIN_GROUP } from "@/lib/auth-groups";
 import { cn } from "@/lib/utils";
+import { POLL_OPTIONS, type PollValue, usePollingInterval } from "@/hooks/use-polling-interval";
 
 const POLL_INTERVAL_KEY = "orbit:alert-table:poll-interval";
-
-const POLL_OPTIONS = [
-  { label: "15 s", value: 15_000 },
-  { label: "30 s", value: 30_000 },
-  { label: "60 s", value: 60_000 },
-  { label: "Off", value: 0 },
-] as const;
-
-type PollValue = (typeof POLL_OPTIONS)[number]["value"];
-
-function parsePollValue(raw: string | null): PollValue {
-  const n = Number(raw);
-  return (POLL_OPTIONS.map((o) => o.value) as number[]).includes(n) ? (n as PollValue) : 60_000;
-}
-
-function usePollingInterval(): [PollValue, (v: PollValue) => void] {
-  const [value, setValue] = useState<PollValue>(() =>
-    parsePollValue(localStorage.getItem(POLL_INTERVAL_KEY))
-  );
-  function set(v: PollValue) {
-    setValue(v);
-    localStorage.setItem(POLL_INTERVAL_KEY, String(v));
-  }
-  return [value, set];
-}
 
 function getLatestValue(report: InfrastructureReport | undefined, seriesName: string): number | null {
   if (!report) return null;
@@ -508,7 +484,7 @@ export function AlertConfigTable({ appId }: Props) {
   const [, navigate] = useLocation();
   const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
 
-  const [pollInterval, setPollInterval] = usePollingInterval();
+  const [pollInterval, setPollInterval] = usePollingInterval(POLL_INTERVAL_KEY);
 
   const rows = appId ? data?.filter((r) => r.appId === appId) : data;
 

@@ -60,6 +60,10 @@ import { BAR_COLOR_DEFAULT, BAR_COLOR_UP_MILD, BAR_COLOR_UP_HIGH, BAR_COLOR_DOWN
 import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
 import { InfraAlertHistory } from "@/components/infra-alert-history";
 import { AlertConfigTable } from "@/components/alert-config-table";
+import { POLL_OPTIONS, type PollValue, usePollingInterval } from "@/hooks/use-polling-interval";
+import { cn } from "@/lib/utils";
+
+const INFRA_TAB_POLL_INTERVAL_KEY = "orbit:infra-tab:poll-interval";
 
 const VALID_TABS = ["overview", "infrastructure", "network", "telemetry", "cost", "ledger", "alerts"] as const;
 
@@ -659,7 +663,8 @@ function formatSecondsAgo(ms: number): string {
 }
 
 function InfraTab({ appId }: { appId: string }) {
-  const { data, isLoading, isFetching, dataUpdatedAt, queryKey } = useAppInfrastructure(appId);
+  const [pollInterval, setPollInterval] = usePollingInterval(INFRA_TAB_POLL_INTERVAL_KEY);
+  const { data, isLoading, isFetching, dataUpdatedAt, queryKey } = useAppInfrastructure(appId, pollInterval);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/infrastructure`, queryKey);
   useSecondsTicker();
   const updatedLabel = dataUpdatedAt > 0 ? formatSecondsAgo(Date.now() - dataUpdatedAt) : null;
@@ -684,6 +689,24 @@ function InfraTab({ appId }: { appId: string }) {
                 {isFetching ? "Refreshing…" : `Updated ${updatedLabel}`}
               </span>
             )}
+            <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground select-none">
+              <span className="hidden sm:inline">Poll</span>
+              <select
+                value={pollInterval}
+                onChange={(e) => setPollInterval(Number(e.target.value) as PollValue)}
+                className={cn(
+                  "h-6 rounded border border-border bg-background px-1.5 text-[11px] text-foreground",
+                  "focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer",
+                )}
+                aria-label="Infrastructure polling interval"
+              >
+                {POLL_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             {data.dataSource === "live" && (
               <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
             )}
