@@ -453,11 +453,21 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
   const headroom = data.budget - data.forecast;
   const forecastOverBudget = data.forecast > data.budget;
 
-  const tileClass =
-    "flex flex-col gap-1 rounded-sm p-2 -m-2 cursor-pointer transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-
   return (
-    <div className="bg-card border border-border shadow-sm p-4 text-[13px]">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onGoToCost}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          const target = e.target as HTMLElement;
+          if (target !== e.currentTarget && target.closest('button, a, input, [role="button"], [role="slider"]')) return;
+          e.preventDefault();
+          onGoToCost();
+        }
+      }}
+      className="bg-card border border-border shadow-sm p-4 text-[13px] cursor-pointer rounded-sm transition-all hover:border-primary/50 hover:shadow-md hover:ring-1 hover:ring-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
       {isFetching && !isLoading && (
         <div className="h-0.5 w-full overflow-hidden mb-3 -mt-1">
           <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
@@ -467,101 +477,75 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <h3 className="font-semibold text-sm">Cost snapshot</h3>
-          <button
-            type="button"
-            onClick={onGoToCost}
-            className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 transition-colors"
-          >
+          <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
             View details <ArrowRight className="h-3 w-3" />
-          </button>
+          </span>
         </div>
         <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
       </div>
       <TooltipProvider delayDuration={600}>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* MTD Spend */}
-        <UITooltip>
-          <TooltipTrigger asChild>
-            <button type="button" onClick={onGoToCost} className={tileClass}>
-              <div className="text-[12px] text-muted-foreground font-medium">MTD spend</div>
-              <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.monthToDate)}</div>
-              <MomTrendBadge momChangePct={data.momChangePct ?? null} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Go to Cost tab</TooltipContent>
-        </UITooltip>
+        <div className="flex flex-col gap-1">
+          <div className="text-[12px] text-muted-foreground font-medium">MTD spend</div>
+          <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.monthToDate)}</div>
+          <MomTrendBadge momChangePct={data.momChangePct ?? null} />
+        </div>
 
         {/* Budget Cap */}
-        <UITooltip>
-          <TooltipTrigger asChild>
-            <button type="button" onClick={onGoToCost} className={tileClass}>
-              <div className="text-[12px] text-muted-foreground font-medium">Budget Cap</div>
-              <div className="text-xl font-semibold tabular-nums">
-                {formatCurrency(data.budget)}
-              </div>
-              <div className="space-y-1 mt-0.5">
-                <BudgetThresholdPopover
-                  appId={appId}
-                  utilPct={barUtilPct}
-                  rawUtilPct={rawUtilPct}
-                  budgetThreshold={budgetThreshold}
-                />
-                <div className="text-[11px] text-muted-foreground tabular-nums">{rawUtilPct.toFixed(0)}% of cap used MTD</div>
-                {data.dataSource === "live" && <LiveBadge />}
-              </div>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Go to Cost tab</TooltipContent>
-        </UITooltip>
+        <div className="flex flex-col gap-1">
+          <div className="text-[12px] text-muted-foreground font-medium">Budget Cap</div>
+          <div className="text-xl font-semibold tabular-nums">
+            {formatCurrency(data.budget)}
+          </div>
+          <div className="space-y-1 mt-0.5">
+            <BudgetThresholdPopover
+              appId={appId}
+              utilPct={barUtilPct}
+              rawUtilPct={rawUtilPct}
+              budgetThreshold={budgetThreshold}
+            />
+            <div className="text-[11px] text-muted-foreground tabular-nums">{rawUtilPct.toFixed(0)}% of cap used MTD</div>
+            {data.dataSource === "live" && <LiveBadge />}
+          </div>
+        </div>
 
         {/* Forecast EOM */}
-        <UITooltip>
-          <TooltipTrigger asChild>
-            <button type="button" onClick={onGoToCost} className={tileClass}>
-              <div className="text-[12px] text-muted-foreground font-medium flex items-center gap-1">
-                Forecast EOM
-                {forecastOverBudget && (
-                  <TooltipProvider>
-                    <UITooltip>
-                      <TooltipTrigger asChild>
-                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-amber-500/15 border border-amber-500/40">
-                          <AlertTriangle className="h-2.5 w-2.5 text-amber-500" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>Forecast exceeds budget cap</TooltipContent>
-                    </UITooltip>
-                  </TooltipProvider>
-                )}
-              </div>
-              <div className={`text-xl font-semibold tabular-nums ${forecastOverBudget ? "text-destructive" : "text-muted-foreground"}`}>
-                {formatCurrency(data.forecast)}
-              </div>
-              <div className="text-[11px] mt-0.5">
-                {forecastOverBudget
-                  ? <span className="text-destructive">Projected to exceed cap</span>
-                  : <span className="text-muted-foreground">Projected end-of-month</span>}
-              </div>
-              {data.dataSource === "live" && <LiveBadge className="mt-0.5" />}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Go to Cost tab</TooltipContent>
-        </UITooltip>
+        <div className="flex flex-col gap-1">
+          <div className="text-[12px] text-muted-foreground font-medium flex items-center gap-1">
+            Forecast EOM
+            {forecastOverBudget && (
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-amber-500/15 border border-amber-500/40" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                    <AlertTriangle className="h-2.5 w-2.5 text-amber-500" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Forecast exceeds budget cap</TooltipContent>
+              </UITooltip>
+            )}
+          </div>
+          <div className={`text-xl font-semibold tabular-nums ${forecastOverBudget ? "text-destructive" : "text-muted-foreground"}`}>
+            {formatCurrency(data.forecast)}
+          </div>
+          <div className="text-[11px] mt-0.5">
+            {forecastOverBudget
+              ? <span className="text-destructive">Projected to exceed cap</span>
+              : <span className="text-muted-foreground">Projected end-of-month</span>}
+          </div>
+          {data.dataSource === "live" && <LiveBadge className="mt-0.5" />}
+        </div>
 
         {/* Headroom */}
-        <UITooltip>
-          <TooltipTrigger asChild>
-            <button type="button" onClick={onGoToCost} className={tileClass}>
-              <div className="text-[12px] text-muted-foreground font-medium">Headroom</div>
-              <div className={`text-xl font-semibold tabular-nums ${headroom < 0 ? "text-destructive" : "text-emerald-500"}`}>
-                {formatCurrency(headroom)}
-              </div>
-              <div className="text-[11px] text-muted-foreground mt-0.5">
-                {headroom >= 0 ? "Remaining vs forecast" : "Overrun vs budget"}
-              </div>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Go to Cost tab</TooltipContent>
-        </UITooltip>
+        <div className="flex flex-col gap-1">
+          <div className="text-[12px] text-muted-foreground font-medium">Headroom</div>
+          <div className={`text-xl font-semibold tabular-nums ${headroom < 0 ? "text-destructive" : "text-emerald-500"}`}>
+            {formatCurrency(headroom)}
+          </div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">
+            {headroom >= 0 ? "Remaining vs forecast" : "Overrun vs budget"}
+          </div>
+        </div>
       </div>
       </TooltipProvider>
       <StaleCacheBanner source="azure-cost" dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
