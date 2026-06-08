@@ -621,6 +621,9 @@ function BudgetSummaryWidget({
   }).length ?? 0;
 
   const totalSpentMTD = filteredApps?.reduce((s, a) => s + a.monthToDateCost, 0) ?? 0;
+  const topSpenderId = filteredApps && filteredApps.length >= 2
+    ? filteredApps.reduce((top, a) => a.monthToDateCost > top.monthToDateCost ? a : top, filteredApps[0]).id
+    : null;
   const budgetedApps = filteredApps?.filter((a) => a.budget != null) ?? [];
   const totalBudget = budgetedApps.reduce((s, a) => s + (a.budget ?? 0), 0);
   const totalForecast = budgetedApps.reduce((s, a) => s + (a.forecast ?? 0), 0);
@@ -984,7 +987,17 @@ function BudgetSummaryWidget({
                         <div className="flex flex-col items-end gap-0.5">
                           {fmt(app.monthToDateCost)}
                           {filteredApps.length >= 2 && totalSpentMTD > 0 && (
-                            <span className="text-[10px] text-muted-foreground tabular-nums">
+                            <span className={`text-[10px] tabular-nums flex items-center gap-1 ${app.id === topSpenderId ? "text-amber-500 font-semibold" : "text-muted-foreground"}`}>
+                              {app.id === topSpenderId && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="inline-flex items-center px-1 py-0 rounded-sm bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[9px] font-semibold uppercase tracking-wide leading-4 cursor-default">top</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Highest spend this month</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
                               {Math.round((app.monthToDateCost / totalSpentMTD) * 100)}% of total
                             </span>
                           )}
