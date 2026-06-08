@@ -396,6 +396,8 @@ export function BudgetAlertHistory({ appId }: Props) {
                   <X className="h-3 w-3" />
                 </button>
               )}
+            </div>
+
             {isFiltered && (
               <button
                 onClick={clearFilter}

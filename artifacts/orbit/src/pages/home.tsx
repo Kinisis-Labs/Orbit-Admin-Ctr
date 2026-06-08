@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
+import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { getListAppsQueryKey, getGetCostQueryKey, getCost } from "@workspace/api-client-react";
 import type { AppSummary } from "@workspace/api-client-react";
 import type { UserAuthType } from "@workspace/api-client-react";
+import type { DailyCostPoint } from "@/components/daily-spend-utils";
 import { useApps } from "@/hooks/use-apps";
 import { useApp } from "@/hooks/use-app";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
@@ -45,6 +47,67 @@ function useAppAnomalies(apps: AppSummary[] | undefined, enabled: boolean): Set<
     });
     return anomalousIds;
   }, [apps, queries]);
+}
+
+function useAppDailySpend(apps: AppSummary[] | undefined, enabled: boolean): Map<string, DailyCostPoint[]> {
+  const queries = useQueries({
+    queries: (apps ?? []).map((app) => ({
+      queryKey: getGetCostQueryKey(app.id),
+      queryFn: () => getCost(app.id),
+      staleTime: 5 * 60 * 1000,
+      enabled,
+    })),
+  });
+
+  return useMemo(() => {
+    const map = new Map<string, DailyCostPoint[]>();
+    (apps ?? []).forEach((app, i) => {
+      const daily = queries[i]?.data?.daily;
+      if (daily && daily.length > 0) {
+        map.set(app.id, daily.slice(-7));
+      }
+    });
+    return map;
+  }, [apps, queries]);
+}
+
+function BudgetSparkline({ data, status }: { data: DailyCostPoint[] | undefined; status: BudgetStatus }) {
+  if (!data || data.length === 0) {
+    return <span className="inline-block w-[72px] h-[24px]" />;
+  }
+
+  const color =
+    status === "over"
+      ? "hsl(0 84% 60%)"
+      : status === "warning"
+      ? "hsl(38 92% 50%)"
+      : "hsl(160 84% 39%)";
+
+  const fillId = `sf-${status}`;
+
+  return (
+    <span className="inline-block w-[72px] h-[24px] align-middle">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 2, right: 0, bottom: 2, left: 0 }}>
+          <defs>
+            <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={color} stopOpacity={0.35} />
+              <stop offset="95%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke={color}
+            strokeWidth={1.5}
+            fill={`url(#${fillId})`}
+            dot={false}
+            isAnimationActive={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </span>
+  );
 }
 
 function readLastTab(): string {
@@ -420,6 +483,8 @@ function BudgetSummaryWidget({
   const { setScope } = useScope();
   const [, navigate] = useLocation();
 
+  const dailySpend = useAppDailySpend(apps, true);
+
   const [envFilter, setEnvFilter] = useState<EnvFilter>("all");
 
   const filteredApps = useMemo(() => {
@@ -644,6 +709,7 @@ function BudgetSummaryWidget({
               <th className="text-right font-medium text-muted-foreground px-3 py-2">Forecast</th>
               <th className="text-left font-medium text-muted-foreground px-3 py-2 w-[120px]">Utilization</th>
               <th className="text-left font-medium text-muted-foreground px-3 py-2">Status</th>
+              <th className="text-left font-medium text-muted-foreground px-3 py-2 w-[88px]">7d trend</th>
               <th className="w-8 px-2 py-2" />
             </tr>
           </thead>
@@ -658,12 +724,13 @@ function BudgetSummaryWidget({
                   <td className="px-3 py-2.5 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
                   <td className="px-3 py-2.5"><Skeleton className="h-3 w-full" /></td>
                   <td className="px-3 py-2.5"><Skeleton className="h-5 w-16" /></td>
+                  <td className="px-3 py-2.5"><Skeleton className="h-6 w-[72px]" /></td>
                   <td className="px-2 py-2.5" />
                 </tr>
               ))
             ) : filteredApps.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-[13px] text-muted-foreground">
+                <td colSpan={9} className="px-4 py-6 text-center text-[13px] text-muted-foreground">
                   No apps match the active filters.
                 </td>
               </tr>
@@ -796,6 +863,9 @@ function BudgetSummaryWidget({
                         )}
                         <StatusPill status={status} />
                       </div>
+                    </td>
+                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <BudgetSparkline data={dailySpend.get(app.id)} status={status} />
                     </td>
                     <td className="px-2 py-2.5 text-muted-foreground/40">
                       <ChevronRight className="h-3.5 w-3.5" />
