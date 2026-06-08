@@ -28,7 +28,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { DailySpendChart } from "@/components/daily-spend-chart";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus, Wifi } from "lucide-react";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus, Wifi, BarChart2 } from "lucide-react";
 import { DataSourceBadge } from "@/components/data-source-badge";
 
 /**
@@ -727,10 +727,20 @@ function InfraTab({ appId }: { appId: string }) {
         </div>
         <div className="p-4 space-y-6">
           {data.series.length === 0 && (
-            <div className="py-8 text-center text-[12px] text-muted-foreground">
-              {data.dataSource === "live"
-                ? "No metric data in the last 24 hours"
-                : "Metrics unavailable — Azure Monitor not configured"}
+            <div className="flex flex-col items-center justify-center gap-3 py-12 text-center border border-dashed border-border rounded-sm bg-muted/20">
+              <BarChart2 className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />
+              <div className="space-y-1">
+                <p className="text-[13px] font-medium text-muted-foreground">
+                  {data.dataSource === "live"
+                    ? "No data available from Log Analytics"
+                    : "No data available"}
+                </p>
+                <p className="text-[11px] text-muted-foreground/70">
+                  {data.dataSource === "live"
+                    ? "Log Analytics returned no counter data for this app in the last 24 hours."
+                    : "Configure AZURE_LOG_ANALYTICS_WORKSPACE_ID to enable live metric series."}
+                </p>
+              </div>
             </div>
           )}
           {data.series.map((s, i) => (
