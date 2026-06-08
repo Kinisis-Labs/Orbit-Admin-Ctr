@@ -4,7 +4,9 @@ import {
   useListAnomalyDismissals,
   getListAnomalyDismissalsQueryKey,
   useDismissAnomaly,
+  getCost,
 } from "@workspace/api-client-react";
+import { useQueries } from "@tanstack/react-query";
 import { useApps } from "@/hooks/use-apps";
 import { useBudgetThreshold } from "@/lib/spend-threshold";
 import { BudgetAlertHistory } from "@/components/budget-alert-history";
@@ -163,26 +165,155 @@ export default function Cost() {
   const { scope } = useScope();
   const { data: apps } = useApps();
   const selectedApp = apps?.find((a) => a.id === scope);
+  const isGlobal = scope === "global";
 
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold text-foreground tracking-tight">
-            {`Cost — ${selectedApp?.name ?? ""}`}
+            {isGlobal ? "Cost — All Applications" : `Cost — ${selectedApp?.name ?? ""}`}
           </h1>
           <p className="text-[12px] text-muted-foreground mt-0.5">
-            {`Scoped to ${selectedApp?.name ?? "application"}`}
+            {isGlobal ? "Cost and revenue across all tracked applications" : `Scoped to ${selectedApp?.name ?? "application"}`}
           </p>
         </div>
-        <ScopeSelect />
+        <ScopeSelect allowGlobal />
       </div>
 
-      <AppCost />
+      {isGlobal ? <GlobalCost /> : <AppCost />}
     </div>
   );
 }
 
+
+function GlobalCost() {
+  const { data: apps, isLoading: appsLoading } = useApps();
+
+  const costQueries = useQueries({
+    queries: (apps ?? []).map((app) => ({
+      queryKey: getGetCostQueryKey(app.id),
+      queryFn: () => getCost(app.id),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+
+  const isLoading = appsLoading || costQueries.some((q) => q.isLoading);
+
+  const currency = costQueries.find((q) => q.data)?.data?.currency ?? "USD";
+
+  const tableRows = useMemo(() => {
+    if (!apps || isLoading) return null;
+    return apps.map((app, i) => {
+      const costData = costQueries[i]?.data;
+      const cost = costData?.monthToDate ?? app.monthToDateCost;
+      const stripe = costData?.revenue.bySource.find((s) => s.source === "stripe")?.amount ?? 0;
+      const appStore = costData?.revenue.bySource.find((s) => s.source === "app_store")?.amount ?? 0;
+      const playStore = costData?.revenue.bySource.find((s) => s.source === "play_store")?.amount ?? 0;
+      const revenue = costData?.revenue.total ?? stripe + appStore + playStore;
+      const net = revenue - cost;
+      const marginPct = revenue > 0 ? (net / revenue) * 100 : null;
+      return { app, cost, stripe, appStore, playStore, revenue, net, marginPct };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apps, isLoading, costQueries.map((q) => q.dataUpdatedAt).join(",")]);
+
+  const csvHeaders = ["Application", "Cost", "Stripe", "App Store", "Play Store", "Revenue", "Net", "Margin %"];
+  const csvRows = useMemo(() => {
+    if (!tableRows) return null;
+    return tableRows.map((r) => [
+      r.app.name,
+      r.cost.toFixed(2),
+      r.stripe.toFixed(2),
+      r.appStore.toFixed(2),
+      r.playStore.toFixed(2),
+      r.revenue.toFixed(2),
+      r.net.toFixed(2),
+      r.marginPct != null ? r.marginPct.toFixed(1) + "%" : "—",
+    ]);
+  }, [tableRows]);
+
+  const {
+    copied,
+    disabled: csvDisabled,
+    handleExport,
+    handleCopy,
+  } = useCsvExport(csvRows, csvHeaders, "cost-vs-revenue-by-app");
+
+  return (
+    <Panel
+      title="Cost vs Revenue by Application"
+      toolbar={
+        <div className="flex items-center gap-1">
+          <CsvToolbar
+            handleExport={handleExport}
+            handleCopy={handleCopy}
+            disabled={csvDisabled}
+            copied={copied}
+          />
+        </div>
+      }
+    >
+      <Table className="text-[13px]">
+        <THead>
+          <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Cost</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[100px]">Stripe</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">App Store</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Play Store</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Revenue</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Net</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[90px]">Margin %</TableHead>
+        </THead>
+        <TableBody>
+          {isLoading ? (
+            <SkeletonRows cols={8} rows={3} />
+          ) : (
+            (tableRows ?? []).map((row) => {
+              const netClass =
+                row.net > 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : row.net < 0
+                    ? "text-destructive"
+                    : "text-muted-foreground";
+              const marginClass =
+                row.marginPct == null
+                  ? "text-muted-foreground"
+                  : row.marginPct > 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : row.marginPct < 0
+                      ? "text-destructive"
+                      : "text-muted-foreground";
+              return (
+                <TableRow key={row.app.id} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                  <TableCell className="py-1 font-medium">
+                    {row.app.name}
+                    <span className="text-muted-foreground text-[11px] ml-1.5">· {row.app.environment}</span>
+                  </TableCell>
+                  <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">{fmt(row.cost, currency)}</TableCell>
+                  <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
+                    {row.stripe > 0 ? fmt(row.stripe, currency) : <span className="opacity-30">—</span>}
+                  </TableCell>
+                  <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
+                    {row.appStore > 0 ? fmt(row.appStore, currency) : <span className="opacity-30">—</span>}
+                  </TableCell>
+                  <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
+                    {row.playStore > 0 ? fmt(row.playStore, currency) : <span className="opacity-30">—</span>}
+                  </TableCell>
+                  <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">{fmt(row.revenue, currency)}</TableCell>
+                  <TableCell className={`py-1 text-right font-mono text-[12px] tabular-nums font-semibold ${netClass}`}>{fmt(row.net, currency)}</TableCell>
+                  <TableCell className={`py-1 text-right font-mono text-[12px] tabular-nums font-semibold ${marginClass}`}>
+                    {row.marginPct != null ? `${row.marginPct.toFixed(1)}%` : "—"}
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+    </Panel>
+  );
+}
 
 function AppCost() {
   const { scope } = useScope();

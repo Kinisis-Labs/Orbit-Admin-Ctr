@@ -48,9 +48,11 @@ export function ScopeProvider({ children }: { children: React.ReactNode }) {
 export function ScopeSelect({
   id = "scope-select",
   authFilter,
+  allowGlobal = false,
 }: {
   id?: string;
   authFilter?: UserAuthType | null;
+  allowGlobal?: boolean;
 }) {
   const { scope, setScope } = useScope();
   const { data: apps } = useApps();
@@ -61,13 +63,16 @@ export function ScopeSelect({
     : allApps;
 
   // If persisted scope refers to an app that no longer exists, fall back to
-  // the first app in the list (or the default).
+  // the first app in the list (or the default). When allowGlobal is true,
+  // "global" is a valid sentinel value so skip the reset for it. On pages
+  // where allowGlobal is false, "global" is coerced back to a real app ID.
   useEffect(() => {
     if (!apps || apps.length === 0) return;
+    if (allowGlobal && scope === "global") return;
     if (!apps.some((a) => a.id === scope)) {
       setScope(apps[0].id ?? DEFAULT_SCOPE);
     }
-  }, [apps, scope, setScope]);
+  }, [apps, scope, setScope, allowGlobal]);
 
   // When a filter is active and the current scope doesn't match, switch to first match.
   useEffect(() => {
@@ -78,6 +83,7 @@ export function ScopeSelect({
   }, [authFilter, filteredApps, scope, setScope]);
 
   const selectedApp = allApps.find((a) => a.id === scope);
+  const isGlobal = scope === "global";
 
   const collator = new Intl.Collator(undefined, { sensitivity: "base" });
   const sortedApps = [...filteredApps].sort((a, b) => collator.compare(a.name, b.name));
@@ -94,7 +100,9 @@ export function ScopeSelect({
           data-testid="scope-select"
           className="h-8 w-[260px] rounded-sm border-border bg-card text-[13px]"
         >
-          {selectedApp ? (
+          {isGlobal ? (
+            <span className="text-foreground">Global — All Apps</span>
+          ) : selectedApp ? (
             <span className="flex items-center gap-1.5 min-w-0">
               <span className="truncate">
                 {selectedApp.name}
@@ -107,6 +115,11 @@ export function ScopeSelect({
           )}
         </SelectTrigger>
         <SelectContent>
+          {allowGlobal && !authFilter && (
+            <SelectItem key="global" value="global">
+              Global — All Apps
+            </SelectItem>
+          )}
           {sortedApps.map((a) => (
             <SelectItem key={a.id} value={a.id}>
               {a.name}
