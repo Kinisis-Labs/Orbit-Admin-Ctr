@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AcknowledgeBudgetAlertBody,
   ActivityEntry,
   Alert,
   AlertThresholdConfigLogEntry,
@@ -2587,14 +2588,16 @@ export const getAcknowledgeBudgetAlertLogEntryUrl = (id: number,) => {
 /**
  * @summary Acknowledge (dismiss) a budget-overrun alert log entry
  */
-export const acknowledgeBudgetAlertLogEntry = async (id: number, options?: RequestInit): Promise<BudgetAlertLogEntry> => {
+export const acknowledgeBudgetAlertLogEntry = async (id: number,
+    acknowledgeBudgetAlertBody?: AcknowledgeBudgetAlertBody, options?: RequestInit): Promise<BudgetAlertLogEntry> => {
 
   return customFetch<BudgetAlertLogEntry>(getAcknowledgeBudgetAlertLogEntryUrl(id),
   {
     ...options,
-    method: 'PATCH'
-
-
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      acknowledgeBudgetAlertBody,)
   }
 );}
 
@@ -2602,8 +2605,8 @@ export const acknowledgeBudgetAlertLogEntry = async (id: number, options?: Reque
 
 
 export const getAcknowledgeBudgetAlertLogEntryMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acknowledgeBudgetAlertLogEntry>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof acknowledgeBudgetAlertLogEntry>>, TError,{id: number}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acknowledgeBudgetAlertLogEntry>>, TError,{id: number;data?: BodyType<AcknowledgeBudgetAlertBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acknowledgeBudgetAlertLogEntry>>, TError,{id: number;data?: BodyType<AcknowledgeBudgetAlertBody>}, TContext> => {
 
 const mutationKey = ['acknowledgeBudgetAlertLogEntry'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -2615,10 +2618,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acknowledgeBudgetAlertLogEntry>>, {id: number}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acknowledgeBudgetAlertLogEntry>>, {id: number;data?: BodyType<AcknowledgeBudgetAlertBody>}> = (props) => {
+          const {id,data} = props ?? {};
 
-          return  acknowledgeBudgetAlertLogEntry(id,requestOptions)
+          return  acknowledgeBudgetAlertLogEntry(id,data,requestOptions)
         }
 
 
@@ -2629,18 +2632,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type AcknowledgeBudgetAlertLogEntryMutationResult = NonNullable<Awaited<ReturnType<typeof acknowledgeBudgetAlertLogEntry>>>
-
+    export type AcknowledgeBudgetAlertLogEntryMutationBody = BodyType<AcknowledgeBudgetAlertBody> | undefined
     export type AcknowledgeBudgetAlertLogEntryMutationError = ErrorType<void>
 
     /**
  * @summary Acknowledge (dismiss) a budget-overrun alert log entry
  */
 export const useAcknowledgeBudgetAlertLogEntry = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acknowledgeBudgetAlertLogEntry>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acknowledgeBudgetAlertLogEntry>>, TError,{id: number;data?: BodyType<AcknowledgeBudgetAlertBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof acknowledgeBudgetAlertLogEntry>>,
         TError,
-        {id: number},
+        {id: number;data?: BodyType<AcknowledgeBudgetAlertBody>},
         TContext
       > => {
       return useMutation(getAcknowledgeBudgetAlertLogEntryMutationOptions(options));

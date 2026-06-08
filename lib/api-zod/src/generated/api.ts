@@ -772,7 +772,8 @@ export const ListBudgetAlertLogResponseItem = zod.object({
   "budget": zod.number().describe('Budget cap at alert time'),
   "channels": zod.array(zod.string()).describe('Notification channels that fired (e.g. \"teams\", \"email\")'),
   "sentAt": zod.string().datetime({"offset":true}).describe('When the notification was dispatched'),
-  "acknowledgedAt": zod.string().datetime({"offset":true}).nullish().describe('When the entry was acknowledged by an operator. Null if not yet acknowledged.')
+  "acknowledgedAt": zod.string().datetime({"offset":true}).nullish().describe('When the entry was acknowledged by an operator. Null if not yet acknowledged.'),
+  "acknowledgedNote": zod.string().nullish().describe('Optional freetext note left by the operator when acknowledging.')
 })
 export const ListBudgetAlertLogResponse = zod.array(ListBudgetAlertLogResponseItem)
 
@@ -784,6 +785,14 @@ export const AcknowledgeBudgetAlertLogEntryParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const acknowledgeBudgetAlertLogEntryBodyNoteMax = 500;
+
+
+
+export const AcknowledgeBudgetAlertLogEntryBody = zod.object({
+  "note": zod.string().max(acknowledgeBudgetAlertLogEntryBodyNoteMax).optional().describe('Optional freetext note (e.g. \"spike from load test, safe to ignore\")')
+})
+
 export const AcknowledgeBudgetAlertLogEntryResponse = zod.object({
   "id": zod.number(),
   "appId": zod.string(),
@@ -793,7 +802,8 @@ export const AcknowledgeBudgetAlertLogEntryResponse = zod.object({
   "budget": zod.number().describe('Budget cap at alert time'),
   "channels": zod.array(zod.string()).describe('Notification channels that fired (e.g. \"teams\", \"email\")'),
   "sentAt": zod.string().datetime({"offset":true}).describe('When the notification was dispatched'),
-  "acknowledgedAt": zod.string().datetime({"offset":true}).nullish().describe('When the entry was acknowledged by an operator. Null if not yet acknowledged.')
+  "acknowledgedAt": zod.string().datetime({"offset":true}).nullish().describe('When the entry was acknowledged by an operator. Null if not yet acknowledged.'),
+  "acknowledgedNote": zod.string().nullish().describe('Optional freetext note left by the operator when acknowledging.')
 })
 
 

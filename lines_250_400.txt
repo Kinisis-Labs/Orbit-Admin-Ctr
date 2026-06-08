@@ -1,0 +1,151 @@
+    return counts;
+  }, [entries]);
+
+  const hasChannelCounts = entries && entries.length > 0 && Object.keys(channelRawCounts).length > 0;
+
+  return (
+<<<<<<< HEAD
+    <div className="bg-card border border-border shadow-sm flex flex-col">
+      <div className="flex items-center gap-2 p-3 border-b border-border flex-wrap">
+        <Bell className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <h2 className="text-sm font-semibold">Alerts sent</h2>
+
+        {hasChannelCounts && (
+          <div className="flex items-center gap-1">
+            {channelDefs
+              .filter(({ key }) => (channelRawCounts[key] ?? 0) > 0)
+              .map(({ key, label, Icon }) => {
+                const count = channelRawCounts[key]!;
+                return (
+                  <span
+                    key={key}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-medium"
+                    title={`${count} alert${count === 1 ? "" : "s"} sent via ${label}`}
+                  >
+                    <Icon className="h-2.5 w-2.5 shrink-0" />
+                    {label}
+                    <span className="font-semibold text-foreground">{count}</span>
+                  </span>
+                );
+              })}
+          </div>
+        )}
+
+        <div className="flex items-center gap-1.5 ml-auto flex-wrap">
+          <button
+            onClick={() => setUnacknowledgedOnly((v) => !v)}
+            className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-sm border text-[11px] font-medium transition-colors ${
+              unacknowledgedOnly
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border bg-transparent text-muted-foreground hover:text-foreground hover:border-border/80"
+            }`}
+            title={unacknowledgedOnly ? "Showing unacknowledged only — click to show all" : "Click to show only unacknowledged"}
+          >
+            <Filter className="h-3 w-3" />
+            {unacknowledgedOnly ? "Unacknowledged only" : "All"}
+          </button>
+
+          <div className="flex items-center gap-0.5 rounded-sm border border-border bg-muted/30 px-1.5 py-1">
+            {channelDefs.map(({ key, label, Icon }) => {
+              const active = selectedChannels.has(key);
+              return (
+                <button
+                  key={key}
+                  onClick={() => toggleChannel(key)}
+                  title={active ? `Remove ${label} filter` : `Filter by ${label}`}
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[11px] font-medium transition-colors ${
+                    active
+                      ? "bg-primary/15 text-primary border border-primary/30"
+                      : "text-muted-foreground hover:text-foreground border border-transparent hover:border-border/60"
+                  }`}
+                >
+                  <Icon className="h-3 w-3" />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-1 rounded-sm border border-border bg-muted/30 px-2 py-1">
+            <CalendarRange className="h-3 w-3 text-muted-foreground shrink-0" />
+            <label className="text-[11px] text-muted-foreground select-none" htmlFor="alert-date-start">
+              From
+            </label>
+            <input
+              id="alert-date-start"
+              type="date"
+              value={startInput}
+              max={endInput || undefined}
+              onChange={(e) => setStartInput(e.target.value)}
+              className="text-[11px] bg-transparent border-none outline-none text-foreground cursor-pointer tabular-nums h-5 w-[110px]"
+            />
+            <span className="text-[11px] text-muted-foreground mx-0.5">–</span>
+            <label className="sr-only" htmlFor="alert-date-end">
+              To
+            </label>
+            <input
+              id="alert-date-end"
+              type="date"
+              value={endInput}
+              min={startInput || undefined}
+              onChange={(e) => setEndInput(e.target.value)}
+              className="text-[11px] bg-transparent border-none outline-none text-foreground cursor-pointer tabular-nums h-5 w-[110px]"
+            />
+            {isDateFiltered && (
+              <button
+                onClick={clearDateRange}
+                className="ml-1 flex items-center justify-center h-4 w-4 rounded-sm hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Clear date filter"
+              >
+                <X className="h-3 w-3" />
+              </button>
+=======
+    <>
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        setDialogOpen(open);
+        if (!open) {
+          setDialogNote("");
+          setPendingId(null);
+        }
+      }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">Acknowledge alert</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <p className="text-[12px] text-muted-foreground">
+              Optionally add a note explaining why this alert is safe to dismiss (e.g. "spike from load test").
+            </p>
+            <Textarea
+              value={dialogNote}
+              onChange={(e) => setDialogNote(e.target.value)}
+              placeholder="Note (optional)"
+              maxLength={500}
+              rows={3}
+              className="text-[13px] resize-none"
+              autoFocus
+            />
+            {dialogNote.length > 0 && (
+              <p className="text-[11px] text-muted-foreground text-right">{dialogNote.length}/500</p>
+>>>>>>> 91a4e19 (feat: let operators add a note when acknowledging a budget alert)
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <DialogClose asChild>
+              <Button variant="ghost" size="sm" className="h-7 text-[12px]">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              size="sm"
+              className="h-7 text-[12px]"
+              onClick={handleConfirmAcknowledge}
+              disabled={isAcknowledging}
+            >
+              <Check className="h-3 w-3 mr-1" />
+              Acknowledge
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
