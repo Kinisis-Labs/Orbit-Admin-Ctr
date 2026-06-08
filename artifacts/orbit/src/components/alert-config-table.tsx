@@ -530,23 +530,20 @@ export function AlertConfigTable({ appId }: Props) {
     const source =
       field === "cpuThresholdPct" ? row.cpuSource :
       field === "memoryThresholdPct" ? row.memorySource :
-<<<<<<< HEAD
       field === "consecutiveChecks" ? row.consecutiveChecksSource :
       row.cooldownSource;
-    const isPercent = field === "cpuThresholdPct" || field === "memoryThresholdPct";
-    const suffix = field === "cooldownHours" ? "h" : isPercent ? "%" : "";
-=======
-      row.consecutiveChecksSource;
     const envVarName =
       field === "cpuThresholdPct" ? row.cpuEnvVarName :
       field === "memoryThresholdPct" ? row.memoryEnvVarName :
-      row.consecutiveChecksEnvVarName;
+      field === "consecutiveChecks" ? row.consecutiveChecksEnvVarName :
+      undefined;
     const envValue =
       field === "cpuThresholdPct" ? row.cpuEnvValue :
       field === "memoryThresholdPct" ? row.memoryEnvValue :
-      row.consecutiveChecksEnvValue;
-    const isPercent = field !== "consecutiveChecks";
->>>>>>> 5a54a56 (feat: surface DB-vs-env-var threshold conflict warning in alert config table)
+      field === "consecutiveChecks" ? row.consecutiveChecksEnvValue :
+      undefined;
+    const isPercent = field === "cpuThresholdPct" || field === "memoryThresholdPct";
+    const suffix = field === "cooldownHours" ? "h" : isPercent ? "%" : "";
 
     return (
       <EditableCell
