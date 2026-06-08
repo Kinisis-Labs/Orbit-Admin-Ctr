@@ -16,7 +16,32 @@ import { useAuth } from "@/lib/auth";
 import { ADMIN_GROUP } from "@/lib/auth-groups";
 import { cn } from "@/lib/utils";
 
-const REFETCH_INTERVAL_MS = 60_000;
+const POLL_INTERVAL_KEY = "orbit:alert-table:poll-interval";
+
+const POLL_OPTIONS = [
+  { label: "15 s", value: 15_000 },
+  { label: "30 s", value: 30_000 },
+  { label: "60 s", value: 60_000 },
+  { label: "Off", value: 0 },
+] as const;
+
+type PollValue = (typeof POLL_OPTIONS)[number]["value"];
+
+function parsePollValue(raw: string | null): PollValue {
+  const n = Number(raw);
+  return (POLL_OPTIONS.map((o) => o.value) as number[]).includes(n) ? (n as PollValue) : 60_000;
+}
+
+function usePollingInterval(): [PollValue, (v: PollValue) => void] {
+  const [value, setValue] = useState<PollValue>(() =>
+    parsePollValue(localStorage.getItem(POLL_INTERVAL_KEY))
+  );
+  function set(v: PollValue) {
+    setValue(v);
+    localStorage.setItem(POLL_INTERVAL_KEY, String(v));
+  }
+  return [value, set];
+}
 
 function getLatestValue(report: InfrastructureReport | undefined, seriesName: string): number | null {
   if (!report) return null;
@@ -450,12 +475,14 @@ export function AlertConfigTable({ appId }: Props) {
   const [, navigate] = useLocation();
   const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
 
+  const [pollInterval, setPollInterval] = usePollingInterval();
+
   const rows = appId ? data?.filter((r) => r.appId === appId) : data;
 
   const infraQueries = useQueries({
     queries: (rows ?? []).map((row) => ({
       ...getGetInfrastructureQueryOptions(row.appId),
-      refetchInterval: REFETCH_INTERVAL_MS,
+      refetchInterval: pollInterval > 0 ? pollInterval : false,
       refetchIntervalInBackground: false,
     })),
   });
@@ -521,21 +548,41 @@ export function AlertConfigTable({ appId }: Props) {
             </span>
           )}
           {infraQueries.length > 0 && (
-            <button
-              type="button"
-              onClick={handleManualRefresh}
-              disabled={isAnyFetching}
-              aria-label="Refresh utilization data"
-              title="Refresh utilization data now"
-              className={cn(
-                "flex items-center justify-center rounded p-1 transition-colors",
-                isAnyFetching
-                  ? "cursor-not-allowed text-primary opacity-60"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-              )}
-            >
-              <RefreshCw className={cn("h-3.5 w-3.5", isAnyFetching && "animate-spin")} />
-            </button>
+            <>
+              <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground select-none">
+                <span className="hidden sm:inline">Poll</span>
+                <select
+                  value={pollInterval}
+                  onChange={(e) => setPollInterval(Number(e.target.value) as PollValue)}
+                  className={cn(
+                    "h-6 rounded border border-border bg-background px-1.5 text-[11px] text-foreground",
+                    "focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer",
+                  )}
+                  aria-label="Utilization polling interval"
+                >
+                  {POLL_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={handleManualRefresh}
+                disabled={isAnyFetching}
+                aria-label="Refresh utilization data"
+                title="Refresh utilization data now"
+                className={cn(
+                  "flex items-center justify-center rounded p-1 transition-colors",
+                  isAnyFetching
+                    ? "cursor-not-allowed text-primary opacity-60"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                )}
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5", isAnyFetching && "animate-spin")} />
+              </button>
+            </>
           )}
           {!isLoading && rows !== undefined && (
             <span className="text-[11px] text-muted-foreground">
