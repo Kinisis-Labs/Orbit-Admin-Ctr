@@ -71,7 +71,11 @@ export default function AppleSubscriptions() {
       />
 
       <AppleBanner placeholder={isPlaceholder} dataUpdatedAt={dataUpdatedAt} />
-      <StaleCacheBanner dataAsOf={staleCachedRow?.dataAsOf} />
+      <StaleCacheBanner
+        dataAsOf={staleCachedRow?.dataAsOf}
+        label="App Store Connect"
+        liveText="live subscriber counts may differ"
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <Tile title="Active subscribers" value={isLoading ? null : num(totals.active)} sub="Currently paying" />
