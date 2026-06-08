@@ -40,7 +40,22 @@ export default function Alerts() {
   useEffect(() => {
     markAllViolationsSeen();
   }, []);
-  const [thresholdsOpen, setThresholdsOpen] = useState(false);
+  const [thresholdsOpen, setThresholdsOpen] = useState(() => {
+    try {
+      return localStorage.getItem("orbit:thresholdsOpen") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleThresholds = (open: boolean) => {
+    try {
+      localStorage.setItem("orbit:thresholdsOpen", String(open));
+    } catch {
+      // ignore
+    }
+    setThresholdsOpen(open);
+  };
   const { mode } = useAuth();
 
   const { data: apps } = useApps();
@@ -192,7 +207,7 @@ export default function Alerts() {
         <div className="bg-card border border-border shadow-sm flex flex-col">
           <button
             type="button"
-            onClick={() => setThresholdsOpen((o) => !o)}
+            onClick={() => toggleThresholds(!thresholdsOpen)}
             className="flex items-center gap-2 p-3 text-left hover:bg-muted/40 transition-colors"
           >
             {thresholdsOpen ? (
