@@ -498,6 +498,10 @@ export function AlertConfigTable({ appId }: Props) {
       ? formatSecondsAgo(Date.now() - latestUpdateAt)
       : null;
 
+  function handleManualRefresh() {
+    infraQueries.forEach((q) => void q.refetch());
+  }
+
   const colCount = (appId ? 0 : 1) + 7;
 
   return (
@@ -513,11 +517,25 @@ export function AlertConfigTable({ appId }: Props) {
         <span className="ml-auto flex items-center gap-2">
           {updatedLabel && (
             <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-              <RefreshCw
-                className={`h-3 w-3 ${isAnyFetching ? "animate-spin text-primary" : "text-muted-foreground/60"}`}
-              />
               {isAnyFetching ? "Refreshing…" : `Updated ${updatedLabel}`}
             </span>
+          )}
+          {infraQueries.length > 0 && (
+            <button
+              type="button"
+              onClick={handleManualRefresh}
+              disabled={isAnyFetching}
+              aria-label="Refresh utilization data"
+              title="Refresh utilization data now"
+              className={cn(
+                "flex items-center justify-center rounded p-1 transition-colors",
+                isAnyFetching
+                  ? "cursor-not-allowed text-primary opacity-60"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+              )}
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", isAnyFetching && "animate-spin")} />
+            </button>
           )}
           {!isLoading && rows !== undefined && (
             <span className="text-[11px] text-muted-foreground">
