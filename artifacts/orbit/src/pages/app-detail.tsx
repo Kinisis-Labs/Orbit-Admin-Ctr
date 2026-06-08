@@ -816,8 +816,14 @@ function NetworkTab({ appId }: { appId: string }) {
       </div>
       
       <div className="lg:col-span-2 bg-card border border-border shadow-sm flex flex-col">
-        <div className="p-3 border-b border-border bg-card">
+        <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Throughput</h2>
+          <div className="flex items-center gap-2">
+            <DataSourceBadge dataSource={data.dataSource} />
+            {isLiveMode(mode) && (
+              <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
+            )}
+          </div>
         </div>
         <div className="p-4 space-y-6">
           {data.throughput.map((s, i) => (
