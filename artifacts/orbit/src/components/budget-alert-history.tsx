@@ -102,7 +102,13 @@ function OveragePill({ forecast, budget }: { forecast: number; budget: number })
 }
 
 function AcknowledgedBadge({ at, note, by }: { at: string; note?: string | null; by?: string | null }) {
-  const hasTooltip = !!(note || by);
+  const tooltipLines: string[] = [];
+  if (by) {
+    tooltipLines.push(`Acknowledged by ${by} on ${format(new Date(at), "MMM d, yyyy")}`);
+  } else {
+    tooltipLines.push(`Acknowledged on ${format(new Date(at), "MMM d, yyyy")}`);
+  }
+  if (note) tooltipLines.push(note);
 
   const badge = (
     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/30 text-muted-foreground text-[10px] font-medium">
@@ -111,12 +117,6 @@ function AcknowledgedBadge({ at, note, by }: { at: string; note?: string | null;
       {note && <StickyNote className="h-2.5 w-2.5 ml-0.5 text-primary/70" />}
     </span>
   );
-
-  if (!hasTooltip) return badge;
-
-  const tooltipLines: string[] = [];
-  if (by) tooltipLines.push(`Acknowledged by ${by} on ${format(new Date(at), "MMM d, yyyy")}`);
-  if (note) tooltipLines.push(note);
 
   return (
     <Tooltip>
