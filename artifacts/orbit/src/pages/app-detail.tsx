@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSpendThreshold, useBudgetThreshold, setBudgetThreshold, DEFAULT_SPEND_THRESHOLD, DEFAULT_BUDGET_THRESHOLD } from "@/lib/spend-threshold";
 import { useParams, useLocation, useSearch } from "wouter";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
@@ -14,6 +14,7 @@ import { useAppLedger } from "@/hooks/use-app-ledger";
 import { useAppTelemetry } from "@/hooks/use-app-telemetry";
 import { 
   useSyncStripeSales,
+  useListUserActivity,
   UserAuthType,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -269,6 +270,9 @@ export default function AppDetail() {
               </div>
             </div>
             {canSeeCost && <OverviewCostTile appId={appId} onGoToCost={() => { handleTabChange("cost"); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
+            {app.userAuth === UserAuthType.clerk && (
+              <OverviewUserTile appId={appId} onGoToUsers={() => { setLocation("/users"); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
+            )}
           </TabsContent>
           
           <TabsContent value="infrastructure" className="m-0 space-y-4">
@@ -483,6 +487,88 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
       </TooltipProvider>
       <StaleCacheBanner dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
       </div>
+    </div>
+  );
+}
+
+function OverviewUserTile({ appId, onGoToUsers }: { appId: string; onGoToUsers: () => void }) {
+  const { data, isLoading } = useListUserActivity();
+
+  const row = useMemo(() => {
+    if (!data) return null;
+    return data.find((r) => r.appId === appId) ?? null;
+  }, [data, appId]);
+
+  const fmt = (n: number) => new Intl.NumberFormat("en-US").format(n);
+
+  if (isLoading) return <Skeleton className="h-20 w-full" />;
+  if (!row) return null;
+
+  const tileClass =
+    "flex flex-col gap-1 rounded-sm p-2 -m-2 cursor-pointer transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+  return (
+    <div className="bg-card border border-border shadow-sm p-4 text-[13px]">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <h3 className="font-semibold text-sm">User activity</h3>
+          <button
+            type="button"
+            onClick={onGoToUsers}
+            className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 transition-colors"
+          >
+            View details <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
+        <span className="text-[11px] text-muted-foreground">Clerk · anonymous rollups</span>
+      </div>
+      <TooltipProvider delayDuration={600}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <UITooltip>
+            <TooltipTrigger asChild>
+              <button type="button" onClick={onGoToUsers} className={tileClass}>
+                <div className="text-[12px] text-muted-foreground font-medium">Total members</div>
+                <div className="text-xl font-semibold tabular-nums">{fmt(row.totalMembers)}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">Registered users</div>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Go to Users tab</TooltipContent>
+          </UITooltip>
+
+          <UITooltip>
+            <TooltipTrigger asChild>
+              <button type="button" onClick={onGoToUsers} className={tileClass}>
+                <div className="text-[12px] text-muted-foreground font-medium">DAU</div>
+                <div className="text-xl font-semibold tabular-nums">{fmt(row.dau)}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">Active in last 24h</div>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Go to Users tab</TooltipContent>
+          </UITooltip>
+
+          <UITooltip>
+            <TooltipTrigger asChild>
+              <button type="button" onClick={onGoToUsers} className={tileClass}>
+                <div className="text-[12px] text-muted-foreground font-medium">WAU</div>
+                <div className="text-xl font-semibold tabular-nums">{fmt(row.wau)}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">Active in last 7 days</div>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Go to Users tab</TooltipContent>
+          </UITooltip>
+
+          <UITooltip>
+            <TooltipTrigger asChild>
+              <button type="button" onClick={onGoToUsers} className={tileClass}>
+                <div className="text-[12px] text-muted-foreground font-medium">MAU</div>
+                <div className="text-xl font-semibold tabular-nums">{fmt(row.mau)}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">Active in last 30 days</div>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Go to Users tab</TooltipContent>
+          </UITooltip>
+        </div>
+      </TooltipProvider>
     </div>
   );
 }
