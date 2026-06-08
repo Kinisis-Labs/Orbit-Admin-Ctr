@@ -570,6 +570,23 @@ function AppCost() {
     handleCopy: handleBreakdownCopy,
   } = useCsvExport(breakdownRows, breakdownHeaders, `cost-breakdown-${selectedApp?.name ?? scope}`);
 
+  const apiNameHeaders = ["API Name", "Calls (MTD)", "Cost"];
+  const apiNameRows = useMemo(() => {
+    if (!data?.apiUsage?.byApi?.length) return null;
+    return data.apiUsage.byApi.map((row) => [
+      row.name,
+      row.totalCalls.toString(),
+      row.cost.toFixed(2),
+    ]);
+  }, [data?.apiUsage?.byApi]);
+
+  const {
+    copied: apiNameCopied,
+    disabled: apiNameDisabled,
+    handleExport: handleApiNameExport,
+    handleCopy: handleApiNameCopy,
+  } = useCsvExport(apiNameRows, apiNameHeaders, `cost-by-api-name-${selectedApp?.name ?? scope}`);
+
   const sortedByService = useMemo(() => {
     if (!data?.byService) return data?.byService;
     const mul = serviceSortDir === "asc" ? 1 : -1;
@@ -964,6 +981,16 @@ function AppCost() {
         <Panel
           title="Cost by API Name"
           rightHeader={data ? <span className="text-[11px] text-muted-foreground pr-2">{fmt(data.apiUsage.cost, data.currency)} @ {fmt(data.apiUsage.costPerMillion, data.currency)}/M calls</span> : null}
+          toolbar={
+            <div className="flex items-center gap-1">
+              <CsvToolbar
+                handleExport={handleApiNameExport}
+                handleCopy={handleApiNameCopy}
+                disabled={apiNameDisabled}
+                copied={apiNameCopied}
+              />
+            </div>
+          }
         >
           <Table className="text-[13px]">
             <THead>
