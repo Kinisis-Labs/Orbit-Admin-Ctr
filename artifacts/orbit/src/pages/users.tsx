@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useListUserActivity } from "@workspace/api-client-react";
+import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TrendingDown, TrendingUp, ExternalLink, RefreshCw, Wifi } from "lucide-react";
@@ -12,7 +13,7 @@ const fmt = (n: number) => new Intl.NumberFormat("en-US").format(n);
 
 export default function Users() {
   const { scope } = useScope();
-  const { data, isLoading, isFetching, refetch } = useListUserActivity();
+  const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useListUserActivity();
 
   const activity = useMemo(() => data ?? [], [data]);
   const scopedActivity = activity.filter((a) => a.appId === scope);
@@ -59,7 +60,7 @@ export default function Users() {
 
       <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
 
-      <ClerkBanner />
+      <ClerkBanner dataUpdatedAt={dataUpdatedAt} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <Tile title="Total members" value={isLoading ? null : fmt(totals.members)} sub="Across scoped applications" />
@@ -141,7 +142,12 @@ export default function Users() {
   );
 }
 
-function ClerkBanner() {
+function ClerkBanner({ dataUpdatedAt }: { dataUpdatedAt: number }) {
+  const ago = useUpdatedAgo(dataUpdatedAt);
+  const timestampLabel = dataUpdatedAt > 0
+    ? `Data as of ${new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
+    : null;
+
   return (
     <div className="bg-card border border-border shadow-sm p-3 flex items-start gap-3">
       <div className="shrink-0 h-8 w-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center text-[11px] font-semibold">CK</div>
@@ -150,6 +156,11 @@ function ClerkBanner() {
         <span className="font-mono text-foreground">Clerk</span>. DAU / WAU / MAU are ingested in real time from Clerk{" "}
         <span className="font-mono text-foreground">webhooks</span> and stored as aggregate rollups — only an opaque user id and
         timestamps are kept, never emails or names. (Orbit staff still authenticate via corporate Entra ID.)
+        {timestampLabel && (
+          <span className="block mt-1 text-[11px] text-muted-foreground/70 tabular-nums">
+            {timestampLabel}{ago ? <span className="text-muted-foreground/50"> · {ago}</span> : null}
+          </span>
+        )}
       </div>
       <a
         href="https://dashboard.clerk.com"
