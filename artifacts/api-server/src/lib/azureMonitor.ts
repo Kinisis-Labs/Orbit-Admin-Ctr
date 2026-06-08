@@ -6,6 +6,8 @@ import type { AppRecord } from "../routes/orbit.js";
 export type TelemetrySummary = {
   requestsPerMin: number;
   p95LatencyMs: number;
+  /** True when the value came from a real KQL percentile query; false when it is an avg × 1.4 estimate. */
+  p95LatencyIsReal: boolean;
   errorRatePercent: number;
   availabilityPercent: number;
 };
@@ -513,6 +515,7 @@ export async function fetchAppMetrics(
     // Try to get a real P95 from Log Analytics. Falls back to the average × 1.4
     // approximation when the workspace is not configured or the query fails.
     let p95LatencyMs = Number((avgDurationMs * 1.4).toFixed(0));
+    let p95LatencyIsReal = false;
     if (isMonitorConfigured()) {
       try {
         const workspaceId = getLogAnalyticsWorkspaceId()!;
@@ -537,6 +540,7 @@ export async function fetchAppMetrics(
               const val = Number(rows[0][p95Idx]);
               if (isFinite(val) && val > 0) {
                 p95LatencyMs = Number(val.toFixed(0));
+                p95LatencyIsReal = true;
               }
             }
           }
@@ -549,6 +553,7 @@ export async function fetchAppMetrics(
     const summary: TelemetrySummary = {
       requestsPerMin,
       p95LatencyMs,
+      p95LatencyIsReal,
       errorRatePercent,
       availabilityPercent: Number(availabilityPct.toFixed(2)),
     };

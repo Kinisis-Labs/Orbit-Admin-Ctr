@@ -1143,10 +1143,11 @@ components:
         revenue: { $ref: "#/components/schemas/LedgerRevenue" }
     TelemetryReport:
       type: object
-      required: [requestsPerMin, p95LatencyMs, errorRatePercent, availabilityPercent, series, topErrors, dataSource]
+      required: [requestsPerMin, p95LatencyMs, p95LatencyIsReal, errorRatePercent, availabilityPercent, series, topErrors, dataSource]
       properties:
         requestsPerMin: { type: number }
         p95LatencyMs: { type: number }
+        p95LatencyIsReal: { type: boolean, description: "True when p95LatencyMs came from a real KQL percentile query against Log Analytics. False when it is an avg × 1.4 approximation (fallback when Log Analytics is not configured or the query fails)." }
         errorRatePercent: { type: number }
         availabilityPercent: { type: number }
         cpuPercent: { type: number, description: "Current CPU utilisation % derived from the last Log Analytics time-series point. Absent when Monitor is not configured." }

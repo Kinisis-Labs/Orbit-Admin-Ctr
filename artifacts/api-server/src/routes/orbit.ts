@@ -619,6 +619,7 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
   const data = GetTelemetryResponse.parse({
     requestsPerMin: liveMetrics?.requestsPerMin ?? 0,
     p95LatencyMs: liveMetrics?.p95LatencyMs ?? 0,
+    p95LatencyIsReal: liveMetrics?.p95LatencyIsReal ?? false,
     errorRatePercent: liveMetrics?.errorRatePercent ?? 0,
     availabilityPercent: liveMetrics?.availabilityPercent ?? 0,
     cpuPercent: liveCpuPct,

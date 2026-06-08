@@ -887,7 +887,22 @@ function TelemetryTab({ appId }: { appId: string }) {
         </div>
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">P95 Latency</div>
-          <div className="text-xl font-semibold tabular-nums">{data.p95LatencyMs}ms</div>
+          {data.p95LatencyIsReal ? (
+            <div className="text-xl font-semibold tabular-nums">{data.p95LatencyMs}ms</div>
+          ) : (
+            <TooltipProvider>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <div className="text-xl font-semibold tabular-nums text-muted-foreground cursor-default">
+                    ~{data.p95LatencyMs}ms
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+                  Estimated — Log Analytics not configured. Calculated as average latency × 1.4.
+                </TooltipContent>
+              </UITooltip>
+            </TooltipProvider>
+          )}
         </div>
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Error Rate</div>

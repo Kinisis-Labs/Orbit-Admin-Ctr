@@ -284,6 +284,7 @@ export const GetTelemetryQueryParams = zod.object({
 export const GetTelemetryResponse = zod.object({
   "requestsPerMin": zod.number(),
   "p95LatencyMs": zod.number(),
+  "p95LatencyIsReal": zod.boolean().describe('True when p95LatencyMs came from a real KQL percentile query against Log Analytics. False when it is an avg × 1.4 approximation (fallback when Log Analytics is not configured or the query fails).'),
   "errorRatePercent": zod.number(),
   "availabilityPercent": zod.number(),
   "cpuPercent": zod.number().optional().describe('Current CPU utilisation % derived from the last Log Analytics time-series point. Absent when Monitor is not configured.'),

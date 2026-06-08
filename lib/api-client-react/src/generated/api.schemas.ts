@@ -616,6 +616,8 @@ export interface TopError {
 export interface TelemetryReport {
   requestsPerMin: number;
   p95LatencyMs: number;
+  /** True when p95LatencyMs came from a real KQL percentile query against Log Analytics. False when it is an avg × 1.4 approximation (fallback when Log Analytics is not configured or the query fails). */
+  p95LatencyIsReal: boolean;
   errorRatePercent: number;
   availabilityPercent: number;
   /** Current CPU utilisation % derived from the last Log Analytics time-series point. Absent when Monitor is not configured. */
