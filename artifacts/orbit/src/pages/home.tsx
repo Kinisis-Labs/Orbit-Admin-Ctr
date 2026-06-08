@@ -189,9 +189,17 @@ export default function Home() {
     return null;
   });
 
+  const BUDGET_BREACH_FILTER_KEY = "orbit:budgetBreachFilter";
+
   const [budgetBreachFilter, setBudgetBreachFilter] = useState<boolean>(() => {
     const params = new URLSearchParams(search);
-    return params.get("breach") === "1";
+    if (params.get("breach") === "1") return true;
+    if (params.has("breach")) return false;
+    try {
+      return localStorage.getItem(BUDGET_BREACH_FILTER_KEY) === "1";
+    } catch {
+      return false;
+    }
   });
 
   useEffect(() => {
@@ -200,6 +208,15 @@ export default function Home() {
         localStorage.setItem(AUTH_FILTER_KEY, authFilter);
       } else {
         localStorage.removeItem(AUTH_FILTER_KEY);
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      if (budgetBreachFilter) {
+        localStorage.setItem(BUDGET_BREACH_FILTER_KEY, "1");
+      } else {
+        localStorage.removeItem(BUDGET_BREACH_FILTER_KEY);
       }
     } catch {
       // ignore
