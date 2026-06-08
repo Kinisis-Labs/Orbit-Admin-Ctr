@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 
 export const DEFAULT_SPEND_THRESHOLD = 15;
-const STORAGE_KEY = "orbit-spend-thresholds";
+export const SPEND_THRESHOLDS_STORAGE_KEY = "orbit-spend-thresholds";
 
 function getAll(): Record<string, number> {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}"); }
+  try { return JSON.parse(localStorage.getItem(SPEND_THRESHOLDS_STORAGE_KEY) ?? "{}"); }
   catch { return {}; }
 }
 
@@ -17,17 +17,17 @@ export function getSpendThreshold(appId: string): number {
 export function setSpendThreshold(appId: string, value: number): void {
   const all = getAll();
   all[appId] = value;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  localStorage.setItem(SPEND_THRESHOLDS_STORAGE_KEY, JSON.stringify(all));
 }
 
 export function removeSpendThreshold(appId: string): void {
   const all = getAll();
   delete all[appId];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  localStorage.setItem(SPEND_THRESHOLDS_STORAGE_KEY, JSON.stringify(all));
 }
 
 export function clearSpendThresholds(): void {
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(SPEND_THRESHOLDS_STORAGE_KEY);
 }
 
 export function useSpendThreshold(appId: string): number {
@@ -36,7 +36,7 @@ export function useSpendThreshold(appId: string): number {
   useEffect(() => {
     refresh();
     const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) refresh();
+      if (e.key === SPEND_THRESHOLDS_STORAGE_KEY) refresh();
     };
     window.addEventListener("orbit-spend-threshold-changed", refresh);
     window.addEventListener("storage", onStorage);
@@ -49,10 +49,10 @@ export function useSpendThreshold(appId: string): number {
 }
 
 export const DEFAULT_BUDGET_THRESHOLD = 80;
-const BUDGET_STORAGE_KEY = "orbit-budget-thresholds";
+export const BUDGET_THRESHOLDS_STORAGE_KEY = "orbit-budget-thresholds";
 
 function getAllBudget(): Record<string, number> {
-  try { return JSON.parse(localStorage.getItem(BUDGET_STORAGE_KEY) ?? "{}"); }
+  try { return JSON.parse(localStorage.getItem(BUDGET_THRESHOLDS_STORAGE_KEY) ?? "{}"); }
   catch { return {}; }
 }
 
@@ -65,17 +65,17 @@ export function getBudgetThreshold(appId: string): number {
 export function setBudgetThreshold(appId: string, value: number): void {
   const all = getAllBudget();
   all[appId] = value;
-  localStorage.setItem(BUDGET_STORAGE_KEY, JSON.stringify(all));
+  localStorage.setItem(BUDGET_THRESHOLDS_STORAGE_KEY, JSON.stringify(all));
 }
 
 export function removeBudgetThreshold(appId: string): void {
   const all = getAllBudget();
   delete all[appId];
-  localStorage.setItem(BUDGET_STORAGE_KEY, JSON.stringify(all));
+  localStorage.setItem(BUDGET_THRESHOLDS_STORAGE_KEY, JSON.stringify(all));
 }
 
 export function clearBudgetThresholds(): void {
-  localStorage.removeItem(BUDGET_STORAGE_KEY);
+  localStorage.removeItem(BUDGET_THRESHOLDS_STORAGE_KEY);
 }
 
 export function useBudgetThreshold(appId: string): number {
@@ -84,7 +84,7 @@ export function useBudgetThreshold(appId: string): number {
   useEffect(() => {
     refresh();
     const onStorage = (e: StorageEvent) => {
-      if (e.key === BUDGET_STORAGE_KEY) refresh();
+      if (e.key === BUDGET_THRESHOLDS_STORAGE_KEY) refresh();
     };
     window.addEventListener("orbit-budget-threshold-changed", refresh);
     window.addEventListener("storage", onStorage);

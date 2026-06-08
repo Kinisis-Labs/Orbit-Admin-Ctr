@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApps } from "@/hooks/use-apps";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,16 +7,20 @@ import { PageHeader } from "@/components/page-header";
 import { useScope } from "@/lib/scope-context";
 import {
   DEFAULT_SPEND_THRESHOLD,
+  SPEND_THRESHOLDS_STORAGE_KEY,
   getSpendThreshold,
   setSpendThreshold,
   removeSpendThreshold,
   clearSpendThresholds,
   DEFAULT_BUDGET_THRESHOLD,
+  BUDGET_THRESHOLDS_STORAGE_KEY,
   getBudgetThreshold,
   setBudgetThreshold,
   removeBudgetThreshold,
   clearBudgetThresholds,
 } from "@/lib/spend-threshold";
+
+const CROSS_TAB_SYNC_DELAY_MS = 1500;
 
 type Theme = "dark" | "light";
 type Density = "comfortable" | "compact";
@@ -36,6 +40,9 @@ export default function Preferences() {
     if (typeof window === "undefined") return {};
     return {};
   });
+
+  const spendSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const budgetSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!apps) return;
@@ -57,22 +64,53 @@ export default function Preferences() {
 
   useEffect(() => {
     if (!apps) return;
-    const refreshAll = () => {
+    const refreshSpend = () => {
       setThresholds((prev) => {
         const next: Record<string, string> = { ...prev };
         for (const app of apps) next[app.id] = String(getSpendThreshold(app.id));
         return next;
       });
     };
-    const onStorage = (e: StorageEvent) => {
-      if (e.key !== "orbit-spend-thresholds") return;
-      refreshAll();
+    const onSpendStorage = (e: StorageEvent) => {
+      if (e.key !== SPEND_THRESHOLDS_STORAGE_KEY) return;
+      if (spendSyncTimer.current !== null) clearTimeout(spendSyncTimer.current);
+      spendSyncTimer.current = setTimeout(() => {
+        spendSyncTimer.current = null;
+        refreshSpend();
+      }, CROSS_TAB_SYNC_DELAY_MS);
     };
-    window.addEventListener("orbit-spend-threshold-changed", refreshAll);
-    window.addEventListener("storage", onStorage);
+    window.addEventListener("orbit-spend-threshold-changed", refreshSpend);
+    window.addEventListener("storage", onSpendStorage);
     return () => {
-      window.removeEventListener("orbit-spend-threshold-changed", refreshAll);
-      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("orbit-spend-threshold-changed", refreshSpend);
+      window.removeEventListener("storage", onSpendStorage);
+      if (spendSyncTimer.current !== null) clearTimeout(spendSyncTimer.current);
+    };
+  }, [apps]);
+
+  useEffect(() => {
+    if (!apps) return;
+    const refreshBudget = () => {
+      setBudgetThresholds((prev) => {
+        const next: Record<string, string> = { ...prev };
+        for (const app of apps) next[app.id] = String(getBudgetThreshold(app.id));
+        return next;
+      });
+    };
+    const onBudgetStorage = (e: StorageEvent) => {
+      if (e.key !== BUDGET_THRESHOLDS_STORAGE_KEY) return;
+      if (budgetSyncTimer.current !== null) clearTimeout(budgetSyncTimer.current);
+      budgetSyncTimer.current = setTimeout(() => {
+        budgetSyncTimer.current = null;
+        refreshBudget();
+      }, CROSS_TAB_SYNC_DELAY_MS);
+    };
+    window.addEventListener("orbit-budget-threshold-changed", refreshBudget);
+    window.addEventListener("storage", onBudgetStorage);
+    return () => {
+      window.removeEventListener("orbit-budget-threshold-changed", refreshBudget);
+      window.removeEventListener("storage", onBudgetStorage);
+      if (budgetSyncTimer.current !== null) clearTimeout(budgetSyncTimer.current);
     };
   }, [apps]);
 
