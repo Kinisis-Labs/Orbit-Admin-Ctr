@@ -13,6 +13,7 @@ import { useScope } from "@/lib/scope-context";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { DataSourceBadge } from "@/components/data-source-badge";
 import { cn } from "@/lib/utils";
+import { useSearch, useLocation } from "wouter";
 import type { Deployment } from "@workspace/api-client-react";
 
 type DeploymentStatus = Deployment["status"];
@@ -95,24 +96,44 @@ function RunTypeToggle({
   );
 }
 
+function parseTypeParam(search: string): RunTypeFilter | null {
+  const v = new URLSearchParams(search).get("type");
+  if (v === "deploy" || v === "ci" || v === "all") return v;
+  return null;
+}
+
 export default function Deployments() {
   const { scope } = useScope();
   const { data: apps, isLoading: appsLoading } = useApps();
   const [filter, setFilter] = useState("");
-  const [runTypeFilter, setRunTypeFilterRaw] = useState<RunTypeFilter>(readStoredFilter);
 
-  const setRunTypeFilter = useCallback((v: RunTypeFilter) => {
-    setRunTypeFilterRaw(v);
-    try {
-      if (v === "all") {
-        sessionStorage.removeItem(SESSION_KEY);
-      } else {
-        sessionStorage.setItem(SESSION_KEY, v);
+  const search = useSearch();
+  const [location, navigate] = useLocation();
+
+  const runTypeFilter: RunTypeFilter = parseTypeParam(search) ?? readStoredFilter();
+
+  const setRunTypeFilter = useCallback(
+    (v: RunTypeFilter) => {
+      try {
+        if (v === "all") {
+          sessionStorage.removeItem(SESSION_KEY);
+        } else {
+          sessionStorage.setItem(SESSION_KEY, v);
+        }
+      } catch {
+        // sessionStorage unavailable
       }
-    } catch {
-      // sessionStorage unavailable
-    }
-  }, []);
+      const params = new URLSearchParams(search);
+      if (v === "all") {
+        params.delete("type");
+      } else {
+        params.set("type", v);
+      }
+      const qs = params.toString();
+      navigate(`${location}${qs ? `?${qs}` : ""}`, { replace: true });
+    },
+    [search, location, navigate],
+  );
 
   const selectedApp = apps?.find((a) => a.id === scope);
 
