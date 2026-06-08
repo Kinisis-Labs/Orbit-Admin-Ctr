@@ -414,7 +414,7 @@ function DataSourceBadge({
 }
 
 function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: () => void }) {
-  const { data, isLoading } = useAppCost(appId);
+  const { data, isLoading, isFetching } = useAppCost(appId);
   const budgetThreshold = useBudgetThreshold(appId);
 
   if (isLoading) return <Skeleton className="h-20 w-full" />;
@@ -434,6 +434,12 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
 
   return (
     <div className="bg-card border border-border shadow-sm p-4 text-[13px]">
+      {isFetching && !isLoading && (
+        <div className="h-0.5 w-full overflow-hidden mb-3 -mt-1">
+          <div className="h-full bg-primary/60 animate-[progress-bar_1.2s_ease-in-out_infinite]" />
+        </div>
+      )}
+      <div className={`transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <h3 className="font-semibold text-sm">Cost snapshot</h3>
@@ -520,6 +526,7 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
       </div>
       </TooltipProvider>
       <StaleCacheBanner dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
+      </div>
     </div>
   );
 }
