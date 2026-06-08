@@ -17,6 +17,7 @@ import { useQueries } from "@tanstack/react-query";
 import { AdminAccessBadge } from "@/components/admin-access-badge";
 import { useApps } from "@/hooks/use-apps";
 import { useBudgetThreshold } from "@/lib/spend-threshold";
+import { BudgetThresholdPopover, getBudgetBarClass } from "@/components/budget-threshold-popover";
 import { BudgetAlertHistory } from "@/components/budget-alert-history";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useForceRefresh } from "@/hooks/use-force-refresh";
@@ -237,6 +238,45 @@ export default function Cost() {
   );
 }
 
+function GlobalCostPanelRow({
+  row,
+  maxMtd,
+}: {
+  row: { appId: string; appName: string; environment: string; monthToDate: number; trend?: string | null };
+  maxMtd: number;
+}) {
+  const budgetThreshold = useBudgetThreshold(row.appId);
+  const trend = row.trend ?? null;
+  const isPos = trend?.startsWith("+");
+  const isNeg = trend?.startsWith("-");
+  const trendClass = isPos
+    ? "text-destructive"
+    : isNeg
+      ? "text-emerald-500"
+      : "text-muted-foreground";
+  const rawUtilPct = maxMtd > 0 ? (row.monthToDate / maxMtd) * 100 : 0;
+  const utilPct = Math.min(rawUtilPct, 100);
+
+  return (
+    <TableRow key={row.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
+      <TableCell className="py-1 font-medium">{row.appName}</TableCell>
+      <TableCell className="py-1 text-[11px] text-muted-foreground">{row.environment}</TableCell>
+      <TableCell className="py-1 text-right font-mono text-[12px]">{fmt(row.monthToDate)}</TableCell>
+      <TableCell className={`py-1 text-right font-mono text-[11px] ${trendClass}`}>
+        {trend ?? <span className="text-muted-foreground/50">—</span>}
+      </TableCell>
+      <TableCell className="py-1">
+        <BudgetThresholdPopover
+          appId={row.appId}
+          utilPct={utilPct}
+          rawUtilPct={rawUtilPct}
+          budgetThreshold={budgetThreshold}
+        />
+      </TableCell>
+    </TableRow>
+  );
+}
+
 function GlobalCostPanel() {
   const { data, isLoading } = useGetGlobalCostSummary({
     query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
@@ -324,32 +364,9 @@ function GlobalCostPanel() {
           {isLoading || !data ? (
             <SkeletonRows cols={5} rows={3} />
           ) : (
-            sortedRows.map((row) => {
-              const trend = row.trend ?? null;
-              const isPos = trend?.startsWith("+");
-              const isNeg = trend?.startsWith("-");
-              const trendClass = isPos
-                ? "text-destructive"
-                : isNeg
-                  ? "text-emerald-500"
-                  : "text-muted-foreground";
-              return (
-                <TableRow key={row.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
-                  <TableCell className="py-1 font-medium">{row.appName}</TableCell>
-                  <TableCell className="py-1 text-[11px] text-muted-foreground">{row.environment}</TableCell>
-                  <TableCell className="py-1 text-right font-mono text-[12px]">{fmt(row.monthToDate)}</TableCell>
-                  <TableCell className={`py-1 text-right font-mono text-[11px] ${trendClass}`}>
-                    {trend ?? <span className="text-muted-foreground/50">—</span>}
-                  </TableCell>
-                  <TableCell className="py-1">
-                    <Progress
-                      value={maxMtd > 0 ? (row.monthToDate / maxMtd) * 100 : 0}
-                      className="h-1.5 rounded-none bg-muted"
-                    />
-                  </TableCell>
-                </TableRow>
-              );
-            })
+            sortedRows.map((row) => (
+              <GlobalCostPanelRow key={row.appId} row={row} maxMtd={maxMtd} />
+            ))
           )}
         </TableBody>
       </Table>
