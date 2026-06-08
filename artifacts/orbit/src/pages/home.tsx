@@ -167,10 +167,25 @@ export default function Home() {
   const search = useSearch();
   const [, navigate] = useLocation();
 
+  const VALID_AUTH_TYPES: UserAuthType[] = ["clerk", "entra", "none"];
+
+  const AUTH_FILTER_KEY = "orbit-home-auth-filter";
+
   const [authFilter, setAuthFilter] = useState<UserAuthType | null>(() => {
-    const p = new URLSearchParams(search);
-    const a = p.get("auth");
-    return (a === "clerk" || a === "entra" || a === "none") ? (a as UserAuthType) : null;
+    const params = new URLSearchParams(search);
+    const urlVal = params.get("auth");
+    if (urlVal && (VALID_AUTH_TYPES as string[]).includes(urlVal)) {
+      return urlVal as UserAuthType;
+    }
+    try {
+      const stored = localStorage.getItem(AUTH_FILTER_KEY);
+      if (stored && (VALID_AUTH_TYPES as string[]).includes(stored)) {
+        return stored as UserAuthType;
+      }
+    } catch {
+      // ignore
+    }
+    return null;
   });
 
   const [budgetBreachFilter, setBudgetBreachFilter] = useState<boolean>(() => {
@@ -179,6 +194,15 @@ export default function Home() {
   });
 
   useEffect(() => {
+    try {
+      if (authFilter) {
+        localStorage.setItem(AUTH_FILTER_KEY, authFilter);
+      } else {
+        localStorage.removeItem(AUTH_FILTER_KEY);
+      }
+    } catch {
+      // ignore
+    }
     const params = new URLSearchParams(window.location.search);
     if (authFilter) {
       params.set("auth", authFilter);
