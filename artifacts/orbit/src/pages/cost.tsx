@@ -25,7 +25,7 @@ import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { StaleCacheBanner } from "@/components/stale-cache-banner";
 import { RefreshingBar } from "@/components/refreshing-bar";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link, useSearch, useLocation } from "wouter";
 import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, TriangleAlert, ArrowUp, ArrowDown, ArrowUpDown, Filter, Users, RotateCcw } from "lucide-react";
@@ -558,10 +558,22 @@ function GlobalCost() {
   const totalMtd = tableRows ? tableRows.reduce((s, r) => s + r.cost, 0) : null;
   const momTrendPct = globalHealth?.momTrendPct ?? null;
 
+  const totals = useMemo(() => {
+    if (!tableRows) return null;
+    const cost = tableRows.reduce((s, r) => s + r.cost, 0);
+    const stripe = tableRows.reduce((s, r) => s + r.stripe, 0);
+    const appStore = tableRows.reduce((s, r) => s + r.appStore, 0);
+    const playStore = tableRows.reduce((s, r) => s + r.playStore, 0);
+    const revenue = tableRows.reduce((s, r) => s + r.revenue, 0);
+    const net = revenue - cost;
+    const marginPct = revenue > 0 ? (net / revenue) * 100 : null;
+    return { cost, stripe, appStore, playStore, revenue, net, marginPct };
+  }, [tableRows]);
+
   const csvHeaders = ["Application", "Cost (MTD)", "MoM %", "Stripe", "App Store", "Play Store", "Revenue", "Net", "Margin %"];
   const csvRows = useMemo(() => {
-    if (!tableRows) return null;
-    return tableRows.map((r) => [
+    if (!tableRows || !totals) return null;
+    const rows = tableRows.map((r) => [
       r.app.name,
       r.cost.toFixed(2),
       r.momChangePct != null ? (r.momChangePct >= 0 ? "+" : "") + r.momChangePct.toFixed(1) + "%" : "—",
@@ -572,7 +584,19 @@ function GlobalCost() {
       r.net.toFixed(2),
       r.marginPct != null ? r.marginPct.toFixed(1) + "%" : "—",
     ]);
-  }, [tableRows]);
+    rows.push([
+      "TOTAL",
+      totals.cost.toFixed(2),
+      "—",
+      totals.stripe.toFixed(2),
+      totals.appStore.toFixed(2),
+      totals.playStore.toFixed(2),
+      totals.revenue.toFixed(2),
+      totals.net.toFixed(2),
+      totals.marginPct != null ? totals.marginPct.toFixed(1) + "%" : "—",
+    ]);
+    return rows;
+  }, [tableRows, totals]);
 
   const {
     copied,
@@ -674,6 +698,7 @@ function GlobalCost() {
       </div>
     <Panel
       title="Cost vs Revenue by Application"
+      bodyClassName="overflow-auto max-h-[500px] relative"
       toolbar={
         <div className="flex items-center gap-1">
           <CsvToolbar
@@ -781,6 +806,49 @@ function GlobalCost() {
             })
           )}
         </TableBody>
+        {!isLoading && totals && (
+          <TableFooter className="sticky bottom-0 z-10 bg-muted/60 border-t-2 border-border">
+            <TableRow className="h-9 hover:bg-muted/70">
+              <TableCell className="py-1.5 font-bold text-foreground text-[13px]">Total</TableCell>
+              <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-bold text-foreground">
+                {fmt(totals.cost, currency)}
+              </TableCell>
+              <TableCell className="py-1.5" />
+              <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-semibold text-foreground">
+                {totals.stripe > 0 ? fmt(totals.stripe, currency) : <span className="opacity-30">—</span>}
+              </TableCell>
+              <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-semibold text-foreground">
+                {totals.appStore > 0 ? fmt(totals.appStore, currency) : <span className="opacity-30">—</span>}
+              </TableCell>
+              <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-semibold text-foreground">
+                {totals.playStore > 0 ? fmt(totals.playStore, currency) : <span className="opacity-30">—</span>}
+              </TableCell>
+              <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-bold text-foreground">
+                {fmt(totals.revenue, currency)}
+              </TableCell>
+              <TableCell className={`py-1.5 text-right font-mono text-[12px] tabular-nums font-bold ${
+                totals.net > 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : totals.net < 0
+                    ? "text-destructive"
+                    : "text-foreground"
+              }`}>
+                {fmt(totals.net, currency)}
+              </TableCell>
+              <TableCell className={`py-1.5 text-right font-mono text-[12px] tabular-nums font-bold ${
+                totals.marginPct == null
+                  ? "text-foreground"
+                  : totals.marginPct > 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : totals.marginPct < 0
+                      ? "text-destructive"
+                      : "text-foreground"
+              }`}>
+                {totals.marginPct != null ? `${totals.marginPct.toFixed(1)}%` : "—"}
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        )}
       </Table>
     </Panel>
     </>
