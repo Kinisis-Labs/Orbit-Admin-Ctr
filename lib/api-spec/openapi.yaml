@@ -1475,6 +1475,11 @@ components:
           type: string
           enum: [env, default]
           description: Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)
+        silencedUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: ISO-8601 timestamp at which the app's active alert cooldown expires; null when the app is not currently silenced
         updatedAt:
           type: string
           format: date-time

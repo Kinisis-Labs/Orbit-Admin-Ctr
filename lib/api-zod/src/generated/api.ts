@@ -847,6 +847,7 @@ export const ListAlertConfigResponseItem = zod.object({
   "memorySource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective memory threshold'),
   "consecutiveChecksSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective consecutive-checks value'),
   "cooldownSource": zod.enum(['env', 'default']).optional().describe('Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)'),
+  "silencedUntil": zod.string().datetime({"offset":true}).nullish().describe('ISO-8601 timestamp at which the app\'s active alert cooldown expires; null when the app is not currently silenced'),
   "updatedAt": zod.string().datetime({"offset":true}).nullish().describe('When a DB override was last saved for this app'),
   "updatedBy": zod.string().nullish().describe('Display name \/ UPN of the operator who last saved DB overrides')
 })
@@ -888,6 +889,7 @@ export const UpdateAlertConfigResponse = zod.object({
   "memorySource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective memory threshold'),
   "consecutiveChecksSource": zod.enum(['db', 'env', 'default']).optional().describe('Which source provides the effective consecutive-checks value'),
   "cooldownSource": zod.enum(['env', 'default']).optional().describe('Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)'),
+  "silencedUntil": zod.string().datetime({"offset":true}).nullish().describe('ISO-8601 timestamp at which the app\'s active alert cooldown expires; null when the app is not currently silenced'),
   "updatedAt": zod.string().datetime({"offset":true}).nullish().describe('When a DB override was last saved for this app'),
   "updatedBy": zod.string().nullish().describe('Display name \/ UPN of the operator who last saved DB overrides')
 })

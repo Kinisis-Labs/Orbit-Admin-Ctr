@@ -1083,6 +1083,8 @@ export interface AppAlertConfig {
   consecutiveChecksSource?: AppAlertConfigConsecutiveChecksSource;
   /** Which source provides the effective cooldown (env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in) */
   cooldownSource?: AppAlertConfigCooldownSource;
+  /** ISO-8601 timestamp at which the app's active alert cooldown expires; null when the app is not currently silenced */
+  silencedUntil?: string | null;
   /** When a DB override was last saved for this app */
   updatedAt?: string | null;
   /** Display name / UPN of the operator who last saved DB overrides */

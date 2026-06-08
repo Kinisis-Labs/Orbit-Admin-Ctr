@@ -147,6 +147,35 @@ function cooldownMs(appId?: string): number {
 }
 
 /**
+ * Returns the ISO-8601 timestamp at which the app's alert cooldown expires,
+ * or null if the app is not currently silenced.
+ *
+ * Checks both the budget and infra (cpu + memory) cooldown maps and returns
+ * the latest expiry so the badge persists until *all* active cooldowns clear.
+ */
+export function getSilencedUntil(appId: string): string | null {
+  const cdMs = cooldownMs(appId);
+  const now = Date.now();
+  let maxExpiry = 0;
+
+  const budgetTs = _lastBudgetAlertSentAt.get(appId);
+  if (budgetTs !== undefined) {
+    const expiry = budgetTs + cdMs;
+    if (expiry > now && expiry > maxExpiry) maxExpiry = expiry;
+  }
+
+  for (const metric of ["cpu", "memory"] as const) {
+    const infraTs = _lastInfraAlertSentAt.get(`${appId}:${metric}`);
+    if (infraTs !== undefined) {
+      const expiry = infraTs + cdMs;
+      if (expiry > now && expiry > maxExpiry) maxExpiry = expiry;
+    }
+  }
+
+  return maxExpiry > 0 ? new Date(maxExpiry).toISOString() : null;
+}
+
+/**
  * Resolve the effective alert cooldown for an app and report its source.
  *
  * Priority order:

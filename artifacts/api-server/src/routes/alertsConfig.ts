@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { APPS } from "./orbit.js";
 import { resolveThresholdsBulk, resolveThresholds } from "../lib/alertThresholds.js";
-import { resolveCooldownHours, getAlertChannelStatus } from "../lib/budgetAlerts.js";
+import { resolveCooldownHours, getAlertChannelStatus, getSilencedUntil } from "../lib/budgetAlerts.js";
 import { db, alertThresholdConfigTable, alertThresholdConfigLogTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth.js";
@@ -34,6 +34,7 @@ router.get("/alerts/config", async (_req, res) => {
       memorySource: t.memorySource,
       consecutiveChecksSource: t.consecutiveChecksSource,
       cooldownSource: cooldown.source,
+      silencedUntil: getSilencedUntil(app.id),
       updatedAt: t.updatedAt,
       updatedBy: t.updatedBy,
     };
@@ -151,6 +152,7 @@ router.put("/alerts/config/:appId", requireAdmin, async (req, res) => {
     memorySource: t.memorySource,
     consecutiveChecksSource: t.consecutiveChecksSource,
     cooldownSource: cooldown.source,
+    silencedUntil: getSilencedUntil(appId),
     updatedAt: t.updatedAt,
     updatedBy: t.updatedBy,
   });

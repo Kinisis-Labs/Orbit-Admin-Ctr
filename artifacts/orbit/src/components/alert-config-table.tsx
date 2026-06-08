@@ -11,7 +11,7 @@ import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, ChevronDown, ChevronUp, History, Pencil, RefreshCw, RotateCcw, Settings2, X, ArrowRight } from "lucide-react";
+import { BellOff, Check, ChevronDown, ChevronUp, History, Pencil, RefreshCw, RotateCcw, Settings2, X, ArrowRight } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { ADMIN_GROUP } from "@/lib/auth-groups";
 import { cn } from "@/lib/utils";
@@ -165,6 +165,32 @@ function SourceBadge({ source }: { source: "db" | "env" | "default" | undefined 
   return (
     <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
       default
+    </span>
+  );
+}
+
+function formatSilencedUntil(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+function SilencedBadge({ silencedUntil }: { silencedUntil: string | null | undefined }) {
+  if (!silencedUntil) return null;
+  const expiresAt = new Date(silencedUntil).getTime();
+  if (Date.now() >= expiresAt) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold whitespace-nowrap"
+      title={`Alert notifications silenced until ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(silencedUntil))}`}
+    >
+      <BellOff className="h-2.5 w-2.5 shrink-0" />
+      until {formatSilencedUntil(silencedUntil)}
     </span>
   );
 }
@@ -657,11 +683,12 @@ export function AlertConfigTable({ appId }: Props) {
                         {renderThresholdCell(row, "consecutiveChecks")}
                       </TableCell>
                       <TableCell className="py-1">
-                        <span className="inline-flex items-center gap-1.5">
+                        <span className="inline-flex flex-wrap items-center gap-1.5">
                           <span className="tabular-nums font-mono text-[12px]">
                             {row.cooldownHours}h
                           </span>
                           <SourceBadge source={row.cooldownIsOverride ? "env" : (row.cooldownSource ?? "default")} />
+                          <SilencedBadge silencedUntil={row.silencedUntil} />
                         </span>
                       </TableCell>
                       <TableCell className="py-1 text-[11px] text-muted-foreground">
