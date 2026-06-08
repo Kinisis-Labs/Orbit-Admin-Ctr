@@ -187,7 +187,7 @@ const ENGINEER_GROUP = {
 const HISTORY_PAGE_SIZE = 50;
 
 // Inner content — only mounts when the dialog is open, so the query fires lazily
-function ThresholdHistoryContent({ appId }: { appId: string }) {
+function ThresholdHistoryContent({ appId, appName }: { appId: string; appName: string }) {
   const [offset, setOffset] = useState(0);
   const [allItems, setAllItems] = useState<AppThresholdsLogEntry[]>([]);
   const [search, setSearch] = useState("");
@@ -252,7 +252,7 @@ function ThresholdHistoryContent({ appId }: { appId: string }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `threshold-history-${appId}.csv`;
+    a.download = `threshold-history-${appName}-${format(new Date(), "yyyy-MM-dd")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -464,7 +464,7 @@ function ThresholdHistoryDialog({ appId, appName }: { appId: string; appName: st
           </DialogTitle>
         </DialogHeader>
         <div className="mt-2 max-h-[400px] overflow-y-auto">
-          {open && <ThresholdHistoryContent appId={appId} />}
+          {open && <ThresholdHistoryContent appId={appId} appName={appName} />}
         </div>
       </DialogContent>
     </Dialog>
