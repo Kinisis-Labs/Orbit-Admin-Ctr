@@ -1261,7 +1261,7 @@ components:
         resolvedAt: { type: string, format: date-time, nullable: true }
     SloRow:
       type: object
-      required: [appId, appName, environment, uptimePct, errorBudgetRemainingPct, p95LatencyMs, p95TargetMs, errorRatePct, errorTargetPct, cpuPct, cpuThreshold, memoryPct, memoryThreshold]
+      required: [appId, appName, environment, uptimePct, errorBudgetRemainingPct, p95LatencyMs, p95LatencyIsReal, p95TargetMs, errorRatePct, errorTargetPct, cpuPct, cpuThreshold, memoryPct, memoryThreshold]
       properties:
         appId: { type: string }
         appName: { type: string }
@@ -1269,6 +1269,7 @@ components:
         uptimePct: { type: number }
         errorBudgetRemainingPct: { type: number }
         p95LatencyMs: { type: number }
+        p95LatencyIsReal: { type: boolean, description: "True when p95LatencyMs came from a real KQL percentile query against Log Analytics. False when it is an avg × 1.4 approximation (fallback when Log Analytics is not configured or the query fails)." }
         p95TargetMs: { type: number }
         errorRatePct: { type: number }
         errorTargetPct: { type: number }

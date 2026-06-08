@@ -24,6 +24,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Activity, AlertTriangle, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, History, Info, Search, X, Download, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { DataSourceBadge } from "@/components/data-source-badge";
 import {
   AreaChart, Area,
@@ -849,7 +855,22 @@ export default function Health() {
                           <span className="text-[11px] tabular-nums text-muted-foreground w-10">{s.errorBudgetRemainingPct}%</span>
                         </div>
                       </TableCell>
-                      <TableCell className={`py-1 text-right tabular-nums ${latencyOk ? "" : "text-destructive font-medium"}`}>{s.p95LatencyMs}ms</TableCell>
+                      <TableCell className={`py-1 text-right tabular-nums ${latencyOk ? "" : "text-destructive font-medium"}`}>
+                        {s.p95LatencyIsReal ? (
+                          <>{s.p95LatencyMs}ms</>
+                        ) : (
+                          <TooltipProvider>
+                            <UITooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-default text-muted-foreground">~{s.p95LatencyMs}ms</span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+                                Estimated — Log Analytics not configured. Calculated as average latency × 1.4.
+                              </TooltipContent>
+                            </UITooltip>
+                          </TooltipProvider>
+                        )}
+                      </TableCell>
                       <TableCell className={`py-1 text-right tabular-nums ${errOk ? "" : "text-destructive font-medium"}`}>{s.errorRatePct}%</TableCell>
                       <TableCell className="py-1">
                         <Link

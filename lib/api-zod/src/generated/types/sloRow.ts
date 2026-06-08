@@ -14,6 +14,8 @@ export interface SloRow {
   uptimePct: number;
   errorBudgetRemainingPct: number;
   p95LatencyMs: number;
+  /** True when p95LatencyMs came from a real KQL percentile query against Log Analytics. False when it is an avg × 1.4 approximation (fallback when Log Analytics is not configured or the query fails). */
+  p95LatencyIsReal: boolean;
   p95TargetMs: number;
   errorRatePct: number;
   errorTargetPct: number;

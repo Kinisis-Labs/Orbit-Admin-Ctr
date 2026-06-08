@@ -837,6 +837,7 @@ router.get("/global/slos", async (_req, res) => {
       uptimePct: Number(m.availabilityPercent.toFixed(4)),
       errorBudgetRemainingPct,
       p95LatencyMs: Number(m.p95LatencyMs.toFixed(0)),
+      p95LatencyIsReal: m.p95LatencyIsReal,
       p95TargetMs,
       errorRatePct: Number(m.errorRatePercent.toFixed(4)),
       errorTargetPct,

@@ -677,6 +677,7 @@ export const ListSlosResponse = zod.object({
   "uptimePct": zod.number(),
   "errorBudgetRemainingPct": zod.number(),
   "p95LatencyMs": zod.number(),
+  "p95LatencyIsReal": zod.boolean().describe('True when p95LatencyMs came from a real KQL percentile query against Log Analytics. False when it is an avg × 1.4 approximation (fallback when Log Analytics is not configured or the query fails).'),
   "p95TargetMs": zod.number(),
   "errorRatePct": zod.number(),
   "errorTargetPct": zod.number(),
