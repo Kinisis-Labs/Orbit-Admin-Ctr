@@ -423,7 +423,7 @@ function ThresholdHistoryDialog({ appId, appName }: { appId: string; appName: st
 }
 
 // --- Per-app threshold row (GET + optimistic PUT + history dialog) ---
-function ThresholdRow({ appId, appName }: { appId: string; appName: string }) {
+function ThresholdRow({ appId, appName, canEditThresholds }: { appId: string; appName: string; canEditThresholds: boolean }) {
   const { data, isLoading } = useGetAppThresholds(appId);
   const { mutateAsync, isPending } = useUpdateAppThresholds();
   const { toast } = useToast();
@@ -515,7 +515,7 @@ function ThresholdRow({ appId, appName }: { appId: string; appName: string }) {
             >
               {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : saved ? <><Check className="h-3 w-3 mr-1" />Saved</> : "Save"}
             </Button>
-            <ThresholdHistoryDialog appId={appId} appName={appName} />
+            {canEditThresholds && <ThresholdHistoryDialog appId={appId} appName={appName} />}
           </div>
         )}
       </div>
@@ -532,6 +532,8 @@ function ThresholdRow({ appId, appName }: { appId: string; appName: string }) {
 function ThresholdSettings() {
   const { data: apps } = useApps();
   const [open, setOpen] = useState(false);
+  const { hasGroup } = useAuth();
+  const canEditThresholds = hasGroup(ADMIN_GROUP.id) || hasGroup(ENGINEER_GROUP.id);
 
   return (
     <div className="bg-card border border-border shadow-sm">
@@ -557,7 +559,7 @@ function ThresholdSettings() {
             </p>
           </div>
           {(apps ?? []).map((app) => (
-            <ThresholdRow key={app.id} appId={app.id} appName={app.name} />
+            <ThresholdRow key={app.id} appId={app.id} appName={app.name} canEditThresholds={canEditThresholds} />
           ))}
           {!apps && (
             <div className="p-4 space-y-2">
