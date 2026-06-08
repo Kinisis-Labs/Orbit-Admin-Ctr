@@ -35,6 +35,7 @@ export default function PlaySubscriptions() {
     { active: 0, canceled: 0, expired: 0, mrr: 0, revenue: 0 },
   );
   const isPlaceholder = scoped.some((r) => r.dataSource === "placeholder");
+  const isLive = scoped.some((r) => r.dataSource === "live");
 
   const staleCachedRow = useMemo(() => {
     const cached = scoped.filter((r) => r.dataSource === "cached" && !!r.dataAsOf);
@@ -75,7 +76,7 @@ export default function PlaySubscriptions() {
         }
       />
 
-      <PlayBanner placeholder={isPlaceholder} dataUpdatedAt={dataUpdatedAt} />
+      <PlayBanner placeholder={isPlaceholder} isLive={isLive} dataUpdatedAt={dataUpdatedAt} />
       <StaleCacheBanner source="play" dataAsOf={staleCachedRow?.dataAsOf} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -149,7 +150,7 @@ export default function PlaySubscriptions() {
 }
 
 
-function PlayBanner({ placeholder, dataUpdatedAt }: { placeholder: boolean; dataUpdatedAt: number }) {
+function PlayBanner({ placeholder, isLive, dataUpdatedAt }: { placeholder: boolean; isLive: boolean; dataUpdatedAt: number }) {
   const fetchedAt = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
     : null;
@@ -158,7 +159,15 @@ function PlayBanner({ placeholder, dataUpdatedAt }: { placeholder: boolean; data
     <div className="bg-card border border-border shadow-sm p-3 flex items-start gap-3">
       <div className="shrink-0 h-8 w-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center text-[11px] font-semibold">GP</div>
       <div className="flex-1 text-[12px] text-muted-foreground">
-        <span className="text-foreground font-semibold">{placeholder ? "Placeholder data." : "Google Play–sourced."}</span>{" "}
+        <span className="inline-flex items-center gap-2">
+          <span className="text-foreground font-semibold">{placeholder ? "Placeholder data." : "Google Play–sourced."}</span>
+          {isLive && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Live
+            </span>
+          )}
+        </span>{" "}
         {placeholder ? (
           <>
             GrailBabe is still in Google Play testing, so these figures are representative placeholders. The real feed activates
