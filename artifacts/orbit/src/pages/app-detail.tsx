@@ -301,6 +301,22 @@ export default function AppDetail() {
                       </div>
                     </div>
                   )}
+                  {app.iosBundle && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="text-muted-foreground font-medium">iOS bundle ID</div>
+                      <div className="col-span-2">
+                        <a
+                          href={`https://apps.apple.com/app/${app.iosBundle}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-[12px] text-primary hover:underline"
+                        >
+                          <Smartphone className="h-3.5 w-3.5 text-[#555555] shrink-0" />
+                          <span className="font-mono break-all">{app.iosBundle}</span>
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
