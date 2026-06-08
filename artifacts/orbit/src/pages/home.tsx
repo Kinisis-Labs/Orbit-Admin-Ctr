@@ -22,6 +22,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Progress } from "@/components/ui/progress";
 import { formatDistanceToNow } from "date-fns";
 import { detectRecentAnomaly } from "@/pages/cost";
+import { useCsvExport } from "@/hooks/use-csv-export";
+import { CsvToolbar } from "@/components/csv-toolbar";
 
 function useAppAnomalies(apps: AppSummary[] | undefined, enabled: boolean): Set<string> {
   const queries = useQueries({
@@ -449,6 +451,27 @@ function BudgetSummaryWidget({
 
   const appCount = filteredApps?.length ?? apps?.length;
 
+  const csvHeaders = ["Application", "Environment", "Auth", "Spent MTD (USD)", "Budget (USD)", "Forecast (USD)", "Utilization %", "Status", "Budget breach"];
+  const csvRows = useMemo(() => filteredApps?.map((app) => {
+    const status = budgetStatus(app);
+    const pct = app.budget != null && app.budget > 0
+      ? Math.round(Math.min((app.monthToDateCost / app.budget) * 100, 100))
+      : null;
+    return [
+      app.name,
+      app.environment,
+      app.userAuth,
+      app.monthToDateCost.toFixed(2),
+      app.budget != null ? app.budget.toFixed(2) : "",
+      app.forecast != null ? app.forecast.toFixed(2) : "",
+      pct != null ? String(pct) : "",
+      status,
+      app.forecastOverBudget ? "Yes" : "No",
+    ];
+  }) ?? null, [filteredApps]);
+
+  const { copied, disabled: csvDisabled, handleExport, handleCopy } = useCsvExport(csvRows, csvHeaders, "app-services-budget");
+
   return (
     <div className="bg-card border border-border shadow-sm flex flex-col">
       <div className="flex items-center justify-between p-2 border-b border-border bg-card">
@@ -476,7 +499,15 @@ function BudgetSummaryWidget({
             </span>
           )}
         </div>
-        <span className="text-[11px] text-muted-foreground pr-3">Month to date</span>
+        <div className="flex items-center gap-2 pr-2">
+          <span className="text-[11px] text-muted-foreground">Month to date</span>
+          <CsvToolbar
+            handleExport={handleExport}
+            handleCopy={handleCopy}
+            disabled={csvDisabled}
+            copied={copied}
+          />
+        </div>
       </div>
 
       <div className="flex items-center gap-3 px-4 py-1.5 border-b border-border bg-muted/20 flex-wrap">
