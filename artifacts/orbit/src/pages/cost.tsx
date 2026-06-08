@@ -12,7 +12,7 @@ import { StaleCacheBanner } from "@/components/stale-cache-banner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link, useSearch, useLocation } from "wouter";
-import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, TriangleAlert } from "lucide-react";
+import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, TriangleAlert, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { DataSourceBadge } from "@/components/data-source-badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
@@ -173,6 +173,28 @@ function AppCost() {
   const [showDailyTable, setShowDailyTable] = useState(false);
   const [copiedDaily, setCopiedDaily] = useState(false);
 
+  type ServiceSortCol = "amount" | "trend";
+  type SortDir = "asc" | "desc";
+  const [serviceSortCol, setServiceSortCol] = useState<ServiceSortCol>("amount");
+  const [serviceSortDir, setServiceSortDir] = useState<SortDir>("desc");
+
+  function handleServiceSortClick(col: ServiceSortCol) {
+    setServiceSortCol((prev) => {
+      if (prev === col) {
+        setServiceSortDir((d) => (d === "asc" ? "desc" : "asc"));
+        return col;
+      }
+      setServiceSortDir(col === "amount" ? "desc" : "desc");
+      return col;
+    });
+  }
+
+  function parseTrend(trend: string | undefined | null): number {
+    if (!trend) return -Infinity;
+    const n = parseFloat(trend.replace(/[^0-9.\-+]/g, ""));
+    return isNaN(n) ? -Infinity : n;
+  }
+
   const breakdownHeaders = ["Service", "Resource Group", "Environment", "Cost (USD)", "% of Total", "Trend"];
   const breakdownRows = useMemo(() => {
     if (!data?.byService?.length) return null;
@@ -194,6 +216,15 @@ function AppCost() {
     handleExport: handleBreakdownExport,
     handleCopy: handleBreakdownCopy,
   } = useCsvExport(breakdownRows, breakdownHeaders, `cost-breakdown-${scope}`);
+
+  const sortedByService = useMemo(() => {
+    if (!data?.byService) return data?.byService;
+    const mul = serviceSortDir === "asc" ? 1 : -1;
+    return [...data.byService].sort((a, b) => {
+      if (serviceSortCol === "amount") return mul * (a.amount - b.amount);
+      return mul * (parseTrend(a.trend) - parseTrend(b.trend));
+    });
+  }, [data?.byService, serviceSortCol, serviceSortDir]);
 
   const search = useSearch();
   const [, navigate] = useLocation();
@@ -492,15 +523,41 @@ function AppCost() {
           <Table className="text-[13px]">
             <THead>
               <TableHead className="h-8 font-semibold text-foreground">Service</TableHead>
-              <TableHead className="h-8 font-semibold text-foreground text-right w-[130px]">Cost (MTD)</TableHead>
-              <TableHead className="h-8 font-semibold text-foreground text-right w-[80px]">WoW</TableHead>
+              <TableHead className="h-8 font-semibold text-foreground text-right w-[130px] p-0">
+                <button
+                  type="button"
+                  onClick={() => handleServiceSortClick("amount")}
+                  className="flex items-center justify-end gap-1 h-full w-full px-4 hover:text-foreground/70 transition-colors"
+                >
+                  Cost (MTD)
+                  {serviceSortCol === "amount" ? (
+                    serviceSortDir === "asc" ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
+                  )}
+                </button>
+              </TableHead>
+              <TableHead className="h-8 font-semibold text-foreground text-right w-[80px] p-0">
+                <button
+                  type="button"
+                  onClick={() => handleServiceSortClick("trend")}
+                  className="flex items-center justify-end gap-1 h-full w-full px-4 hover:text-foreground/70 transition-colors"
+                >
+                  WoW
+                  {serviceSortCol === "trend" ? (
+                    serviceSortDir === "asc" ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
+                  )}
+                </button>
+              </TableHead>
               <TableHead className="h-8 font-semibold text-foreground w-[160px]"></TableHead>
             </THead>
             <TableBody>
               {isLoading || !data ? (
                 <SkeletonRows cols={4} rows={5} />
               ) : (
-                data.byService.map((svc, i) => {
+                (sortedByService ?? []).map((svc, i) => {
                   const trend = svc.trend;
                   const isPos = trend?.startsWith("+");
                   const isNeg = trend?.startsWith("-");
