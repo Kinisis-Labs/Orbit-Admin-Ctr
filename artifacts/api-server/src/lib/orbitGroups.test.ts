@@ -106,6 +106,54 @@ describe("resolveOrbitGroups", () => {
     assert.ok(!ids.includes("orbit-finops"), "orbit-finops must not appear when user is not a member");
   });
 
+  // --- admin-implies-cost-reader ---
+
+  test("admin user gets cost-reader injected when NOT explicitly in the cost-reader Entra group", () => {
+    const result = resolveOrbitGroups(FULL_CFG, [GUID_AUTHORIZED, GUID_ADMIN]);
+    const ids = result.map((g) => g.id);
+    assert.ok(ids.includes(COST_READER_CLIENT_ID), "admin must imply cost-reader even without explicit group membership");
+    assert.ok(ids.includes("orbit-admins"), "orbit-admins should also be present");
+  });
+
+  test("admin user gets cost-reader injected when costReaderGroupId is not configured at all", () => {
+    const cfgNoReader = {
+      authorizedGroupId: GUID_AUTHORIZED,
+      adminGroupId: GUID_ADMIN,
+      engineerGroupId: undefined,
+      costReaderGroupId: undefined,
+      finopsGroupId: undefined,
+    };
+    const result = resolveOrbitGroups(cfgNoReader, [GUID_AUTHORIZED, GUID_ADMIN]);
+    const ids = result.map((g) => g.id);
+    assert.ok(ids.includes(COST_READER_CLIENT_ID), "admin must still get cost-reader even when costReaderGroupId is absent from config");
+  });
+
+  test("no duplicate cost-reader entry when admin is also explicitly in the cost-reader Entra group", () => {
+    const result = resolveOrbitGroups(FULL_CFG, [GUID_AUTHORIZED, GUID_ADMIN, GUID_COST_READER]);
+    const costReaderEntries = result.filter((g) => g.id === COST_READER_CLIENT_ID);
+    assert.equal(costReaderEntries.length, 1, "cost-reader must appear exactly once, not duplicated for admin+member");
+  });
+
+  test("non-admin user without cost-reader group membership does NOT get cost-reader injected", () => {
+    const result = resolveOrbitGroups(FULL_CFG, [GUID_AUTHORIZED]);
+    const ids = result.map((g) => g.id);
+    assert.ok(!ids.includes(COST_READER_CLIENT_ID), "cost-reader must not be injected for an ordinary authorized user");
+  });
+
+  test("admin-implies-cost-reader does NOT fire when adminGroupId is not configured", () => {
+    const cfgNoAdmin = {
+      authorizedGroupId: GUID_AUTHORIZED,
+      adminGroupId: undefined,
+      engineerGroupId: undefined,
+      costReaderGroupId: undefined,
+      finopsGroupId: undefined,
+    };
+    // Pass GUID_ADMIN in the token anyway — should be ignored since adminGroupId is unconfigured
+    const result = resolveOrbitGroups(cfgNoAdmin, [GUID_AUTHORIZED, GUID_ADMIN]);
+    const ids = result.map((g) => g.id);
+    assert.ok(!ids.includes(COST_READER_CLIENT_ID), "cost-reader must not be injected when adminGroupId is not configured");
+  });
+
   test("client-facing IDs match the IDs used by the frontend ORBIT_GROUPS constant", () => {
     const FRONTEND_ORBIT_GROUP_IDS = [
       "orbit-authorized-users",
