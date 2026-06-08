@@ -428,11 +428,12 @@ router.get("/apps/:appId/infrastructure", async (req, res) => {
     fetchAppTimeSeries(app, "disk_iops", 24, { bypassCache }),
   ]);
   const resources = liveResources ?? [];
-  const series = liveResources ? [
+  const seriesAll = liveResources ? [
     { name: "CPU %", unit: "%", points: liveCpuSeries ?? [] },
     { name: "Memory %", unit: "%", points: liveMemSeries ?? [] },
     { name: "Disk IOPS", unit: "ops/s", points: liveDiskIopsSeries ?? [] },
   ] : [];
+  const series = seriesAll.filter((s) => s.points.length > 0);
   const data = GetInfrastructureResponse.parse({ resources, series, dataSource: liveResources ? "live" : "mock" });
   res.json(data);
 });
