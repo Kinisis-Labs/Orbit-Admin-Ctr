@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Smartphone } from "lucide-react";
 import { useApps } from "@/hooks/use-apps";
 import {
   Select,
@@ -7,6 +8,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { AuthBadge } from "@/components/auth-badge";
 import { ScopeContext, useScope } from "./scope-context";
 import { useInfraViolations } from "@/lib/infra-violation-context";
@@ -148,6 +155,46 @@ export function ScopeSelect({
                 )}
                 {a.name}
                 <AuthBadge userAuth={a.userAuth} />
+                {a.androidPackage && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <a
+                          href={`https://play.google.com/store/apps/details?id=${a.androidPackage}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center shrink-0 text-[#3DDC84] hover:opacity-70 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          aria-label="View on Google Play"
+                        >
+                          <Smartphone className="h-3 w-3" />
+                        </a>
+                      </TooltipTrigger>
+                      <TooltipContent>View on Google Play</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                {a.iosBundle && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <a
+                          href={`https://apps.apple.com/app/${a.iosBundle}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center shrink-0 text-muted-foreground hover:opacity-70 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          aria-label="View on App Store"
+                        >
+                          <Smartphone className="h-3 w-3" />
+                        </a>
+                      </TooltipTrigger>
+                      <TooltipContent>View on App Store</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </span>
             </SelectItem>
           ))}
