@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useListPlaySubscriptions } from "@workspace/api-client-react";
+import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TrendingDown, TrendingUp, ExternalLink, Clock } from "lucide-react";
@@ -159,6 +160,9 @@ export default function PlaySubscriptions() {
 
 
 function PlayBanner({ placeholder, isLive, dataUpdatedAt, dataAsOf }: { placeholder: boolean; isLive: boolean; dataUpdatedAt: number; dataAsOf?: string }) {
+  const timestampMs = dataAsOf ? new Date(dataAsOf).getTime() : dataUpdatedAt ?? 0;
+  const ago = useUpdatedAgo(timestampMs);
+
   const timestampLabel = (() => {
     if (dataAsOf) {
       const d = new Date(dataAsOf);
@@ -200,6 +204,7 @@ function PlayBanner({ placeholder, isLive, dataUpdatedAt, dataAsOf }: { placehol
           <span className="inline-flex items-center gap-1 ml-2 text-muted-foreground/70">
             <Clock className="h-3 w-3" />
             {timestampLabel.text}
+            {ago && <span>· {ago}</span>}
           </span>
         )}
       </div>

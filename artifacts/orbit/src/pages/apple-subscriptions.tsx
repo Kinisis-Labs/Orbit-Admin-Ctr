@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useListAppleSubscriptions } from "@workspace/api-client-react";
+import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TrendingDown, TrendingUp, ExternalLink, Clock, AlertTriangle } from "lucide-react";
@@ -200,6 +201,9 @@ export default function AppleSubscriptions() {
 }
 
 function AppleBanner({ placeholder, dataUpdatedAt, dataAsOf }: { placeholder: boolean; dataUpdatedAt: number; dataAsOf?: string }) {
+  const timestampMs = dataAsOf ? new Date(dataAsOf).getTime() : dataUpdatedAt ?? 0;
+  const ago = useUpdatedAgo(timestampMs);
+
   const timestampLabel = (() => {
     if (dataAsOf) {
       const d = new Date(dataAsOf);
@@ -235,6 +239,7 @@ function AppleBanner({ placeholder, dataUpdatedAt, dataAsOf }: { placeholder: bo
           <span className="inline-flex items-center gap-1 ml-2 text-muted-foreground/70">
             <Clock className="h-3 w-3" />
             {timestampLabel}
+            {ago && <span>· {ago}</span>}
           </span>
         )}
       </div>
