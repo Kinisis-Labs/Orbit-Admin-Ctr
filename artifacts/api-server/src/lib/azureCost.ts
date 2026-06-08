@@ -100,6 +100,11 @@ export function clearCostCacheForApp(appId: string): void {
   _costCache.delete(appId);
 }
 
+/** Evict all cached last-month comparable cost entries. */
+export function clearLastMonthCache(): void {
+  _lastMonthCache.clear();
+}
+
 /**
  * Resolve the Azure subscription ID for an app's resource group.
  *
@@ -162,7 +167,13 @@ const _lastMonthCache = new Map<string, LastMonthCacheEntry>();
  * Fetch the aggregate cost for an app over the comparable elapsed period last month.
  * e.g. if today is June 8, fetches May 1–May 8.
  * Returns null when Azure is not configured or on any error.
- * Results are cached for 1 hour (last month data doesn't change frequently).
+ *
+ * Results are cached for 1 hour keyed by the resolved billing scope path
+ * (e.g. `/subscriptions/{id}` or `/subscriptions/{id}/resourceGroups/{rg}`).
+ * Keying on the scope path rather than the app ID means multiple apps that
+ * share the same billing scope (e.g. two apps queried at subscription scope for
+ * the same subscription) share a single cached value and a single Azure API
+ * call, avoiding redundant Cost Management requests.
  */
 export async function fetchLastMonthComparableCostTotal(
   app: AppRecord,
@@ -170,10 +181,8 @@ export async function fetchLastMonthComparableCostTotal(
 ): Promise<number | null> {
   if (!isAzureConfigured()) return null;
 
-  const cacheKey = `${app.id}__lastmonth`;
-  const entry = _lastMonthCache.get(cacheKey);
-  if (entry && entry.expiresAt > Date.now()) return entry.total;
-
+  // Resolve subscription ID first so we can build the canonical scope path,
+  // which is the cache key.  _rgSubCache makes repeated calls cheap.
   const subscriptionId = await resolveSubscriptionId(app);
   if (!subscriptionId) return null;
 
@@ -181,6 +190,10 @@ export async function fetchLastMonthComparableCostTotal(
     billingScope === "subscription"
       ? `/subscriptions/${subscriptionId}`
       : `/subscriptions/${subscriptionId}/resourceGroups/${app.resourceGroup}`;
+
+  // Cache by scope path: apps sharing the same billing scope reuse this entry.
+  const entry = _lastMonthCache.get(scope);
+  if (entry && entry.expiresAt > Date.now()) return entry.total;
 
   const { start, end } = lastMonthComparablePeriod();
 
@@ -203,7 +216,7 @@ export async function fetchLastMonthComparableCostTotal(
     if (costIdx === -1 || rows.length === 0) return null;
 
     const total = Number(rows[0]?.[costIdx] ?? 0);
-    _lastMonthCache.set(cacheKey, { total, expiresAt: Date.now() + LAST_MONTH_CACHE_TTL_MS });
+    _lastMonthCache.set(scope, { total, expiresAt: Date.now() + LAST_MONTH_CACHE_TTL_MS });
     return Number(total.toFixed(2));
   } catch (err) {
     logger.warn({ err, appId: app.id, scope, start, end }, "Last-month comparable cost query failed");
