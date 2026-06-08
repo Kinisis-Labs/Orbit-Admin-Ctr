@@ -219,19 +219,25 @@ export function InfraAlertHistory({ appId }: Props) {
   }
 
   const csvHeaders = appId
-    ? ["Sent At", "Metric", "Observed Value", "Threshold", "Channels"]
-    : ["App", "Sent At", "Metric", "Observed Value", "Threshold", "Channels"];
+    ? ["Sent At", "Metric", "Observed Value", "Threshold", "Channels", "Acknowledged at", "Acknowledged by"]
+    : ["App", "Sent At", "Metric", "Observed Value", "Threshold", "Channels", "Acknowledged at", "Acknowledged by"];
 
   const csvRows = filteredEntries?.map((entry) => {
     const sentAt = format(new Date(entry.sentAt), "MMM d, yyyy HH:mm");
     const metricLabel = METRIC_LABELS[entry.metric] ?? entry.metric;
     const channels = entry.channels.map((ch) => CHANNEL_LABELS[ch] ?? ch).join("; ");
+    const acknowledgedAt = entry.acknowledgedAt
+      ? format(new Date(entry.acknowledgedAt), "MMM d, yyyy HH:mm")
+      : "";
+    const acknowledgedBy = entry.acknowledgedBy ?? "";
     const base = [
       sentAt,
       metricLabel,
       `${entry.value.toFixed(1)}%`,
       `${entry.threshold.toFixed(0)}%`,
       channels,
+      acknowledgedAt,
+      acknowledgedBy,
     ];
     return appId ? base : [entry.appName, ...base];
   }) ?? null;
