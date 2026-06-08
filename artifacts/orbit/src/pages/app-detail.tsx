@@ -643,7 +643,14 @@ function OverviewUserTile({ appId, onGoToUsers }: { appId: string; onGoToUsers: 
               <button type="button" onClick={onGoToUsers} className={tileClass}>
                 <div className="text-[12px] text-muted-foreground font-medium">DAU</div>
                 <div className="text-xl font-semibold tabular-nums">{fmt(row.dau)}</div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">Active in last 24h</div>
+                {row.dauTrendPct !== 0 ? (
+                  <span className={`inline-flex items-center gap-1 text-[11px] mt-0.5 ${row.dauTrendPct > 0 ? "text-emerald-500" : "text-destructive"}`}>
+                    {row.dauTrendPct > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {row.dauTrendPct > 0 ? "+" : ""}{row.dauTrendPct}%
+                  </span>
+                ) : (
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Active in last 24h</div>
+                )}
               </button>
             </TooltipTrigger>
             <TooltipContent>Go to Users tab</TooltipContent>
