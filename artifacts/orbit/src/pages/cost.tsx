@@ -93,12 +93,14 @@ const LS_DAILY_TABLE_KEY = (scope: string) => `orbit-cost-daily-table-${scope}`;
 
 function AnomalyAlertBanner({
   appId,
+  appName,
   anomaly,
   formatCurrency,
   onViewInChart,
   sigmas,
 }: {
   appId: string;
+  appName?: string;
   anomaly: ReturnType<typeof detectRecentAnomaly>;
   formatCurrency: (v: number) => string;
   onViewInChart?: () => void;
@@ -142,7 +144,7 @@ function AnomalyAlertBanner({
     <div className="flex items-start gap-3 px-3 py-2.5 rounded-sm border border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-300">
       <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
       <div className="flex-1 min-w-0 text-[13px] leading-snug">
-        <span className="font-semibold">Cost anomaly detected — </span>
+        <span className="font-semibold">Cost anomaly detected{appName ? ` — ${appName}` : ""} — </span>
         <span>
           {dateLabel} was {multipleLabel} the 30-day average
           {anomaly.excess > 0 && (
@@ -387,6 +389,25 @@ function GlobalCost() {
 
   const isLoading = appsLoading || costQueries.some((q) => q.isLoading);
 
+  const [activeSigma] = useState<number>(() => readSigma(SENSITIVITY_KEY, ANOMALY_SIGMAS));
+
+  // Find the most significant recent anomaly across all apps
+  const globalAnomaly = useMemo(() => {
+    if (!apps || isLoading) return null;
+    let worst: { appId: string; appName: string; anomaly: NonNullable<ReturnType<typeof detectRecentAnomaly>> } | null = null;
+    for (let i = 0; i < apps.length; i++) {
+      const daily = costQueries[i]?.data?.daily as DailyCostPoint[] | undefined;
+      if (!daily) continue;
+      const anomaly = detectRecentAnomaly(daily, activeSigma);
+      if (!anomaly) continue;
+      if (!worst || anomaly.vsAvgMultiple > worst.anomaly.vsAvgMultiple) {
+        worst = { appId: apps[i].id, appName: apps[i].name, anomaly };
+      }
+    }
+    return worst;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apps, isLoading, activeSigma, costQueries.map((q) => q.dataUpdatedAt).join(",")]);
+
   const currency = costQueries.find((q) => q.data)?.data?.currency ?? "USD";
 
   const tableRows = useMemo(() => {
@@ -434,6 +455,15 @@ function GlobalCost() {
 
   return (
     <>
+      {!isLoading && globalAnomaly && (
+        <AnomalyAlertBanner
+          appId={globalAnomaly.appId}
+          appName={globalAnomaly.appName}
+          anomaly={globalAnomaly.anomaly}
+          formatCurrency={(v) => fmt(v, currency)}
+          sigmas={activeSigma}
+        />
+      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Total cost (MTD)</div>
