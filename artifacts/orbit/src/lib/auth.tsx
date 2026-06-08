@@ -59,7 +59,7 @@ type MeResponse =
   | { mode: "entra"; authenticated: false; accessContact?: string }
   | { mode: "entra"; authenticated: true; user: EntraUser; groups: EntraGroup[]; accessContact?: string };
 
-type AuthError = "denied" | "error" | "expired" | "unavailable";
+type AuthError = "denied" | "error" | "expired" | "unavailable" | "revoked";
 
 function parseAuthError(): AuthError | null {
   const v = new URLSearchParams(window.location.search).get("auth");
@@ -129,6 +129,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  // Poll /auth/me every 15 min while the tab is visible (entra mode only).
+  // Updates badges immediately when group membership changes; redirects on 401.
+  useEffect(() => {
+    if (mode !== "entra") return;
+
+    const POLL_MS = 15 * 60 * 1000;
+
+    const poll = async () => {
+      if (document.visibilityState === "hidden") return;
+      try {
+        const res = await fetch(AUTH_ME, {
+          credentials: "same-origin",
+          headers: { accept: "application/json" },
+        });
+        if (res.status === 401 || res.status === 403) {
+          setAuthError("revoked");
+          return;
+        }
+        if (!res.ok) return;
+        const data = (await res.json()) as MeResponse;
+        if (data.mode === "entra" && "authenticated" in data) {
+          if (data.authenticated) {
+            setEntra({ user: data.user, groups: data.groups });
+          } else {
+            setAuthError("revoked");
+          }
+        }
+      } catch {
+        // Transient network error — skip this tick, try again next interval
+      }
+    };
+
+    const id = setInterval(() => void poll(), POLL_MS);
+    return () => clearInterval(id);
+  }, [mode]);
 
   const signOut = useCallback(() => {
     void (async () => {
@@ -367,6 +403,71 @@ function DeniedNotice({ onSignOut, accessContact }: { onSignOut: () => void; acc
   );
 }
 
+function RevokedNotice() {
+  const returnTo = window.location.pathname + window.location.search;
+  const loginHref = `${AUTH_LOGIN}?returnTo=${encodeURIComponent(returnTo)}`;
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        background: "#0b1120",
+        color: "#e2e8f0",
+        fontFamily: "system-ui, sans-serif",
+        padding: 24,
+      }}
+    >
+      <div style={{ maxWidth: 440, textAlign: "center" }}>
+        <div
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: "50%",
+            background: "#1e293b",
+            border: "1px solid #334155",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 20px",
+          }}
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#94a3b8"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+          Session ended
+        </div>
+        <p
+          style={{
+            fontSize: 14,
+            color: "#94a3b8",
+            marginBottom: 20,
+            lineHeight: 1.5,
+          }}
+        >
+          Your session is no longer active. Sign in again to continue.
+        </p>
+        <a href={loginHref} style={NOTICE_BTN_PRIMARY}>
+          Sign in again
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function AuthNotice({
   kind,
   onSignOut,
@@ -378,6 +479,9 @@ function AuthNotice({
 }) {
   if (kind === "denied") {
     return <DeniedNotice onSignOut={onSignOut} accessContact={accessContact} />;
+  }
+  if (kind === "revoked") {
+    return <RevokedNotice />;
   }
   const unavailable = kind === "unavailable";
   const title = unavailable

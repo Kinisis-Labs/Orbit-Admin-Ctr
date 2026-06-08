@@ -258,7 +258,7 @@ function buildViolationTooltip(violations: InfraViolation[]): string {
   const shown = violations.slice(0, MAX_VIOLATION_LINES);
   const rest = violations.length - shown.length;
   const lines = shown.map(
-    (v) => `${v.appName} — ${v.metric} ${v.valuePct.toFixed(1)}%`
+    (v) => `${v.appName} — ${v.metric} ${v.value.toFixed(1)}%`
   );
   if (rest > 0) lines.push(`+${rest} more`);
   return lines.join("\n");
