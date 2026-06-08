@@ -506,7 +506,21 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
         <UITooltip>
           <TooltipTrigger asChild>
             <button type="button" onClick={onGoToCost} className={tileClass}>
-              <div className="text-[12px] text-muted-foreground font-medium">Forecast EOM</div>
+              <div className="text-[12px] text-muted-foreground font-medium flex items-center gap-1">
+                Forecast EOM
+                {forecastOverBudget && (
+                  <TooltipProvider>
+                    <UITooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-amber-500/15 border border-amber-500/40">
+                          <AlertTriangle className="h-2.5 w-2.5 text-amber-500" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>Forecast exceeds budget cap</TooltipContent>
+                    </UITooltip>
+                  </TooltipProvider>
+                )}
+              </div>
               <div className={`text-xl font-semibold tabular-nums ${forecastOverBudget ? "text-destructive" : "text-muted-foreground"}`}>
                 {formatCurrency(data.forecast)}
               </div>
