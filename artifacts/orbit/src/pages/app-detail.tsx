@@ -32,6 +32,7 @@ import {
 import { DailySpendChart } from "@/components/daily-spend-chart";
 import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus, BarChart2, Clipboard, CheckCircle2, Clock } from "lucide-react";
 import { DataSourceBadge, LiveBadge } from "@/components/data-source-badge";
+import { AuthBadge } from "@/components/auth-badge";
 
 /**
  * Build the raw KQL query for a given exception message, scoped to the
@@ -167,6 +168,10 @@ export default function AppDetail() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-semibold tracking-tight">{app.name}</h1>
+            <AuthBadge
+              userAuth={app.userAuth}
+              onClick={() => setLocation(`/?auth=${app.userAuth}`)}
+            />
             {canSeeCost && recentAlertDate && (
               <TooltipProvider>
                 <UITooltip>
@@ -260,7 +265,12 @@ export default function AppDetail() {
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     <div className="text-muted-foreground font-medium">User auth</div>
-                    <div className="col-span-2"><UserAuthBadge userAuth={app.userAuth} /></div>
+                    <div className="col-span-2">
+                      <AuthBadge
+                        userAuth={app.userAuth}
+                        onClick={() => setLocation(`/?auth=${app.userAuth}`)}
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-col gap-3">

@@ -164,30 +164,14 @@ export default function Home() {
 
   const selectedApp = isGlobal ? undefined : apps?.find((a) => a.id === scope);
 
-  const [authFilter, setAuthFilterRaw] = useState<UserAuthType | null>(() => {
-    try {
-      const stored = localStorage.getItem("orbit-budget-auth-filter");
-      if (stored === "clerk" || stored === "entra" || stored === "none") return stored;
-    } catch {
-      // ignore
-    }
-    return null;
-  });
-
-  function setAuthFilter(value: UserAuthType | null) {
-    setAuthFilterRaw(value);
-    try {
-      if (value === null) {
-        localStorage.removeItem("orbit-budget-auth-filter");
-      } else {
-        localStorage.setItem("orbit-budget-auth-filter", value);
-      }
-    } catch {
-      // ignore
-    }
-  }
   const search = useSearch();
   const [, navigate] = useLocation();
+
+  const [authFilter, setAuthFilter] = useState<UserAuthType | null>(() => {
+    const p = new URLSearchParams(search);
+    const a = p.get("auth");
+    return (a === "clerk" || a === "entra" || a === "none") ? (a as UserAuthType) : null;
+  });
 
   const [budgetBreachFilter, setBudgetBreachFilter] = useState<boolean>(() => {
     const params = new URLSearchParams(search);
@@ -196,6 +180,11 @@ export default function Home() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (authFilter) {
+      params.set("auth", authFilter);
+    } else {
+      params.delete("auth");
+    }
     if (budgetBreachFilter) {
       params.set("breach", "1");
     } else {
@@ -204,7 +193,7 @@ export default function Home() {
     const qs = params.toString();
     const next = qs ? `?${qs}` : window.location.pathname;
     navigate(next, { replace: true });
-  }, [budgetBreachFilter]);
+  }, [authFilter, budgetBreachFilter]);
 
   function toggleBudgetBreachFilter() {
     setBudgetBreachFilter((prev) => !prev);
