@@ -16,6 +16,33 @@ const BAR_COLOR_PEAK = "hsl(45 100% 51%)";
 const ANOMALY_OUTLINE_COLOR = "hsl(32 98% 46%)";
 const OVER_BUDGET_STROKE_COLOR = "hsl(0 84% 40%)";
 
+const SIGMA_OPTIONS = [
+  { label: "Low", sigma: 3, title: "Low sensitivity — fewer alerts (3σ)" },
+  { label: "Med", sigma: 2, title: "Medium sensitivity — default (2σ)" },
+  { label: "High", sigma: 1.5, title: "High sensitivity — more alerts (1.5σ)" },
+] as const;
+
+function readSigma(key: string | undefined, defaultSigma: number): number {
+  if (!key) return defaultSigma;
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      const n = parseFloat(stored);
+      if (SIGMA_OPTIONS.some((o) => o.sigma === n)) return n;
+    }
+  } catch {
+  }
+  return defaultSigma;
+}
+
+function writeSigma(key: string | undefined, sigma: number): void {
+  if (!key) return;
+  try {
+    localStorage.setItem(key, String(sigma));
+  } catch {
+  }
+}
+
 function getBarFill(vsLastWeek: number | null | undefined, threshold: number): string {
   if (vsLastWeek == null) return BAR_COLOR_DEFAULT;
   if (vsLastWeek > threshold) return BAR_COLOR_UP_HIGH;
@@ -40,6 +67,7 @@ export function DailySpendChart({
   highlightPeak = false,
   threshold = 15,
   anomalySigmas = 2,
+  sensitivityKey,
   onAnomalyClick,
   budgetLine,
   range: rangeProp,
@@ -53,6 +81,7 @@ export function DailySpendChart({
   highlightPeak?: boolean;
   threshold?: number;
   anomalySigmas?: number;
+  sensitivityKey?: string;
   onAnomalyClick?: (date: Date) => void;
   budgetLine?: number;
   range?: Range;
@@ -69,10 +98,19 @@ export function DailySpendChart({
     onRangeChange?.(r);
   }
 
+  const [activeSigma, setActiveSigmaState] = useState<number>(() =>
+    readSigma(sensitivityKey, anomalySigmas),
+  );
+
+  function setActiveSigma(sigma: number) {
+    setActiveSigmaState(sigma);
+    writeSigma(sensitivityKey, sigma);
+  }
+
   const visibleData = useMemo(() => {
     const sliced = daily.slice(-range);
-    return showAnomalies ? computeAnomalies(sliced, range, anomalySigmas) : sliced.map((d) => ({ ...d }));
-  }, [daily, range, showAnomalies, anomalySigmas]);
+    return showAnomalies ? computeAnomalies(sliced, range, activeSigma) : sliced.map((d) => ({ ...d }));
+  }, [daily, range, showAnomalies, activeSigma]);
 
   const hasAnyAnomaly = useMemo(
     () => showAnomalies && visibleData.some((d) => (d as EnrichedPoint).anomaly?.isAnomaly),
@@ -116,6 +154,27 @@ export function DailySpendChart({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-end gap-1 px-1 pb-2 shrink-0">
+        {showAnomalies && (
+          <>
+            <span className="text-[10px] text-muted-foreground mr-0.5">Sensitivity:</span>
+            {SIGMA_OPTIONS.map((opt) => (
+              <button
+                key={opt.sigma}
+                onClick={() => setActiveSigma(opt.sigma)}
+                title={opt.title}
+                className={[
+                  "h-6 px-2 text-[11px] font-medium rounded-sm border transition-colors",
+                  activeSigma === opt.sigma
+                    ? "border-primary/60 bg-primary/10 text-primary"
+                    : "border-border bg-transparent text-muted-foreground hover:text-foreground hover:border-border/80",
+                ].join(" ")}
+              >
+                {opt.label}
+              </button>
+            ))}
+            <span className="w-px h-4 bg-border mx-1 shrink-0" />
+          </>
+        )}
         {availableRanges.map((opt) => (
           <button
             key={opt.days}
@@ -278,7 +337,7 @@ export function DailySpendChart({
                         className="inline-block w-2.5 h-2.5 shrink-0"
                         style={{ border: `2px solid ${ANOMALY_OUTLINE_COLOR}`, background: "transparent" }}
                       />
-                      <span>Spend anomaly (&gt;{anomalySigmas}σ above window average)</span>
+                      <span>Spend anomaly (&gt;{activeSigma}σ above window average)</span>
                     </div>
                   )}
                 </>
@@ -302,7 +361,7 @@ export function DailySpendChart({
               <span>
                 {hasAnyPeakAnomaly
                   ? "Peak & anomaly"
-                  : `Spend anomaly (>${anomalySigmas}σ above window average)`}
+                  : `Spend anomaly (>${activeSigma}σ above window average)`}
               </span>
             </div>
           )}

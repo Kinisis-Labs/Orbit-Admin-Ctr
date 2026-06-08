@@ -524,6 +524,7 @@ function AppCost() {
               showLegend
               range={chartRange}
               onRangeChange={setChartRange}
+              sensitivityKey="orbit:anomaly-sigma:cost"
             />
           ) : (
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No daily data available</div>
