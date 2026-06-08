@@ -73,6 +73,7 @@ import { BudgetThresholdPopover, getBudgetBarClass } from "@/components/budget-t
 import { POLL_OPTIONS, type PollValue, usePollingInterval } from "@/hooks/use-polling-interval";
 import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { cn } from "@/lib/utils";
+import { detectRecentAnomaly } from "@/pages/cost";
 
 const INFRA_TAB_POLL_INTERVAL_KEY = "orbit:infra-tab:poll-interval";
 
@@ -140,6 +141,7 @@ export default function AppDetail() {
   // (React Query serves the same cache key used inside CostTab, so no duplicate fetch)
   const { data: costData } = useAppCost(appId, canSeeCost);
   const forecastOverBudget = costData ? costData.forecast > costData.budget : false;
+  const costAnomaly = canSeeCost ? detectRecentAnomaly(costData?.daily) : null;
 
   if (appLoading) {
     return (
@@ -227,6 +229,18 @@ export default function AppDetail() {
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>Forecast exceeds budget cap</TooltipContent>
+                  </UITooltip>
+                </TooltipProvider>
+              )}
+              {canSeeCost && costAnomaly && (
+                <TooltipProvider>
+                  <UITooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex items-center justify-center h-2 w-2 rounded-full bg-amber-500" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Cost anomaly detected {format(costAnomaly.date, "MMM d")} — {costAnomaly.vsAvgMultiple.toFixed(1)}× {costAnomaly.windowLabel} avg
+                    </TooltipContent>
                   </UITooltip>
                 </TooltipProvider>
               )}
