@@ -26,6 +26,7 @@ import { formatDistanceToNow } from "date-fns";
 import { detectRecentAnomaly } from "@/pages/cost";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { CsvToolbar } from "@/components/csv-toolbar";
+import { AdminAccessBadge } from "@/components/admin-access-badge";
 
 function useAppAnomalies(apps: AppSummary[] | undefined, enabled: boolean): Set<string> {
   const queries = useQueries({
@@ -603,6 +604,7 @@ function BudgetSummaryWidget({
               {warningCount} near limit
             </span>
           )}
+          <AdminAccessBadge />
         </div>
         <div className="flex items-center gap-2 pr-2">
           <span className="text-[11px] text-muted-foreground">Month to date</span>
