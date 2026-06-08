@@ -28,7 +28,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { DailySpendChart } from "@/components/daily-spend-chart";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus, Wifi } from "lucide-react";
 import { DataSourceBadge } from "@/components/data-source-badge";
 
 /**
@@ -444,6 +444,12 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
                   budgetThreshold={budgetThreshold}
                 />
                 <div className="text-[11px] text-muted-foreground tabular-nums">{rawUtilPct.toFixed(0)}% of cap used MTD</div>
+                {data.dataSource === "live" && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
+                    <Wifi className="h-3 w-3" />
+                    Live
+                  </span>
+                )}
               </div>
             </button>
           </TooltipTrigger>
@@ -463,6 +469,12 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
                   ? <span className="text-destructive">Projected to exceed cap</span>
                   : <span className="text-muted-foreground">Projected end-of-month</span>}
               </div>
+              {data.dataSource === "live" && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide mt-0.5">
+                  <Wifi className="h-3 w-3" />
+                  Live
+                </span>
+              )}
             </button>
           </TooltipTrigger>
           <TooltipContent>Go to Cost tab</TooltipContent>
@@ -1076,6 +1088,12 @@ function CostTab({ appId }: { appId: string }) {
               budgetThreshold={budgetThreshold}
             />
             <div className="text-[11px] text-muted-foreground tabular-nums">{rawBudgetUtilPct.toFixed(0)}% of cap used MTD</div>
+            {data.dataSource === "live" && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
+                <Wifi className="h-3 w-3" />
+                Live
+              </span>
+            )}
           </div>
         </div>
 
@@ -1090,6 +1108,12 @@ function CostTab({ appId }: { appId: string }) {
               ? <span className="text-destructive">Projected to exceed cap</span>
               : <span className="text-muted-foreground">Projected end-of-month</span>}
           </div>
+          {data.dataSource === "live" && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide mt-1.5">
+              <Wifi className="h-3 w-3" />
+              Live
+            </span>
+          )}
         </div>
 
         {/* Headroom */}

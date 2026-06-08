@@ -7,7 +7,7 @@ import { useApp } from "@/hooks/use-app";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
-import { ChevronRight, Bell, TrendingUp, X, TriangleAlert } from "lucide-react";
+import { ChevronRight, Bell, TrendingUp, X, TriangleAlert, Wifi } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -441,6 +441,28 @@ function BudgetSummaryWidget({
     return a.budget > 0 && (a.monthToDateCost / a.budget) * 100 >= 80;
   }).length ?? 0;
 
+  const totalSpentMTD = filteredApps?.reduce((s, a) => s + a.monthToDateCost, 0) ?? 0;
+  const totalBudget = filteredApps?.reduce((s, a) => s + (a.budget ?? 0), 0) ?? 0;
+  const totalForecast = filteredApps?.reduce((s, a) => s + (a.forecast ?? 0), 0) ?? 0;
+  const totalVariance = totalBudget > 0 ? totalBudget - totalForecast : null;
+
+  const appsWithSource = filteredApps?.filter((a) => a.costDataSource != null) ?? [];
+  const liveCount = appsWithSource.filter((a) => a.costDataSource === "live").length;
+  const totalSourced = appsWithSource.length;
+  const allLive = liveCount > 0 && liveCount === totalSourced;
+  const someLive = liveCount > 0 && liveCount < totalSourced;
+  const costLiveBadge = allLive ? (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide mt-1.5">
+      <Wifi className="h-3 w-3" />
+      Live
+    </span>
+  ) : someLive ? (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide mt-1.5">
+      <Wifi className="h-3 w-3" />
+      {liveCount}/{totalSourced} Live
+    </span>
+  ) : null;
+
   const isFiltered = authFilter !== null || envFilter !== "all" || budgetBreachFilter;
 
   const filterSummaryParts: string[] = [];
@@ -507,6 +529,66 @@ function BudgetSummaryWidget({
             disabled={csvDisabled}
             copied={copied}
           />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 border-b border-border divide-x divide-border">
+        {/* Spent MTD */}
+        <div className="p-3 flex flex-col gap-0.5">
+          <div className="text-[11px] text-muted-foreground font-medium">Spent MTD</div>
+          {!filteredApps ? (
+            <Skeleton className="h-6 w-20 mt-1" />
+          ) : (
+            <div className="text-lg font-semibold tabular-nums">{fmt(totalSpentMTD)}</div>
+          )}
+          <div className="text-[10px] text-muted-foreground mt-0.5">
+            {filteredApps ? `Across ${filteredApps.length} app${filteredApps.length !== 1 ? "s" : ""}` : ""}
+          </div>
+        </div>
+
+        {/* Total Budget */}
+        <div className="p-3 flex flex-col gap-0.5">
+          <div className="text-[11px] text-muted-foreground font-medium">Total Budget</div>
+          {!filteredApps ? (
+            <Skeleton className="h-6 w-20 mt-1" />
+          ) : (
+            <div className="text-lg font-semibold tabular-nums">
+              {totalBudget > 0 ? fmt(totalBudget) : <span className="text-muted-foreground/50">—</span>}
+            </div>
+          )}
+          {costLiveBadge}
+        </div>
+
+        {/* Forecast EOM */}
+        <div className="p-3 flex flex-col gap-0.5">
+          <div className="text-[11px] text-muted-foreground font-medium">Forecast EOM</div>
+          {!filteredApps ? (
+            <Skeleton className="h-6 w-20 mt-1" />
+          ) : (
+            <div className="text-lg font-semibold tabular-nums">
+              {totalForecast > 0 ? fmt(totalForecast) : <span className="text-muted-foreground/50">—</span>}
+            </div>
+          )}
+          {costLiveBadge}
+        </div>
+
+        {/* Variance */}
+        <div className="p-3 flex flex-col gap-0.5">
+          <div className="text-[11px] text-muted-foreground font-medium">Variance</div>
+          {!filteredApps ? (
+            <Skeleton className="h-6 w-20 mt-1" />
+          ) : (
+            <div className={`text-lg font-semibold tabular-nums ${totalVariance == null ? "" : totalVariance < 0 ? "text-destructive" : "text-emerald-500"}`}>
+              {totalVariance == null ? (
+                <span className="text-muted-foreground/50">—</span>
+              ) : (
+                fmt(totalVariance)
+              )}
+            </div>
+          )}
+          <div className="text-[10px] text-muted-foreground mt-0.5">
+            {totalVariance == null ? "" : totalVariance >= 0 ? "Remaining headroom" : "Over forecast"}
+          </div>
         </div>
       </div>
 
