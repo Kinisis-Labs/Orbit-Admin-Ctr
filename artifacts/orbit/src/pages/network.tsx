@@ -3,6 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { DataSourceBadge } from "@/components/data-source-badge";
+import { RefreshingBar } from "@/components/refreshing-bar";
 import { Network } from "lucide-react";
 import type { GlobalEndpointRow } from "@workspace/api-client-react";
 
@@ -16,7 +17,7 @@ const TONE: Record<EndpointStatus, "ok" | "warn" | "bad" | "muted"> = {
 };
 
 export default function NetworkPage() {
-  const { data, isLoading } = useListGlobalEndpoints();
+  const { data, isLoading, isFetching } = useListGlobalEndpoints();
   const eps = data?.endpoints ?? [];
   const isEmpty = !isLoading && eps.length === 0;
 
@@ -31,6 +32,7 @@ export default function NetworkPage() {
 
   return (
     <div className="space-y-4">
+      <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
       <PageHeader
         title="Network"
         subtitle="Cross-application endpoint health, latency, and packet loss"
