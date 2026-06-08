@@ -163,10 +163,13 @@ async function checkNetworkResourceGraph(): Promise<CheckResult> {
       { err, subscriptions: subs },
       "checkNetworkResourceGraph Resource Graph query failed",
     );
+    const sharedInfraHint = sharedInfraSub && !globalSubs.includes(sharedInfraSub)
+      ? ` — note: ${sharedInfraSub} is the AZURE_SUB_SHARED_INFRA sub (sub-sharedplatform); grant Reader there too`
+      : "";
     return {
       status: "error",
       detail: isAuthError
-        ? `Missing 'Reader' role on subscription(s) ${subs.join(", ")} for managed identity id-orbit-api-prod`
+        ? `Missing 'Reader' role on subscription(s) ${subs.join(", ")} for managed identity id-orbit-api-prod${sharedInfraHint}`
         : `Resource Graph error (queried subs: ${subs.join(", ")}): ${msg}`,
     };
   }
