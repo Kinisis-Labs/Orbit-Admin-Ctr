@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppAlerts } from "@/hooks/use-app-alerts";
 import { useApps } from "@/hooks/use-apps";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,6 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { InfraAlertHistory } from "@/components/infra-alert-history";
 import { AlertConfigTable } from "@/components/alert-config-table";
+import { ViolationLogPanel } from "@/components/violation-log-panel";
+import { markAllViolationsSeen } from "@/hooks/use-violation-log";
 
 type AlertRow = {
   id: string;
@@ -34,6 +36,10 @@ export default function Alerts() {
   const { toast } = useToast();
   const { scope } = useScope();
   const [filter, setFilter] = useState("");
+
+  useEffect(() => {
+    markAllViolationsSeen();
+  }, []);
   const [thresholdsOpen, setThresholdsOpen] = useState(false);
   const { mode } = useAuth();
 
@@ -178,6 +184,7 @@ export default function Alerts() {
           </Table>
         </div>
       </div>
+      <ViolationLogPanel />
       <InfraAlertHistory appId={scope} />
       {selectedApp ? (
         <AlertConfigTable appId={scope} />

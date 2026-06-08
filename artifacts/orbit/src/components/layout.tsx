@@ -69,7 +69,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   const { overBudgetCount } = useOverBudgetDays(canSeeCost);
-  const { overThresholdCount } = useInfraThresholdAlerts();
+  const { overThresholdCount, unseenViolationCount } = useInfraThresholdAlerts();
   const { unacknowledgedCount: unacknowledgedBudgetAlerts } = useUnacknowledgedBudgetAlerts(canSeeCost);
 
   const search = useSearch();
@@ -153,7 +153,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <nav className="flex flex-col gap-0.5 w-full px-1">
             <NavGroup label="Monitoring" collapsed={navCollapsed} />
             <NavItem href="/" icon={<Home className="h-[18px] w-[18px]" />} label="Home" active={location === "/"} collapsed={navCollapsed} />
-            <NavItem href="/alerts" icon={<Bell className="h-[18px] w-[18px]" />} label="Alerts" active={location === "/alerts"} collapsed={navCollapsed} alertCount={overThresholdCount} />
+            <NavItem href="/alerts" icon={<Bell className="h-[18px] w-[18px]" />} label="Alerts" active={location === "/alerts"} collapsed={navCollapsed} alertCount={overThresholdCount} unseenViolationCount={unseenViolationCount} />
             <NavItem href="/deployments" icon={<Rocket className="h-[18px] w-[18px]" />} label="Deployments" active={location === "/deployments"} collapsed={navCollapsed} />
             <NavItem href="/incidents" icon={<AlertOctagon className="h-[18px] w-[18px]" />} label="Incidents" active={location === "/incidents"} collapsed={navCollapsed} />
             <NavItem href="/activity" icon={<Activity className="h-[18px] w-[18px]" />} label="Activity log" active={location === "/activity"} collapsed={navCollapsed} />
@@ -261,6 +261,7 @@ function NavItem({
   trailingTitle,
   overBudgetCount = 0,
   alertCount = 0,
+  unseenViolationCount = 0,
   unacknowledgedBudgetAlerts = 0,
 }: {
   href: string;
@@ -272,30 +273,38 @@ function NavItem({
   trailingTitle?: string;
   overBudgetCount?: number;
   alertCount?: number;
+  unseenViolationCount?: number;
   unacknowledgedBudgetAlerts?: number;
 }) {
   const hasBudgetAlert = overBudgetCount > 0;
   const hasInfraAlert = alertCount > 0;
   const hasUnacknowledged = unacknowledgedBudgetAlerts > 0;
-  const hasAlert = hasBudgetAlert || hasInfraAlert || hasUnacknowledged;
+  const hasUnseenViolation = unseenViolationCount > 0;
+  const hasAlert = hasBudgetAlert || hasInfraAlert || hasUnacknowledged || hasUnseenViolation;
 
   const badgeCount = hasUnacknowledged
     ? unacknowledgedBudgetAlerts
     : hasBudgetAlert
     ? overBudgetCount
-    : alertCount;
+    : hasInfraAlert
+    ? alertCount
+    : unseenViolationCount;
   const collapsedTitle = hasUnacknowledged
     ? `${label} — ${unacknowledgedBudgetAlerts} unacknowledged budget ${unacknowledgedBudgetAlerts === 1 ? "alert" : "alerts"}`
     : hasBudgetAlert
     ? `${label} — ${overBudgetCount} over-budget ${overBudgetCount === 1 ? "app" : "apps"}`
     : hasInfraAlert
     ? `${label} — ${alertCount} ${alertCount === 1 ? "app" : "apps"} over infra threshold`
+    : hasUnseenViolation
+    ? `${label} — ${unseenViolationCount} unseen threshold ${unseenViolationCount === 1 ? "violation" : "violations"}`
     : label;
   const badgeTitle = hasUnacknowledged
     ? `${unacknowledgedBudgetAlerts} unacknowledged budget ${unacknowledgedBudgetAlerts === 1 ? "alert" : "alerts"}`
     : hasBudgetAlert
     ? `${overBudgetCount} over-budget ${overBudgetCount === 1 ? "app" : "apps"} in the current window`
-    : `${alertCount} ${alertCount === 1 ? "app" : "apps"} currently over infra threshold`;
+    : hasInfraAlert
+    ? `${alertCount} ${alertCount === 1 ? "app" : "apps"} currently over infra threshold`
+    : `${unseenViolationCount} unseen threshold ${unseenViolationCount === 1 ? "violation" : "violations"}`;
 
   return (
     <Link href={href}>

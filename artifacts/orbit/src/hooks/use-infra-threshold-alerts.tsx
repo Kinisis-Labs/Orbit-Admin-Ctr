@@ -7,6 +7,11 @@ import {
 import type { InfrastructureReport, MetricSeries } from "@workspace/api-client-react";
 import { toast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import {
+  appendViolation,
+  markViolationsDismissed,
+  useViolationLog,
+} from "@/hooks/use-violation-log";
 
 const STORAGE_PREFIX = "infra-alert-ack";
 
@@ -47,8 +52,12 @@ function getLatestValue(
   return sorted[0].value;
 }
 
-export function useInfraThresholdAlerts(): { overThresholdCount: number } {
+export function useInfraThresholdAlerts(): {
+  overThresholdCount: number;
+  unseenViolationCount: number;
+} {
   const { data: configs } = useListAlertConfig();
+  const { unseenCount } = useViolationLog();
 
   const infraQueries = useQueries({
     queries: (configs ?? []).map((row) =>
@@ -63,7 +72,7 @@ export function useInfraThresholdAlerts(): { overThresholdCount: number } {
     if (!configs || configs.length === 0) return;
 
     const newViolations: string[] = [];
-    const newViolationKeys: string[] = [];
+    const newViolationKeys: Array<{ dismissKey: string; appId: string; metric: "cpu" | "mem" }> = [];
 
     configs.forEach((row, i) => {
       const infraData = infraQueries[i]?.data as InfrastructureReport | undefined;
@@ -87,12 +96,21 @@ export function useInfraThresholdAlerts(): { overThresholdCount: number } {
           prevStateRef.current.set(cpuKey, isAbove);
 
           if (!wasAbove && isAbove) {
+            appendViolation({
+              appId: row.appId,
+              appName: row.appName,
+              metric: "cpu",
+              value: cpu,
+              threshold: row.cpuThresholdPct,
+              timestamp: new Date().toISOString(),
+              dismissed: false,
+            });
             const dismissKey = getDismissKey(row.appId, "cpu");
             if (!isAlertDismissed(dismissKey)) {
               newViolations.push(
                 `${row.appName} — CPU ${cpu.toFixed(1)}% (threshold ${row.cpuThresholdPct}%)`
               );
-              newViolationKeys.push(dismissKey);
+              newViolationKeys.push({ dismissKey, appId: row.appId, metric: "cpu" });
             }
           }
         }
@@ -110,12 +128,21 @@ export function useInfraThresholdAlerts(): { overThresholdCount: number } {
           prevStateRef.current.set(memKey, isAbove);
 
           if (!wasAbove && isAbove) {
+            appendViolation({
+              appId: row.appId,
+              appName: row.appName,
+              metric: "mem",
+              value: mem,
+              threshold: row.memoryThresholdPct,
+              timestamp: new Date().toISOString(),
+              dismissed: false,
+            });
             const dismissKey = getDismissKey(row.appId, "mem");
             if (!isAlertDismissed(dismissKey)) {
               newViolations.push(
                 `${row.appName} — Memory ${mem.toFixed(1)}% (threshold ${row.memoryThresholdPct}%)`
               );
-              newViolationKeys.push(dismissKey);
+              newViolationKeys.push({ dismissKey, appId: row.appId, metric: "mem" });
             }
           }
         }
@@ -129,14 +156,22 @@ export function useInfraThresholdAlerts(): { overThresholdCount: number } {
         ? "Infra threshold crossed"
         : `${newViolations.length} infra thresholds crossed`;
 
-    const keysSnapshot = [...newViolationKeys];
+    const snapshot = [...newViolationKeys];
 
     toast({
       title,
       description: newViolations.join("\n"),
       variant: "destructive",
       action: (
-        <ToastAction altText="Dismiss" onClick={() => keysSnapshot.forEach(dismissAlert)}>
+        <ToastAction
+          altText="Dismiss"
+          onClick={() => {
+            snapshot.forEach(({ dismissKey, appId, metric }) => {
+              dismissAlert(dismissKey);
+              markViolationsDismissed(appId, metric);
+            });
+          }}
+        >
           Dismiss
         </ToastAction>
       ),
@@ -156,5 +191,5 @@ export function useInfraThresholdAlerts(): { overThresholdCount: number } {
     return cpuOver || memOver ? count + 1 : count;
   }, 0);
 
-  return { overThresholdCount };
+  return { overThresholdCount, unseenViolationCount: unseenCount };
 }
