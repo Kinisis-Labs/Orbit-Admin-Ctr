@@ -360,20 +360,34 @@ function ThresholdHistoryContent({ appId, appName }: { appId: string; appName: s
             Clear
           </Button>
         )}
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-[12px] px-2 ml-auto shrink-0"
-          onClick={downloadCsv}
-          disabled={allItems.length === 0 || isExporting}
-          title="Download complete history as CSV"
-        >
-          {isExporting ? (
-            <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Exporting…</>
-          ) : (
-            <><Download className="h-3 w-3 mr-1" />Download CSV</>
+        <div className="ml-auto flex flex-col items-end gap-1 shrink-0">
+          {hasMore && !isExporting && (
+            <p className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-3 w-3 shrink-0" />
+              {allItems.length} of {total} entries loaded — export will fetch all
+            </p>
           )}
-        </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-[12px] px-2"
+            onClick={downloadCsv}
+            disabled={allItems.length === 0 || isExporting}
+            title={
+              hasMore
+                ? `Only ${allItems.length} of ${total} entries are loaded. Clicking will fetch all ${total} entries then download.`
+                : "Download complete history as CSV"
+            }
+          >
+            {isExporting ? (
+              <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Exporting…</>
+            ) : hasMore ? (
+              <><Download className="h-3 w-3 mr-1" />Load all & export</>
+            ) : (
+              <><Download className="h-3 w-3 mr-1" />Download CSV</>
+            )}
+          </Button>
+        </div>
       </div>
       {filteredItems.length === 0 ? (
         <p className="text-[13px] text-muted-foreground px-2 py-6 text-center">
