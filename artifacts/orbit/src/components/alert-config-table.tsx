@@ -18,8 +18,10 @@ import { cn } from "@/lib/utils";
 import { POLL_OPTIONS, type PollValue, usePollingInterval } from "@/hooks/use-polling-interval";
 import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 
+export const ALERTS_INFRA_POLL_KEY = "orbit:alert-table:poll-interval:global";
+
 function pollIntervalKey(appId: string | undefined): string {
-  return `orbit:alert-table:poll-interval:${appId ?? "global"}`;
+  return appId ? `orbit:alert-table:poll-interval:${appId}` : ALERTS_INFRA_POLL_KEY;
 }
 
 function getLatestValue(report: InfrastructureReport | undefined, seriesName: string): number | null {

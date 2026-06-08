@@ -5,6 +5,9 @@ import {
 } from "@workspace/api-client-react";
 import type { InfrastructureReport, MetricSeries } from "@workspace/api-client-react";
 import type { ActiveViolation } from "@/hooks/use-infra-threshold-alerts";
+import { INFRASTRUCTURE_DEFAULT_REFETCH_INTERVAL } from "@/hooks/use-app-infrastructure";
+
+export { INFRASTRUCTURE_DEFAULT_REFETCH_INTERVAL };
 
 function getLatestValue(
   report: InfrastructureReport | undefined,
@@ -19,13 +22,17 @@ function getLatestValue(
   return sorted[0].value;
 }
 
-export function useActiveInfraViolations(): ActiveViolation[] {
+export function useActiveInfraViolations(
+  refetchInterval: number = INFRASTRUCTURE_DEFAULT_REFETCH_INTERVAL
+): ActiveViolation[] {
   const { data: configs } = useListAlertConfig();
 
   const infraQueries = useQueries({
-    queries: (configs ?? []).map((row) =>
-      getGetInfrastructureQueryOptions(row.appId)
-    ),
+    queries: (configs ?? []).map((row) => ({
+      ...getGetInfrastructureQueryOptions(row.appId),
+      refetchInterval: refetchInterval > 0 ? refetchInterval : false,
+      refetchIntervalInBackground: false,
+    })),
   });
 
   const violations: ActiveViolation[] = [];

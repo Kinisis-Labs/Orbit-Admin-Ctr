@@ -4,6 +4,7 @@ import {
   useListAlertConfig,
   getGetInfrastructureQueryOptions,
 } from "@workspace/api-client-react";
+import { INFRASTRUCTURE_DEFAULT_REFETCH_INTERVAL } from "@/hooks/use-app-infrastructure";
 import type { InfrastructureReport, MetricSeries } from "@workspace/api-client-react";
 import { toast } from "@/hooks/use-toast";
 import { ChevronDown } from "lucide-react";
@@ -134,9 +135,11 @@ export function useInfraThresholdAlerts(): {
   const { unseenCount } = useViolationLog();
 
   const infraQueries = useQueries({
-    queries: (configs ?? []).map((row) =>
-      getGetInfrastructureQueryOptions(row.appId)
-    ),
+    queries: (configs ?? []).map((row) => ({
+      ...getGetInfrastructureQueryOptions(row.appId),
+      refetchInterval: INFRASTRUCTURE_DEFAULT_REFETCH_INTERVAL,
+      refetchIntervalInBackground: false,
+    })),
   });
 
   const prevStateRef = useRef<Map<string, boolean>>(new Map());

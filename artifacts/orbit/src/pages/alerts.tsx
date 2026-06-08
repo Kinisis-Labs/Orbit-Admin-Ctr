@@ -19,10 +19,11 @@ import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { InfraAlertHistory } from "@/components/infra-alert-history";
-import { AlertConfigTable } from "@/components/alert-config-table";
+import { AlertConfigTable, ALERTS_INFRA_POLL_KEY } from "@/components/alert-config-table";
 import { ViolationLogPanel } from "@/components/violation-log-panel";
 import { markAllViolationsSeen } from "@/hooks/use-violation-log";
 import { useActiveInfraViolations } from "@/hooks/use-active-infra-violations";
+import { usePollingInterval } from "@/hooks/use-polling-interval";
 
 type AlertRow = {
   id: string;
@@ -60,7 +61,8 @@ export default function Alerts() {
     setThresholdsOpen(open);
   };
   const { mode } = useAuth();
-  const activeViolations = useActiveInfraViolations();
+  const [infraPollInterval] = usePollingInterval(ALERTS_INFRA_POLL_KEY);
+  const activeViolations = useActiveInfraViolations(infraPollInterval);
 
   const { data: apps } = useApps();
   const selectedApp = apps?.find((a) => a.id === scope);
