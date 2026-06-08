@@ -217,8 +217,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 const NOTICE_BTN: React.CSSProperties = {
   display: "inline-block",
-  padding: "8px 16px",
-  borderRadius: 4,
+  padding: "8px 20px",
+  borderRadius: 6,
   border: "1px solid #334155",
   background: "#1e293b",
   color: "#e2e8f0",
@@ -228,6 +228,136 @@ const NOTICE_BTN: React.CSSProperties = {
   textDecoration: "none",
 };
 
+const NOTICE_BTN_PRIMARY: React.CSSProperties = {
+  ...NOTICE_BTN,
+  background: "#3b82f6",
+  border: "1px solid #2563eb",
+  color: "#fff",
+};
+
+const REQUEST_ACCESS_SUBJECT = "Request access to Orbit";
+const REQUEST_ACCESS_BODY =
+  "Hi,\n\nI successfully signed in with my Microsoft account but do not have access to Orbit.\n\nPlease add me to the Orbit-Authorized-Users group.\n\nThanks";
+const ORBIT_ACCESS_EMAIL = "orbit-access@kinisislabs.com";
+
+function DeniedNotice({ onSignOut }: { onSignOut: () => void }) {
+  const mailtoHref = `mailto:${ORBIT_ACCESS_EMAIL}?subject=${encodeURIComponent(REQUEST_ACCESS_SUBJECT)}&body=${encodeURIComponent(REQUEST_ACCESS_BODY)}`;
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        background: "#0b1120",
+        color: "#e2e8f0",
+        fontFamily: "system-ui, sans-serif",
+        padding: 24,
+      }}
+    >
+      <div style={{ maxWidth: 480, textAlign: "center" }}>
+        <div
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: "50%",
+            background: "#1e293b",
+            border: "1px solid #334155",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 20px",
+          }}
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#94a3b8"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </div>
+        <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 10 }}>
+          Access not granted
+        </div>
+        <p
+          style={{
+            fontSize: 14,
+            color: "#94a3b8",
+            marginBottom: 6,
+            lineHeight: 1.6,
+          }}
+        >
+          You signed in successfully with your Microsoft account, but your
+          account hasn't been added to the{" "}
+          <span
+            style={{
+              fontFamily: "monospace",
+              background: "#1e293b",
+              padding: "1px 5px",
+              borderRadius: 3,
+              color: "#cbd5e1",
+              fontSize: 12,
+            }}
+          >
+            Orbit-Authorized-Users
+          </span>{" "}
+          group yet.
+        </p>
+        <p
+          style={{
+            fontSize: 14,
+            color: "#64748b",
+            marginBottom: 28,
+            lineHeight: 1.6,
+          }}
+        >
+          Ask a Kinisis administrator to grant you access, or use the button
+          below to send a request.
+        </p>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            justifyContent: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <a href={mailtoHref} style={NOTICE_BTN_PRIMARY}>
+            Request access
+          </a>
+          <button type="button" style={NOTICE_BTN} onClick={onSignOut}>
+            Sign out
+          </button>
+        </div>
+        <p
+          style={{
+            marginTop: 24,
+            fontSize: 12,
+            color: "#475569",
+            lineHeight: 1.5,
+          }}
+        >
+          Once access is granted, sign back in with the same Microsoft account.
+          If you believe this is a mistake, contact{" "}
+          <a
+            href={`mailto:${ORBIT_ACCESS_EMAIL}`}
+            style={{ color: "#60a5fa", textDecoration: "none" }}
+          >
+            {ORBIT_ACCESS_EMAIL}
+          </a>
+          .
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function AuthNotice({
   kind,
   onSignOut,
@@ -235,16 +365,14 @@ function AuthNotice({
   kind: AuthError;
   onSignOut: () => void;
 }) {
-  const denied = kind === "denied";
+  if (kind === "denied") {
+    return <DeniedNotice onSignOut={onSignOut} />;
+  }
   const unavailable = kind === "unavailable";
-  const title = denied
-    ? "You don't have access to Orbit"
-    : unavailable
+  const title = unavailable
     ? "Orbit is temporarily unavailable"
     : "Sign-in could not be completed";
-  const body = denied
-    ? "Your account isn't a member of the Orbit-Authorized-Users group. Ask a Kinisis administrator to grant access, then sign in again."
-    : unavailable
+  const body = unavailable
     ? "Could not reach the Orbit API. Check that the service is running and try again."
     : "Something went wrong while signing you in. Please try again.";
   return (
@@ -271,15 +399,9 @@ function AuthNotice({
         >
           {body}
         </p>
-        {denied ? (
-          <button type="button" style={NOTICE_BTN} onClick={onSignOut}>
-            Sign out
-          </button>
-        ) : (
-          <a href={AUTH_LOGIN} style={NOTICE_BTN}>
-            Try again
-          </a>
-        )}
+        <a href={AUTH_LOGIN} style={NOTICE_BTN}>
+          Try again
+        </a>
       </div>
     </div>
   );
