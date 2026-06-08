@@ -6,37 +6,99 @@ import {
 } from "@workspace/api-client-react";
 import type { InfrastructureReport, MetricSeries } from "@workspace/api-client-react";
 import { toast } from "@/hooks/use-toast";
-import { ToastAction } from "@/components/ui/toast";
+import { ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   appendViolation,
   markViolationsDismissed,
   useViolationLog,
 } from "@/hooks/use-violation-log";
 
-const STORAGE_PREFIX = "infra-alert-ack";
+const STORAGE_PREFIX = "infra-alert-snooze";
 
-function hourBucket(): number {
-  return Math.floor(Date.now() / 3_600_000);
+const SNOOZE_OPTIONS = [
+  { label: "1 hour", hours: 1 },
+  { label: "4 hours", hours: 4 },
+  { label: "8 hours", hours: 8 },
+  { label: "24 hours", hours: 24 },
+] as const;
+
+function getSnoozeKey(appId: string, metric: "cpu" | "mem"): string {
+  return `${STORAGE_PREFIX}:${appId}:${metric}`;
 }
 
-function getDismissKey(appId: string, metric: "cpu" | "mem"): string {
-  return `${STORAGE_PREFIX}:${appId}:${metric}:${hourBucket()}`;
-}
-
-function isAlertDismissed(key: string): boolean {
+function isAlertSnoozed(key: string): boolean {
   try {
-    return sessionStorage.getItem(key) === "1";
+    const raw = localStorage.getItem(key);
+    if (!raw) return false;
+    return parseInt(raw, 10) > Date.now();
   } catch {
     return false;
   }
 }
 
-function dismissAlert(key: string): void {
+function snoozeAlert(key: string, hours: number): void {
   try {
-    sessionStorage.setItem(key, "1");
+    localStorage.setItem(key, String(Date.now() + hours * 3_600_000));
   } catch {
-    // sessionStorage may be unavailable in some contexts; fail silently
+    // localStorage may be unavailable; fail silently
   }
+}
+
+interface SnoozeTarget {
+  snoozeKey: string;
+  appId: string;
+  metric: "cpu" | "mem";
+}
+
+function SnoozeMenu({
+  targets,
+  onSnooze,
+}: {
+  targets: SnoozeTarget[];
+  onSnooze: (hours: number) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-muted/40 bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive"
+          type="button"
+        >
+          Snooze <ChevronDown className="h-3 w-3 opacity-70" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuPortal>
+        <DropdownMenuContent
+          align="end"
+          side="top"
+          className="z-[200] min-w-[130px]"
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+          {SNOOZE_OPTIONS.map(({ label, hours }) => (
+            <DropdownMenuItem
+              key={hours}
+              onSelect={() => {
+                targets.forEach(({ snoozeKey, appId, metric }) => {
+                  snoozeAlert(snoozeKey, hours);
+                  markViolationsDismissed(appId, metric);
+                });
+                onSnooze(hours);
+              }}
+            >
+              {label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenuPortal>
+    </DropdownMenu>
+  );
 }
 
 function getLatestValue(
@@ -72,7 +134,7 @@ export function useInfraThresholdAlerts(): {
     if (!configs || configs.length === 0) return;
 
     const newViolations: string[] = [];
-    const newViolationKeys: Array<{ dismissKey: string; appId: string; metric: "cpu" | "mem" }> = [];
+    const newViolationTargets: SnoozeTarget[] = [];
 
     configs.forEach((row, i) => {
       const infraData = infraQueries[i]?.data as InfrastructureReport | undefined;
@@ -105,12 +167,12 @@ export function useInfraThresholdAlerts(): {
               timestamp: new Date().toISOString(),
               dismissed: false,
             });
-            const dismissKey = getDismissKey(row.appId, "cpu");
-            if (!isAlertDismissed(dismissKey)) {
+            const snoozeKey = getSnoozeKey(row.appId, "cpu");
+            if (!isAlertSnoozed(snoozeKey)) {
               newViolations.push(
                 `${row.appName} — CPU ${cpu.toFixed(1)}% (threshold ${row.cpuThresholdPct}%)`
               );
-              newViolationKeys.push({ dismissKey, appId: row.appId, metric: "cpu" });
+              newViolationTargets.push({ snoozeKey, appId: row.appId, metric: "cpu" });
             }
           }
         }
@@ -137,12 +199,12 @@ export function useInfraThresholdAlerts(): {
               timestamp: new Date().toISOString(),
               dismissed: false,
             });
-            const dismissKey = getDismissKey(row.appId, "mem");
-            if (!isAlertDismissed(dismissKey)) {
+            const snoozeKey = getSnoozeKey(row.appId, "mem");
+            if (!isAlertSnoozed(snoozeKey)) {
               newViolations.push(
                 `${row.appName} — Memory ${mem.toFixed(1)}% (threshold ${row.memoryThresholdPct}%)`
               );
-              newViolationKeys.push({ dismissKey, appId: row.appId, metric: "mem" });
+              newViolationTargets.push({ snoozeKey, appId: row.appId, metric: "mem" });
             }
           }
         }
@@ -156,26 +218,28 @@ export function useInfraThresholdAlerts(): {
         ? "Infra threshold crossed"
         : `${newViolations.length} infra thresholds crossed`;
 
-    const snapshot = [...newViolationKeys];
+    const snapshot = [...newViolationTargets];
 
-    toast({
+    let dismissToast: (() => void) | undefined;
+
+    const action = (
+      <SnoozeMenu
+        targets={snapshot}
+        onSnooze={() => {
+          dismissToast?.();
+        }}
+      />
+    );
+
+    const { dismiss } = toast({
       title,
       description: newViolations.join("\n"),
       variant: "destructive",
-      action: (
-        <ToastAction
-          altText="Dismiss"
-          onClick={() => {
-            snapshot.forEach(({ dismissKey, appId, metric }) => {
-              dismissAlert(dismissKey);
-              markViolationsDismissed(appId, metric);
-            });
-          }}
-        >
-          Dismiss
-        </ToastAction>
-      ),
+      duration: 30_000,
+      action,
     });
+
+    dismissToast = dismiss;
   }, [configs, infraQueries]);
 
   const overThresholdCount = (configs ?? []).reduce((count, row, i) => {
