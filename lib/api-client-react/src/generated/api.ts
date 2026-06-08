@@ -2268,77 +2268,6 @@ export function useListGlobalEndpoints<TData = Awaited<ReturnType<typeof listGlo
 
 
 
-export const getGetGlobalCostSummaryUrl = () => {
-
-
-  return `/api/global/cost-summary`
-}
-
-/**
- * @summary Cross-application cost summary — total MTD spend and per-app breakdown with WoW trend.
- */
-export const getGlobalCostSummary = async ( options?: RequestInit): Promise<GetGlobalCostSummaryResponse> => {
-
-  return customFetch<GetGlobalCostSummaryResponse>(getGetGlobalCostSummaryUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetGlobalCostSummaryQueryKey = () => {
-    return [
-    `/api/global/cost-summary`
-    ] as const;
-    }
-
-
-export const getGetGlobalCostSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getGlobalCostSummary>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGlobalCostSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetGlobalCostSummaryQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGlobalCostSummary>>> = ({ signal }) => getGlobalCostSummary({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGlobalCostSummary>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetGlobalCostSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getGlobalCostSummary>>>
-export type GetGlobalCostSummaryQueryError = ErrorType<unknown>
-
-
-/**
- * @summary Cross-application cost summary — total MTD spend and per-app breakdown with WoW trend.
- */
-
-export function useGetGlobalCostSummary<TData = Awaited<ReturnType<typeof getGlobalCostSummary>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGlobalCostSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetGlobalCostSummaryQueryOptions(options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
 export const getListAnomalyDismissalsUrl = (params: ListAnomalyDismissalsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -2493,6 +2422,84 @@ export const useDismissAnomaly = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getDismissAnomalyMutationOptions(options));
     }
+
+export const getGetGlobalCostSummaryUrl = () => {
+
+
+
+
+  return `/api/global/cost-summary`
+}
+
+/**
+ * @summary Cross-application cost summary — total MTD spend and per-app breakdown with WoW trend.
+ */
+export const getGlobalCostSummary = async ( options?: RequestInit): Promise<GetGlobalCostSummaryResponse> => {
+
+  return customFetch<GetGlobalCostSummaryResponse>(getGetGlobalCostSummaryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGlobalCostSummaryQueryKey = () => {
+    return [
+    `/api/global/cost-summary`
+    ] as const;
+    }
+
+
+export const getGetGlobalCostSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getGlobalCostSummary>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGlobalCostSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGlobalCostSummaryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGlobalCostSummary>>> = ({ signal }) => getGlobalCostSummary({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGlobalCostSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGlobalCostSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getGlobalCostSummary>>>
+export type GetGlobalCostSummaryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Cross-application cost summary — total MTD spend and per-app breakdown with WoW trend.
+ */
+
+export function useGetGlobalCostSummary<TData = Awaited<ReturnType<typeof getGlobalCostSummary>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGlobalCostSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGlobalCostSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export const getListBudgetAlertLogUrl = (params?: ListBudgetAlertLogParams,) => {
   const normalizedParams = new URLSearchParams();
 

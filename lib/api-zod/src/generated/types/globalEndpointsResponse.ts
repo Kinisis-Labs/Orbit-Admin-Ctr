@@ -14,4 +14,6 @@ export interface GlobalEndpointsResponse {
   liveEnabled: boolean;
   /** 'live' = Azure Resource Graph query succeeded, 'mock' = Azure configured but query returned no resources, 'none' = Azure not configured. */
   dataSource: GlobalEndpointsResponseDataSource;
+  /** Timestamp of when endpoint data was last fetched from Azure Resource Graph. Only present when dataSource is live. */
+  dataAsOf?: string;
 }

@@ -711,7 +711,8 @@ export const ListGlobalEndpointsResponse = zod.object({
   "packetLossPercent": zod.number()
 })),
   "liveEnabled": zod.boolean().describe('Whether Azure is configured and live endpoint data is being served.'),
-  "dataSource": zod.enum(['live', 'mock', 'none']).describe('\'live\' = Azure Resource Graph query succeeded, \'mock\' = Azure configured but query returned no resources, \'none\' = Azure not configured.')
+  "dataSource": zod.enum(['live', 'mock', 'none']).describe('\'live\' = Azure Resource Graph query succeeded, \'mock\' = Azure configured but query returned no resources, \'none\' = Azure not configured.'),
+  "dataAsOf": zod.string().datetime({"offset":true}).optional().describe('Timestamp of when endpoint data was last fetched from Azure Resource Graph. Only present when dataSource is live.')
 })
 
 

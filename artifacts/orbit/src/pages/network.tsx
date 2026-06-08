@@ -2,6 +2,7 @@ import { useListGlobalEndpoints } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, StatusPill } from "@/components/page-header";
+import { DataSourceBadge } from "@/components/data-source-badge";
 import { Network } from "lucide-react";
 import type { GlobalEndpointRow } from "@workspace/api-client-react";
 
@@ -25,9 +26,16 @@ export default function NetworkPage() {
     ? Math.round(eps.reduce((s, e) => s + e.latencyMs, 0) / eps.length)
     : 0;
 
+  const dataSource = data?.dataSource;
+  const dataAsOf = data?.dataAsOf;
+
   return (
     <div className="space-y-4">
-      <PageHeader title="Network" subtitle="Cross-application endpoint health, latency, and packet loss" />
+      <PageHeader
+        title="Network"
+        subtitle="Cross-application endpoint health, latency, and packet loss"
+        right={dataSource ? <DataSourceBadge dataSource={dataSource} dataAsOf={dataAsOf} label="Azure Resource Graph" /> : undefined}
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <Tile title="Endpoints monitored" value={isLoading ? null : eps.length.toString()} sub="Across all applications" />

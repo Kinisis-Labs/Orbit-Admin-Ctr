@@ -1302,6 +1302,10 @@ components:
           type: string
           enum: [live, mock, none]
           description: "'live' = Azure Resource Graph query succeeded, 'mock' = Azure configured but query returned no resources, 'none' = Azure not configured."
+        dataAsOf:
+          type: string
+          format: date-time
+          description: "Timestamp of when endpoint data was last fetched from Azure Resource Graph. Only present when dataSource is live."
     GlobalEndpointRow:
       type: object
       required: [id, appId, appName, name, region, status, latencyMs, packetLossPercent]

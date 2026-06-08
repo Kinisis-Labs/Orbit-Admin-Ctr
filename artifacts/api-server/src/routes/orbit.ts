@@ -965,7 +965,12 @@ router.get("/global/endpoints", async (_req, res) => {
   const anyLive = endpointResults.some((r) => r !== null && r.length > 0);
   const dataSource = anyLive ? "live" : "mock";
 
-  res.json(ListGlobalEndpointsResponse.parse({ endpoints: rows, liveEnabled: true, dataSource }));
+  res.json(ListGlobalEndpointsResponse.parse({
+    endpoints: rows,
+    liveEnabled: true,
+    dataSource,
+    ...(anyLive ? { dataAsOf: new Date().toISOString() } : {}),
+  }));
 });
 
 export default router;
