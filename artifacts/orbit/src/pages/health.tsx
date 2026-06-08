@@ -643,7 +643,7 @@ function ThresholdSettings() {
   );
 }
 
-type SortCol = "cpu" | "memory" | "uptime" | "p95" | "errRate";
+type SortCol = "cpu" | "memory" | "uptime" | "p95" | "errRate" | "errorBudget";
 type SortDir = "asc" | "desc";
 
 export default function Health() {
@@ -691,6 +691,7 @@ export default function Health() {
       else if (sortCol === "memory") { va = a.memoryPct; vb = b.memoryPct; }
       else if (sortCol === "uptime") { va = a.uptimePct; vb = b.uptimePct; }
       else if (sortCol === "p95") { va = a.p95LatencyMs; vb = b.p95LatencyMs; }
+      else if (sortCol === "errorBudget") { va = a.errorBudgetRemainingPct; vb = b.errorBudgetRemainingPct; }
       else { va = a.errorRatePct; vb = b.errorRatePct; }
       return mul * (va - vb);
     });
@@ -752,7 +753,20 @@ export default function Health() {
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="h-8 font-semibold text-foreground">Error budget remaining</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground p-0">
+                  <button
+                    type="button"
+                    onClick={() => handleSortClick("errorBudget")}
+                    className="flex items-center gap-1 h-full w-full px-4 hover:text-foreground/70 transition-colors"
+                  >
+                    Error budget remaining
+                    {sortCol === "errorBudget" ? (
+                      sortDir === "asc" ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
+                    )}
+                  </button>
+                </TableHead>
                 <TableHead className="h-8 font-semibold text-foreground p-0">
                   <button
                     type="button"
