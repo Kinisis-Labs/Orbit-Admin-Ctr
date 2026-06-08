@@ -32,6 +32,7 @@ import {
   fetchTopExceptions,
   isMonitorConfigured,
   getLogAnalyticsWorkspaceId,
+  resolveAppInsightsResourceId,
 } from "../lib/azureMonitor.js";
 import { isAzureConfigured } from "../lib/azure.js";
 import { fetchActiveAlerts } from "../lib/azureAlerts.js";
@@ -552,6 +553,12 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
       fetchTopExceptions(app, { hours: 24, limit: 5, bypassCache }),
     ]);
 
+  // Resolve App Insights resource ID for deep-link construction on the frontend.
+  // Uses the in-process cache populated by the parallel fetches above, so this
+  // is effectively free when Monitor is configured (cache hit), and a single
+  // Resource Graph query otherwise.
+  const appInsightsResourceId = await resolveAppInsightsResourceId(app);
+
   const lastPoint = (series: typeof liveCpuSeries) =>
     series && series.length > 0 ? series[series.length - 1]!.value : undefined;
   const liveCpuPct = lastPoint(liveCpuSeries);
@@ -574,6 +581,7 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
     ] : [],
     topErrors: liveTopExceptions ?? [],
     dataSource: isLive ? "live" : "mock",
+    ...(appInsightsResourceId ? { appInsightsResourceId } : {}),
   });
   res.json(data);
 });

@@ -133,7 +133,7 @@ const _timeSeriesCache = new Map<string, TimeSeriesCacheEntry>();
  * Returns null if none found. Result is cached in-process.
  * Pass `bypassCache: true` to force a fresh Resource Graph lookup.
  */
-async function resolveAppInsightsResourceId(
+export async function resolveAppInsightsResourceId(
   app: AppRecord,
   { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<string | null> {

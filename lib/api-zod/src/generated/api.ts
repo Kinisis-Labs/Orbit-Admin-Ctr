@@ -296,7 +296,8 @@ export const GetTelemetryResponse = zod.object({
   "count": zod.number(),
   "lastSeen": zod.string().datetime({"offset":true})
 })),
-  "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether telemetry comes from live Azure Monitor \/ Application Insights or built-in mock values.')
+  "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether telemetry comes from live Azure Monitor \/ Application Insights or built-in mock values.'),
+  "appInsightsResourceId": zod.string().optional().describe('Azure resource ID of the Application Insights component for this app. Present only when the resource has been resolved via Resource Graph. Used by the frontend to construct Azure Portal deep-links.')
 })
 
 

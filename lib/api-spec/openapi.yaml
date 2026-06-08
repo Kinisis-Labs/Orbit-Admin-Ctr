@@ -1079,6 +1079,7 @@ components:
           type: array
           items: { $ref: "#/components/schemas/TopError" }
         dataSource: { type: string, enum: [live, mock], description: "Indicates whether telemetry comes from live Azure Monitor / Application Insights or built-in mock values." }
+        appInsightsResourceId: { type: string, description: "Azure resource ID of the Application Insights component for this app. Present only when the resource has been resolved via Resource Graph. Used by the frontend to construct Azure Portal deep-links." }
     TopError:
       type: object
       required: [message, count, lastSeen]

@@ -27,9 +27,24 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { DailySpendChart } from "@/components/daily-spend-chart";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone, Database, Bell, Info, X } from "lucide-react";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone, Database, Bell, Info, X, ExternalLink } from "lucide-react";
 
 const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Build an Azure Portal deep-link to the App Insights Failures blade for the
+ * given resource, optionally pre-filtering to a specific exception type via
+ * the Log Analytics Logs blade with an `exceptions` KQL query.
+ */
+function buildAppInsightsFailuresUrl(resourceId: string, exceptionMessage: string): string {
+  // Encode the exception message into a KQL query scoped to the `exceptions` table.
+  // The Logs blade deep-link opens directly in the App Insights context and
+  // pre-populates the query editor so operators can run or refine it immediately.
+  const kql = `exceptions\n| where outerMessage contains "${exceptionMessage.replace(/"/g, '\\"').slice(0, 200)}"\n| order by timestamp desc\n| limit 100`;
+  const encoded = encodeURIComponent(kql);
+  const encodedId = encodeURIComponent(resourceId);
+  return `https://portal.azure.com/#blade/Microsoft_Azure_Monitoring_Logs/LogsBlade/resourceId/${encodedId}/source/LogsBlade.AnalyticsShareLinkToQuery/query/${encoded}/timespan/P1D`;
+}
 
 function fmtDataAsOf(iso: string | undefined | null): string | null {
   if (!iso) return null;
@@ -761,17 +776,35 @@ function TelemetryTab({ appId }: { appId: string }) {
           <div className="p-0">
             <Table className="text-[12px]">
               <TableBody>
-                {data.topErrors.map((err, i) => (
-                  <TableRow key={i} className="hover:bg-muted/40 border-b border-border/50">
-                    <TableCell className="py-2.5">
-                      <div className="font-mono text-xs text-destructive mb-1 break-all line-clamp-2 leading-tight">{err.message}</div>
-                      <div className="flex justify-between text-muted-foreground text-[10px]">
-                        <span>Count: {err.count}</span>
-                        <span>{format(new Date(err.lastSeen), "MM/dd HH:mm")}</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {data.topErrors.map((err, i) => {
+                  const drillUrl = data.appInsightsResourceId
+                    ? buildAppInsightsFailuresUrl(data.appInsightsResourceId, err.message)
+                    : null;
+                  return (
+                    <TableRow key={i} className="hover:bg-muted/40 border-b border-border/50">
+                      <TableCell className="py-2.5">
+                        <div className="flex items-start justify-between gap-1 mb-1">
+                          <div className="font-mono text-xs text-destructive break-all line-clamp-2 leading-tight flex-1">{err.message}</div>
+                          {drillUrl && (
+                            <a
+                              href={drillUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Open in App Insights Failures"
+                              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-0.5"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
+                        <div className="flex justify-between text-muted-foreground text-[10px]">
+                          <span>Count: {err.count}</span>
+                          <span>{format(new Date(err.lastSeen), "MM/dd HH:mm")}</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
