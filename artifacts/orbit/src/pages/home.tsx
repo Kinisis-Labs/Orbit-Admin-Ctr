@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
-import { getListAppsQueryKey, getGetCostQueryKey, getCost, getGetAppQueryKey, getApp } from "@workspace/api-client-react";
+import { getListAppsQueryKey, getGetCostQueryKey, getCost, getGetAppQueryKey, getApp, useGetGlobalHealth, getGetGlobalHealthQueryKey } from "@workspace/api-client-react";
 import type { AppSummary, AppDetail } from "@workspace/api-client-react";
 import type { UserAuthType } from "@workspace/api-client-react";
 import type { DailyCostPoint } from "@/components/daily-spend-utils";
@@ -27,7 +27,7 @@ import { detectRecentAnomaly } from "@/pages/cost";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { AdminAccessBadge } from "@/components/admin-access-badge";
-import { LiveBadge } from "@/components/data-source-badge";
+import { LiveBadge, DataSourceBadge } from "@/components/data-source-badge";
 import { CostDataSourceBadge } from "@/components/cost-data-source-badge";
 
 function useAppAnomalies(apps: AppSummary[] | undefined, enabled: boolean): Set<string> {
@@ -727,6 +727,17 @@ function BudgetSummaryWidget({
     <LiveBadge label={`${liveCount}/${totalSourced} Live`} className="mt-1.5" />
   ) : null;
 
+  const { data: globalHealth } = useGetGlobalHealth({
+    query: { queryKey: getGetGlobalHealthQueryKey(), staleTime: 5 * 60 * 1000 },
+  });
+  const globalCostSource = globalHealth?.costDataSource;
+  const globalCostSourceBadge =
+    globalCostSource && globalCostSource !== "mock" ? (
+      <div className="mt-1.5">
+        <DataSourceBadge dataSource={globalCostSource} label="Azure Cost Management" />
+      </div>
+    ) : null;
+
   const isFiltered = authFilter !== null || envFilter !== "all" || budgetBreachFilter;
 
   const filterSummaryParts: string[] = [];
@@ -838,6 +849,7 @@ function BudgetSummaryWidget({
           <div className="text-[10px] text-muted-foreground mt-0.5">
             {filteredApps ? `Across ${filteredApps.length} app${filteredApps.length !== 1 ? "s" : ""}` : ""}
           </div>
+          {globalCostSourceBadge}
         </div>
 
         {/* Total Budget */}
