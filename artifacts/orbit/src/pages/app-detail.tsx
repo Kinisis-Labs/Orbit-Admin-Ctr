@@ -27,7 +27,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { DailySpendChart } from "@/components/daily-spend-chart";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone, Database, Bell, Info, X, ExternalLink } from "lucide-react";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone, Database, Bell, Info, X, ExternalLink, ArrowRight } from "lucide-react";
 
 const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
@@ -427,7 +427,16 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
   return (
     <div className="bg-card border border-border shadow-sm p-4 text-[13px]">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-sm">Cost snapshot</h3>
+        <div className="flex items-center gap-3">
+          <h3 className="font-semibold text-sm">Cost snapshot</h3>
+          <button
+            type="button"
+            onClick={onGoToCost}
+            className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 transition-colors"
+          >
+            View details <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
         <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
       </div>
       <TooltipProvider delayDuration={600}>
