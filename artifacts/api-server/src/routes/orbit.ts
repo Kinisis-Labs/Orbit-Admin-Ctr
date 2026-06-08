@@ -80,6 +80,7 @@ export const APPS: AppRecord[] = [
     owners: ["Ryan Gutridge"],
     userAuth: "clerk",
     androidPackage: "com.grailbabe.app",
+    playAppId: "placeholder-update-when-live",
     iosBundle: "com.kinisislabs.grailbabe",
     appleAppId: "6741234567",
     appRepo: "GrailBabe",

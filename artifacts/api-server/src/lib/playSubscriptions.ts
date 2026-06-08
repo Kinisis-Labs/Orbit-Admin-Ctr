@@ -13,6 +13,8 @@ export type PlaySubscriptionRow = {
   appName: string;
   environment: string;
   packageName: string;
+  playAppId?: string;
+  playDeveloperId?: string;
   activeSubscribers: number;
   canceledSubscribers: number;
   expiredSubscribers: number;
@@ -60,6 +62,13 @@ function seededRand(seed: string): () => number {
 
 const AVG_PRICE = 7.99; // blended monthly subscription price (USD), placeholder
 
+function playConsoleIds(app: AppRecord): { playAppId?: string; playDeveloperId?: string } {
+  const playAppId = app.playAppId ?? undefined;
+  const developerId = process.env.GOOGLE_PLAY_DEVELOPER_ID?.trim() || undefined;
+  if (!playAppId) return {};
+  return { playAppId, ...(developerId ? { playDeveloperId: developerId } : {}) };
+}
+
 function placeholderRow(app: AppRecord): PlaySubscriptionRow {
   const rand = seededRand(app.id + "play");
   // Dev/test environments carry a tiny tester cohort; prod a larger base.
@@ -75,6 +84,7 @@ function placeholderRow(app: AppRecord): PlaySubscriptionRow {
     appName: app.name,
     environment: app.environment,
     packageName: app.androidPackage ?? "",
+    ...playConsoleIds(app),
     activeSubscribers: active,
     canceledSubscribers: canceled,
     expiredSubscribers: expired,

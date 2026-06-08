@@ -123,11 +123,15 @@ export default function PlaySubscriptions() {
                 <TableHead className="h-8 font-semibold text-foreground text-right">MRR</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground text-right">Revenue (30d)</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground text-right">Active trend</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right">Play Console</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {scoped.map((r) => {
                 const positive = r.activeTrendPct >= 0;
+                const playConsoleUrl = r.playAppId && r.playDeveloperId
+                  ? `https://play.google.com/console/developers/${r.playDeveloperId}/app/${r.playAppId}/subscriptions`
+                  : null;
                 return (
                   <TableRow key={r.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
                     <TableCell className="py-1 font-medium text-primary">{r.appName}</TableCell>
@@ -144,11 +148,25 @@ export default function PlaySubscriptions() {
                         {positive ? "+" : ""}{r.activeTrendPct}%
                       </span>
                     </TableCell>
+                    <TableCell className="py-1 text-right">
+                      {playConsoleUrl ? (
+                        <a
+                          href={playConsoleUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary text-[12px] inline-flex items-center gap-1 hover:underline"
+                        >
+                          Manage <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground/40 text-[12px]">—</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 );
               })}
               {scoped.length === 0 && (
-                <TableRow><TableCell colSpan={9} className="text-center py-6 text-muted-foreground">No Google Play apps in scope.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center py-6 text-muted-foreground">No Google Play apps in scope.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

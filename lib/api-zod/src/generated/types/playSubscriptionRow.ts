@@ -12,6 +12,10 @@ export interface PlaySubscriptionRow {
   appName: string;
   environment: string;
   packageName: string;
+  /** Numeric Google Play app ID. When present, used together with playDeveloperId to construct a direct link to the app in Google Play Console. */
+  playAppId?: string;
+  /** Google Play developer account ID. When present alongside playAppId, enables construction of a direct link into Google Play Console. */
+  playDeveloperId?: string;
   /** Currently active/paying subscribers */
   activeSubscribers: number;
   /** Auto-renew turned off but still within the paid term */

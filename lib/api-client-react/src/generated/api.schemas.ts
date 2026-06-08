@@ -148,6 +148,8 @@ export type AppDetail = AppSummary & {
   userAuth: UserAuthType;
   /** Google Play package name when this app ships a tracked Android build. Presence flags the app for the Play subscriptions surface. */
   androidPackage?: string;
+  /** Numeric Google Play app ID. When present, used to construct a direct link to the app's management page in Google Play Console. */
+  playAppId?: string;
   /** Apple App Store bundle identifier when this app ships a tracked iOS build. Presence flags the app for the App Store subscriptions surface. */
   iosBundle?: string;
   /** Numeric Apple App ID as shown in App Store Connect (e.g. "6741234567"). Used to construct direct links into the App Store Connect management console. */
@@ -200,6 +202,10 @@ export interface PlaySubscriptionRow {
   appName: string;
   environment: string;
   packageName: string;
+  /** Numeric Google Play app ID. When present, used together with playDeveloperId to construct a direct link to the app in Google Play Console. */
+  playAppId?: string;
+  /** Google Play developer account ID. When present alongside playAppId, enables construction of a direct link into Google Play Console. */
+  playDeveloperId?: string;
   /** Currently active/paying subscribers */
   activeSubscribers: number;
   /** Auto-renew turned off but still within the paid term */

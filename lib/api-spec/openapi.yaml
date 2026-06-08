@@ -844,6 +844,11 @@ components:
               description: >-
                 Google Play package name when this app ships a tracked Android build.
                 Presence flags the app for the Play subscriptions surface.
+            playAppId:
+              type: string
+              description: >-
+                Numeric Google Play app ID. When present, used to construct a direct link
+                to the app's management page in Google Play Console.
             iosBundle:
               type: string
               description: >-
@@ -893,6 +898,16 @@ components:
         appName: { type: string }
         environment: { type: string }
         packageName: { type: string }
+        playAppId:
+          type: string
+          description: >-
+            Numeric Google Play app ID. When present, used together with playDeveloperId
+            to construct a direct link to the app in Google Play Console.
+        playDeveloperId:
+          type: string
+          description: >-
+            Google Play developer account ID. When present alongside playAppId, enables
+            construction of a direct link into Google Play Console.
         activeSubscribers: { type: integer, description: Currently active/paying subscribers }
         canceledSubscribers: { type: integer, description: Auto-renew turned off but still within the paid term }
         expiredSubscribers: { type: integer, description: Lapsed/churned subscribers (inactive) }
