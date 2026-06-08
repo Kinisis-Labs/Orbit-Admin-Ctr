@@ -9,7 +9,7 @@ import { useApp } from "@/hooks/use-app";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
-import { ChevronRight, Bell, TrendingUp, TrendingDown, X, TriangleAlert, Wifi, Smartphone, ExternalLink } from "lucide-react";
+import { ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, Bell, TrendingUp, TrendingDown, X, TriangleAlert, Wifi, Smartphone, ExternalLink } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -614,6 +614,8 @@ function AuthFilterPills({
 }
 
 type BudgetStatus = "over" | "warning" | "ok" | "none";
+type BudgetSortCol = "name" | "auth" | "spent" | "budget" | "forecast" | "utilization" | "status";
+type SortDir = "asc" | "desc";
 
 const BUDGET_STATUS_RANK: Record<BudgetStatus, number> = { over: 0, warning: 1, ok: 2, none: 3 };
 
@@ -680,6 +682,38 @@ function FilterButton({
   );
 }
 
+function BudgetTh({
+  col,
+  sortCol,
+  sortDir,
+  onSort,
+  children,
+  align = "left",
+  className,
+}: {
+  col: BudgetSortCol;
+  sortCol: BudgetSortCol;
+  sortDir: SortDir;
+  onSort: (col: BudgetSortCol) => void;
+  children: React.ReactNode;
+  align?: "left" | "right";
+  className?: string;
+}) {
+  const active = sortCol === col;
+  const Icon = active ? (sortDir === "asc" ? ChevronUp : ChevronDown) : ChevronsUpDown;
+  return (
+    <th
+      className={`font-medium text-muted-foreground py-2 cursor-pointer select-none hover:text-foreground transition-colors ${align === "right" ? "text-right" : "text-left"} ${className ?? ""}`}
+      onClick={() => onSort(col)}
+    >
+      <span className={`inline-flex items-center gap-0.5 ${align === "right" ? "flex-row-reverse" : ""}`}>
+        <Icon className={`h-3 w-3 shrink-0 ${active ? "text-foreground" : "opacity-40"}`} />
+        {children}
+      </span>
+    </th>
+  );
+}
+
 function BudgetSummaryWidget({
   apps,
   isFetching,
@@ -717,6 +751,18 @@ function BudgetSummaryWidget({
       window.removeEventListener("storage", onStorage);
     };
   }, []);
+
+  const [sortCol, setSortCol] = useState<BudgetSortCol>("status");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function handleSort(col: BudgetSortCol) {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  }
 
   const [sparklineRange, setSparklineRange] = useState<7 | 14>(() => {
     try {
@@ -781,11 +827,36 @@ function BudgetSummaryWidget({
       return true;
     });
     return [...filtered].sort((a, b) => {
-      const rankDiff = BUDGET_STATUS_RANK[budgetStatus(a, getBudgetThreshold(a.id))] - BUDGET_STATUS_RANK[budgetStatus(b, getBudgetThreshold(b.id))];
-      if (rankDiff !== 0) return rankDiff;
-      return b.monthToDateCost - a.monthToDateCost;
+      let diff = 0;
+      if (sortCol === "status") {
+        diff =
+          BUDGET_STATUS_RANK[budgetStatus(a, getBudgetThreshold(a.id))] -
+          BUDGET_STATUS_RANK[budgetStatus(b, getBudgetThreshold(b.id))];
+        if (diff === 0) diff = b.monthToDateCost - a.monthToDateCost;
+      } else if (sortCol === "name") {
+        diff = a.name.localeCompare(b.name);
+      } else if (sortCol === "auth") {
+        diff = a.userAuth.localeCompare(b.userAuth);
+      } else if (sortCol === "spent") {
+        diff = a.monthToDateCost - b.monthToDateCost;
+      } else if (sortCol === "budget") {
+        if (a.budget == null && b.budget == null) diff = 0;
+        else if (a.budget == null) diff = 1;
+        else if (b.budget == null) diff = -1;
+        else diff = a.budget - b.budget;
+      } else if (sortCol === "forecast") {
+        if (a.forecast == null && b.forecast == null) diff = 0;
+        else if (a.forecast == null) diff = 1;
+        else if (b.forecast == null) diff = -1;
+        else diff = a.forecast - b.forecast;
+      } else if (sortCol === "utilization") {
+        const pctA = a.budget != null && a.budget > 0 ? (a.monthToDateCost / a.budget) * 100 : -1;
+        const pctB = b.budget != null && b.budget > 0 ? (b.monthToDateCost / b.budget) * 100 : -1;
+        diff = pctA - pctB;
+      }
+      return sortDir === "asc" ? diff : -diff;
     });
-  }, [apps, authFilter, envFilter, budgetBreachFilter, thresholdVersion]);
+  }, [apps, authFilter, envFilter, budgetBreachFilter, thresholdVersion, sortCol, sortDir]);
 
   function goToCost(appId: string) {
     setScope(appId);
@@ -1055,13 +1126,13 @@ function BudgetSummaryWidget({
         <table className="w-full text-[13px]">
           <thead>
             <tr className="border-b border-border bg-muted/30">
-              <th className="text-left font-medium text-muted-foreground px-4 py-2 w-[180px]">Application</th>
-              <th className="text-left font-medium text-muted-foreground px-3 py-2">Auth</th>
-              <th className="text-right font-medium text-muted-foreground px-3 py-2">Spent MTD</th>
-              <th className="text-right font-medium text-muted-foreground px-3 py-2">Budget</th>
-              <th className="text-right font-medium text-muted-foreground px-3 py-2">Forecast</th>
-              <th className="text-left font-medium text-muted-foreground px-3 py-2 w-[120px]">Utilization</th>
-              <th className="text-left font-medium text-muted-foreground px-3 py-2">Status</th>
+              <BudgetTh col="name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="px-4 w-[180px]">Application</BudgetTh>
+              <BudgetTh col="auth" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="px-3">Auth</BudgetTh>
+              <BudgetTh col="spent" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" className="px-3">Spent MTD</BudgetTh>
+              <BudgetTh col="budget" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" className="px-3">Budget</BudgetTh>
+              <BudgetTh col="forecast" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" className="px-3">Forecast</BudgetTh>
+              <BudgetTh col="utilization" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="px-3 w-[120px]">Utilization</BudgetTh>
+              <BudgetTh col="status" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="px-3">Status</BudgetTh>
               <th className="text-right font-medium text-muted-foreground px-3 py-2 w-[60px]">WoW</th>
               <th className="text-left font-medium text-muted-foreground px-3 py-2 w-[88px]">{sparklineRange}d trend</th>
               <th className="w-8 px-2 py-2" />
