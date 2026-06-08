@@ -89,7 +89,7 @@ export function ViolationLogPanel() {
           </span>
         )}
         <span className="text-[11px] text-muted-foreground ml-0.5">
-          Recorded in this browser session — resets on page close
+          Persisted in this browser — entries older than 24 hours are pruned automatically
         </span>
         <div className="flex items-center gap-1.5 ml-auto">
           {unseenCount > 0 && (
@@ -121,7 +121,7 @@ export function ViolationLogPanel() {
       {entries.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
           <BellOff className="h-6 w-6 opacity-40" />
-          <p className="text-sm">No threshold violations detected this session.</p>
+          <p className="text-sm">No threshold violations in the last 24 hours.</p>
           <p className="text-[11px] opacity-70 text-center max-w-xs">
             When a metric crosses a configured threshold, the event is recorded here so you can review what fired — even after the toast has been dismissed.
           </p>

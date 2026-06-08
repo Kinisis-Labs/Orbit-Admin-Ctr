@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 const STORAGE_KEY = "orbit-violation-log";
 const MAX_ENTRIES = 100;
 const UPDATE_EVENT = "orbit:violation-log-updated";
+const TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export interface ViolationEntry {
   id: string;
@@ -16,11 +17,17 @@ export interface ViolationEntry {
   seen: boolean;
 }
 
+function pruneExpired(entries: ViolationEntry[]): ViolationEntry[] {
+  const cutoff = Date.now() - TTL_MS;
+  return entries.filter((e) => new Date(e.timestamp).getTime() >= cutoff);
+}
+
 function readLog(): ViolationEntry[] {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as ViolationEntry[];
+    const parsed = JSON.parse(raw) as ViolationEntry[];
+    return pruneExpired(parsed);
   } catch {
     return [];
   }
@@ -28,10 +35,10 @@ function readLog(): ViolationEntry[] {
 
 function writeLog(entries: ViolationEntry[]): void {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
     window.dispatchEvent(new CustomEvent(UPDATE_EVENT));
   } catch {
-    // sessionStorage may be unavailable in some contexts
+    // localStorage may be unavailable in some contexts
   }
 }
 
@@ -65,7 +72,7 @@ export function markAllViolationsSeen(): void {
 
 export function clearViolationLog(): void {
   try {
-    sessionStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY);
     window.dispatchEvent(new CustomEvent(UPDATE_EVENT));
   } catch {
     // ignore
