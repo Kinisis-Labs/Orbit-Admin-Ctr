@@ -28,8 +28,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { DailySpendChart } from "@/components/daily-spend-chart";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus, Wifi, BarChart2 } from "lucide-react";
-import { DataSourceBadge } from "@/components/data-source-badge";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus, BarChart2 } from "lucide-react";
+import { DataSourceBadge, LiveBadge } from "@/components/data-source-badge";
 
 /**
  * Build an Azure Portal deep-link to the App Insights Failures blade for the
@@ -495,12 +495,7 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
                   budgetThreshold={budgetThreshold}
                 />
                 <div className="text-[11px] text-muted-foreground tabular-nums">{rawUtilPct.toFixed(0)}% of cap used MTD</div>
-                {data.dataSource === "live" && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
-                    <Wifi className="h-3 w-3" />
-                    Live
-                  </span>
-                )}
+                {data.dataSource === "live" && <LiveBadge />}
               </div>
             </button>
           </TooltipTrigger>
@@ -520,12 +515,7 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
                   ? <span className="text-destructive">Projected to exceed cap</span>
                   : <span className="text-muted-foreground">Projected end-of-month</span>}
               </div>
-              {data.dataSource === "live" && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide mt-0.5">
-                  <Wifi className="h-3 w-3" />
-                  Live
-                </span>
-              )}
+              {data.dataSource === "live" && <LiveBadge className="mt-0.5" />}
             </button>
           </TooltipTrigger>
           <TooltipContent>Go to Cost tab</TooltipContent>
@@ -1173,12 +1163,7 @@ function CostTab({ appId }: { appId: string }) {
               budgetThreshold={budgetThreshold}
             />
             <div className="text-[11px] text-muted-foreground tabular-nums">{rawBudgetUtilPct.toFixed(0)}% of cap used MTD</div>
-            {data.dataSource === "live" && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
-                <Wifi className="h-3 w-3" />
-                Live
-              </span>
-            )}
+            {data.dataSource === "live" && <LiveBadge />}
           </div>
         </div>
 
@@ -1193,12 +1178,7 @@ function CostTab({ appId }: { appId: string }) {
               ? <span className="text-destructive">Projected to exceed cap</span>
               : <span className="text-muted-foreground">Projected end-of-month</span>}
           </div>
-          {data.dataSource === "live" && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide mt-1.5">
-              <Wifi className="h-3 w-3" />
-              Live
-            </span>
-          )}
+          {data.dataSource === "live" && <LiveBadge className="mt-1.5" />}
         </div>
 
         {/* Headroom */}

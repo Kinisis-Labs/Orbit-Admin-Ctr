@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/lib/auth";
 import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { PageHeader, StatusPill } from "@/components/page-header";
-import { Wifi } from "lucide-react";
+import { LiveBadge, DemoBadge } from "@/components/data-source-badge";
 
 export default function Subscriptions() {
   const { data: apps, isLoading } = useApps();
@@ -15,18 +15,7 @@ export default function Subscriptions() {
   const isLive = apps != null && apps.some((a) => a.subscriptionName != null);
   const isLoaded = !isLoading && apps != null;
 
-  const liveBadge = isLoaded ? (
-    isLive ? (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
-        <Wifi className="h-3 w-3" />
-        Live
-      </span>
-    ) : (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
-        Demo
-      </span>
-    )
-  ) : null;
+  const liveBadge = isLoaded ? (isLive ? <LiveBadge /> : <DemoBadge />) : null;
 
   const rows = useMemo(() => {
     if (!apps) return [];

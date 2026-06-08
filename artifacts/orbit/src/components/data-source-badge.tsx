@@ -1,5 +1,26 @@
 import { AlertTriangle, Database, Wifi } from "lucide-react";
 
+export function LiveBadge({ label = "Live", className }: { label?: string; className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide${className ? ` ${className}` : ""}`}
+    >
+      <Wifi className="h-3 w-3" />
+      {label}
+    </span>
+  );
+}
+
+export function DemoBadge({ className }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted text-muted-foreground text-[10px] font-semibold uppercase tracking-wide${className ? ` ${className}` : ""}`}
+    >
+      Demo
+    </span>
+  );
+}
+
 const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 function fmtDataAsOf(iso: string | undefined | null): string | null {

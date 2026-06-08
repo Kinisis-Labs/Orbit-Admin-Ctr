@@ -9,7 +9,7 @@ import { useApp } from "@/hooks/use-app";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
-import { ChevronRight, Bell, TrendingUp, X, TriangleAlert, Wifi, Smartphone } from "lucide-react";
+import { ChevronRight, Bell, TrendingUp, X, TriangleAlert, Smartphone } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -27,6 +27,7 @@ import { detectRecentAnomaly } from "@/pages/cost";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { AdminAccessBadge } from "@/components/admin-access-badge";
+import { LiveBadge } from "@/components/data-source-badge";
 
 function useAppAnomalies(apps: AppSummary[] | undefined, enabled: boolean): Set<string> {
   const queries = useQueries({
@@ -536,15 +537,9 @@ function BudgetSummaryWidget({
   const allLive = liveCount > 0 && liveCount === totalSourced;
   const someLive = liveCount > 0 && liveCount < totalSourced;
   const costLiveBadge = allLive ? (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide mt-1.5">
-      <Wifi className="h-3 w-3" />
-      Live
-    </span>
+    <LiveBadge className="mt-1.5" />
   ) : someLive ? (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide mt-1.5">
-      <Wifi className="h-3 w-3" />
-      {liveCount}/{totalSourced} Live
-    </span>
+    <LiveBadge label={`${liveCount}/${totalSourced} Live`} className="mt-1.5" />
   ) : null;
 
   const isFiltered = authFilter !== null || envFilter !== "all" || budgetBreachFilter;
