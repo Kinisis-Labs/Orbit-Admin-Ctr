@@ -932,7 +932,11 @@ components:
         dataSource:
           type: string
           enum: [live, mock]
-          description: "Whether the data came from a real Azure source or is seeded mock data."
+          description: "Whether throughput data came from a real Azure source or is seeded mock data."
+        endpointsDataSource:
+          type: string
+          enum: [live, mock]
+          description: "Whether endpoint data came from a real Azure source or is seeded mock data."
     CostByService:
       type: object
       required: [service, amount]

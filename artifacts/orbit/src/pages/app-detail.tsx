@@ -778,7 +778,7 @@ function NetworkTab({ appId }: { appId: string }) {
         <div className="p-3 border-b border-border bg-card flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Endpoints</h2>
           <div className="flex items-center gap-2">
-            <DataSourceBadge dataSource={data.dataSource} />
+            <DataSourceBadge dataSource={data.endpointsDataSource ?? data.dataSource} />
             {isLiveMode(mode) && (
               <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
             )}

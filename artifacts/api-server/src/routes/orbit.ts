@@ -461,7 +461,8 @@ router.get("/apps/:appId/network", async (req, res) => {
       : [];
   const throughput = throughputAll.filter((s) => s.points.length > 0);
   const dataSource = (liveIngressSeries !== null || liveEgressSeries !== null) ? "live" : "mock";
-  const data = GetNetworkResponse.parse({ endpoints, throughput, dataSource });
+  const endpointsDataSource = liveEndpoints !== null ? "live" : "mock";
+  const data = GetNetworkResponse.parse({ endpoints, throughput, dataSource, endpointsDataSource });
   res.json(data);
 });
 

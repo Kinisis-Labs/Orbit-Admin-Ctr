@@ -7,7 +7,7 @@
  */
 
 /**
- * Whether the data came from a real Azure source or is seeded mock data.
+ * Whether throughput data came from a real Azure source or is seeded mock data.
  */
 export type NetworkReportDataSource = typeof NetworkReportDataSource[keyof typeof NetworkReportDataSource];
 

@@ -220,7 +220,8 @@ export const GetNetworkResponse = zod.object({
   "value": zod.number()
 }))
 })),
-  "dataSource": zod.enum(['live', 'mock']).describe('Whether the data came from a real Azure source or is seeded mock data.')
+  "dataSource": zod.enum(['live', 'mock']).describe('Whether throughput data came from a real Azure source or is seeded mock data.'),
+  "endpointsDataSource": zod.enum(['live', 'mock']).optional().describe('Whether endpoint data came from a real Azure source or is seeded mock data.')
 })
 
 

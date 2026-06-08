@@ -268,7 +268,7 @@ export interface NetworkEndpoint {
 }
 
 /**
- * Whether the data came from a real Azure source or is seeded mock data.
+ * Whether throughput data came from a real Azure source or is seeded mock data.
  */
 export type NetworkReportDataSource = typeof NetworkReportDataSource[keyof typeof NetworkReportDataSource];
 
@@ -278,11 +278,24 @@ export const NetworkReportDataSource = {
   mock: 'mock',
 } as const;
 
+/**
+ * Whether endpoint data came from a real Azure source or is seeded mock data.
+ */
+export type NetworkReportEndpointsDataSource = typeof NetworkReportEndpointsDataSource[keyof typeof NetworkReportEndpointsDataSource];
+
+
+export const NetworkReportEndpointsDataSource = {
+  live: 'live',
+  mock: 'mock',
+} as const;
+
 export interface NetworkReport {
   endpoints: NetworkEndpoint[];
   throughput: MetricSeries[];
-  /** Whether the data came from a real Azure source or is seeded mock data. */
+  /** Whether throughput data came from a real Azure source or is seeded mock data. */
   dataSource: NetworkReportDataSource;
+  /** Whether endpoint data came from a real Azure source or is seeded mock data. */
+  endpointsDataSource?: NetworkReportEndpointsDataSource;
 }
 
 export interface CostByService {
