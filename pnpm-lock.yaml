@@ -166,6 +166,9 @@ importers:
 
   artifacts/api-server:
     dependencies:
+      '@azure/app-configuration':
+        specifier: ^1.11.0
+        version: 1.11.0
       '@azure/arm-consumption':
         specifier: ^9.2.0
         version: 9.2.0
@@ -744,6 +747,10 @@ packages:
     resolution: {integrity: sha512-nBrLsEWm4J2u5LpAPjxADTlq3trDgVZZXHNKabeXZtpq3d3AbN/KGO82R87rdDz5/lYB024rtEf10/q0urNgsA==}
     engines: {node: '>=18.0.0'}
 
+  '@azure/app-configuration@1.11.0':
+    resolution: {integrity: sha512-ehfTNvVyr4lFKz1Nfynubqg/kEWMFMjCQs8lADDa+U1HG96QIoelMYFbfWIixw4KhOqoCAIOWEp4bAXIZ0/V/w==}
+    engines: {node: '>=20.0.0'}
+
   '@azure/arm-consumption@9.2.0':
     resolution: {integrity: sha512-oLAElshfdPwN/vuzMWt5S+68EPH6gR8fTdNndClFMNI3tvYuvWATSLgHpbcXA9h2oX0P0NGU9h/h9fgZIptycQ==}
     engines: {node: '>=14.0.0'}
@@ -767,6 +774,13 @@ packages:
   '@azure/core-client@1.10.1':
     resolution: {integrity: sha512-Nh5PhEOeY6PrnxNPsEHRr9eimxLwgLlpmguQaHKBinFYA/RU9+kOYVOQqOrTsCL+KSxrLLl1gD8Dk5BFW/7l/w==}
     engines: {node: '>=20.0.0'}
+
+  '@azure/core-http-compat@2.4.0':
+    resolution: {integrity: sha512-f1P96IB399YiN2ARYHP7EpZi3Bf3wH4SN2lGzrw7JVwm7bbsVYtf2iKSBwTywD2P62NOPZGHFSZi+6jjb75JuA==}
+    engines: {node: '>=20.0.0'}
+    peerDependencies:
+      '@azure/core-client': ^1.10.0
+      '@azure/core-rest-pipeline': ^1.22.0
 
   '@azure/core-lro@2.7.2':
     resolution: {integrity: sha512-0YIpccoX8m/k00O7mDDMdJpbr6mf1yWo2dfmxt5A8XVZVVMz2SSKaEbMCeJRvgQ0IaSlqhjT47p4hVIRRy90xw==}
@@ -3915,6 +3929,22 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+  '@azure/app-configuration@1.11.0':
+    dependencies:
+      '@azure/abort-controller': 2.1.2
+      '@azure/core-auth': 1.10.1
+      '@azure/core-client': 1.10.1
+      '@azure/core-http-compat': 2.4.0(@azure/core-client@1.10.1)(@azure/core-rest-pipeline@1.23.0)
+      '@azure/core-lro': 2.7.2
+      '@azure/core-paging': 1.6.2
+      '@azure/core-rest-pipeline': 1.23.0
+      '@azure/core-tracing': 1.3.1
+      '@azure/core-util': 1.13.1
+      '@azure/logger': 1.3.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
   '@azure/arm-consumption@9.2.0':
     dependencies:
       '@azure/core-auth': 1.10.1
@@ -3978,6 +4008,12 @@ snapshots:
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
+
+  '@azure/core-http-compat@2.4.0(@azure/core-client@1.10.1)(@azure/core-rest-pipeline@1.23.0)':
+    dependencies:
+      '@azure/abort-controller': 2.1.2
+      '@azure/core-client': 1.10.1
+      '@azure/core-rest-pipeline': 1.23.0
 
   '@azure/core-lro@2.7.2':
     dependencies:
