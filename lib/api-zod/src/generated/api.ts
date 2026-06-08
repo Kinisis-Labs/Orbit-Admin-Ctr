@@ -736,6 +736,24 @@ export const DismissAnomalyBody = zod.object({
 
 
 /**
+ * @summary Cross-application cost summary — total MTD spend and per-app breakdown with WoW trend.
+ */
+export const GetGlobalCostSummaryResponse = zod.object({
+  "total": zod.number().describe('Sum of MTD spend across all apps'),
+  "currency": zod.string(),
+  "byApp": zod.array(zod.object({
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "environment": zod.string(),
+  "monthToDate": zod.number().describe('Month-to-date spend in USD'),
+  "trend": zod.string().nullish().describe('Week-over-week percentage change (e.g. \'+8.2%\' or \'-3.1%\'). Null when insufficient data.')
+})),
+  "dataSource": zod.enum(['live', 'cached', 'mock']),
+  "dataAsOf": zod.string().datetime({"offset":true}).nullish().describe('Timestamp of the most recent live or cached data point across all apps.')
+})
+
+
+/**
  * @summary Recent budget-overrun notifications that were dispatched by the scheduler
  */
 export const ListBudgetAlertLogQueryParams = zod.object({

@@ -5,6 +5,8 @@ import {
   getListAnomalyDismissalsQueryKey,
   useDismissAnomaly,
   getCost,
+  useGetGlobalCostSummary,
+  getGetGlobalCostSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { useQueries } from "@tanstack/react-query";
 import { useApps } from "@/hooks/use-apps";
@@ -181,8 +183,74 @@ export default function Cost() {
         <ScopeSelect allowGlobal />
       </div>
 
-      {isGlobal ? <GlobalCost /> : <AppCost />}
+      {isGlobal ? (
+        <>
+          <GlobalCostPanel />
+          <GlobalCost />
+        </>
+      ) : <AppCost />}
     </div>
+  );
+}
+
+function GlobalCostPanel() {
+  const { data, isLoading } = useGetGlobalCostSummary({
+    query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
+  });
+
+  const totalApps = data?.byApp.length ?? 0;
+  const maxMtd = data?.byApp.reduce((m, r) => Math.max(m, r.monthToDate), 0) ?? 0;
+
+  return (
+    <Panel title="Cost by Application">
+      <Table className="text-[13px]">
+        <THead>
+          <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground">Env</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[130px]">Cost (MTD)</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[80px]">WoW</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground w-[160px]"></TableHead>
+        </THead>
+        <TableBody>
+          {isLoading || !data ? (
+            <SkeletonRows cols={5} rows={3} />
+          ) : (
+            data.byApp.map((row) => {
+              const trend = row.trend ?? null;
+              const isPos = trend?.startsWith("+");
+              const isNeg = trend?.startsWith("-");
+              const trendClass = isPos
+                ? "text-destructive"
+                : isNeg
+                  ? "text-emerald-500"
+                  : "text-muted-foreground";
+              return (
+                <TableRow key={row.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                  <TableCell className="py-1 font-medium">{row.appName}</TableCell>
+                  <TableCell className="py-1 text-[11px] text-muted-foreground">{row.environment}</TableCell>
+                  <TableCell className="py-1 text-right font-mono text-[12px]">{fmt(row.monthToDate)}</TableCell>
+                  <TableCell className={`py-1 text-right font-mono text-[11px] ${trendClass}`}>
+                    {trend ?? <span className="text-muted-foreground/50">—</span>}
+                  </TableCell>
+                  <TableCell className="py-1">
+                    <Progress
+                      value={maxMtd > 0 ? (row.monthToDate / maxMtd) * 100 : 0}
+                      className="h-1.5 rounded-none bg-muted"
+                    />
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+      {!isLoading && data && (
+        <div className="px-3 py-2 border-t border-border bg-muted/30 flex items-center justify-between text-[11px] text-muted-foreground">
+          <span>{totalApps} application{totalApps !== 1 ? "s" : ""}</span>
+          <span className="font-mono font-semibold text-foreground">{fmt(data.total)} total MTD</span>
+        </div>
+      )}
+    </Panel>
   );
 }
 

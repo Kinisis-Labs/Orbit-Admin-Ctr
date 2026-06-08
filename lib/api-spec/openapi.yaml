@@ -502,6 +502,17 @@ paths:
       responses:
         "204":
           description: Dismissed
+  /global/cost-summary:
+    get:
+      operationId: getGlobalCostSummary
+      tags: [global, cost]
+      summary: Cross-application cost summary — total MTD spend and per-app breakdown with WoW trend.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GetGlobalCostSummaryResponse" }
   /budget-alerts/log:
     get:
       operationId: listBudgetAlertLog
@@ -1297,6 +1308,26 @@ components:
         status: { $ref: "#/components/schemas/Status" }
         latencyMs: { type: number }
         packetLossPercent: { type: number }
+    GlobalCostByAppItem:
+      type: object
+      required: [appId, appName, environment, monthToDate]
+      properties:
+        appId: { type: string }
+        appName: { type: string }
+        environment: { type: string }
+        monthToDate: { type: number, description: Month-to-date spend in USD }
+        trend: { type: string, nullable: true, description: "Week-over-week percentage change (e.g. '+8.2%' or '-3.1%'). Null when insufficient data." }
+    GetGlobalCostSummaryResponse:
+      type: object
+      required: [total, currency, byApp, dataSource]
+      properties:
+        total: { type: number, description: Sum of MTD spend across all apps }
+        currency: { type: string }
+        byApp:
+          type: array
+          items: { $ref: "#/components/schemas/GlobalCostByAppItem" }
+        dataSource: { type: string, enum: [live, cached, mock] }
+        dataAsOf: { type: string, format: date-time, nullable: true, description: "Timestamp of the most recent live or cached data point across all apps." }
     BudgetAlertLogEntry:
       type: object
       required: [id, appId, appName, mtd, forecast, budget, channels, sentAt]

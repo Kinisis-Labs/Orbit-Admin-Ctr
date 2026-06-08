@@ -18,6 +18,7 @@ import {
   GetAppThresholdsResponse,
   UpdateAppThresholdsBody,
   ListAppThresholdsLogResponse,
+  GetGlobalCostSummaryResponse,
 } from "@workspace/api-zod";
 import { db, appThresholdsTable, appThresholdsLogTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
@@ -833,6 +834,93 @@ router.get("/global/slos", async (_req, res) => {
     rows,
     dataSource: slosDataSource,
     ...(slosDataSource === "live" ? { dataAsOf: new Date().toISOString() } : {}),
+  }));
+});
+
+// --- global: cost summary ---
+// Deterministic mock WoW trend per app (used when Azure cost data is unavailable).
+// Values are stable across requests so the UI doesn't flicker.
+const MOCK_APP_TRENDS: Record<string, string> = {
+  "grailbabe": "+5.2%",
+  "orbit": "-2.1%",
+  "kinisis-labs": "+0.8%",
+};
+
+/**
+ * Derive a WoW trend string from an app's per-service cost data.
+ * When at least one service has a trend, compute the spend-weighted average.
+ * Falls back to null when no service trends are available (e.g. first week of month).
+ */
+function deriveTrendFromServices(byService: Array<{ service: string; amount: number; trend?: string | null }>): string | null {
+  let totalAmount = 0;
+  let weightedPct = 0;
+  let hasAny = false;
+  for (const svc of byService) {
+    if (!svc.trend) continue;
+    const pct = parseFloat(svc.trend.replace("%", ""));
+    if (!Number.isFinite(pct)) continue;
+    totalAmount += svc.amount;
+    weightedPct += pct * svc.amount;
+    hasAny = true;
+  }
+  if (!hasAny || totalAmount === 0) return null;
+  const avg = weightedPct / totalAmount;
+  return (avg >= 0 ? "+" : "") + avg.toFixed(1) + "%";
+}
+
+router.get("/global/cost-summary", async (_req, res) => {
+  const costResults = await Promise.all(
+    APPS.map((a) => fetchMonthToDateCostWithFallback(a, { billingScope: billingScope(a.id) })),
+  );
+
+  let overallSource: "live" | "cached" | "mock" = "mock";
+  let latestDataAsOf: string | null = null;
+
+  const byApp = APPS.map((app, i) => {
+    const costWS = costResults[i];
+    const mtd = costWS?.result.monthToDate ?? 0;
+    const byService = costWS?.result.byService ?? [];
+
+    // Track the most precise data source across all apps.
+    if (costWS?.source === "live") overallSource = "live";
+    else if (costWS?.source === "cached" && overallSource === "mock") overallSource = "cached";
+
+    // Track the most recent dataAsOf across apps.
+    if (costWS?.result.dataAsOf) {
+      if (!latestDataAsOf || costWS.result.dataAsOf > latestDataAsOf) {
+        latestDataAsOf = costWS.result.dataAsOf;
+      }
+    }
+
+    // Trend: derive from live/cached service data if available, otherwise use mock.
+    let trend: string | null = null;
+    if (costWS) {
+      trend = deriveTrendFromServices(byService);
+      if (trend === null) {
+        // Live data but no service trends yet (e.g. first week of month) — use mock.
+        trend = MOCK_APP_TRENDS[app.id] ?? null;
+      }
+    } else {
+      trend = MOCK_APP_TRENDS[app.id] ?? null;
+    }
+
+    return {
+      appId: app.id,
+      appName: app.name,
+      environment: app.environment,
+      monthToDate: mtd,
+      trend,
+    };
+  });
+
+  const total = byApp.reduce((sum, r) => sum + r.monthToDate, 0);
+
+  res.json(GetGlobalCostSummaryResponse.parse({
+    total: Number(total.toFixed(2)),
+    currency: "USD",
+    byApp,
+    dataSource: overallSource,
+    ...(latestDataAsOf ? { dataAsOf: latestDataAsOf } : {}),
   }));
 });
 

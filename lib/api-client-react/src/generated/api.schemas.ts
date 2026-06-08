@@ -866,6 +866,35 @@ export interface GlobalEndpointsResponse {
   dataSource: GlobalEndpointsResponseDataSource;
 }
 
+export interface GlobalCostByAppItem {
+  appId: string;
+  appName: string;
+  environment: string;
+  /** Month-to-date spend in USD */
+  monthToDate: number;
+  /** Week-over-week percentage change (e.g. '+8.2%' or '-3.1%'). Null when insufficient data. */
+  trend?: string | null;
+}
+
+export type GetGlobalCostSummaryResponseDataSource = typeof GetGlobalCostSummaryResponseDataSource[keyof typeof GetGlobalCostSummaryResponseDataSource];
+
+
+export const GetGlobalCostSummaryResponseDataSource = {
+  live: 'live',
+  cached: 'cached',
+  mock: 'mock',
+} as const;
+
+export interface GetGlobalCostSummaryResponse {
+  /** Sum of MTD spend across all apps */
+  total: number;
+  currency: string;
+  byApp: GlobalCostByAppItem[];
+  dataSource: GetGlobalCostSummaryResponseDataSource;
+  /** Timestamp of the most recent live or cached data point across all apps. */
+  dataAsOf?: string | null;
+}
+
 export interface BudgetAlertLogEntry {
   id: number;
   appId: string;
