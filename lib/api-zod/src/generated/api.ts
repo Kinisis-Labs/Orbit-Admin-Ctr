@@ -683,7 +683,8 @@ export const ListSlosResponse = zod.object({
   "value": zod.number()
 })).optional().describe('24-hour memory % time-series (live from Monitor or mock). Omitted when data is unavailable.')
 })),
-  "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether SLO metrics come from live Azure Monitor or built-in mock values.')
+  "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether SLO metrics come from live Azure Monitor or built-in mock values.'),
+  "dataAsOf": zod.string().datetime({"offset":true}).optional().describe('Timestamp of when SLO data was last fetched from Azure Monitor. Only present when dataSource is live.')
 })
 
 

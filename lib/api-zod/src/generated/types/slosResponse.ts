@@ -12,4 +12,6 @@ export interface SlosResponse {
   rows: SloRow[];
   /** Indicates whether SLO metrics come from live Azure Monitor or built-in mock values. */
   dataSource: SlosResponseDataSource;
+  /** Timestamp of when SLO data was last fetched from Azure Monitor. Only present when dataSource is live. */
+  dataAsOf?: string;
 }

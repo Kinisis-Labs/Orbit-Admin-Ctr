@@ -763,7 +763,12 @@ router.get("/global/slos", async (_req, res) => {
     }];
   });
 
-  res.json(ListSlosResponse.parse({ rows, dataSource: isMonitorConfigured() ? "live" : "mock" }));
+  const slosDataSource = isMonitorConfigured() ? "live" : "mock";
+  res.json(ListSlosResponse.parse({
+    rows,
+    dataSource: slosDataSource,
+    ...(slosDataSource === "live" ? { dataAsOf: new Date().toISOString() } : {}),
+  }));
 });
 
 // --- global: network endpoints ---

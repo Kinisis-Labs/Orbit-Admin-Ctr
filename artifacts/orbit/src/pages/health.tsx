@@ -23,7 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi, WifiOff, History, Info, Search, X, Download, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Activity, AlertTriangle, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi, WifiOff, History, Info, Search, X, Download, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import {
   AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -176,13 +176,48 @@ function TrendSparkline({
   );
 }
 
-function DataSourceBadge({ dataSource }: { dataSource: "live" | "mock" | undefined }) {
+const STALE_SLO_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+
+function fmtDataAsOf(iso: string | undefined | null): string | null {
+  if (!iso) return null;
+  try {
+    return format(new Date(iso), "HH:mm");
+  } catch {
+    return null;
+  }
+}
+
+function DataSourceBadge({
+  dataSource,
+  dataAsOf,
+}: {
+  dataSource: "live" | "mock" | undefined;
+  dataAsOf?: string | null;
+}) {
   if (!dataSource) return null;
   if (dataSource === "live") {
+    const asOf = fmtDataAsOf(dataAsOf);
+    const isStale = dataAsOf
+      ? Date.now() - new Date(dataAsOf).getTime() > STALE_SLO_THRESHOLD_MS
+      : false;
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide select-none">
-        <Wifi className="h-3 w-3" />
-        Live — Azure Monitor
+      <span className="inline-flex items-center gap-1.5 select-none flex-wrap">
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
+          <Wifi className="h-3 w-3" />
+          Live — Azure Monitor
+        </span>
+        {asOf && (
+          <span
+            className={
+              isStale
+                ? "inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400"
+                : "text-[10px] text-muted-foreground"
+            }
+          >
+            {isStale && <AlertTriangle className="h-3 w-3" />}
+            as of {asOf}
+          </span>
+        )}
       </span>
     );
   }
@@ -642,6 +677,7 @@ export default function Health() {
   const { data, isLoading } = useListSlos();
   const slos = data?.rows;
   const dataSource = data?.dataSource;
+  const dataAsOf = data?.dataAsOf;
   const { hasGroup } = useAuth();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
@@ -688,7 +724,7 @@ export default function Health() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Health & SLOs" subtitle="Service-level objectives and error budget burn across all applications" right={<DataSourceBadge dataSource={dataSource} />} />
+      <PageHeader title="Health & SLOs" subtitle="Service-level objectives and error budget burn across all applications" right={<DataSourceBadge dataSource={dataSource} dataAsOf={dataAsOf} />} />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         <Tile title="Meeting 99.9% uptime" value={isLoading ? null : `${meetingUptime} / ${slos?.length ?? 0}`} sub="Across tracked applications" />
@@ -702,7 +738,7 @@ export default function Health() {
       <div className="bg-card border border-border shadow-sm">
         <div className="p-2 border-b border-border flex items-center justify-between">
           <h2 className="text-sm font-semibold px-2">Per-application SLOs</h2>
-          {!isLoading && <div className="pr-2"><DataSourceBadge dataSource={dataSource} /></div>}
+          {!isLoading && <div className="pr-2"><DataSourceBadge dataSource={dataSource} dataAsOf={dataAsOf} /></div>}
         </div>
         {isLoading ? (
           <div className="p-4 space-y-2"><Skeleton className="h-8" /><Skeleton className="h-8" /></div>

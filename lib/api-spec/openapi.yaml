@@ -1206,6 +1206,7 @@ components:
           type: array
           items: { $ref: "#/components/schemas/SloRow" }
         dataSource: { type: string, enum: [live, mock], description: "Indicates whether SLO metrics come from live Azure Monitor or built-in mock values." }
+        dataAsOf: { type: string, format: date-time, description: "Timestamp of when SLO data was last fetched from Azure Monitor. Only present when dataSource is live." }
     GlobalEndpointsResponse:
       type: object
       required: [endpoints, liveEnabled, dataSource]
