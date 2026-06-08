@@ -785,7 +785,8 @@ export const GetGlobalCostSummaryResponse = zod.object({
   "trend": zod.string().nullish().describe('Week-over-week percentage change (e.g. \'+8.2%\' or \'-3.1%\'). Null when insufficient data.')
 })),
   "dataSource": zod.enum(['live', 'cached', 'mock']),
-  "dataAsOf": zod.string().datetime({"offset":true}).nullish().describe('Timestamp of the most recent live or cached data point across all apps.')
+  "dataAsOf": zod.string().datetime({"offset":true}).nullish().describe('Timestamp of the most recent live or cached data point across all apps.'),
+  "wowTrend": zod.string().nullish().describe('Spend-weighted week-over-week percentage change across all apps (e.g. \'+8.2%\' or \'-3.1%\'). Null when insufficient data.')
 })
 
 

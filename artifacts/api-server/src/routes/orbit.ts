@@ -1027,12 +1027,39 @@ router.get("/global/cost-summary", async (_req, res) => {
 
   const total = byApp.reduce((sum, r) => sum + r.monthToDate, 0);
 
+  // Compute a spend-weighted global WoW trend from per-app trends.
+  // Falls back to a simple average when all apps have zero/negligible MTD spend (e.g. mock mode).
+  let globalWowTrend: string | null = null;
+  {
+    let weightedPct = 0;
+    let totalWeight = 0;
+    let simpleSum = 0;
+    let simpleCount = 0;
+    for (const item of byApp) {
+      if (!item.trend) continue;
+      const pct = parseFloat(item.trend.replace(/[^0-9.\-+]/g, ""));
+      if (!Number.isFinite(pct)) continue;
+      weightedPct += pct * item.monthToDate;
+      totalWeight += item.monthToDate;
+      simpleSum += pct;
+      simpleCount += 1;
+    }
+    if (totalWeight > 0.01) {
+      const avg = weightedPct / totalWeight;
+      globalWowTrend = (avg >= 0 ? "+" : "") + avg.toFixed(1) + "%";
+    } else if (simpleCount > 0) {
+      const avg = simpleSum / simpleCount;
+      globalWowTrend = (avg >= 0 ? "+" : "") + avg.toFixed(1) + "%";
+    }
+  }
+
   res.json(GetGlobalCostSummaryResponse.parse({
     total: Number(total.toFixed(2)),
     currency: "USD",
     byApp,
     dataSource: overallSource,
     ...(latestDataAsOf ? { dataAsOf: latestDataAsOf } : {}),
+    ...(globalWowTrend !== null ? { wowTrend: globalWowTrend } : {}),
   }));
 });
 

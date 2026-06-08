@@ -1430,6 +1430,7 @@ components:
           items: { $ref: "#/components/schemas/GlobalCostByAppItem" }
         dataSource: { type: string, enum: [live, cached, mock] }
         dataAsOf: { type: string, format: date-time, nullable: true, description: "Timestamp of the most recent live or cached data point across all apps." }
+        wowTrend: { type: string, nullable: true, description: "Spend-weighted week-over-week percentage change across all apps (e.g. '+8.2%' or '-3.1%'). Null when insufficient data." }
     BudgetAlertLogEntry:
       type: object
       required: [id, appId, appName, mtd, forecast, budget, channels, sentAt]

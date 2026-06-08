@@ -16,4 +16,6 @@ export interface GetGlobalCostSummaryResponse {
   dataSource: GetGlobalCostSummaryResponseDataSource;
   /** Timestamp of the most recent live or cached data point across all apps. */
   dataAsOf?: string | null;
+  /** Spend-weighted week-over-week percentage change across all apps (e.g. '+8.2%' or '-3.1%'). Null when insufficient data. */
+  wowTrend?: string | null;
 }

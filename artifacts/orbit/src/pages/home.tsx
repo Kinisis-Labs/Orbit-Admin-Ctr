@@ -9,7 +9,7 @@ import { useApp } from "@/hooks/use-app";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
-import { ChevronRight, Bell, TrendingUp, X, TriangleAlert, Wifi, Smartphone, ExternalLink } from "lucide-react";
+import { ChevronRight, Bell, TrendingUp, TrendingDown, X, TriangleAlert, Wifi, Smartphone, ExternalLink } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -126,6 +126,33 @@ function BudgetSparkline({ data, status }: { data: DailyCostPoint[] | undefined;
         </AreaChart>
       </ResponsiveContainer>
     </span>
+  );
+}
+
+function WoWTrendBadge({ trend }: { trend: string | null | undefined }) {
+  if (!trend) return null;
+  const isUp = trend.startsWith("+");
+  const isDown = trend.startsWith("-");
+  const Icon = isUp ? TrendingUp : isDown ? TrendingDown : null;
+  const colorClass = isUp
+    ? "text-destructive bg-destructive/10 border-destructive/30"
+    : isDown
+    ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
+    : "text-muted-foreground bg-muted border-border";
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[11px] font-medium border ${colorClass}`}
+          >
+            {Icon && <Icon className="h-3 w-3 shrink-0" />}
+            {trend}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>Week-over-week spend trend (fleet total)</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -664,7 +691,9 @@ function BudgetSummaryWidget({
 
   const dailySpend = useAppDailySpend(apps, true, sparklineRange);
 
-  const { data: globalCostSummary } = useGetGlobalCostSummary({ query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 } });
+  const { data: globalCostSummary } = useGetGlobalCostSummary({
+    query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
+  });
   const trendByAppId = useMemo(() => {
     const map = new Map<string, string>();
     for (const item of globalCostSummary?.byApp ?? []) {
@@ -892,7 +921,10 @@ function BudgetSummaryWidget({
           {!filteredApps ? (
             <Skeleton className="h-6 w-20 mt-1" />
           ) : (
-            <div className="text-lg font-semibold tabular-nums">{fmt(totalSpentMTD)}</div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="text-lg font-semibold tabular-nums">{fmt(totalSpentMTD)}</div>
+              <WoWTrendBadge trend={globalCostSummary?.wowTrend ?? null} />
+            </div>
           )}
           <div className="text-[10px] text-muted-foreground mt-0.5">
             {filteredApps ? `Across ${filteredApps.length} app${filteredApps.length !== 1 ? "s" : ""}` : ""}
