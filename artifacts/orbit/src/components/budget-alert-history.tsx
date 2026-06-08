@@ -166,11 +166,46 @@ export function BudgetAlertHistory({ appId }: Props) {
     { key: "email", label: "Email", Icon: Mail },
   ];
 
+  const channelRawCounts = useMemo<Partial<Record<Channel, number>>>(() => {
+    if (!entries || entries.length === 0) return {};
+    const counts: Partial<Record<Channel, number>> = {};
+    for (const entry of entries) {
+      for (const ch of entry.channels) {
+        const key = ch as Channel;
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [entries]);
+
+  const hasChannelCounts = entries && entries.length > 0 && Object.keys(channelRawCounts).length > 0;
+
   return (
     <div className="bg-card border border-border shadow-sm flex flex-col">
       <div className="flex items-center gap-2 p-3 border-b border-border flex-wrap">
         <Bell className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <h2 className="text-sm font-semibold">Alerts sent</h2>
+
+        {hasChannelCounts && (
+          <div className="flex items-center gap-1">
+            {channelDefs
+              .filter(({ key }) => (channelRawCounts[key] ?? 0) > 0)
+              .map(({ key, label, Icon }) => {
+                const count = channelRawCounts[key]!;
+                return (
+                  <span
+                    key={key}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-medium"
+                    title={`${count} alert${count === 1 ? "" : "s"} sent via ${label}`}
+                  >
+                    <Icon className="h-2.5 w-2.5 shrink-0" />
+                    {label}
+                    <span className="font-semibold text-foreground">{count}</span>
+                  </span>
+                );
+              })}
+          </div>
+        )}
 
         <div className="flex items-center gap-1.5 ml-auto flex-wrap">
           <button
