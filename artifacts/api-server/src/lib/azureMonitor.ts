@@ -255,15 +255,19 @@ export async function fetchMetricTimeSeries(
   hours: number,
   { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<TimeSeriesPoint[] | null> {
+  // Evict before the configuration gate so a force-refresh always clears the
+  // stale entry, even when Monitor is temporarily unconfigured or in tests.
+  const cacheKey = `${resourceId}:${metricName}:${hours}`;
+  if (bypassCache) {
+    _timeSeriesCache.delete(cacheKey);
+  }
+
   if (!isMonitorConfigured()) return null;
 
   const queryFn = METRIC_QUERIES[metricName];
   if (!queryFn) return null;
 
-  const cacheKey = `${resourceId}:${metricName}:${hours}`;
-  if (bypassCache) {
-    _timeSeriesCache.delete(cacheKey);
-  } else {
+  if (!bypassCache) {
     const entry = _timeSeriesCache.get(cacheKey);
     if (entry && entry.expiresAt > Date.now()) {
       return entry.result;
@@ -420,7 +424,8 @@ export async function fetchTopExceptions(
 
 // Cache: app id → { result, expiresAt }
 type MetricsCacheEntry = { result: TelemetrySummary; expiresAt: number };
-const _metricsCache = new Map<string, MetricsCacheEntry>();
+/** @internal Exported for unit tests only — do not use in production code. */
+export const _metricsCache = new Map<string, MetricsCacheEntry>();
 
 /**
  * Convenience wrapper for route handlers: resolves the App Insights component
@@ -475,11 +480,15 @@ export async function fetchAppMetrics(
   app: AppRecord,
   { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<TelemetrySummary | null> {
-  if (!isAzureConfigured()) return null;
-
+  // Evict before the configuration gate so a force-refresh always clears the
+  // stale entry, even when Azure is temporarily unconfigured or in tests.
   if (bypassCache) {
     _metricsCache.delete(app.id);
-  } else {
+  }
+
+  if (!isAzureConfigured()) return null;
+
+  if (!bypassCache) {
     const entry = _metricsCache.get(app.id);
     if (entry && entry.expiresAt > Date.now()) {
       return entry.result;
