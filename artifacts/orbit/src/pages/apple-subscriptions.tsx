@@ -19,6 +19,8 @@ const num = (n: number) => new Intl.NumberFormat("en-US").format(n);
 const usd = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
+const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+
 export default function AppleSubscriptions() {
   const { toast } = useToast();
   const { scope } = useScope();
@@ -204,17 +206,19 @@ function AppleBanner({ placeholder, isLive, dataUpdatedAt, dataAsOf }: { placeho
   const timestampMs = dataAsOf ? new Date(dataAsOf).getTime() : dataUpdatedAt ?? 0;
   const ago = useUpdatedAgo(timestampMs);
 
+  const isStale = dataAsOf ? Date.now() - new Date(dataAsOf).getTime() > STALE_THRESHOLD_MS : false;
+
   const timestampLabel = (() => {
     if (dataAsOf) {
       const d = new Date(dataAsOf);
       const isToday = d.toDateString() === new Date().toDateString();
       const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       const label = isToday ? time : `${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${time}`;
-      return `Data as of ${label}`;
+      return { text: `Data as of ${label}`, stale: isStale };
     }
     if (dataUpdatedAt) {
       const time = new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-      return `${placeholder ? "Generated" : "Fetched"} at ${time}`;
+      return { text: `${placeholder ? "Generated" : "Fetched"} at ${time}`, stale: false };
     }
     return null;
   })();
@@ -244,9 +248,9 @@ function AppleBanner({ placeholder, isLive, dataUpdatedAt, dataAsOf }: { placeho
           <>Subscriber states and revenue are pulled live from the App Store Connect API for each tracked iOS app.</>
         )}
         {timestampLabel && (
-          <span className="inline-flex items-center gap-1 ml-2 text-muted-foreground/70">
-            <Clock className="h-3 w-3" />
-            {timestampLabel}
+          <span className={`inline-flex items-center gap-1 ml-2 ${timestampLabel.stale ? "text-amber-500" : "text-muted-foreground/70"}`}>
+            {timestampLabel.stale ? <AlertTriangle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+            {timestampLabel.text}
             {ago && <span>· {ago}</span>}
           </span>
         )}
