@@ -102,8 +102,26 @@ export function detectRecentAnomaly(daily: DailyCostPoint[] | undefined | null, 
 
 const LS_KEY_PREFIX = "orbit-cost-anomaly-dismissed-";
 const LS_DAILY_TABLE_KEY = (scope: string) => `orbit-cost-daily-table-${scope}`;
-const LS_SERVICE_SORT_COL_KEY = (scope: string) => `orbit-cost-service-sort-col-${scope}`;
-const LS_SERVICE_SORT_DIR_KEY = (scope: string) => `orbit-cost-service-sort-dir-${scope}`;
+const LS_SERVICE_SORT_KEY = (scope: string) => `orbit-cost-service-sort-${scope}`;
+
+type ServiceSortCol = "amount" | "trend";
+type SortDir = "asc" | "desc";
+
+function loadServiceSort(scope: string): { col: ServiceSortCol; dir: SortDir } {
+  try {
+    const raw = localStorage.getItem(LS_SERVICE_SORT_KEY(scope));
+    if (raw) {
+      const parsed = JSON.parse(raw) as { col: unknown; dir: unknown };
+      if (
+        (parsed.col === "amount" || parsed.col === "trend") &&
+        (parsed.dir === "asc" || parsed.dir === "desc")
+      ) {
+        return { col: parsed.col, dir: parsed.dir };
+      }
+    }
+  } catch { /* ignore */ }
+  return { col: "amount", dir: "desc" };
+}
 
 function AnomalyAlertBanner({
   appId,
@@ -655,50 +673,30 @@ function AppCost() {
     }
   }, [scope]);
 
-  type ServiceSortCol = "amount" | "trend";
-  type SortDir = "asc" | "desc";
-
-  function readServiceSortCol(s: string): ServiceSortCol {
-    try {
-      const v = localStorage.getItem(LS_SERVICE_SORT_COL_KEY(s));
-      if (v === "amount" || v === "trend") return v;
-    } catch { /* ignore */ }
-    return "amount";
-  }
-
-  function readServiceSortDir(s: string): SortDir {
-    try {
-      const v = localStorage.getItem(LS_SERVICE_SORT_DIR_KEY(s));
-      if (v === "asc" || v === "desc") return v;
-    } catch { /* ignore */ }
-    return "desc";
-  }
-
-  const [serviceSortCol, setServiceSortCol] = useState<ServiceSortCol>(() => readServiceSortCol(scope));
-  const [serviceSortDir, setServiceSortDir] = useState<SortDir>(() => readServiceSortDir(scope));
+  const [serviceSortCol, setServiceSortCol] = useState<ServiceSortCol>(() => loadServiceSort(scope).col);
+  const [serviceSortDir, setServiceSortDir] = useState<SortDir>(() => loadServiceSort(scope).dir);
 
   useEffect(() => {
-    setServiceSortCol(readServiceSortCol(scope));
-    setServiceSortDir(readServiceSortDir(scope));
+    const saved = loadServiceSort(scope);
+    setServiceSortCol(saved.col);
+    setServiceSortDir(saved.dir);
   }, [scope]);
 
-  useEffect(() => {
-    try { localStorage.setItem(LS_SERVICE_SORT_COL_KEY(scope), serviceSortCol); } catch { /* ignore */ }
-  }, [scope, serviceSortCol]);
-
-  useEffect(() => {
-    try { localStorage.setItem(LS_SERVICE_SORT_DIR_KEY(scope), serviceSortDir); } catch { /* ignore */ }
-  }, [scope, serviceSortDir]);
-
   function handleServiceSortClick(col: ServiceSortCol) {
-    setServiceSortCol((prev) => {
-      if (prev === col) {
-        setServiceSortDir((d) => (d === "asc" ? "desc" : "asc"));
-        return col;
-      }
-      setServiceSortDir("desc");
-      return col;
-    });
+    let newCol: ServiceSortCol;
+    let newDir: SortDir;
+    if (serviceSortCol === col) {
+      newCol = col;
+      newDir = serviceSortDir === "asc" ? "desc" : "asc";
+    } else {
+      newCol = col;
+      newDir = "desc";
+    }
+    setServiceSortCol(newCol);
+    setServiceSortDir(newDir);
+    try {
+      localStorage.setItem(LS_SERVICE_SORT_KEY(scope), JSON.stringify({ col: newCol, dir: newDir }));
+    } catch { /* ignore */ }
   }
 
   function parseTrend(trend: string | undefined | null): number {
