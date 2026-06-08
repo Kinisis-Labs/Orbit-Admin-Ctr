@@ -6,6 +6,33 @@ import {
 } from "@workspace/api-client-react";
 import type { InfrastructureReport, MetricSeries } from "@workspace/api-client-react";
 import { toast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
+
+const STORAGE_PREFIX = "infra-alert-ack";
+
+function hourBucket(): number {
+  return Math.floor(Date.now() / 3_600_000);
+}
+
+function getDismissKey(appId: string, metric: "cpu" | "mem"): string {
+  return `${STORAGE_PREFIX}:${appId}:${metric}:${hourBucket()}`;
+}
+
+function isAlertDismissed(key: string): boolean {
+  try {
+    return sessionStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function dismissAlert(key: string): void {
+  try {
+    sessionStorage.setItem(key, "1");
+  } catch {
+    // sessionStorage may be unavailable in some contexts; fail silently
+  }
+}
 
 function getLatestValue(
   report: InfrastructureReport | undefined,
@@ -36,6 +63,7 @@ export function useInfraThresholdAlerts(): { overThresholdCount: number } {
     if (!configs || configs.length === 0) return;
 
     const newViolations: string[] = [];
+    const newViolationKeys: string[] = [];
 
     configs.forEach((row, i) => {
       const infraData = infraQueries[i]?.data as InfrastructureReport | undefined;
@@ -59,9 +87,13 @@ export function useInfraThresholdAlerts(): { overThresholdCount: number } {
           prevStateRef.current.set(cpuKey, isAbove);
 
           if (!wasAbove && isAbove) {
-            newViolations.push(
-              `${row.appName} — CPU ${cpu.toFixed(1)}% (threshold ${row.cpuThresholdPct}%)`
-            );
+            const dismissKey = getDismissKey(row.appId, "cpu");
+            if (!isAlertDismissed(dismissKey)) {
+              newViolations.push(
+                `${row.appName} — CPU ${cpu.toFixed(1)}% (threshold ${row.cpuThresholdPct}%)`
+              );
+              newViolationKeys.push(dismissKey);
+            }
           }
         }
       }
@@ -78,9 +110,13 @@ export function useInfraThresholdAlerts(): { overThresholdCount: number } {
           prevStateRef.current.set(memKey, isAbove);
 
           if (!wasAbove && isAbove) {
-            newViolations.push(
-              `${row.appName} — Memory ${mem.toFixed(1)}% (threshold ${row.memoryThresholdPct}%)`
-            );
+            const dismissKey = getDismissKey(row.appId, "mem");
+            if (!isAlertDismissed(dismissKey)) {
+              newViolations.push(
+                `${row.appName} — Memory ${mem.toFixed(1)}% (threshold ${row.memoryThresholdPct}%)`
+              );
+              newViolationKeys.push(dismissKey);
+            }
           }
         }
       }
@@ -93,7 +129,18 @@ export function useInfraThresholdAlerts(): { overThresholdCount: number } {
         ? "Infra threshold crossed"
         : `${newViolations.length} infra thresholds crossed`;
 
-    toast({ title, description: newViolations.join("\n"), variant: "destructive" });
+    const keysSnapshot = [...newViolationKeys];
+
+    toast({
+      title,
+      description: newViolations.join("\n"),
+      variant: "destructive",
+      action: (
+        <ToastAction altText="Dismiss" onClick={() => keysSnapshot.forEach(dismissAlert)}>
+          Dismiss
+        </ToastAction>
+      ),
+    });
   }, [configs, infraQueries]);
 
   const overThresholdCount = (configs ?? []).reduce((count, row, i) => {
