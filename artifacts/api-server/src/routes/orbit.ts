@@ -224,6 +224,8 @@ router.get("/apps", async (_req, res) => {
         ...(forecast !== null && budget !== null ? { forecastOverBudget: forecast > budget } : {}),
         group: app.group,
         userAuth: app.userAuth,
+        ...(app.androidPackage ? { androidPackage: app.androidPackage } : {}),
+        ...(app.iosBundle ? { iosBundle: app.iosBundle } : {}),
       };
     }),
   );

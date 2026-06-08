@@ -42,6 +42,8 @@ export const ListAppsResponseItem = zod.object({
   "forecast": zod.number().optional().describe('Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured.'),
   "forecastOverBudget": zod.boolean().optional().describe('True when the projected end-of-month spend exceeds the monthly budget cap.'),
   "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).'),
+  "androidPackage": zod.string().optional().describe('Google Play package name when this app ships a tracked Android build. Presence signals a Play Store link is available.'),
+  "iosBundle": zod.string().optional().describe('Apple App Store bundle identifier when this app ships a tracked iOS build. Presence signals an App Store link is available.'),
   "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users. \"clerk\" = consumer app with Clerk-authenticated users (activity ingested via webhooks). \"entra\" = employee-only internal tool authenticated via Entra ID. \"none\" = no end-user authentication (e.g. public marketing site).')
 })
 export const ListAppsResponse = zod.array(ListAppsResponseItem)
@@ -74,6 +76,8 @@ export const GetAppResponse = zod.object({
   "forecast": zod.number().optional().describe('Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured.'),
   "forecastOverBudget": zod.boolean().optional().describe('True when the projected end-of-month spend exceeds the monthly budget cap.'),
   "group": zod.string().optional().describe('Optional scope-selector grouping label (e.g. Platform).'),
+  "androidPackage": zod.string().optional().describe('Google Play package name when this app ships a tracked Android build. Presence signals a Play Store link is available.'),
+  "iosBundle": zod.string().optional().describe('Apple App Store bundle identifier when this app ships a tracked iOS build. Presence signals an App Store link is available.'),
   "userAuth": zod.enum(['clerk', 'entra', 'none']).describe('Identity system that authenticates this app\'s end users. \"clerk\" = consumer app with Clerk-authenticated users (activity ingested via webhooks). \"entra\" = employee-only internal tool authenticated via Entra ID. \"none\" = no end-user authentication (e.g. public marketing site).')
 }).and(zod.object({
   "description": zod.string().optional(),

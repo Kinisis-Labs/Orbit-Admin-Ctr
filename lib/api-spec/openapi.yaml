@@ -768,6 +768,16 @@ components:
         forecast: { type: number, description: "Projected end-of-month spend in USD from Azure Cost Management Forecast API. Only present when Azure is configured." }
         forecastOverBudget: { type: boolean, description: "True when the projected end-of-month spend exceeds the monthly budget cap." }
         group: { type: string, description: Optional scope-selector grouping label (e.g. Platform). }
+        androidPackage:
+          type: string
+          description: >-
+            Google Play package name when this app ships a tracked Android build.
+            Presence signals a Play Store link is available.
+        iosBundle:
+          type: string
+          description: >-
+            Apple App Store bundle identifier when this app ships a tracked iOS build.
+            Presence signals an App Store link is available.
         userAuth:
           $ref: "#/components/schemas/UserAuthType"
     AppDetail:

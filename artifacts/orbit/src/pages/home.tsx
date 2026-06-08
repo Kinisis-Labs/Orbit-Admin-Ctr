@@ -9,7 +9,7 @@ import { useApp } from "@/hooks/use-app";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
-import { ChevronRight, Bell, TrendingUp, X, TriangleAlert, Wifi } from "lucide-react";
+import { ChevronRight, Bell, TrendingUp, X, TriangleAlert, Wifi, Smartphone } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -754,6 +754,44 @@ function BudgetSummaryWidget({
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium text-foreground truncate max-w-[140px]">{app.name}</span>
+                        {app.androidPackage && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <a
+                                  href={`https://play.google.com/store/apps/details?id=${app.androidPackage}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center shrink-0 text-[#3DDC84] hover:opacity-70 transition-opacity"
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label="View on Google Play"
+                                >
+                                  <Smartphone className="h-3 w-3" />
+                                </a>
+                              </TooltipTrigger>
+                              <TooltipContent>View on Google Play</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {app.iosBundle && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <a
+                                  href={`https://apps.apple.com/app/${app.iosBundle}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center shrink-0 text-muted-foreground hover:opacity-70 transition-opacity"
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label="View on App Store"
+                                >
+                                  <Smartphone className="h-3 w-3" />
+                                </a>
+                              </TooltipTrigger>
+                              <TooltipContent>View on App Store</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                         {hasAnomaly && (
                           <TooltipProvider>
                             <Tooltip>

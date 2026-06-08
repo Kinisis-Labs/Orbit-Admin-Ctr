@@ -113,6 +113,10 @@ export interface AppSummary {
   forecastOverBudget?: boolean;
   /** Optional scope-selector grouping label (e.g. Platform). */
   group?: string;
+  /** Google Play package name when this app ships a tracked Android build. Presence signals a Play Store link is available. */
+  androidPackage?: string;
+  /** Apple App Store bundle identifier when this app ships a tracked iOS build. Presence signals an App Store link is available. */
+  iosBundle?: string;
   userAuth: UserAuthType;
 }
 
