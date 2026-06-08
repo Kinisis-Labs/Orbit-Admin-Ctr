@@ -101,6 +101,8 @@ export function detectRecentAnomaly(daily: DailyCostPoint[] | undefined | null, 
 
 const LS_KEY_PREFIX = "orbit-cost-anomaly-dismissed-";
 const LS_DAILY_TABLE_KEY = (scope: string) => `orbit-cost-daily-table-${scope}`;
+const LS_SERVICE_SORT_COL_KEY = (scope: string) => `orbit-cost-service-sort-col-${scope}`;
+const LS_SERVICE_SORT_DIR_KEY = (scope: string) => `orbit-cost-service-sort-dir-${scope}`;
 
 function AnomalyAlertBanner({
   appId,
@@ -635,8 +637,38 @@ function AppCost() {
 
   type ServiceSortCol = "amount" | "trend";
   type SortDir = "asc" | "desc";
-  const [serviceSortCol, setServiceSortCol] = useState<ServiceSortCol>("amount");
-  const [serviceSortDir, setServiceSortDir] = useState<SortDir>("desc");
+
+  function readServiceSortCol(s: string): ServiceSortCol {
+    try {
+      const v = localStorage.getItem(LS_SERVICE_SORT_COL_KEY(s));
+      if (v === "amount" || v === "trend") return v;
+    } catch { /* ignore */ }
+    return "amount";
+  }
+
+  function readServiceSortDir(s: string): SortDir {
+    try {
+      const v = localStorage.getItem(LS_SERVICE_SORT_DIR_KEY(s));
+      if (v === "asc" || v === "desc") return v;
+    } catch { /* ignore */ }
+    return "desc";
+  }
+
+  const [serviceSortCol, setServiceSortCol] = useState<ServiceSortCol>(() => readServiceSortCol(scope));
+  const [serviceSortDir, setServiceSortDir] = useState<SortDir>(() => readServiceSortDir(scope));
+
+  useEffect(() => {
+    setServiceSortCol(readServiceSortCol(scope));
+    setServiceSortDir(readServiceSortDir(scope));
+  }, [scope]);
+
+  useEffect(() => {
+    try { localStorage.setItem(LS_SERVICE_SORT_COL_KEY(scope), serviceSortCol); } catch { /* ignore */ }
+  }, [scope, serviceSortCol]);
+
+  useEffect(() => {
+    try { localStorage.setItem(LS_SERVICE_SORT_DIR_KEY(scope), serviceSortDir); } catch { /* ignore */ }
+  }, [scope, serviceSortDir]);
 
   function handleServiceSortClick(col: ServiceSortCol) {
     setServiceSortCol((prev) => {
@@ -644,7 +676,7 @@ function AppCost() {
         setServiceSortDir((d) => (d === "asc" ? "desc" : "asc"));
         return col;
       }
-      setServiceSortDir(col === "amount" ? "desc" : "desc");
+      setServiceSortDir("desc");
       return col;
     });
   }
