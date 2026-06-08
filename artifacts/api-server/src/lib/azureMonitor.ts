@@ -150,14 +150,40 @@ const METRIC_QUERIES: Record<
 
 // Cache resolved App Insights resource IDs per app to avoid repeated Resource
 // Graph queries when multiple metrics are fetched in parallel for the same app.
-const _appInsightsIdCache = new Map<string, string | null>();
+/** @internal Exported for unit tests only — do not use in production code. */
+export const _appInsightsIdCache = new Map<string, string | null>();
 
 // Shared TTL for all in-process caches (5 minutes).
 const METRICS_CACHE_TTL_MS = 5 * 60 * 1000;
 
 // Cache: "resourceId:metricName:hours" → { result, expiresAt }
 type TimeSeriesCacheEntry = { result: TimeSeriesPoint[]; expiresAt: number };
-const _timeSeriesCache = new Map<string, TimeSeriesCacheEntry>();
+/** @internal Exported for unit tests only — do not use in production code. */
+export const _timeSeriesCache = new Map<string, TimeSeriesCacheEntry>();
+
+/**
+ * Evict all `_timeSeriesCache` entries associated with `appId` by resolving
+ * the cached App Insights resource ID first, then deleting every cache key
+ * that starts with that resource ID.
+ *
+ * Must be called **before** clearing `_appInsightsIdCache` for the same app —
+ * once the resource-ID entry is gone the scan has nothing to match against.
+ *
+ * Safe to call when the app has no cached resource ID (no-op in that case).
+ *
+ * @internal Also exported so the force-refresh route can call it directly
+ *   without going through the full `fetchAppTimeSeries` path.
+ */
+export function evictAppTimeSeries(appId: string): void {
+  const cachedResourceId = _appInsightsIdCache.get(appId);
+  if (!cachedResourceId) return;
+  const prefix = `${cachedResourceId}:`;
+  for (const key of _timeSeriesCache.keys()) {
+    if (key.startsWith(prefix)) {
+      _timeSeriesCache.delete(key);
+    }
+  }
+}
 
 /**
  * Resolve the Application Insights component resource ID for the app's RG.
@@ -416,19 +442,12 @@ export async function fetchAppTimeSeries(
 ): Promise<TimeSeriesPoint[] | null> {
   if (!isMonitorConfigured()) return null;
 
-  // When bypassing, evict all _timeSeriesCache entries for this app's resource
-  // ID before resolveAppInsightsResourceId clears the ID cache. This ensures
-  // every metric/hours variant is immediately invalidated, not just the one
-  // being refreshed.
+  // When bypassing, evict all _timeSeriesCache entries for this app before
+  // resolveAppInsightsResourceId clears the ID cache. evictAppTimeSeries uses
+  // the still-present resource-ID entry to find and delete every metric/hours
+  // variant for this app, so the scan is never skipped due to a missing ID.
   if (bypassCache) {
-    const cachedResourceId = _appInsightsIdCache.get(app.id);
-    if (cachedResourceId) {
-      for (const key of _timeSeriesCache.keys()) {
-        if (key.startsWith(`${cachedResourceId}:`)) {
-          _timeSeriesCache.delete(key);
-        }
-      }
-    }
+    evictAppTimeSeries(app.id);
   }
 
   const resourceId = await resolveAppInsightsResourceId(app, { bypassCache });
