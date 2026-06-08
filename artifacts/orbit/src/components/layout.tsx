@@ -6,7 +6,7 @@ import {
   Cloud, Search, Settings as SettingsIcon, Home, Bell, DollarSign, LayoutDashboard,
   ChevronRight, Menu, Sun, Moon, Lock, Rocket, AlertOctagon, Activity,
   HeartPulse, Network, FileText, ShieldAlert, Users, Layers, Tags, SlidersHorizontal, UserCheck, Smartphone,
-  ChevronDown,
+  ChevronDown, FlaskConical,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -50,8 +50,9 @@ function getInitialTheme(): Theme {
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { data: apps } = useApps();
-  const { hasGroup } = useAuth();
+  const { hasGroup, isMock, groups } = useAuth();
   const canSeeCost = hasGroup(COST_READER_GROUP.id);
+  const simulatorActiveCount = isMock ? groups.length : 0;
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [navCollapsed, setNavCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -127,6 +128,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="flex items-center gap-1">
+          {isMock && simulatorActiveCount > 0 && (
+            <Link href="/access">
+              <span
+                title={`Dev simulator active — ${simulatorActiveCount} ${simulatorActiveCount === 1 ? "group" : "groups"} granted. Click to manage.`}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[11px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 hover:text-amber-300 transition-colors cursor-pointer select-none mr-1"
+              >
+                <FlaskConical className="h-3 w-3 shrink-0" />
+                <span className="hidden sm:inline">Simulator</span>
+                <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-amber-500/30 text-amber-300 text-[10px] font-bold leading-none">
+                  {simulatorActiveCount}
+                </span>
+              </span>
+            </Link>
+          )}
           <Button
             variant="ghost"
             size="icon"
