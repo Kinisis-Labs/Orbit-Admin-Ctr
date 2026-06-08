@@ -410,8 +410,10 @@ export async function fetchAppTimeSeries(
  * Looks up the Application Insights component in the app's RG, then queries:
  *   - requests/count (total over 1h → /min)
  *   - requests/failed (for error rate)
- *   - requests/duration (P95 approximated from average — real P95 via Log Analytics)
+ *   - requests/duration (average, used as fallback only)
  *   - availabilityResults/availabilityPercentage
+ *   - percentile(duration, 95) via LogsQueryClient KQL (when AZURE_LOG_ANALYTICS_WORKSPACE_ID
+ *     is set); falls back to average × 1.4 when Log Analytics is not configured.
  *
  * Results are cached in-process for METRICS_CACHE_TTL_MS (5 min). Pass
  * `bypassCache: true` to skip the cache and force a fresh API call (the fresh
@@ -478,9 +480,42 @@ export async function fetchAppMetrics(
       totalRequests > 0
         ? Number(((failedRequests / totalRequests) * 100).toFixed(2))
         : 0;
-    // Azure Monitor Metrics API does not expose true percentiles; use average × 1.4
-    // as an approximation. Real P95 is available via fetchMetricTimeSeries.
-    const p95LatencyMs = Number((avgDurationMs * 1.4).toFixed(0));
+
+    // Try to get a real P95 from Log Analytics. Falls back to the average × 1.4
+    // approximation when the workspace is not configured or the query fails.
+    let p95LatencyMs = Number((avgDurationMs * 1.4).toFixed(0));
+    if (isMonitorConfigured()) {
+      try {
+        const workspaceId = getLogAnalyticsWorkspaceId()!;
+        const kql = `
+          requests
+          | where _ResourceId =~ '${resourceId}'
+          | where timestamp >= ago(1h)
+          | summarize p95 = percentile(duration / 1ms, 95)
+        `;
+        const logsResult = await getLogsClient().queryWorkspace(
+          workspaceId,
+          kql,
+          { duration: "PT1H" },
+        );
+        if (logsResult.status === "Success") {
+          const table = logsResult.tables?.[0];
+          if (table) {
+            const cols = table.columnDescriptors as Array<{ name?: string }>;
+            const p95Idx = cols.findIndex((c) => c.name === "p95");
+            const rows = table.rows as unknown[][];
+            if (p95Idx !== -1 && rows.length > 0) {
+              const val = Number(rows[0][p95Idx]);
+              if (isFinite(val) && val > 0) {
+                p95LatencyMs = Number(val.toFixed(0));
+              }
+            }
+          }
+        }
+      } catch {
+        // Keep the approximation already set above.
+      }
+    }
 
     const summary: TelemetrySummary = {
       requestsPerMin,
