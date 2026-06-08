@@ -111,6 +111,7 @@ function AnomalyAlertBanner({
   anomaly,
   formatCurrency,
   onViewInChart,
+  onDismiss,
   sigmas,
 }: {
   appId: string;
@@ -118,6 +119,7 @@ function AnomalyAlertBanner({
   anomaly: ReturnType<typeof detectRecentAnomaly>;
   formatCurrency: (v: number) => string;
   onViewInChart?: () => void;
+  onDismiss?: () => void;
   sigmas?: number;
 }) {
   // Optimistic localStorage check — prevents a visible flash on repeat visits
@@ -149,6 +151,7 @@ function AnomalyAlertBanner({
     setDismissedLocally(true);
     // Persist server-side keyed to the session
     serverDismiss({ data: { appId, dateKey: anomaly.dateKey } });
+    onDismiss?.();
   }
 
   const dateLabel = format(anomaly.date, "EEE, MMM d");
@@ -705,11 +708,42 @@ function AppCost() {
   }
 
   const chartRef = useRef<HTMLDivElement>(null);
+  const bannerWrapperRef = useRef<HTMLDivElement>(null);
   const [chartRange, setChartRange] = useState<DailySpendRange>(30);
   const [activeSigma, setActiveSigma] = useState<number>(() => readSigma(SENSITIVITY_KEY, ANOMALY_SIGMAS));
   const [highlightDate, setHighlightDate] = useState<string | undefined>(undefined);
 
   const anomaly = useMemo(() => detectRecentAnomaly(data?.daily, activeSigma), [data?.daily, activeSigma]);
+
+  // Track whether the main anomaly banner and the chart are in the viewport
+  const [chartInView, setChartInView] = useState(false);
+  const [bannerInView, setBannerInView] = useState(true);
+  // Local dismissed state so sticky and main banner stay in sync
+  const [anomalyDismissed, setAnomalyDismissed] = useState(false);
+
+  // Re-sync dismissal state when the anomaly changes (e.g. scope switch)
+  useEffect(() => {
+    if (!anomaly) { setAnomalyDismissed(false); return; }
+    try {
+      setAnomalyDismissed(localStorage.getItem(LS_KEY_PREFIX + anomaly.dateKey) === "1");
+    } catch { setAnomalyDismissed(false); }
+  }, [anomaly?.dateKey]);
+
+  useEffect(() => {
+    const el = chartRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([entry]) => setChartInView(entry.isIntersecting), { threshold: 0.1 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const el = bannerWrapperRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([entry]) => setBannerInView(entry.isIntersecting));
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   function handleViewInChart() {
     if (!anomaly || !data?.daily) return;
@@ -888,15 +922,18 @@ function AppCost() {
         <StaleCacheBanner source="azure-cost" dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
       )}
       <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
-      {!isLoading && data?.daily && (
-        <AnomalyAlertBanner
-          appId={scope}
-          anomaly={anomaly}
-          formatCurrency={(v) => fmt(v, data.currency)}
-          onViewInChart={anomaly ? handleViewInChart : undefined}
-          sigmas={activeSigma}
-        />
-      )}
+      <div ref={bannerWrapperRef}>
+        {!isLoading && data?.daily && (
+          <AnomalyAlertBanner
+            appId={scope}
+            anomaly={anomaly}
+            formatCurrency={(v) => fmt(v, data.currency)}
+            onViewInChart={anomaly ? handleViewInChart : undefined}
+            onDismiss={() => setAnomalyDismissed(true)}
+            sigmas={activeSigma}
+          />
+        )}
+      </div>
       <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Tile
@@ -1199,6 +1236,38 @@ function AppCost() {
       <TabsContent value="budgets" className="mt-4">
         <BudgetAlertHistory appId={scope} />
       </TabsContent>
+
+      {/* Sticky mini-banner: visible when chart is in view but main banner has scrolled off */}
+      {anomaly && !anomalyDismissed && chartInView && !bannerInView && (
+        <div
+          className="fixed top-0 left-0 right-0 z-50 flex items-center gap-2.5 px-4 py-2 bg-amber-500/95 dark:bg-amber-600/95 backdrop-blur-sm shadow-md text-white"
+          role="status"
+          aria-live="polite"
+        >
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span className="text-[12px] font-semibold tracking-tight">
+            Cost anomaly —{" "}
+            <span className="font-bold">
+              {format(anomaly.date, "EEE, MMM d")} · {anomaly.vsAvgMultiple.toFixed(1)}× avg
+            </span>
+          </span>
+          {data && (
+            <span className="text-[11px] font-medium opacity-85 hidden sm:inline">
+              (~{fmt(anomaly.excess, data.currency)} above baseline)
+            </span>
+          )}
+          <button
+            onClick={() => {
+              try { localStorage.setItem(LS_KEY_PREFIX + anomaly.dateKey, "1"); } catch { /* ignore */ }
+              setAnomalyDismissed(true);
+            }}
+            className="ml-auto shrink-0 p-0.5 rounded hover:bg-white/20 transition-colors"
+            aria-label="Dismiss anomaly notice"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
     </Tabs>
   );
 }
