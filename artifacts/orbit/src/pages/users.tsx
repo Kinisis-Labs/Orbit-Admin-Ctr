@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TrendingDown, TrendingUp, ExternalLink, RefreshCw, Wifi } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { RefreshingBar } from "@/components/refreshing-bar";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 
@@ -55,6 +56,8 @@ export default function Users() {
           </div>
         }
       />
+
+      <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
 
       <ClerkBanner />
 
