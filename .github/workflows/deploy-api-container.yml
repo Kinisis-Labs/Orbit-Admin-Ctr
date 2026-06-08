@@ -81,7 +81,19 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           allow-no-subscriptions: true
 
-      - name: Update Container App image and env vars
+      - name: Configure GHCR pull credentials
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az containerapp registry set \
+              --name ca-orbit-prod-v2 \
+              --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
+              --server ghcr.io \
+              --username "${{ github.repository_owner }}" \
+              --password "${{ secrets.GHCR_PAT }}"
+
+      - name: Roll Container App
         uses: azure/cli@v2
         with:
           azcliversion: latest
@@ -121,13 +133,35 @@ jobs:
               --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
               --target-port 80
 
-      - name: Print Container App FQDN
+      - name: Wait for revision to be Running
         uses: azure/cli@v2
         with:
           azcliversion: latest
           inlineScript: |
-            FQDN=$(az containerapp show \
+            REVISION=$(az containerapp show \
               --name ca-orbit-prod-v2 \
               --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
-              --query "properties.configuration.ingress.fqdn" -o tsv)
-            echo "Container App FQDN: $FQDN"
+              --query "properties.latestRevisionName" -o tsv)
+            echo "Polling revision: $REVISION"
+
+            for i in $(seq 1 24); do
+              STATE=$(az containerapp revision show \
+                --name ca-orbit-prod-v2 \
+                --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
+                --revision "$REVISION" \
+                --query "properties.runningState" -o tsv)
+              echo "Attempt $i/24 — runningState: $STATE"
+              if [ "$STATE" = "Running" ]; then
+                echo "Revision $REVISION is Running ✓"
+                exit 0
+              fi
+              if [ "$STATE" = "Failed" ] || [ "$STATE" = "Stopped" ]; then
+                echo "Revision $REVISION entered terminal state: $STATE"
+                echo "Check revision logs in the Azure portal for ImagePullBackOff or startup errors."
+                exit 1
+              fi
+              sleep 10
+            done
+
+            echo "Timed out after ~4 minutes waiting for revision $REVISION to reach Running state."
+            exit 1
