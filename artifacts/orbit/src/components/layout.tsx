@@ -142,6 +142,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </span>
             </Link>
           )}
+          {isMock && simulatorActiveCount === 0 && (
+            <Link href="/access">
+              <span
+                title="Dev mode active — no groups granted. Click to manage simulator."
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[11px] font-medium bg-slate-500/10 text-slate-500 border border-slate-500/20 hover:bg-slate-500/20 hover:text-slate-400 transition-colors cursor-pointer select-none mr-1"
+              >
+                <FlaskConical className="h-3 w-3 shrink-0" />
+                <span className="hidden sm:inline">Dev mode</span>
+              </span>
+            </Link>
+          )}
           <Button
             variant="ghost"
             size="icon"
