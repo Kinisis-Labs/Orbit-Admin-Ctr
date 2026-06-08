@@ -18,7 +18,7 @@ export default function Subscriptions() {
       const subId = app.subscriptionId ?? "unknown";
       const entry = bySubId.get(subId) ?? {
         name: subId,
-        displayName: (app as { subscriptionName?: string }).subscriptionName ?? subId,
+        displayName: app.subscriptionName ?? subId,
         apps: [],
         monthToDateCost: 0,
       };

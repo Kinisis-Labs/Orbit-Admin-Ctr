@@ -232,10 +232,15 @@ router.get("/apps/:appId", async (req, res) => {
     return;
   }
   const bypassCache = req.query["refresh"] === "true";
-  const liveTags = await fetchResourceGroupTags(app, { bypassCache });
+  const [liveTags, subNameMap] = await Promise.all([
+    fetchResourceGroupTags(app, { bypassCache }),
+    fetchSubscriptionNames([app.subscriptionId]),
+  ]);
+  const subName = subNameMap.get(app.subscriptionId.toLowerCase());
   const data = GetAppResponse.parse({
     ...app,
     tags: liveTags ?? app.tags,
+    ...(subName ? { subscriptionName: subName } : {}),
   });
   res.json(data);
 });

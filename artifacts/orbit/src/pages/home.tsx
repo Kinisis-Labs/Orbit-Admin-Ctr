@@ -72,7 +72,11 @@ export default function Home() {
         <Tile
           title="Resource Group"
           value={appDetailLoading ? null : appDetail?.resourceGroup ?? "—"}
-          sub={appDetail?.subscriptionId ? `Subscription ${appDetail.subscriptionId}` : ""}
+          sub={
+            appDetail?.subscriptionId
+              ? `Sub: ${appDetail.subscriptionName ?? appDetail.subscriptionId}`
+              : ""
+          }
         />
       </div>
 
@@ -128,7 +132,20 @@ export default function Home() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
               <Field label="Resource group" value={appDetail.resourceGroup} mono />
-              <Field label="Subscription" value={appDetail.subscriptionId} mono />
+              <Field
+                label="Subscription"
+                value={
+                  appDetail.subscriptionName ? (
+                    <span>
+                      <span className="font-medium">{appDetail.subscriptionName}</span>
+                      <span className="font-mono text-[11px] text-muted-foreground ml-1.5">{appDetail.subscriptionId}</span>
+                    </span>
+                  ) : (
+                    appDetail.subscriptionId
+                  )
+                }
+                mono={!appDetail.subscriptionName}
+              />
               <Field label="Location" value={appDetail.region} />
               <Field label="Environment" value={appDetail.environment} />
               <Field label="Auth type" value={<AuthBadge userAuth={appDetail.userAuth} />} />
