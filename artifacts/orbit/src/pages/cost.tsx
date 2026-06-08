@@ -581,6 +581,49 @@ function GlobalCost() {
     handleCopy,
   } = useCsvExport(csvRows, csvHeaders, "cost-vs-revenue-by-app");
 
+  type CvrSortCol = "cost" | "revenue" | "net" | "margin";
+  type CvrSortDir = "asc" | "desc";
+  const [cvrSortCol, setCvrSortCol] = useState<CvrSortCol | null>(null);
+  const [cvrSortDir, setCvrSortDir] = useState<CvrSortDir>("asc");
+
+  function handleCvrSortClick(col: CvrSortCol) {
+    setCvrSortCol((prev) => {
+      if (prev === col) {
+        setCvrSortDir((d) => (d === "asc" ? "desc" : "asc"));
+        return col;
+      }
+      setCvrSortDir("asc");
+      return col;
+    });
+  }
+
+  const sortedTableRows = useMemo(() => {
+    if (!tableRows) return null;
+    if (!cvrSortCol) return tableRows;
+    const rows = [...tableRows];
+    rows.sort((a, b) => {
+      let av: number, bv: number;
+      if (cvrSortCol === "cost") {
+        av = a.cost; bv = b.cost;
+      } else if (cvrSortCol === "revenue") {
+        av = a.revenue; bv = b.revenue;
+      } else if (cvrSortCol === "net") {
+        av = a.net; bv = b.net;
+      } else {
+        av = a.marginPct ?? -Infinity; bv = b.marginPct ?? -Infinity;
+      }
+      return cvrSortDir === "desc" ? bv - av : av - bv;
+    });
+    return rows;
+  }, [tableRows, cvrSortCol, cvrSortDir]);
+
+  function CvrSortIcon({ col }: { col: CvrSortCol }) {
+    if (cvrSortCol !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return cvrSortDir === "desc"
+      ? <ArrowDown className="h-3 w-3 ml-1 text-foreground" />
+      : <ArrowUp className="h-3 w-3 ml-1 text-foreground" />;
+  }
+
   return (
     <>
       {!isLoading && globalAnomaly && (
@@ -645,20 +688,52 @@ function GlobalCost() {
       <Table className="text-[13px]">
         <THead>
           <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
-          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Cost (MTD)</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">
+            <button
+              onClick={() => handleCvrSortClick("cost")}
+              className="inline-flex items-center justify-end w-full hover:text-foreground transition-colors"
+            >
+              Cost (MTD)
+              <CvrSortIcon col="cost" />
+            </button>
+          </TableHead>
           <TableHead className="h-8 font-semibold text-foreground w-[100px]">MoM</TableHead>
           <TableHead className="h-8 font-semibold text-foreground text-right w-[100px]">Stripe</TableHead>
           <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">App Store</TableHead>
           <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Play Store</TableHead>
-          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Revenue</TableHead>
-          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Net</TableHead>
-          <TableHead className="h-8 font-semibold text-foreground text-right w-[90px]">Margin %</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">
+            <button
+              onClick={() => handleCvrSortClick("revenue")}
+              className="inline-flex items-center justify-end w-full hover:text-foreground transition-colors"
+            >
+              Revenue
+              <CvrSortIcon col="revenue" />
+            </button>
+          </TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">
+            <button
+              onClick={() => handleCvrSortClick("net")}
+              className="inline-flex items-center justify-end w-full hover:text-foreground transition-colors"
+            >
+              Net
+              <CvrSortIcon col="net" />
+            </button>
+          </TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[90px]">
+            <button
+              onClick={() => handleCvrSortClick("margin")}
+              className="inline-flex items-center justify-end w-full hover:text-foreground transition-colors"
+            >
+              Margin %
+              <CvrSortIcon col="margin" />
+            </button>
+          </TableHead>
         </THead>
         <TableBody>
           {isLoading ? (
             <SkeletonRows cols={9} rows={3} />
           ) : (
-            (tableRows ?? []).map((row) => {
+            (sortedTableRows ?? []).map((row) => {
               const netClass =
                 row.net > 0
                   ? "text-emerald-600 dark:text-emerald-400"
