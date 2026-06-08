@@ -45,6 +45,14 @@ export default function PlaySubscriptions() {
     );
   }, [scoped]);
 
+  const earliestDataAsOf = useMemo(() => {
+    const withDate = scoped.filter((r) => !!r.dataAsOf);
+    if (withDate.length === 0) return undefined;
+    return withDate.reduce((oldest, r) =>
+      new Date(r.dataAsOf!).getTime() < new Date(oldest.dataAsOf!).getTime() ? r : oldest,
+    ).dataAsOf;
+  }, [scoped]);
+
   const csvRows = scoped.map((r) => [
     r.appName,
     r.packageName,
@@ -76,7 +84,7 @@ export default function PlaySubscriptions() {
         }
       />
 
-      <PlayBanner placeholder={isPlaceholder} isLive={isLive} dataUpdatedAt={dataUpdatedAt} />
+      <PlayBanner placeholder={isPlaceholder} isLive={isLive} dataUpdatedAt={dataUpdatedAt} dataAsOf={earliestDataAsOf} />
       <StaleCacheBanner source="play" dataAsOf={staleCachedRow?.dataAsOf} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -150,10 +158,21 @@ export default function PlaySubscriptions() {
 }
 
 
-function PlayBanner({ placeholder, isLive, dataUpdatedAt }: { placeholder: boolean; isLive: boolean; dataUpdatedAt: number }) {
-  const fetchedAt = dataUpdatedAt
-    ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-    : null;
+function PlayBanner({ placeholder, isLive, dataUpdatedAt, dataAsOf }: { placeholder: boolean; isLive: boolean; dataUpdatedAt: number; dataAsOf?: string }) {
+  const timestampLabel = (() => {
+    if (dataAsOf) {
+      const d = new Date(dataAsOf);
+      const isToday = d.toDateString() === new Date().toDateString();
+      const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      const label = isToday ? time : `${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${time}`;
+      return { text: `Data as of ${label}` };
+    }
+    if (dataUpdatedAt) {
+      const time = new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      return { text: `${placeholder ? "Generated" : "Fetched"} at ${time}` };
+    }
+    return null;
+  })();
 
   return (
     <div className="bg-card border border-border shadow-sm p-3 flex items-start gap-3">
@@ -177,10 +196,10 @@ function PlayBanner({ placeholder, isLive, dataUpdatedAt }: { placeholder: boole
         ) : (
           <>Subscriber states and revenue are pulled live from the Google Play Developer APIs for each tracked Android app.</>
         )}
-        {fetchedAt && (
+        {timestampLabel && (
           <span className="inline-flex items-center gap-1 ml-2 text-muted-foreground/70">
             <Clock className="h-3 w-3" />
-            {placeholder ? "Generated" : "Fetched"} at {fetchedAt}
+            {timestampLabel.text}
           </span>
         )}
       </div>
