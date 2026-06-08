@@ -515,16 +515,37 @@ async function syncAndReadRevenue(app: AppRecord): Promise<{ stripe: number; app
 }
 
 /**
- * Produces a deterministic month-over-month spend change percentage for an app.
- * When live data is available (mtd > 0) this would compare MTD this month vs the
- * same-day-of-month last month from the Cost Management API. In mock/dev mode we
- * derive a stable value from the app ID so the indicator always renders the same
- * reading per app regardless of zero MTD.
+ * Compute the month-over-month spend change percentage for an app.
+ *
+ * **Live / cached mode:** compares current MTD against the prior month's cost
+ * over the same elapsed day-of-month window (fetched from Azure Cost Management
+ * via `fetchLastMonthComparableCostTotal`). Returns null when either figure is
+ * zero or unavailable so the UI can suppress a misleading indicator.
+ *
+ * **Mock mode:** derives a stable value from the app ID hash so the indicator
+ * always renders the same reading per app during dev/preview (no Azure config).
+ *
+ * @param appId        App identifier (used for the mock fallback hash).
+ * @param mtd          Current month-to-date spend in USD.
+ * @param dataSource   Whether data came from a live Azure query, a cached DB
+ *                     snapshot, or the mock formula path.
+ * @param priorMonthTotal  Prior month comparable cost (May 1–N if today is
+ *                         June N), fetched from Azure; null when unavailable.
  */
-function computeMomChangePct(appId: string, mtd: number, dataSource: "live" | "cached" | "mock"): number | null {
-  // With live/cached data, return null if there's genuinely no spend history.
-  if (dataSource !== "mock" && mtd <= 0) return null;
-  // Simple deterministic hash of the app ID → a percentage in [-25, +35].
+function computeMomChangePct(
+  appId: string,
+  mtd: number,
+  dataSource: "live" | "cached" | "mock",
+  priorMonthTotal: number | null = null,
+): number | null {
+  if (dataSource !== "mock") {
+    // With real Azure data: require both figures to be non-trivial.
+    if (mtd <= 0) return null;
+    if (priorMonthTotal === null || priorMonthTotal <= 0) return null;
+    const pct = ((mtd - priorMonthTotal) / priorMonthTotal) * 100;
+    return Math.round(pct * 10) / 10; // 1 decimal place
+  }
+  // Mock mode: deterministic hash of the app ID → a percentage in [-25, +35].
   let h = 0;
   for (let i = 0; i < appId.length; i++) h = (h * 31 + appId.charCodeAt(i)) & 0xffffffff;
   const normalized = (h >>> 0) / 0xffffffff; // 0..1
@@ -553,10 +574,16 @@ router.get("/apps/:appId/cost", async (req, res) => {
   // budget entries so force-refresh always pulls fresh Azure Cost Management
   // data rather than serving a stale 30-min (cost) or 1-hour (budget) snapshot.
   const bypassCache = req.query["refresh"] === "true";
-  const [costWS, budgetWithSource, rev] = await Promise.all([
-    fetchMonthToDateCostWithFallback(app, { bypassCache, billingScope: billingScope(app.id) }),
+  const scope = billingScope(app.id);
+  const [costWS, budgetWithSource, rev, priorMonthTotal] = await Promise.all([
+    fetchMonthToDateCostWithFallback(app, { bypassCache, billingScope: scope }),
     fetchBudgetForAppWithFallback(app, { bypassCache }),
     syncAndReadRevenue(app),
+    // Fetch the prior month's comparable MTD cost for the real MoM calculation.
+    // In mock mode (Azure unconfigured) this short-circuits to null immediately.
+    // In live/cached mode it queries Cost Management for the same elapsed
+    // day-of-month window last month (e.g. May 1–8 when today is June 8).
+    fetchLastMonthComparableCostTotal(app, { bypassCache, billingScope: scope }),
   ]);
   const liveCost = costWS?.result ?? null;
   const mtd = liveCost?.monthToDate ?? 0;
@@ -565,11 +592,13 @@ router.get("/apps/:appId/cost", async (req, res) => {
   const forecast = budgetWithSource?.result.forecastAmount ?? 0;
   const budgetDataSource = budgetWithSource?.source ?? "estimated";
 
-  // Month-over-month percentage change. In mock mode we produce a deterministic
-  // seeded value so the indicator always shows the same reading for a given app.
-  // When live Azure cost data lands, the route can compare MTD against the prior
-  // month's same-day-of-month figure from the Cost Management API instead.
-  const momChangePct = computeMomChangePct(app.id, mtd, costWS?.source ?? "mock");
+  // Month-over-month percentage change.
+  // Live / cached mode: compares current MTD against priorMonthTotal (the
+  // Azure Cost Management query for the same elapsed day-of-month last month).
+  // Returns null when either figure is zero so the UI can hide the indicator.
+  // Mock mode (Azure unconfigured): deterministic hash of the app ID so the
+  // indicator renders a consistent reading per app in the Replit dev preview.
+  const momChangePct = computeMomChangePct(app.id, mtd, costWS?.source ?? "mock", priorMonthTotal);
 
   const data = GetCostResponse.parse({
     currency: "USD",

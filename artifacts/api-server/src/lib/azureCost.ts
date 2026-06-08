@@ -105,6 +105,11 @@ export function clearLastMonthCache(): void {
   _lastMonthCache.clear();
 }
 
+/** Evict the cached last-month cost entry for a single billing scope. */
+export function clearLastMonthCacheForScope(scope: string): void {
+  _lastMonthCache.delete(scope);
+}
+
 /**
  * Resolve the Azure subscription ID for an app's resource group.
  *
@@ -174,10 +179,13 @@ const _lastMonthCache = new Map<string, LastMonthCacheEntry>();
  * share the same billing scope (e.g. two apps queried at subscription scope for
  * the same subscription) share a single cached value and a single Azure API
  * call, avoiding redundant Cost Management requests.
+ *
+ * Pass `bypassCache: true` to evict the cached entry and force a fresh API
+ * call (e.g. when the cost route receives a refresh=true query param).
  */
 export async function fetchLastMonthComparableCostTotal(
   app: AppRecord,
-  { billingScope = "rg" }: { billingScope?: "rg" | "subscription" } = {},
+  { billingScope = "rg", bypassCache = false }: { billingScope?: "rg" | "subscription"; bypassCache?: boolean } = {},
 ): Promise<number | null> {
   if (!isAzureConfigured()) return null;
 
@@ -190,6 +198,10 @@ export async function fetchLastMonthComparableCostTotal(
     billingScope === "subscription"
       ? `/subscriptions/${subscriptionId}`
       : `/subscriptions/${subscriptionId}/resourceGroups/${app.resourceGroup}`;
+
+  if (bypassCache) {
+    _lastMonthCache.delete(scope);
+  }
 
   // Cache by scope path: apps sharing the same billing scope reuse this entry.
   const entry = _lastMonthCache.get(scope);

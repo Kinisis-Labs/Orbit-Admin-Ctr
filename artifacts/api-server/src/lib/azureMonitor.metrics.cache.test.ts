@@ -24,10 +24,9 @@ const FUTURE = Date.now() + 5 * 60 * 1000;
 const FAKE_SUMMARY: TelemetrySummary = {
   requestsPerMin: 42,
   p95LatencyMs: 120,
-  errorRatePct: 0.5,
-  availabilityPct: 99.9,
-  cpuPct: 30,
-  memoryPct: 45,
+  p95LatencyIsReal: false,
+  errorRatePercent: 0.5,
+  availabilityPercent: 99.9,
 };
 
 const FAKE_APP: AppRecord = {
