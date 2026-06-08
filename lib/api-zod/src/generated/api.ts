@@ -732,23 +732,39 @@ export const ListGlobalEndpointsResponse = zod.object({
 
 
 /**
- * @summary List anomaly date-keys dismissed in the current session
+ * @summary List dismissed anomaly date-keys for this session plus any team-wide (global) dismissals
  */
 export const ListAnomalyDismissalsQueryParams = zod.object({
   "appId": zod.coerce.string().describe('The app whose dismissals to return.')
 })
 
 export const ListAnomalyDismissalsResponse = zod.object({
-  "dismissedDateKeys": zod.array(zod.string()).describe('ISO date keys (YYYY-MM-DD) dismissed in the current session for this app')
+  "dismissedDateKeys": zod.array(zod.string()).describe('ISO date keys (YYYY-MM-DD) dismissed in the current session or globally for this app'),
+  "globalDismissals": zod.array(zod.object({
+  "dateKey": zod.string().describe('ISO date (YYYY-MM-DD) of the anomalous day'),
+  "dismissedBy": zod.string().nullish().describe('Display name or UPN of the operator who dismissed it for the team')
+})).describe('Team-wide dismissals (scope=global) with the operator who dismissed them')
 })
 
 
 /**
- * @summary Mark a cost anomaly as dismissed for the current session
+ * @summary Mark a cost anomaly as dismissed (session-only or team-wide)
  */
+export const dismissAnomalyBodyScopeDefault = `session`;
+
 export const DismissAnomalyBody = zod.object({
   "appId": zod.string().describe('ID of the app whose anomaly is being dismissed'),
-  "dateKey": zod.string().describe('ISO date (YYYY-MM-DD) of the anomalous day to dismiss')
+  "dateKey": zod.string().describe('ISO date (YYYY-MM-DD) of the anomalous day to dismiss'),
+  "scope": zod.enum(['session', 'global']).default(dismissAnomalyBodyScopeDefault).describe('session = only this browser session; global = dismissed for everyone on the team')
+})
+
+
+/**
+ * @summary Remove a global (team-wide) anomaly dismissal so the banner shows again for everyone
+ */
+export const UndismissAnomalyQueryParams = zod.object({
+  "appId": zod.coerce.string().describe('The app whose global dismissal to remove.'),
+  "dateKey": zod.coerce.string().describe('ISO date (YYYY-MM-DD) of the anomaly to un-dismiss.')
 })
 
 

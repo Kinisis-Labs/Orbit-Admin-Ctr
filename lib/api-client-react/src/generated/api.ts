@@ -67,6 +67,7 @@ import type {
   SlosResponse,
   StripeSyncResult,
   TelemetryReport,
+  UndismissAnomalyParams,
   UpdateAlertConfigBody,
   UpdateAppThresholds403,
   UpdateAppThresholdsBody,
@@ -2285,7 +2286,7 @@ export const getListAnomalyDismissalsUrl = (params: ListAnomalyDismissalsParams,
 }
 
 /**
- * @summary List anomaly date-keys dismissed in the current session
+ * @summary List dismissed anomaly date-keys for this session plus any team-wide (global) dismissals
  */
 export const listAnomalyDismissals = async (params: ListAnomalyDismissalsParams, options?: RequestInit): Promise<AnomalyDismissalsResponse> => {
 
@@ -2332,7 +2333,7 @@ export type ListAnomalyDismissalsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary List anomaly date-keys dismissed in the current session
+ * @summary List dismissed anomaly date-keys for this session plus any team-wide (global) dismissals
  */
 
 export function useListAnomalyDismissals<TData = Awaited<ReturnType<typeof listAnomalyDismissals>>, TError = ErrorType<unknown>>(
@@ -2362,7 +2363,7 @@ export const getDismissAnomalyUrl = () => {
 }
 
 /**
- * @summary Mark a cost anomaly as dismissed for the current session
+ * @summary Mark a cost anomaly as dismissed (session-only or team-wide)
  */
 export const dismissAnomaly = async (dismissAnomalyRequest: DismissAnomalyRequest, options?: RequestInit): Promise<void> => {
 
@@ -2411,7 +2412,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DismissAnomalyMutationError = ErrorType<unknown>
 
     /**
- * @summary Mark a cost anomaly as dismissed for the current session
+ * @summary Mark a cost anomaly as dismissed (session-only or team-wide)
  */
 export const useDismissAnomaly = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissAnomaly>>, TError,{data: BodyType<DismissAnomalyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -2422,6 +2423,83 @@ export const useDismissAnomaly = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDismissAnomalyMutationOptions(options));
+    }
+
+export const getUndismissAnomalyUrl = (params: UndismissAnomalyParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/cost/anomaly-dismissals?${stringifiedParams}` : `/api/cost/anomaly-dismissals`
+}
+
+/**
+ * @summary Remove a global (team-wide) anomaly dismissal so the banner shows again for everyone
+ */
+export const undismissAnomaly = async (params: UndismissAnomalyParams, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getUndismissAnomalyUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getUndismissAnomalyMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof undismissAnomaly>>, TError,{params: UndismissAnomalyParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof undismissAnomaly>>, TError,{params: UndismissAnomalyParams}, TContext> => {
+
+const mutationKey = ['undismissAnomaly'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof undismissAnomaly>>, {params: UndismissAnomalyParams}> = (props) => {
+          const {params} = props ?? {};
+
+          return  undismissAnomaly(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UndismissAnomalyMutationResult = NonNullable<Awaited<ReturnType<typeof undismissAnomaly>>>
+
+    export type UndismissAnomalyMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Remove a global (team-wide) anomaly dismissal so the banner shows again for everyone
+ */
+export const useUndismissAnomaly = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof undismissAnomaly>>, TError,{params: UndismissAnomalyParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof undismissAnomaly>>,
+        TError,
+        {params: UndismissAnomalyParams},
+        TContext
+      > => {
+      return useMutation(getUndismissAnomalyMutationOptions(options));
     }
 
 export const getGetGlobalCostSummaryUrl = () => {

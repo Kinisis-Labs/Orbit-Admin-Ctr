@@ -5,16 +5,38 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
-export interface AnomalyDismissalsResponse {
-  /** ISO date keys (YYYY-MM-DD) dismissed in the current session for this app */
-  dismissedDateKeys: string[];
+export interface GlobalAnomalyDismissal {
+  /** ISO date (YYYY-MM-DD) of the anomalous day */
+  dateKey: string;
+  /** Display name or UPN of the operator who dismissed it for the team */
+  dismissedBy?: string | null;
 }
+
+export interface AnomalyDismissalsResponse {
+  /** ISO date keys (YYYY-MM-DD) dismissed in the current session or globally for this app */
+  dismissedDateKeys: string[];
+  /** Team-wide dismissals (scope=global) with the operator who dismissed them */
+  globalDismissals: GlobalAnomalyDismissal[];
+}
+
+/**
+ * session = only this browser session; global = dismissed for everyone on the team
+ */
+export type DismissAnomalyRequestScope = typeof DismissAnomalyRequestScope[keyof typeof DismissAnomalyRequestScope];
+
+
+export const DismissAnomalyRequestScope = {
+  session: 'session',
+  global: 'global',
+} as const;
 
 export interface DismissAnomalyRequest {
   /** ID of the app whose anomaly is being dismissed */
   appId: string;
   /** ISO date (YYYY-MM-DD) of the anomalous day to dismiss */
   dateKey: string;
+  /** session = only this browser session; global = dismissed for everyone on the team */
+  scope?: DismissAnomalyRequestScope;
 }
 
 export interface HealthStatus {
@@ -1306,6 +1328,17 @@ export type ListAnomalyDismissalsParams = {
  * The app whose dismissals to return.
  */
 appId: string;
+};
+
+export type UndismissAnomalyParams = {
+/**
+ * The app whose global dismissal to remove.
+ */
+appId: string;
+/**
+ * ISO date (YYYY-MM-DD) of the anomaly to un-dismiss.
+ */
+dateKey: string;
 };
 
 export type ListBudgetAlertLogParams = {

@@ -5,10 +5,13 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { DismissAnomalyRequestScope } from './dismissAnomalyRequestScope';
 
 export interface DismissAnomalyRequest {
   /** ID of the app whose anomaly is being dismissed */
   appId: string;
   /** ISO date (YYYY-MM-DD) of the anomalous day to dismiss */
   dateKey: string;
+  /** session = only this browser session; global = dismissed for everyone on the team */
+  scope?: DismissAnomalyRequestScope;
 }

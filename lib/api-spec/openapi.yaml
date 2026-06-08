@@ -475,7 +475,7 @@ paths:
     get:
       operationId: listAnomalyDismissals
       tags: [cost]
-      summary: List anomaly date-keys dismissed in the current session
+      summary: List dismissed anomaly date-keys for this session plus any team-wide (global) dismissals
       parameters:
         - name: appId
           in: query
@@ -491,7 +491,7 @@ paths:
     post:
       operationId: dismissAnomaly
       tags: [cost]
-      summary: Mark a cost anomaly as dismissed for the current session
+      summary: Mark a cost anomaly as dismissed (session-only or team-wide)
       requestBody:
         required: true
         content:
@@ -500,6 +500,24 @@ paths:
       responses:
         "204":
           description: Dismissed
+    delete:
+      operationId: undismissAnomaly
+      tags: [cost]
+      summary: Remove a global (team-wide) anomaly dismissal so the banner shows again for everyone
+      parameters:
+        - name: appId
+          in: query
+          required: true
+          description: The app whose global dismissal to remove.
+          schema: { type: string }
+        - name: dateKey
+          in: query
+          required: true
+          description: ISO date (YYYY-MM-DD) of the anomaly to un-dismiss.
+          schema: { type: string }
+      responses:
+        "204":
+          description: Un-dismissed
   /global/cost-summary:
     get:
       operationId: getGlobalCostSummary
@@ -699,12 +717,27 @@ components:
   schemas:
     AnomalyDismissalsResponse:
       type: object
-      required: [dismissedDateKeys]
+      required: [dismissedDateKeys, globalDismissals]
       properties:
         dismissedDateKeys:
           type: array
           items: { type: string }
-          description: ISO date keys (YYYY-MM-DD) dismissed in the current session for this app
+          description: ISO date keys (YYYY-MM-DD) dismissed in the current session or globally for this app
+        globalDismissals:
+          type: array
+          items: { $ref: "#/components/schemas/GlobalAnomalyDismissal" }
+          description: Team-wide dismissals (scope=global) with the operator who dismissed them
+    GlobalAnomalyDismissal:
+      type: object
+      required: [dateKey]
+      properties:
+        dateKey:
+          type: string
+          description: ISO date (YYYY-MM-DD) of the anomalous day
+        dismissedBy:
+          type: string
+          nullable: true
+          description: Display name or UPN of the operator who dismissed it for the team
     DismissAnomalyRequest:
       type: object
       required: [appId, dateKey]
@@ -715,6 +748,11 @@ components:
         dateKey:
           type: string
           description: ISO date (YYYY-MM-DD) of the anomalous day to dismiss
+        scope:
+          type: string
+          enum: [session, global]
+          default: session
+          description: "session = only this browser session; global = dismissed for everyone on the team"
     HealthStatus:
       type: object
       required: [status]

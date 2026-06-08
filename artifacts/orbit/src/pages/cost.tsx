@@ -4,6 +4,7 @@ import {
   useListAnomalyDismissals,
   getListAnomalyDismissalsQueryKey,
   useDismissAnomaly,
+  useUndismissAnomaly,
   getCost,
   useGetGlobalCostSummary,
   getGetGlobalCostSummaryQueryKey,
@@ -13,7 +14,7 @@ import {
 } from "@workspace/api-client-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUnacknowledgedBudgetAlerts } from "@/hooks/use-unacknowledged-budget-alerts";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { AdminAccessBadge } from "@/components/admin-access-badge";
 import { useApps } from "@/hooks/use-apps";
 import { useBudgetThreshold } from "@/lib/spend-threshold";
@@ -27,7 +28,8 @@ import { RefreshingBar } from "@/components/refreshing-bar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link, useSearch, useLocation } from "wouter";
-import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, TriangleAlert, ArrowUp, ArrowDown, ArrowUpDown, Filter } from "lucide-react";
+import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, TriangleAlert, ArrowUp, ArrowDown, ArrowUpDown, Filter, Users, RotateCcw } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DataSourceBadge } from "@/components/data-source-badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
@@ -149,6 +151,8 @@ function AnomalyAlertBanner({
     }
   });
 
+  const queryClient = useQueryClient();
+
   // Server-side dismissal state — survives browser storage clears & private windows
   const dismissalsQueryKey = getListAnomalyDismissalsQueryKey({ appId });
   const { data: serverDismissals } = useListAnomalyDismissals(
@@ -156,25 +160,79 @@ function AnomalyAlertBanner({
     { query: { enabled: !!appId && !!anomaly, queryKey: dismissalsQueryKey } },
   );
   const { mutate: serverDismiss } = useDismissAnomaly();
+  const { mutate: serverUndismiss } = useUndismissAnomaly();
 
   if (!anomaly) return null;
 
-  const dismissedOnServer = serverDismissals?.dismissedDateKeys.includes(anomaly.dateKey) ?? false;
-  if (dismissedLocally || dismissedOnServer) return null;
+  // Global (team-wide) dismissal for this anomaly date, if any
+  const globalDismissal = serverDismissals?.globalDismissals.find(
+    (d) => d.dateKey === anomaly.dateKey,
+  ) ?? null;
 
-  function dismiss() {
+  // Session-scoped dismissal (this user only)
+  const dismissedInSession =
+    serverDismissals?.dismissedDateKeys.includes(anomaly.dateKey) &&
+    !globalDismissal
+      ? true
+      : false;
+
+  // If dismissed in this session or locally (but no team dismissal) — hide entirely
+  if (dismissedLocally || dismissedInSession) return null;
+
+  function dismissForMe() {
     if (!anomaly) return;
-    // Optimistic local update first
     try { localStorage.setItem(LS_KEY_PREFIX + anomaly.dateKey, "1"); } catch { /* ignore */ }
     setDismissedLocally(true);
-    // Persist server-side keyed to the session
-    serverDismiss({ data: { appId, dateKey: anomaly.dateKey } });
+    serverDismiss({ data: { appId, dateKey: anomaly.dateKey, scope: "session" } });
     onDismiss?.();
+  }
+
+  function dismissForTeam() {
+    if (!anomaly) return;
+    try { localStorage.setItem(LS_KEY_PREFIX + anomaly.dateKey, "1"); } catch { /* ignore */ }
+    setDismissedLocally(true);
+    serverDismiss(
+      { data: { appId, dateKey: anomaly.dateKey, scope: "global" } },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: dismissalsQueryKey }) },
+    );
+  }
+
+  function showAgain() {
+    if (!anomaly) return;
+    try { localStorage.removeItem(LS_KEY_PREFIX + anomaly.dateKey); } catch { /* ignore */ }
+    setDismissedLocally(false);
+    serverUndismiss(
+      { params: { appId, dateKey: anomaly.dateKey } },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: dismissalsQueryKey }) },
+    );
   }
 
   const dateLabel = format(anomaly.date, "EEE, MMM d");
   const multipleLabel = `${anomaly.vsAvgMultiple.toFixed(1)}× ${anomaly.windowLabel} avg`;
   const isPeak = anomaly.isPeak;
+
+  // Team-dismissed state — show a muted "dismissed by X" row with a "Show again" action
+  if (globalDismissal) {
+    return (
+      <div className="flex items-center gap-3 px-3 py-2 rounded-sm border border-border/60 bg-muted/40 text-muted-foreground text-[12px]">
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0 opacity-50" />
+        <span className="flex-1 min-w-0">
+          Cost anomaly {appName ? `(${appName}) ` : ""}dismissed by{" "}
+          <span className="font-medium text-foreground/70">
+            {globalDismissal.dismissedBy ?? "a team member"}
+          </span>
+          {" "}—{" "}
+          <button
+            onClick={showAgain}
+            className="inline-flex items-center gap-1 font-medium text-foreground/70 underline underline-offset-2 hover:text-foreground transition-colors"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Show again
+          </button>
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-start gap-3 px-3 py-2.5 rounded-sm border border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-300">
@@ -204,13 +262,27 @@ function AnomalyAlertBanner({
           </button>
         )}
       </div>
-      <button
-        onClick={dismiss}
-        className="shrink-0 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
-        aria-label="Dismiss anomaly alert"
-      >
-        <X className="h-4 w-4" />
-      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="shrink-0 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
+            aria-label="Dismiss anomaly alert options"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={dismissForMe} className="gap-2 cursor-pointer">
+            <X className="h-3.5 w-3.5 shrink-0" />
+            Dismiss for me
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={dismissForTeam} className="gap-2 cursor-pointer">
+            <Users className="h-3.5 w-3.5 shrink-0" />
+            Dismiss for everyone
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

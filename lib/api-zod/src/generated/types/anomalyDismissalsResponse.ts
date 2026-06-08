@@ -5,8 +5,11 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { GlobalAnomalyDismissal } from './globalAnomalyDismissal';
 
 export interface AnomalyDismissalsResponse {
-  /** ISO date keys (YYYY-MM-DD) dismissed in the current session for this app */
+  /** ISO date keys (YYYY-MM-DD) dismissed in the current session or globally for this app */
   dismissedDateKeys: string[];
+  /** Team-wide dismissals (scope=global) with the operator who dismissed them */
+  globalDismissals: GlobalAnomalyDismissal[];
 }
