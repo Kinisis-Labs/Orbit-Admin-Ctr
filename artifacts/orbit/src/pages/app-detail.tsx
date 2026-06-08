@@ -53,6 +53,8 @@ import { AlertConfigTable } from "@/components/alert-config-table";
 
 const VALID_TABS = ["overview", "infrastructure", "network", "telemetry", "cost", "ledger", "alerts"] as const;
 
+const LAST_TAB_KEY = "orbit-last-tab";
+
 function parseTabParam(search: string): string {
   const tab = new URLSearchParams(search).get("tab") ?? "";
   return (VALID_TABS as readonly string[]).includes(tab) ? tab : "overview";
@@ -66,6 +68,14 @@ export default function AppDetail() {
   const [location, setLocation] = useLocation();
   const search = useSearch();
   const activeTab = parseTabParam(search);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LAST_TAB_KEY, activeTab);
+    } catch {
+      /* ignore */
+    }
+  }, [activeTab]);
 
   function handleTabChange(tab: string) {
     setLocation(`${location}?tab=${tab}`);

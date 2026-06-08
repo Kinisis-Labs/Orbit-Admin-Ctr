@@ -17,6 +17,15 @@ import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow } from "date-fns";
 
+function readLastTab(): string {
+  try {
+    const t = localStorage.getItem("orbit-last-tab") ?? "overview";
+    return (["overview", "infrastructure", "network", "telemetry", "cost", "ledger", "alerts"] as string[]).includes(t) ? t : "overview";
+  } catch {
+    return "overview";
+  }
+}
+
 export default function Home() {
   const { scope } = useScope();
   const { hasGroup } = useAuth();
@@ -98,7 +107,13 @@ export default function Home() {
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${appsFetching ? "animate-spin" : ""}`} />
               Refresh
             </Button>
-            <Link href={`/apps/${scope}`} className="text-[12px] text-primary hover:underline">
+            <Link
+              href={(() => {
+                const t = readLastTab();
+                return t !== "overview" ? `/apps/${scope}?tab=${t}` : `/apps/${scope}`;
+              })()}
+              className="text-[12px] text-primary hover:underline"
+            >
               Open application →
             </Link>
           </div>
