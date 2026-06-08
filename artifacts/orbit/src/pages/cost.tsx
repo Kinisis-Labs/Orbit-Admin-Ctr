@@ -7,6 +7,8 @@ import {
   getCost,
   useGetGlobalCostSummary,
   getGetGlobalCostSummaryQueryKey,
+  useGetGlobalHealth,
+  getGetGlobalHealthQueryKey,
 } from "@workspace/api-client-react";
 import { useQueries } from "@tanstack/react-query";
 import { AdminAccessBadge } from "@/components/admin-access-badge";
@@ -259,8 +261,37 @@ function GlobalCostPanel() {
 }
 
 
+function MomTrendBadge({ pct }: { pct: number }) {
+  const isUp = pct > 0;
+  const isFlat = pct === 0;
+  const label = `${isUp ? "+" : ""}${pct.toFixed(1)}% vs last month`;
+  const colorClass = isUp
+    ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
+    : isFlat
+    ? "bg-muted text-muted-foreground border-border"
+    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30";
+  const Icon = isUp ? TrendingUp : isFlat ? null : TrendingDown;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[11px] font-semibold border cursor-default ${colorClass}`}
+          >
+            {Icon && <Icon className="h-3 w-3 shrink-0" />}
+            {isUp ? "+" : ""}{pct.toFixed(1)}%
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{label} (same elapsed days)</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 function GlobalCost() {
   const { data: apps, isLoading: appsLoading } = useApps();
+  const { data: globalHealth } = useGetGlobalHealth({ query: { queryKey: getGetGlobalHealthQueryKey(), staleTime: 5 * 60 * 1000 } });
 
   const costQueries = useQueries({
     queries: (apps ?? []).map((app) => ({
@@ -290,6 +321,9 @@ function GlobalCost() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apps, isLoading, costQueries.map((q) => q.dataUpdatedAt).join(",")]);
 
+  const totalMtd = tableRows ? tableRows.reduce((s, r) => s + r.cost, 0) : null;
+  const momTrendPct = globalHealth?.momTrendPct ?? null;
+
   const csvHeaders = ["Application", "Cost", "Stripe", "App Store", "Play Store", "Revenue", "Net", "Margin %"];
   const csvRows = useMemo(() => {
     if (!tableRows) return null;
@@ -313,6 +347,44 @@ function GlobalCost() {
   } = useCsvExport(csvRows, csvHeaders, "cost-vs-revenue-by-app");
 
   return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Total cost (MTD)</div>
+          {isLoading || totalMtd === null ? (
+            <Skeleton className="h-7 w-28 mt-1" />
+          ) : (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xl font-semibold text-foreground tabular-nums">{fmt(totalMtd, currency)}</span>
+              {momTrendPct !== null && <MomTrendBadge pct={momTrendPct} />}
+            </div>
+          )}
+          <div className="text-[11px] text-muted-foreground mt-1">All applications combined</div>
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Applications tracked</div>
+          {isLoading ? (
+            <Skeleton className="h-7 w-10 mt-1" />
+          ) : (
+            <span className="text-xl font-semibold text-foreground mt-1">{apps?.length ?? 0}</span>
+          )}
+          <div className="text-[11px] text-muted-foreground mt-1">Across all environments</div>
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Data source</div>
+          {isLoading ? (
+            <Skeleton className="h-7 w-16 mt-1" />
+          ) : (
+            <div className="mt-1">
+              <DataSourceBadge
+                dataSource={globalHealth?.costDataSource ?? "mock"}
+                label="Azure Cost Management"
+              />
+            </div>
+          )}
+          <div className="text-[11px] text-muted-foreground mt-1">Azure Cost Management</div>
+        </div>
+      </div>
     <Panel
       title="Cost vs Revenue by Application"
       toolbar={
@@ -384,6 +456,7 @@ function GlobalCost() {
         </TableBody>
       </Table>
     </Panel>
+    </>
   );
 }
 

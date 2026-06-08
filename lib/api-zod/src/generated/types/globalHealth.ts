@@ -16,5 +16,7 @@ export interface GlobalHealth {
   monthToDateCost: number;
   /** Indicates whether the aggregate monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values. live = all apps live, cached = at least one app used a snapshot, mock = no live or cached data. */
   costDataSource?: GlobalHealthCostDataSource;
+  /** Month-over-month cost trend as a percentage change vs the same elapsed days last month. Positive = higher spend this month, negative = lower spend. Omitted when Azure Cost Management is not configured. */
+  momTrendPct?: number | null;
   currency: string;
 }

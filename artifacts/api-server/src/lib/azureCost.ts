@@ -50,6 +50,33 @@ function today(): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Returns the [start, end] dates for the same elapsed period last month.
+ * e.g. if today is June 8, returns ["YYYY-05-01", "YYYY-05-08"].
+ * Clamps end to the last day of last month when today > last month's length.
+ */
+function lastMonthComparablePeriod(): { start: string; end: string } {
+  const now = new Date();
+  const dayOfMonth = now.getUTCDate();
+  const thisMonth = now.getUTCMonth(); // 0-indexed
+  const thisYear = now.getUTCFullYear();
+
+  const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+  const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+
+  // Last day of last month
+  const lastDayOfLastMonth = new Date(Date.UTC(lastMonthYear, lastMonth + 1, 0)).getUTCDate();
+  const endDay = Math.min(dayOfMonth, lastDayOfLastMonth);
+
+  const mm = String(lastMonth + 1).padStart(2, "0");
+  const dd = String(endDay).padStart(2, "0");
+
+  return {
+    start: `${lastMonthYear}-${mm}-01`,
+    end: `${lastMonthYear}-${mm}-${dd}`,
+  };
+}
+
 /** A UUID-shaped GUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx). */
 function isGuid(s: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -124,6 +151,64 @@ export async function resolveSubscriptionId(app: AppRecord): Promise<string | nu
   }
 
   return null;
+}
+
+// Cache: app id → { total, expiresAt } (keyed per month-year so stale entries auto-expire)
+const LAST_MONTH_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+type LastMonthCacheEntry = { total: number; expiresAt: number };
+const _lastMonthCache = new Map<string, LastMonthCacheEntry>();
+
+/**
+ * Fetch the aggregate cost for an app over the comparable elapsed period last month.
+ * e.g. if today is June 8, fetches May 1–May 8.
+ * Returns null when Azure is not configured or on any error.
+ * Results are cached for 1 hour (last month data doesn't change frequently).
+ */
+export async function fetchLastMonthComparableCostTotal(
+  app: AppRecord,
+  { billingScope = "rg" }: { billingScope?: "rg" | "subscription" } = {},
+): Promise<number | null> {
+  if (!isAzureConfigured()) return null;
+
+  const cacheKey = `${app.id}__lastmonth`;
+  const entry = _lastMonthCache.get(cacheKey);
+  if (entry && entry.expiresAt > Date.now()) return entry.total;
+
+  const subscriptionId = await resolveSubscriptionId(app);
+  if (!subscriptionId) return null;
+
+  const scope =
+    billingScope === "subscription"
+      ? `/subscriptions/${subscriptionId}`
+      : `/subscriptions/${subscriptionId}/resourceGroups/${app.resourceGroup}`;
+
+  const { start, end } = lastMonthComparablePeriod();
+
+  try {
+    const result = await getCostClient().query.usage(scope, {
+      type: "Usage",
+      timeframe: "Custom",
+      timePeriod: { from: new Date(start), to: new Date(end) },
+      dataset: {
+        granularity: "None",
+        aggregation: {
+          totalCost: { name: "PreTaxCost", function: "Sum" },
+        },
+      },
+    });
+
+    const columns: string[] = (result.columns ?? []).map((c) => String(c.name ?? ""));
+    const rows = (result.rows ?? []) as unknown[][];
+    const costIdx = columns.findIndex((c) => c.toLowerCase().includes("cost"));
+    if (costIdx === -1 || rows.length === 0) return null;
+
+    const total = Number(rows[0]?.[costIdx] ?? 0);
+    _lastMonthCache.set(cacheKey, { total, expiresAt: Date.now() + LAST_MONTH_CACHE_TTL_MS });
+    return Number(total.toFixed(2));
+  } catch (err) {
+    logger.warn({ err, appId: app.id, scope, start, end }, "Last-month comparable cost query failed");
+    return null;
+  }
 }
 
 /**

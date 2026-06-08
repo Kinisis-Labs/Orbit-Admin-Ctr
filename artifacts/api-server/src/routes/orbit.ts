@@ -24,7 +24,7 @@ import { db, appThresholdsTable, appThresholdsLogTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
 import { requireEngineerOrAdmin } from "../middlewares/auth.js";
 import { fetchResourcesByResourceGroup, fetchResourceGroupTags } from "../lib/azureResources.js";
-import { fetchMonthToDateCostWithFallback } from "../lib/azureCost.js";
+import { fetchMonthToDateCostWithFallback, fetchLastMonthComparableCostTotal } from "../lib/azureCost.js";
 import { fetchBudgetForAppWithFallback } from "../lib/azureBudgets.js";
 import { fetchSubscriptionNames } from "../lib/azureSubscriptions.js";
 import {
@@ -651,8 +651,9 @@ router.get("/apps/:appId/alerts", async (req, res) => {
 
 // --- global ---
 router.get("/global/health", async (_req, res) => {
-  const [costResults] = await Promise.all([
+  const [costResults, lastMonthResults] = await Promise.all([
     Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, { billingScope: billingScope(a.id) }))),
+    Promise.all(APPS.map((a) => fetchLastMonthComparableCostTotal(a, { billingScope: billingScope(a.id) }))),
   ]);
 
   const totals = APPS.reduce(
@@ -676,11 +677,26 @@ router.get("/global/health", async (_req, res) => {
     ? "cached"
     : "mock";
 
+  // Compute MoM trend only when Azure Cost Management returned live/cached data.
+  // Omit (undefined) for mock so the frontend knows not to render the badge.
+  let momTrendPct: number | undefined;
+  if (costDataSource !== "mock") {
+    const lastMonthTotal = lastMonthResults.reduce<number | null>((sum, v) => {
+      if (v === null) return null; // any null → whole trend is unavailable
+      if (sum === null) return null;
+      return sum + v;
+    }, 0);
+    if (lastMonthTotal !== null && lastMonthTotal > 0.01) {
+      momTrendPct = Number((((monthToDateCost - lastMonthTotal) / lastMonthTotal) * 100).toFixed(1));
+    }
+  }
+
   const data = GetGlobalHealthResponse.parse({
     ...totals,
     activeAlerts: 0,
     monthToDateCost,
     costDataSource,
+    ...(momTrendPct !== undefined ? { momTrendPct } : {}),
     currency: "USD",
   });
   res.json(data);
