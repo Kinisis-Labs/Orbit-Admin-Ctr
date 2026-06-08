@@ -394,7 +394,8 @@ function GlobalCost() {
       const revenue = costData?.revenue.total ?? stripe + appStore + playStore;
       const net = revenue - cost;
       const marginPct = revenue > 0 ? (net / revenue) * 100 : null;
-      return { app, cost, stripe, appStore, playStore, revenue, net, marginPct };
+      const momChangePct = costData?.momChangePct ?? null;
+      return { app, cost, stripe, appStore, playStore, revenue, net, marginPct, momChangePct };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apps, isLoading, costQueries.map((q) => q.dataUpdatedAt).join(",")]);
@@ -402,12 +403,13 @@ function GlobalCost() {
   const totalMtd = tableRows ? tableRows.reduce((s, r) => s + r.cost, 0) : null;
   const momTrendPct = globalHealth?.momTrendPct ?? null;
 
-  const csvHeaders = ["Application", "Cost", "Stripe", "App Store", "Play Store", "Revenue", "Net", "Margin %"];
+  const csvHeaders = ["Application", "Cost (MTD)", "MoM %", "Stripe", "App Store", "Play Store", "Revenue", "Net", "Margin %"];
   const csvRows = useMemo(() => {
     if (!tableRows) return null;
     return tableRows.map((r) => [
       r.app.name,
       r.cost.toFixed(2),
+      r.momChangePct != null ? (r.momChangePct >= 0 ? "+" : "") + r.momChangePct.toFixed(1) + "%" : "—",
       r.stripe.toFixed(2),
       r.appStore.toFixed(2),
       r.playStore.toFixed(2),
@@ -479,7 +481,8 @@ function GlobalCost() {
       <Table className="text-[13px]">
         <THead>
           <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
-          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Cost</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Cost (MTD)</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground w-[100px]">MoM</TableHead>
           <TableHead className="h-8 font-semibold text-foreground text-right w-[100px]">Stripe</TableHead>
           <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">App Store</TableHead>
           <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Play Store</TableHead>
@@ -489,7 +492,7 @@ function GlobalCost() {
         </THead>
         <TableBody>
           {isLoading ? (
-            <SkeletonRows cols={8} rows={3} />
+            <SkeletonRows cols={9} rows={3} />
           ) : (
             (tableRows ?? []).map((row) => {
               const netClass =
@@ -513,6 +516,13 @@ function GlobalCost() {
                     <span className="text-muted-foreground text-[11px] ml-1.5">· {row.app.environment}</span>
                   </TableCell>
                   <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">{fmt(row.cost, currency)}</TableCell>
+                  <TableCell className="py-1">
+                    {row.momChangePct != null ? (
+                      <MomTrendBadge pct={row.momChangePct} />
+                    ) : (
+                      <span className="text-muted-foreground/40 text-[11px]">—</span>
+                    )}
+                  </TableCell>
                   <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
                     {row.stripe > 0 ? fmt(row.stripe, currency) : <span className="opacity-30">—</span>}
                   </TableCell>
