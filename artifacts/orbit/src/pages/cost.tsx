@@ -20,7 +20,7 @@ import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { useCsvExport } from "@/hooks/use-csv-export";
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { DailySpendChart, type DailyCostPoint, type DailySpendRange } from "@/components/daily-spend-chart";
 import { computeAnomalies } from "@/components/daily-spend-utils";
 import { format, parseISO, isValid } from "date-fns";
@@ -76,6 +76,7 @@ function detectRecentAnomaly(daily: DailyCostPoint[] | undefined | null): {
 }
 
 const LS_KEY_PREFIX = "orbit-cost-anomaly-dismissed-";
+const LS_DAILY_TABLE_KEY = (scope: string) => `orbit-cost-daily-table-${scope}`;
 
 function AnomalyAlertBanner({
   anomaly,
@@ -180,8 +181,22 @@ function AppCost() {
   const marginPct = data && data.revenue.total > 0 ? (net / data.revenue.total) * 100 : null;
   const netClass = net >= 0 ? "text-emerald-500" : "text-destructive";
 
-  const [showDailyTable, setShowDailyTable] = useState(false);
+  const [showDailyTable, setShowDailyTable] = useState(() => {
+    try {
+      return localStorage.getItem(LS_DAILY_TABLE_KEY(scope)) === "1";
+    } catch {
+      return false;
+    }
+  });
   const [copiedDaily, setCopiedDaily] = useState(false);
+
+  useEffect(() => {
+    try {
+      setShowDailyTable(localStorage.getItem(LS_DAILY_TABLE_KEY(scope)) === "1");
+    } catch {
+      setShowDailyTable(false);
+    }
+  }, [scope]);
 
   type ServiceSortCol = "amount" | "trend";
   type SortDir = "asc" | "desc";
@@ -463,7 +478,11 @@ function AppCost() {
                 />
               )}
               <button
-                onClick={() => setShowDailyTable((v) => !v)}
+                onClick={() => setShowDailyTable((v) => {
+                  const next = !v;
+                  try { localStorage.setItem(LS_DAILY_TABLE_KEY(scope), next ? "1" : "0"); } catch { /* ignore */ }
+                  return next;
+                })}
                 className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors ml-1"
               >
                 <TableIcon className="h-3.5 w-3.5" />
