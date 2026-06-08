@@ -2,7 +2,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { CheckCircle2, XCircle, FlaskConical } from "lucide-react";
+import { CheckCircle2, XCircle, FlaskConical, Mail } from "lucide-react";
 
 type GroupDef = {
   id: string;
@@ -58,7 +58,7 @@ const ORBIT_GROUPS: GroupDef[] = [
 
 
 export default function Access() {
-  const { hasGroup, user, groups, isMock, grantGroup, revokeGroup } = useAuth();
+  const { hasGroup, user, groups, isMock, grantGroup, revokeGroup, accessContact } = useAuth();
 
   return (
     <div className="space-y-4">
@@ -92,6 +92,17 @@ export default function Access() {
         <div className="mt-3 text-[12px] text-muted-foreground">
           Member of {groups.length} group{groups.length === 1 ? "" : "s"}: {groups.map((g) => g.displayName).join(", ")}
         </div>
+      </div>
+
+      <div className="bg-card border border-border shadow-sm px-4 py-3 flex items-center gap-2 text-[13px]">
+        <Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <span className="text-muted-foreground">Access requests:</span>
+        <a
+          href={`mailto:${accessContact}`}
+          className="text-primary hover:underline font-medium"
+        >
+          {accessContact}
+        </a>
       </div>
 
       <div className="bg-card border border-border shadow-sm">

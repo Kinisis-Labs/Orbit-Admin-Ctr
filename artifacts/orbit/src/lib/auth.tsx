@@ -218,6 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         mode: "mock",
         isMock: true,
         signOut,
+        accessContact,
         grantGroup: (id: string) => toggleableIds.has(id) && grantGroup(id),
         revokeGroup: (id: string) => toggleableIds.has(id) && revokeGroup(id),
       };
@@ -232,6 +233,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mode: "entra",
       isMock: false,
       signOut,
+      accessContact,
     };
   }, [mode, entra, mockExtras, signOut, grantGroup, revokeGroup]);
 

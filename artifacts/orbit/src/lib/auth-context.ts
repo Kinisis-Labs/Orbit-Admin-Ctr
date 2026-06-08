@@ -10,6 +10,8 @@ export type AuthContextValue = {
   mode: AuthMode;
   isMock: boolean;
   signOut: () => void;
+  /** The access-request contact address served by /api/auth/me (or the fallback default). */
+  accessContact: string;
   /** Only present in mock mode — grant a group for the current dev session. */
   grantGroup?: (id: string) => void;
   /** Only present in mock mode — revoke a group for the current dev session. */
