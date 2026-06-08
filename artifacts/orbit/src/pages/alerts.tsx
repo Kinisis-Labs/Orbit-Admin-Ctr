@@ -201,28 +201,24 @@ export default function Alerts() {
       </div>
       <ViolationLogPanel />
       <InfraAlertHistory appId={scope} />
-      {selectedApp ? (
-        <AlertConfigTable appId={scope} />
-      ) : (
-        <div className="bg-card border border-border shadow-sm flex flex-col">
-          <button
-            type="button"
-            onClick={() => toggleThresholds(!thresholdsOpen)}
-            className="flex items-center gap-2 p-3 text-left hover:bg-muted/40 transition-colors"
-          >
-            {thresholdsOpen ? (
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            )}
-            <span className="text-sm font-semibold">Infra alert thresholds — all apps</span>
-            <span className="ml-1 text-[11px] text-muted-foreground font-normal">
-              {thresholdsOpen ? "click to collapse" : "click to expand"}
-            </span>
-          </button>
-          {thresholdsOpen && <AlertConfigTable appId={scope} />}
-        </div>
-      )}
+      <div className="bg-card border border-border shadow-sm flex flex-col">
+        <button
+          type="button"
+          onClick={() => toggleThresholds(!thresholdsOpen)}
+          className="flex items-center gap-2 p-3 text-left hover:bg-muted/40 transition-colors"
+        >
+          {thresholdsOpen ? (
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          )}
+          <span className="text-sm font-semibold">Infra alert thresholds — all apps</span>
+          <span className="ml-1 text-[11px] text-muted-foreground font-normal">
+            {thresholdsOpen ? "click to collapse" : "click to expand"}
+          </span>
+        </button>
+        {thresholdsOpen && <AlertConfigTable />}
+      </div>
     </div>
   );
 }
