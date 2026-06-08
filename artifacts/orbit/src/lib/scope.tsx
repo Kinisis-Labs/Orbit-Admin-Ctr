@@ -147,6 +147,7 @@ export function ScopeSelect({
                   />
                 )}
                 {a.name}
+                <AuthBadge userAuth={a.userAuth} />
               </span>
             </SelectItem>
           ))}
