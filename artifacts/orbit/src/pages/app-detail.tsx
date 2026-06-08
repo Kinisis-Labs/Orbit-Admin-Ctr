@@ -27,7 +27,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { DailySpendChart } from "@/components/daily-spend-chart";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight } from "lucide-react";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { DataSourceBadge } from "@/components/data-source-badge";
 
 /**
@@ -341,6 +341,35 @@ function UserAuthBadge({ userAuth }: { userAuth: string }) {
 // Sub-components for tabs
 // ----------------------------------------------------------------------
 
+function MomTrendBadge({ momChangePct }: { momChangePct: number | null }) {
+  if (momChangePct === null) return null;
+  const abs = Math.abs(momChangePct);
+  const label = `${momChangePct > 0 ? "+" : ""}${momChangePct.toFixed(1)}% vs last month`;
+  if (momChangePct < 0) {
+    return (
+      <div className="flex items-center gap-1 text-[11px] text-emerald-500 font-medium mt-0.5" title={label}>
+        <TrendingDown className="size-3 shrink-0" />
+        <span>{abs.toFixed(1)}% vs last month</span>
+      </div>
+    );
+  }
+  if (momChangePct === 0) {
+    return (
+      <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium mt-0.5" title={label}>
+        <Minus className="size-3 shrink-0" />
+        <span>Flat vs last month</span>
+      </div>
+    );
+  }
+  const colorClass = momChangePct > 15 ? "text-destructive" : "text-amber-500";
+  return (
+    <div className={`flex items-center gap-1 text-[11px] font-medium mt-0.5 ${colorClass}`} title={label}>
+      <TrendingUp className="size-3 shrink-0" />
+      <span>+{abs.toFixed(1)}% vs last month</span>
+    </div>
+  );
+}
+
 function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: () => void }) {
   const { data, isLoading, isFetching } = useAppCost(appId);
   const budgetThreshold = useBudgetThreshold(appId);
@@ -389,6 +418,7 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
             <button type="button" onClick={onGoToCost} className={tileClass}>
               <div className="text-[12px] text-muted-foreground font-medium">MTD spend</div>
               <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.monthToDate)}</div>
+              <MomTrendBadge momChangePct={data.momChangePct ?? null} />
             </button>
           </TooltipTrigger>
           <TooltipContent>Go to Cost tab</TooltipContent>

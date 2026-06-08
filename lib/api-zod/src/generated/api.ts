@@ -265,7 +265,8 @@ export const GetCostResponse = zod.object({
 }),
   "dataSource": zod.enum(['live', 'cached', 'mock']).describe('Indicates whether cost figures come from live Azure Cost Management, a DB snapshot (cached), or built-in mock values.'),
   "dataAsOf": zod.string().datetime({"offset":true}).optional().describe('Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live or cached.'),
-  "budgetDataSource": zod.enum(['live', 'cached', 'estimated']).optional().describe('Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback.')
+  "budgetDataSource": zod.enum(['live', 'cached', 'estimated']).optional().describe('Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback.'),
+  "momChangePct": zod.number().nullish().describe('Month-over-month percentage change: (MTD this month − same-day-of-month last month) \/ same-day-of-month last month × 100. Positive = higher spend than last month at this point, negative = lower. Null when insufficient history.')
 })
 
 

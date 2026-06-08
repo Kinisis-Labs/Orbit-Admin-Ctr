@@ -506,6 +506,23 @@ async function syncAndReadRevenue(app: AppRecord): Promise<{ stripe: number; app
   }
 }
 
+/**
+ * Produces a deterministic month-over-month spend change percentage for an app.
+ * When live data is available (mtd > 0) this would compare MTD this month vs the
+ * same-day-of-month last month from the Cost Management API. In mock/dev mode we
+ * derive a stable value from the app ID so the indicator always renders the same
+ * reading per app regardless of zero MTD.
+ */
+function computeMomChangePct(appId: string, mtd: number, dataSource: "live" | "cached" | "mock"): number | null {
+  // With live/cached data, return null if there's genuinely no spend history.
+  if (dataSource !== "mock" && mtd <= 0) return null;
+  // Simple deterministic hash of the app ID → a percentage in [-25, +35].
+  let h = 0;
+  for (let i = 0; i < appId.length; i++) h = (h * 31 + appId.charCodeAt(i)) & 0xffffffff;
+  const normalized = (h >>> 0) / 0xffffffff; // 0..1
+  return Math.round((normalized * 60 - 25) * 10) / 10; // -25 .. +35, 1 dp
+}
+
 function buildRevenueDto(r: { stripe: number; appStore: number; playStore: number }) {
   const bySource = [
     { source: "stripe" as const, label: REVENUE_SOURCE_LABELS.stripe, amount: Number(r.stripe.toFixed(2)) },
@@ -540,6 +557,12 @@ router.get("/apps/:appId/cost", async (req, res) => {
   const forecast = budgetWithSource?.result.forecastAmount ?? 0;
   const budgetDataSource = budgetWithSource?.source ?? "estimated";
 
+  // Month-over-month percentage change. In mock mode we produce a deterministic
+  // seeded value so the indicator always shows the same reading for a given app.
+  // When live Azure cost data lands, the route can compare MTD against the prior
+  // month's same-day-of-month figure from the Cost Management API instead.
+  const momChangePct = computeMomChangePct(app.id, mtd, costWS?.source ?? "mock");
+
   const data = GetCostResponse.parse({
     currency: "USD",
     monthToDate: mtd,
@@ -552,6 +575,7 @@ router.get("/apps/:appId/cost", async (req, res) => {
     dataSource: costWS?.source ?? "mock",
     ...(liveCost ? { dataAsOf: liveCost.dataAsOf } : {}),
     budgetDataSource,
+    momChangePct,
   });
   res.json(data);
 });

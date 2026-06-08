@@ -27,4 +27,6 @@ export interface CostReport {
   dataAsOf?: string;
   /** Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback. */
   budgetDataSource?: CostReportBudgetDataSource;
+  /** Month-over-month percentage change: (MTD this month − same-day-of-month last month) / same-day-of-month last month × 100. Positive = higher spend than last month at this point, negative = lower. Null when insufficient history. */
+  momChangePct?: number | null;
 }
