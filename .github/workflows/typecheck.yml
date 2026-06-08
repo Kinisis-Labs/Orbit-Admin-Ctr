@@ -3,8 +3,19 @@ name: Typecheck
 on:
   push:
     branches: [main]
+    paths:
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/tsconfig*.json"
+      - "**/package.json"
   pull_request:
     branches: [main]
+    paths:
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/tsconfig*.json"
+      - "**/package.json"
+  workflow_dispatch:
 
 permissions:
   contents: read
