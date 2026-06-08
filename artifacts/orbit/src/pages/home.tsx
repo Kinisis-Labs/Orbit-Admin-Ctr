@@ -653,7 +653,11 @@ function BudgetSummaryWidget({
 
   function goToCost(appId: string) {
     setScope(appId);
-    navigate("/cost");
+    if (isFiltered && filterSummary) {
+      navigate(`/cost?from=${encodeURIComponent(filterSummary)}`);
+    } else {
+      navigate("/cost");
+    }
   }
 
   const overCount = filteredApps?.filter((a) => a.forecastOverBudget).length ?? 0;

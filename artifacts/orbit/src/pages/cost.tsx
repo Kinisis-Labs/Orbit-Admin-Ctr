@@ -26,7 +26,7 @@ import { RefreshingBar } from "@/components/refreshing-bar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link, useSearch, useLocation } from "wouter";
-import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, TriangleAlert, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, TriangleAlert, ArrowUp, ArrowDown, ArrowUpDown, Filter } from "lucide-react";
 import { DataSourceBadge } from "@/components/data-source-badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
@@ -712,16 +712,26 @@ function AppCost() {
 
   const search = useSearch();
   const [, navigate] = useLocation();
-  const dateParam = new URLSearchParams(search).get("date");
+  const searchParams = new URLSearchParams(search);
+  const dateParam = searchParams.get("date");
   const dateFilter = (() => {
     if (!dateParam) return null;
     const parsed = parseISO(dateParam);
     return isValid(parsed) ? parsed : null;
   })();
 
+  const fromFilter = searchParams.get("from") ?? null;
+
   function dismissDateFilter() {
     const params = new URLSearchParams(search);
     params.delete("date");
+    const qs = params.toString();
+    navigate(qs ? `/cost?${qs}` : "/cost", { replace: true });
+  }
+
+  function dismissFromFilter() {
+    const params = new URLSearchParams(search);
+    params.delete("from");
     const qs = params.toString();
     navigate(qs ? `/cost?${qs}` : "/cost", { replace: true });
   }
@@ -760,6 +770,28 @@ function AppCost() {
         </TabsTrigger>
       </TabsList>
       <TabsContent value="overview" className="mt-4 space-y-4">
+        {fromFilter && (
+          <div className="flex items-center gap-2 px-3 py-2 border border-blue-500/30 bg-blue-500/8 rounded-sm text-[13px]">
+            <Filter className="h-3.5 w-3.5 shrink-0 text-blue-500 dark:text-blue-400" />
+            <span className="text-foreground font-medium">
+              Navigated from{" "}
+              <Link href="/" className="underline underline-offset-2 decoration-blue-500/60 hover:decoration-blue-600 dark:decoration-blue-400/60 dark:hover:decoration-blue-300 transition-colors">
+                Budget Status
+              </Link>
+            </span>
+            <span className="text-muted-foreground text-[11px]">
+              — filtered by{" "}
+              <span className="font-medium text-foreground">{fromFilter}</span>
+            </span>
+            <button
+              onClick={dismissFromFilter}
+              className="ml-auto flex items-center justify-center h-5 w-5 rounded-sm hover:bg-blue-500/20 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Dismiss navigation context"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
         {dateFilter && (
         <div className="flex items-center gap-2 px-3 py-2 border border-amber-500/30 bg-amber-500/8 rounded-sm text-[13px]">
           <CalendarSearch className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
