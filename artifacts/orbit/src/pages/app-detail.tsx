@@ -29,7 +29,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { DailySpendChart } from "@/components/daily-spend-chart";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus, BarChart2, Clipboard, CheckCircle2 } from "lucide-react";
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus, BarChart2, Clipboard, CheckCircle2, Clock } from "lucide-react";
 import { DataSourceBadge, LiveBadge } from "@/components/data-source-badge";
 
 /**
@@ -669,8 +669,10 @@ function InfraTab({ appId }: { appId: string }) {
           <h2 className="text-sm font-semibold">Resources</h2>
           <div className="flex items-center gap-2">
             {updatedLabel && (
-              <span className="text-[11px] text-muted-foreground">
-                {isFetching ? "Refreshing…" : `Updated ${updatedLabel}`}
+              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                {isFetching ? "Refreshing…" : (
+                  <><Clock className="h-3 w-3 shrink-0" />Last updated · {updatedLabel}</>
+                )}
               </span>
             )}
             <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground select-none">
@@ -886,8 +888,10 @@ function TelemetryTab({ appId }: { appId: string }) {
         <span className="text-xs text-muted-foreground font-medium">Key metrics (last 24 h)</span>
         <div className="flex items-center gap-2">
           {updatedLabel && (
-            <span className="text-[11px] text-muted-foreground">
-              {isFetching ? "Refreshing…" : `Updated ${updatedLabel}`}
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+              {isFetching ? "Refreshing…" : (
+                <><Clock className="h-3 w-3 shrink-0" />Last updated · {updatedLabel}</>
+              )}
             </span>
           )}
           {data.dataSource === "live" && (
