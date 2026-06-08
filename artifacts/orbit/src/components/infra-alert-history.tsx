@@ -147,7 +147,7 @@ export function InfraAlertHistory({ appId }: Props) {
   const { copied, disabled: csvDisabled, handleExport, handleCopy } = useCsvExport(
     csvRows,
     csvHeaders,
-    "infra-alert-history",
+    `infra-alert-history${appId ? `-${entries?.[0]?.appName ?? appId}` : ""}`,
     () => toast({ title: "No alerts to export", description: "There are no infra alert records in the current view." }),
   );
 

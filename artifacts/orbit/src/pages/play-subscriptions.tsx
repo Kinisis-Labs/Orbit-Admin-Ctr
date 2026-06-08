@@ -58,7 +58,7 @@ export default function PlaySubscriptions() {
   const { copied, disabled: csvDisabled, handleExport, handleCopy } = useCsvExport(
     csvRows,
     ["Application", "Package", "Env", "Active", "Canceled", "Expired", "MRR", "Revenue (30d)", "Active trend %"],
-    "play-subscriptions",
+    `play-subscriptions-${scoped[0]?.appName ?? scope}`,
     () => toast({ title: "No data to export", description: "There are no subscription rows in the current view." }),
   );
 

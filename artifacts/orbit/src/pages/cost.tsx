@@ -553,7 +553,7 @@ function AppCost() {
     disabled: breakdownDisabled,
     handleExport: handleBreakdownExport,
     handleCopy: handleBreakdownCopy,
-  } = useCsvExport(breakdownRows, breakdownHeaders, `cost-breakdown-${scope}`);
+  } = useCsvExport(breakdownRows, breakdownHeaders, `cost-breakdown-${selectedApp?.name ?? scope}`);
 
   const sortedByService = useMemo(() => {
     if (!data?.byService) return data?.byService;
@@ -601,7 +601,7 @@ function AppCost() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `daily-spend-${scope}-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.download = `daily-spend-${selectedApp?.name ?? scope}-${new Date().toISOString().slice(0, 10)}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
   }

@@ -59,7 +59,7 @@ export default function AppleSubscriptions() {
   const { copied, disabled: csvDisabled, handleExport, handleCopy } = useCsvExport(
     csvRows,
     ["Application", "Bundle ID", "Env", "Active", "Canceled", "Expired", "MRR", "Revenue (30d)", "Active trend %"],
-    "apple-subscriptions",
+    `apple-subscriptions-${scoped[0]?.appName ?? scope}`,
     () => toast({ title: "No data to export", description: "There are no subscription rows in the current view." }),
   );
 

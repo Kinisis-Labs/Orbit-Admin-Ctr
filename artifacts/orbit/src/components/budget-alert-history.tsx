@@ -226,7 +226,7 @@ export function BudgetAlertHistory({ appId }: Props) {
   const { copied, disabled: csvDisabled, handleExport, handleCopy } = useCsvExport(
     csvRows,
     csvHeaders,
-    "budget-alert-history",
+    `budget-alert-history${appId ? `-${entries?.[0]?.appName ?? appId}` : ""}`,
     () => toast({ title: "No alerts to export", description: "There are no alert records in the current view." }),
   );
 

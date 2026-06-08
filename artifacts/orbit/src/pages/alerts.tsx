@@ -88,7 +88,7 @@ export default function Alerts() {
   const { copied, disabled: csvDisabled, handleExport, handleCopy } = useCsvExport(
     csvRows ?? null,
     csvHeaders,
-    "alerts",
+    `alerts-${selectedApp?.name ?? scope}`,
     () => toast({ title: "No alerts to export", description: "There are no alert rows in the current view." }),
   );
 
