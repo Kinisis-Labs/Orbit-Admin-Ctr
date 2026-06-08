@@ -531,11 +531,12 @@ function AppCost() {
     }, 50);
   }
 
-  const breakdownHeaders = ["Service", "Resource Group", "Environment", "Cost (USD)", "% of Total", "Trend"];
+  const breakdownHeaders = ["Service", "Resource Group", "Environment", "Cost (USD)", "% of Total", "Trend", "Budget breach"];
   const breakdownRows = useMemo(() => {
     if (!data?.byService?.length) return null;
     const resourceGroup = selectedApp?.resourceGroup ?? "";
     const environment = selectedApp?.environment ?? "";
+    const budgetBreach = data.forecast > data.budget ? "Yes" : "No";
     return data.byService.map((svc) => [
       svc.service,
       resourceGroup,
@@ -543,6 +544,7 @@ function AppCost() {
       svc.amount.toFixed(2),
       data.monthToDate > 0 ? ((svc.amount / data.monthToDate) * 100).toFixed(1) + "%" : "0.0%",
       svc.trend ?? "N/A",
+      budgetBreach,
     ]);
   }, [data, selectedApp]);
 
