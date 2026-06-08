@@ -791,11 +791,14 @@ function BudgetSummaryWidget({
   const { data: globalHealth } = useGetGlobalHealth({
     query: { queryKey: getGetGlobalHealthQueryKey(), staleTime: 5 * 60 * 1000 },
   });
+  const { data: globalCostSummary } = useGetGlobalCostSummary({
+    query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
+  });
   const globalCostSource = globalHealth?.costDataSource;
   const globalCostSourceBadge =
     globalCostSource && globalCostSource !== "mock" ? (
       <div className="mt-1.5">
-        <DataSourceBadge dataSource={globalCostSource} label="Azure Cost Management" />
+        <DataSourceBadge dataSource={globalCostSource} dataAsOf={globalCostSummary?.dataAsOf} label="Azure Cost Management" />
       </div>
     ) : null;
 

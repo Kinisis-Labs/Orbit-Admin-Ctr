@@ -47,6 +47,19 @@ const fmt = (amount: number, currency = "USD") =>
   new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
 const fmtInt = (n: number) => new Intl.NumberFormat("en-US").format(n);
 
+function fmtRelativeTime(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  try {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    if (diffMs < 60_000) return "just now";
+    if (diffMs < 3_600_000) return `${Math.floor(diffMs / 60_000)}m ago`;
+    if (diffMs < 86_400_000) return `${Math.floor(diffMs / 3_600_000)}h ago`;
+    return `${Math.floor(diffMs / 86_400_000)}d ago`;
+  } catch {
+    return null;
+  }
+}
+
 const ANOMALY_SIGMAS = 2;
 const ANOMALY_WINDOW = 30;
 const ANOMALY_RECENT_DAYS = 3;
@@ -506,6 +519,7 @@ function MomTrendBadge({ pct }: { pct: number }) {
 function GlobalCost() {
   const { data: apps, isLoading: appsLoading } = useApps();
   const { data: globalHealth } = useGetGlobalHealth({ query: { queryKey: getGetGlobalHealthQueryKey(), staleTime: 5 * 60 * 1000 } });
+  const { data: globalCostSummary } = useGetGlobalCostSummary({ query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 } });
 
   const costQueries = useQueries({
     queries: (apps ?? []).map((app) => ({
@@ -670,7 +684,11 @@ function GlobalCost() {
               {momTrendPct !== null && <MomTrendBadge pct={momTrendPct} />}
             </div>
           )}
-          <div className="text-[11px] text-muted-foreground mt-1">All applications combined</div>
+          <div className="text-[11px] text-muted-foreground mt-1">
+            {globalCostSummary?.dataAsOf && !isLoading
+              ? `as of ${fmtRelativeTime(globalCostSummary.dataAsOf)}`
+              : "All applications combined"}
+          </div>
         </div>
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">Applications tracked</div>
@@ -689,6 +707,7 @@ function GlobalCost() {
             <div className="mt-1">
               <DataSourceBadge
                 dataSource={globalHealth?.costDataSource ?? "mock"}
+                dataAsOf={globalCostSummary?.dataAsOf}
                 label="Azure Cost Management"
               />
             </div>
@@ -1154,8 +1173,13 @@ function AppCost() {
           title="Actual cost (MTD)"
           value={isLoading ? null : data ? fmt(data.monthToDate, data.currency) : "$0.00"}
           badge={!isLoading && data?.momChangePct != null ? <MomTrendBadge pct={data.momChangePct} /> : undefined}
+          subLabel={!isLoading && data?.dataAsOf ? `as of ${fmtRelativeTime(data.dataAsOf)}` : undefined}
         />
-        <Tile title="Forecasted cost" value={isLoading ? null : data ? fmt(data.forecast, data.currency) : "$0.00"} />
+        <Tile
+          title="Forecasted cost"
+          value={isLoading ? null : data ? fmt(data.forecast, data.currency) : "$0.00"}
+          subLabel={!isLoading && data?.dataAsOf ? `as of ${fmtRelativeTime(data.dataAsOf)}` : undefined}
+        />
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">API usage (MTD)</div>
           {isLoading || !data ? <Skeleton className="h-7 w-20 mt-1" /> : (
@@ -1543,7 +1567,7 @@ function ToolbarBtn({ icon: Icon, children, onClick }: { icon: React.ComponentTy
   );
 }
 
-function Tile({ title, value, badge }: { title: string; value: React.ReactNode; badge?: React.ReactNode }) {
+function Tile({ title, value, badge, subLabel }: { title: string; value: React.ReactNode; badge?: React.ReactNode; subLabel?: React.ReactNode }) {
   return (
     <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
       <div className="flex items-center justify-between gap-2 mb-1">
@@ -1555,6 +1579,7 @@ function Tile({ title, value, badge }: { title: string; value: React.ReactNode; 
       ) : (
         <div className="text-xl font-semibold text-foreground mt-1 tabular-nums">{value}</div>
       )}
+      {subLabel && <div className="text-[10px] text-muted-foreground mt-0.5">{subLabel}</div>}
     </div>
   );
 }
