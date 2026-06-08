@@ -64,6 +64,7 @@ describe("_topExceptionsCache eviction", () => {
 
     _topExceptionsCache.set(writeKey, {
       result: FAKE_EXCEPTIONS,
+      fetchedAt: Date.now(),
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
 
@@ -84,6 +85,7 @@ describe("_topExceptionsCache eviction", () => {
 
     _topExceptionsCache.set(key, {
       result: FAKE_EXCEPTIONS,
+      fetchedAt: Date.now(),
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
 
@@ -104,6 +106,7 @@ describe("_topExceptionsCache eviction", () => {
 
     _topExceptionsCache.set(key, {
       result: FAKE_EXCEPTIONS,
+      fetchedAt: Date.now(),
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
 
@@ -120,9 +123,9 @@ describe("_topExceptionsCache eviction", () => {
     const key24_10 = buildTopExceptionsCacheKey(FAKE_APP.id, 24, 10);
 
     const future = Date.now() + 5 * 60 * 1000;
-    _topExceptionsCache.set(key24_5, { result: FAKE_EXCEPTIONS, expiresAt: future });
-    _topExceptionsCache.set(key48_5, { result: FAKE_EXCEPTIONS, expiresAt: future });
-    _topExceptionsCache.set(key24_10, { result: FAKE_EXCEPTIONS, expiresAt: future });
+    _topExceptionsCache.set(key24_5, { result: FAKE_EXCEPTIONS, fetchedAt: Date.now(), expiresAt: future });
+    _topExceptionsCache.set(key48_5, { result: FAKE_EXCEPTIONS, fetchedAt: Date.now(), expiresAt: future });
+    _topExceptionsCache.set(key24_10, { result: FAKE_EXCEPTIONS, fetchedAt: Date.now(), expiresAt: future });
 
     // Evict only the 24h/5-limit variant.
     await fetchTopExceptions(FAKE_APP, { hours: 24, limit: 5, bypassCache: true });

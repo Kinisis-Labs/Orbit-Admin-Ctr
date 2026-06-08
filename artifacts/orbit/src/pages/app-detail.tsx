@@ -657,7 +657,8 @@ function InfraTab({ appId }: { appId: string }) {
   const [pollInterval, setPollInterval] = usePollingInterval(INFRA_TAB_POLL_INTERVAL_KEY);
   const { data, isLoading, isFetching, dataUpdatedAt, queryKey } = useAppInfrastructure(appId, pollInterval);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/infrastructure`, queryKey);
-  const updatedLabel = useUpdatedAgo(dataUpdatedAt);
+  const serverCachedAtMs = data?.cachedAt ? new Date(data.cachedAt).getTime() : 0;
+  const updatedLabel = useUpdatedAgo(serverCachedAtMs > 0 ? serverCachedAtMs : dataUpdatedAt);
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No infrastructure data available</div>;
 
@@ -785,8 +786,7 @@ function NetworkTab({ appId }: { appId: string }) {
   const { mode } = useAuth();
   const { data, isLoading, isFetching, dataUpdatedAt, queryKey } = useAppNetwork(appId);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/network`, queryKey);
-  useSecondsTicker();
-  const updatedLabel = dataUpdatedAt > 0 ? formatSecondsAgo(Date.now() - dataUpdatedAt) : null;
+  const updatedLabel = useUpdatedAgo(dataUpdatedAt);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No network data available</div>;
@@ -884,7 +884,8 @@ function TelemetryTab({ appId }: { appId: string }) {
   const { data, isLoading, isFetching, dataUpdatedAt, queryKey } = useAppTelemetry(appId);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/telemetry`, queryKey);
   const { toast } = useToast();
-  const updatedLabel = useUpdatedAgo(dataUpdatedAt);
+  const serverCachedAtMs = data?.cachedAt ? new Date(data.cachedAt).getTime() : 0;
+  const updatedLabel = useUpdatedAgo(serverCachedAtMs > 0 ? serverCachedAtMs : dataUpdatedAt);
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (!data) return <div className="text-muted-foreground">No telemetry data available</div>;
 

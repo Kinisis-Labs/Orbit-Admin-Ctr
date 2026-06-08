@@ -274,6 +274,8 @@ export interface InfrastructureReport {
   series: MetricSeries[];
   /** Indicates whether resource data comes from live Azure Resource Graph or built-in mock values. */
   dataSource: InfrastructureReportDataSource;
+  /** Timestamp of when infrastructure data was last fetched from Azure. Only present when dataSource is live. */
+  cachedAt?: string;
 }
 
 export interface NetworkEndpoint {
@@ -658,6 +660,8 @@ export interface TelemetryReport {
   topErrors: TopError[];
   /** Indicates whether telemetry comes from live Azure Monitor / Application Insights or built-in mock values. */
   dataSource: TelemetryReportDataSource;
+  /** Timestamp of when telemetry data was last fetched from Azure Monitor / Application Insights. Only present when dataSource is live. */
+  cachedAt?: string;
   /** Azure resource ID of the Application Insights component for this app. Present only when the resource has been resolved via Resource Graph. Used by the frontend to construct Azure Portal deep-links. */
   appInsightsResourceId?: string;
 }

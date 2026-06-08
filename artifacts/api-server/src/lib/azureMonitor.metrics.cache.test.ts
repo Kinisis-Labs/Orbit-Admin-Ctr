@@ -90,7 +90,7 @@ describe("_timeSeriesCache eviction via fetchMetricTimeSeries", () => {
 
   test("bypassCache=true evicts the matching entry even when Monitor is not configured", async () => {
     const key = `${RESOURCE_ID}:cpu_pct:24`;
-    _timeSeriesCache.set(key, { result: FAKE_POINTS, expiresAt: FUTURE });
+    _timeSeriesCache.set(key, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     assert.ok(_timeSeriesCache.has(key), "entry must be present before call");
 
@@ -106,10 +106,10 @@ describe("_timeSeriesCache eviction via fetchMetricTimeSeries", () => {
     const siblingHours = `${RESOURCE_ID}:cpu_pct:48`;
     const otherResource = `${OTHER_RESOURCE_ID}:cpu_pct:24`;
 
-    _timeSeriesCache.set(targetKey, { result: FAKE_POINTS, expiresAt: FUTURE });
-    _timeSeriesCache.set(siblingMetric, { result: FAKE_POINTS, expiresAt: FUTURE });
-    _timeSeriesCache.set(siblingHours, { result: FAKE_POINTS, expiresAt: FUTURE });
-    _timeSeriesCache.set(otherResource, { result: FAKE_POINTS, expiresAt: FUTURE });
+    _timeSeriesCache.set(targetKey, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
+    _timeSeriesCache.set(siblingMetric, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
+    _timeSeriesCache.set(siblingHours, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
+    _timeSeriesCache.set(otherResource, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     await fetchMetricTimeSeries(RESOURCE_ID, "cpu_pct", 24, { bypassCache: true });
 
@@ -121,7 +121,7 @@ describe("_timeSeriesCache eviction via fetchMetricTimeSeries", () => {
 
   test("bypassCache=false does NOT evict a fresh cache entry (cache hit path)", async () => {
     const key = `${RESOURCE_ID}:cpu_pct:24`;
-    _timeSeriesCache.set(key, { result: FAKE_POINTS, expiresAt: FUTURE });
+    _timeSeriesCache.set(key, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     // With bypassCache=false the function returns null (unconfigured) without
     // touching the cache — the entry must survive.
@@ -135,7 +135,7 @@ describe("_timeSeriesCache eviction via fetchMetricTimeSeries", () => {
     const hours = 24;
     const writeKey = `${RESOURCE_ID}:${metricName}:${hours}`;
 
-    _timeSeriesCache.set(writeKey, { result: FAKE_POINTS, expiresAt: FUTURE });
+    _timeSeriesCache.set(writeKey, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     await fetchMetricTimeSeries(RESOURCE_ID, metricName, hours, { bypassCache: true });
 
@@ -145,7 +145,7 @@ describe("_timeSeriesCache eviction via fetchMetricTimeSeries", () => {
 
   test("eviction is idempotent — calling twice leaves the cache in the same empty state", async () => {
     const key = `${RESOURCE_ID}:p95_latency_ms:24`;
-    _timeSeriesCache.set(key, { result: FAKE_POINTS, expiresAt: FUTURE });
+    _timeSeriesCache.set(key, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     await fetchMetricTimeSeries(RESOURCE_ID, "p95_latency_ms", 24, { bypassCache: true });
     await fetchMetricTimeSeries(RESOURCE_ID, "p95_latency_ms", 24, { bypassCache: true });
@@ -170,7 +170,7 @@ describe("_metricsCache eviction via fetchAppMetrics", () => {
   });
 
   test("bypassCache=true evicts the matching entry even when Azure is not configured", async () => {
-    _metricsCache.set(FAKE_APP.id, { result: FAKE_SUMMARY, expiresAt: FUTURE });
+    _metricsCache.set(FAKE_APP.id, { result: FAKE_SUMMARY, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     assert.ok(_metricsCache.has(FAKE_APP.id), "entry must be present before call");
 
@@ -181,8 +181,8 @@ describe("_metricsCache eviction via fetchAppMetrics", () => {
   });
 
   test("bypassCache=true evicts only the targeted app entry; sibling app entries are untouched", async () => {
-    _metricsCache.set(FAKE_APP.id, { result: FAKE_SUMMARY, expiresAt: FUTURE });
-    _metricsCache.set(OTHER_APP.id, { result: FAKE_SUMMARY, expiresAt: FUTURE });
+    _metricsCache.set(FAKE_APP.id, { result: FAKE_SUMMARY, fetchedAt: Date.now(), expiresAt: FUTURE });
+    _metricsCache.set(OTHER_APP.id, { result: FAKE_SUMMARY, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     await fetchAppMetrics(FAKE_APP, { bypassCache: true });
 
@@ -192,7 +192,7 @@ describe("_metricsCache eviction via fetchAppMetrics", () => {
   });
 
   test("bypassCache=false does NOT evict a fresh cache entry (cache hit path)", async () => {
-    _metricsCache.set(FAKE_APP.id, { result: FAKE_SUMMARY, expiresAt: FUTURE });
+    _metricsCache.set(FAKE_APP.id, { result: FAKE_SUMMARY, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     // With bypassCache=false the function returns null (unconfigured) without
     // touching the cache — the entry must survive.
@@ -202,7 +202,7 @@ describe("_metricsCache eviction via fetchAppMetrics", () => {
   });
 
   test("write key and eviction key are identical for the same app.id (no key-drift)", async () => {
-    _metricsCache.set(FAKE_APP.id, { result: FAKE_SUMMARY, expiresAt: FUTURE });
+    _metricsCache.set(FAKE_APP.id, { result: FAKE_SUMMARY, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     await fetchAppMetrics(FAKE_APP, { bypassCache: true });
 
@@ -211,7 +211,7 @@ describe("_metricsCache eviction via fetchAppMetrics", () => {
   });
 
   test("eviction is idempotent — calling twice leaves the cache in the same empty state", async () => {
-    _metricsCache.set(FAKE_APP.id, { result: FAKE_SUMMARY, expiresAt: FUTURE });
+    _metricsCache.set(FAKE_APP.id, { result: FAKE_SUMMARY, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     await fetchAppMetrics(FAKE_APP, { bypassCache: true });
     await fetchAppMetrics(FAKE_APP, { bypassCache: true });

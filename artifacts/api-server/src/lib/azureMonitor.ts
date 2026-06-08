@@ -164,8 +164,8 @@ const APP_INSIGHTS_NULL_TTL_MS = 2 * 60 * 1000; // 2 minutes
 // Shared TTL for all in-process caches (5 minutes).
 const METRICS_CACHE_TTL_MS = 5 * 60 * 1000;
 
-// Cache: "resourceId:metricName:hours" → { result, expiresAt }
-type TimeSeriesCacheEntry = { result: TimeSeriesPoint[]; expiresAt: number };
+// Cache: "resourceId:metricName:hours" → { result, fetchedAt, expiresAt }
+type TimeSeriesCacheEntry = { result: TimeSeriesPoint[]; fetchedAt: number; expiresAt: number };
 /** @internal Exported for unit tests only — do not use in production code. */
 export const _timeSeriesCache = new Map<string, TimeSeriesCacheEntry>();
 
@@ -316,7 +316,7 @@ export async function fetchMetricTimeSeries(
     if (points.length === 0) return null;
     if (points.every((p) => !isFinite(p.value))) return null;
 
-    _timeSeriesCache.set(cacheKey, { result: points, expiresAt: Date.now() + METRICS_CACHE_TTL_MS });
+    _timeSeriesCache.set(cacheKey, { result: points, fetchedAt: Date.now(), expiresAt: Date.now() + METRICS_CACHE_TTL_MS });
     return points;
   } catch {
     return null;
@@ -329,8 +329,8 @@ export type TopException = {
   lastSeen: string;
 };
 
-// Cache: "appId:hours:limit" → { result, expiresAt }
-type TopExceptionsCacheEntry = { result: TopException[]; expiresAt: number };
+// Cache: "appId:hours:limit" → { result, fetchedAt, expiresAt }
+type TopExceptionsCacheEntry = { result: TopException[]; fetchedAt: number; expiresAt: number };
 
 /** @internal Exported for unit tests only — do not use in production code. */
 export const _topExceptionsCache = new Map<string, TopExceptionsCacheEntry>();
@@ -428,6 +428,7 @@ export async function fetchTopExceptions(
 
     _topExceptionsCache.set(cacheKey, {
       result: exceptions,
+      fetchedAt: Date.now(),
       expiresAt: Date.now() + METRICS_CACHE_TTL_MS,
     });
     return exceptions;
@@ -436,10 +437,18 @@ export async function fetchTopExceptions(
   }
 }
 
-// Cache: app id → { result, expiresAt }
-type MetricsCacheEntry = { result: TelemetrySummary; expiresAt: number };
+// Cache: app id → { result, fetchedAt, expiresAt }
+type MetricsCacheEntry = { result: TelemetrySummary; fetchedAt: number; expiresAt: number };
 /** @internal Exported for unit tests only — do not use in production code. */
 export const _metricsCache = new Map<string, MetricsCacheEntry>();
+
+/**
+ * Returns the epoch-ms timestamp when the metrics summary for `appId` was last
+ * fetched from Azure Monitor, or null if the cache is empty.
+ */
+export function getMetricsFetchedAt(appId: string): number | null {
+  return _metricsCache.get(appId)?.fetchedAt ?? null;
+}
 
 /**
  * Convenience wrapper for route handlers: resolves the App Insights component
@@ -599,7 +608,7 @@ export async function fetchAppMetrics(
       errorRatePercent,
       availabilityPercent: Number(availabilityPct.toFixed(2)),
     };
-    _metricsCache.set(app.id, { result: summary, expiresAt: Date.now() + METRICS_CACHE_TTL_MS });
+    _metricsCache.set(app.id, { result: summary, fetchedAt: Date.now(), expiresAt: Date.now() + METRICS_CACHE_TTL_MS });
     return summary;
   } catch {
     return null;

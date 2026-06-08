@@ -14,4 +14,6 @@ export interface InfrastructureReport {
   series: MetricSeries[];
   /** Indicates whether resource data comes from live Azure Resource Graph or built-in mock values. */
   dataSource: InfrastructureReportDataSource;
+  /** Timestamp of when infrastructure data was last fetched from Azure. Only present when dataSource is live. */
+  cachedAt?: string;
 }

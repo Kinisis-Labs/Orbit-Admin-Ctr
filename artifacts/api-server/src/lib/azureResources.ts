@@ -49,10 +49,18 @@ function mapStatus(
   return "unknown";
 }
 
-// Cache: app id → { result, expiresAt }
+// Cache: app id → { result, fetchedAt, expiresAt }
 const RESOURCES_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
-type ResourcesCacheEntry = { result: ResourceEntry[]; expiresAt: number };
+type ResourcesCacheEntry = { result: ResourceEntry[]; fetchedAt: number; expiresAt: number };
 const _resourcesCache = new Map<string, ResourcesCacheEntry>();
+
+/**
+ * Returns the epoch-ms timestamp when the resource list for `appId` was last
+ * fetched from Azure, or null if the cache is empty.
+ */
+export function getResourcesFetchedAt(appId: string): number | null {
+  return _resourcesCache.get(appId)?.fetchedAt ?? null;
+}
 
 // Tag cache: app id → { tags, expiresAt }
 type TagsCacheEntry = { tags: Record<string, string>; expiresAt: number };
@@ -160,7 +168,7 @@ export async function fetchResourcesByResourceGroup(
       location: String(row["location"] ?? app.region),
     }));
 
-    _resourcesCache.set(app.id, { result: resources, expiresAt: Date.now() + RESOURCES_CACHE_TTL_MS });
+    _resourcesCache.set(app.id, { result: resources, fetchedAt: Date.now(), expiresAt: Date.now() + RESOURCES_CACHE_TTL_MS });
     return resources;
   } catch (err: unknown) {
     logger.error({ err, appId: app.id }, "fetchResourcesByResourceGroup failed");

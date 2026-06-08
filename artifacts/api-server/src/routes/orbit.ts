@@ -23,7 +23,7 @@ import {
 import { db, appThresholdsTable, appThresholdsLogTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
 import { requireEngineerOrAdmin } from "../middlewares/auth.js";
-import { fetchResourcesByResourceGroup, fetchResourceGroupTags } from "../lib/azureResources.js";
+import { fetchResourcesByResourceGroup, fetchResourceGroupTags, getResourcesFetchedAt } from "../lib/azureResources.js";
 import { fetchMonthToDateCostWithFallback, fetchLastMonthComparableCostTotal } from "../lib/azureCost.js";
 import { fetchBudgetForAppWithFallback } from "../lib/azureBudgets.js";
 import { fetchSubscriptionNames } from "../lib/azureSubscriptions.js";
@@ -34,6 +34,7 @@ import {
   isMonitorConfigured,
   getLogAnalyticsWorkspaceId,
   resolveAppInsightsResourceId,
+  getMetricsFetchedAt,
 } from "../lib/azureMonitor.js";
 import { isAzureConfigured } from "../lib/azure.js";
 import { fetchActiveAlerts } from "../lib/azureAlerts.js";
@@ -436,7 +437,9 @@ router.get("/apps/:appId/infrastructure", async (req, res) => {
     { name: "Disk IOPS", unit: "ops/s", points: liveDiskIopsSeries ?? [] },
   ] : [];
   const series = seriesAll.filter((s) => s.points.length > 0);
-  const data = GetInfrastructureResponse.parse({ resources, series, dataSource: liveResources ? "live" : "mock" });
+  const resourcesFetchedAt = getResourcesFetchedAt(app.id);
+  const infraCachedAt = liveResources && resourcesFetchedAt ? new Date(resourcesFetchedAt).toISOString() : undefined;
+  const data = GetInfrastructureResponse.parse({ resources, series, dataSource: liveResources ? "live" : "mock", ...(infraCachedAt ? { cachedAt: infraCachedAt } : {}) });
   res.json(data);
 });
 
@@ -649,6 +652,8 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
   const liveMemPct = lastPoint(liveMemSeries);
   const isLive = Boolean(liveMetrics || liveCpuSeries || liveMemSeries || liveTopExceptions);
 
+  const metricsFetchedAt = getMetricsFetchedAt(app.id);
+  const telemetryCachedAt = isLive && metricsFetchedAt ? new Date(metricsFetchedAt).toISOString() : undefined;
   const data = GetTelemetryResponse.parse({
     requestsPerMin: liveMetrics?.requestsPerMin ?? 0,
     p95LatencyMs: liveMetrics?.p95LatencyMs ?? 0,
@@ -666,6 +671,7 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
     ] : [],
     topErrors: liveTopExceptions ?? [],
     dataSource: isLive ? "live" : "mock",
+    ...(telemetryCachedAt ? { cachedAt: telemetryCachedAt } : {}),
     ...(appInsightsResourceId ? { appInsightsResourceId } : {}),
   });
   res.json(data);

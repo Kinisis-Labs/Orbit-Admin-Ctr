@@ -26,9 +26,9 @@ describe("evictAppTimeSeries", () => {
 
   test("evicts all _timeSeriesCache entries for the app's resource ID", () => {
     setIdEntry(APP_ID, RESOURCE_ID);
-    _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
-    _timeSeriesCache.set(`${RESOURCE_ID}:p95_latency_ms:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
-    _timeSeriesCache.set(`${RESOURCE_ID}:error_rate_pct:48`, { result: FAKE_POINTS, expiresAt: FUTURE });
+    _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
+    _timeSeriesCache.set(`${RESOURCE_ID}:p95_latency_ms:24`, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
+    _timeSeriesCache.set(`${RESOURCE_ID}:error_rate_pct:48`, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     evictAppTimeSeries(APP_ID);
 
@@ -37,8 +37,8 @@ describe("evictAppTimeSeries", () => {
 
   test("does not touch cache entries belonging to a different resource ID", () => {
     setIdEntry(APP_ID, RESOURCE_ID);
-    _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
-    _timeSeriesCache.set(`${OTHER_RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
+    _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
+    _timeSeriesCache.set(`${OTHER_RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     evictAppTimeSeries(APP_ID);
 
@@ -47,7 +47,7 @@ describe("evictAppTimeSeries", () => {
   });
 
   test("is a no-op when the app has no cached resource ID", () => {
-    _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
+    _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     evictAppTimeSeries(APP_ID);
 
@@ -56,7 +56,7 @@ describe("evictAppTimeSeries", () => {
 
   test("is a no-op when the app's resource ID is null (lookup previously failed)", () => {
     setIdEntry(APP_ID, null);
-    _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
+    _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     evictAppTimeSeries(APP_ID);
 
@@ -65,8 +65,8 @@ describe("evictAppTimeSeries", () => {
 
   test("eviction uses the resource-ID present at call time, before the ID cache is cleared", () => {
     setIdEntry(APP_ID, RESOURCE_ID);
-    _timeSeriesCache.set(`${RESOURCE_ID}:cpu_pct:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
-    _timeSeriesCache.set(`${RESOURCE_ID}:memory_pct:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
+    _timeSeriesCache.set(`${RESOURCE_ID}:cpu_pct:24`, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
+    _timeSeriesCache.set(`${RESOURCE_ID}:memory_pct:24`, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     // Simulate the sequence fetchAppTimeSeries uses: evict first, then clear ID cache.
     evictAppTimeSeries(APP_ID);
@@ -79,7 +79,7 @@ describe("evictAppTimeSeries", () => {
 
   test("clearing the resource-ID cache first makes eviction a no-op (demonstrates why order matters)", () => {
     setIdEntry(APP_ID, RESOURCE_ID);
-    _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
+    _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     // Wrong order: clear ID cache first, then try to evict — entries survive.
     _appInsightsIdCache.delete(APP_ID);
@@ -90,7 +90,7 @@ describe("evictAppTimeSeries", () => {
 
   test("is idempotent — calling twice leaves the cache in the same state", () => {
     setIdEntry(APP_ID, RESOURCE_ID);
-    _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, expiresAt: FUTURE });
+    _timeSeriesCache.set(`${RESOURCE_ID}:requests_per_min:24`, { result: FAKE_POINTS, fetchedAt: Date.now(), expiresAt: FUTURE });
 
     evictAppTimeSeries(APP_ID);
     evictAppTimeSeries(APP_ID);
