@@ -254,9 +254,25 @@ export type TopException = {
   lastSeen: string;
 };
 
-// Cache: "appId:hours" → { result, expiresAt }
+// Cache: "appId:hours:limit" → { result, expiresAt }
 type TopExceptionsCacheEntry = { result: TopException[]; expiresAt: number };
-const _topExceptionsCache = new Map<string, TopExceptionsCacheEntry>();
+
+/** @internal Exported for unit tests only — do not use in production code. */
+export const _topExceptionsCache = new Map<string, TopExceptionsCacheEntry>();
+
+/**
+ * Build the cache key for a top-exceptions lookup. Exported so tests can
+ * verify that the key used at write-time and at eviction-time are identical.
+ *
+ * Key scheme: `"${appId}:${hours}:${limit}"`
+ */
+export function buildTopExceptionsCacheKey(
+  appId: string,
+  hours: number,
+  limit: number,
+): string {
+  return `${appId}:${hours}:${limit}`;
+}
 
 /**
  * Query the top N exceptions (by count) from the Application Insights `exceptions`
@@ -277,12 +293,17 @@ export async function fetchTopExceptions(
     bypassCache = false,
   }: { hours?: number; limit?: number; bypassCache?: boolean } = {},
 ): Promise<TopException[] | null> {
-  if (!isMonitorConfigured()) return null;
+  const cacheKey = buildTopExceptionsCacheKey(app.id, hours, limit);
 
-  const cacheKey = `${app.id}:${hours}:${limit}`;
+  // Evict before the configuration gate so a force-refresh always clears the
+  // stale entry, even when Monitor is temporarily unconfigured or in tests.
   if (bypassCache) {
     _topExceptionsCache.delete(cacheKey);
-  } else {
+  }
+
+  if (!isMonitorConfigured()) return null;
+
+  if (!bypassCache) {
     const entry = _topExceptionsCache.get(cacheKey);
     if (entry && entry.expiresAt > Date.now()) {
       return entry.result;
