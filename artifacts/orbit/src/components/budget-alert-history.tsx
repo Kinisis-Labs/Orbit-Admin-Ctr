@@ -205,13 +205,15 @@ export function BudgetAlertHistory({ appId }: Props) {
   }
 
   const csvHeaders = appId
-    ? ["Sent At", "MTD Spend", "Forecast", "Budget Cap", "Overage %", "Channels"]
-    : ["App", "Sent At", "MTD Spend", "Forecast", "Budget Cap", "Overage %", "Channels"];
+    ? ["Sent At", "MTD Spend", "Forecast", "Budget Cap", "Overage %", "Channels", "Acknowledged At", "Acknowledgement note"]
+    : ["App", "Sent At", "MTD Spend", "Forecast", "Budget Cap", "Overage %", "Channels", "Acknowledged At", "Acknowledgement note"];
 
   const csvRows = filteredEntries?.map((entry) => {
     const overage = entry.budget > 0 ? (((entry.forecast - entry.budget) / entry.budget) * 100).toFixed(1) + "%" : "N/A";
     const sentAt = format(new Date(entry.sentAt), "MMM d, yyyy HH:mm");
     const channels = entry.channels.map((ch) => CHANNEL_LABELS[ch] ?? ch).join("; ");
+    const acknowledgedAt = entry.acknowledgedAt ? format(new Date(entry.acknowledgedAt), "MMM d, yyyy HH:mm") : "";
+    const acknowledgedNote = entry.acknowledgedNote ?? "";
     const base = [
       sentAt,
       entry.mtd.toFixed(2),
@@ -219,6 +221,8 @@ export function BudgetAlertHistory({ appId }: Props) {
       entry.budget.toFixed(2),
       overage,
       channels,
+      acknowledgedAt,
+      acknowledgedNote,
     ];
     return appId ? base : [entry.appName, ...base];
   }) ?? null;
