@@ -607,7 +607,8 @@ export const ListDeploymentsResponse = zod.object({
   "durationSec": zod.number().nullish(),
   "commitSha": zod.string(),
   "pipeline": zod.string(),
-  "runType": zod.enum(['deploy', 'ci']).describe('Whether this run is a deployment\/release workflow or a CI workflow (typecheck, lint, test, etc.).')
+  "runType": zod.enum(['deploy', 'ci']).describe('Whether this run is a deployment\/release workflow or a CI workflow (typecheck, lint, test, etc.).'),
+  "runUrl": zod.string().optional().describe('Direct link to this run on GitHub Actions.')
 })),
   "dataSource": zod.enum(['live', 'mock']),
   "fetchedAt": zod.string().datetime({"offset":true}).nullish().describe('ISO timestamp of when the data was fetched from GitHub. Null when data source is mock.')

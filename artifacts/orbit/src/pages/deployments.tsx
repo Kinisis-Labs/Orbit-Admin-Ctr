@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, RefreshCw, Search, GitBranch } from "lucide-react";
+import { Download, ExternalLink, RefreshCw, Search, GitBranch } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
@@ -213,7 +213,22 @@ export default function Deployments() {
                       <TableCell className="py-1 text-muted-foreground text-[12px] max-w-[180px] truncate" title={d.pipeline}>
                         {d.pipeline}
                       </TableCell>
-                      <TableCell className="py-1 font-mono text-[12px]">{d.version}</TableCell>
+                      <TableCell className="py-1 font-mono text-[12px]">
+                        {d.runUrl ? (
+                          <a
+                            href={d.runUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                            title="Open in GitHub Actions"
+                          >
+                            {d.version}
+                            <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+                          </a>
+                        ) : (
+                          d.version
+                        )}
+                      </TableCell>
                       <TableCell className="py-1"><StatusPill tone={STATUS_TONE[d.status]}>{d.status}</StatusPill></TableCell>
                       <TableCell className="py-1 text-muted-foreground">{d.triggeredBy}</TableCell>
                       <TableCell className="py-1 font-mono text-[12px]">{d.commitSha}</TableCell>

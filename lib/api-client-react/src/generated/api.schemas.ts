@@ -764,6 +764,8 @@ export interface Deployment {
   pipeline: string;
   /** Whether this run is a deployment/release workflow or a CI workflow (typecheck, lint, test, etc.). */
   runType: DeploymentRunType;
+  /** Direct link to this run on GitHub Actions. */
+  runUrl?: string;
 }
 
 export interface ListDeploymentsResponse {

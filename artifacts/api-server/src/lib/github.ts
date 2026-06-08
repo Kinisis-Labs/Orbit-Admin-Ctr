@@ -26,6 +26,7 @@ export type GitHubDeployment = {
   commitSha: string;
   pipeline: string;
   runType: "deploy" | "ci";
+  runUrl: string;
 };
 
 const DEPLOY_WORKFLOW_PATTERN = /deploy|release|publish/i;
@@ -115,6 +116,7 @@ async function fetchRunsFromGitHub(
       commitSha: run.head_sha.slice(0, 7),
       pipeline: workflowName,
       runType: DEPLOY_WORKFLOW_PATTERN.test(workflowName) ? "deploy" : "ci",
+      runUrl: `https://github.com/${GITHUB_ORG}/${appRepo}/actions/runs/${run.id}`,
     };
   });
 }

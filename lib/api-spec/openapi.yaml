@@ -1242,6 +1242,7 @@ components:
         commitSha: { type: string }
         pipeline: { type: string }
         runType: { type: string, enum: [deploy, ci], description: "Whether this run is a deployment/release workflow or a CI workflow (typecheck, lint, test, etc.)." }
+        runUrl: { type: string, description: "Direct link to this run on GitHub Actions." }
     ActivityEntry:
       type: object
       required: [id, timestamp, actor, action, target, status, category]
