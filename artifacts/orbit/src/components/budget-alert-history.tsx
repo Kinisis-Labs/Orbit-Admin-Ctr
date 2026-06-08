@@ -9,6 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
 import { CsvToolbar } from "@/components/csv-toolbar";
+import { useSearch, useLocation } from "wouter";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n);
@@ -62,6 +63,37 @@ export function BudgetAlertHistory({ appId }: Props) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const search = useSearch();
+  const [pathname, navigate] = useLocation();
+
+  const searchParams = useMemo(() => new URLSearchParams(search), [search]);
+  const startInput = searchParams.get("alertFrom") ?? "";
+  const endInput = searchParams.get("alertTo") ?? "";
+
+  function applyParams(next: URLSearchParams) {
+    const qs = next.toString();
+    navigate(qs ? "?" + qs : pathname, { replace: true });
+  }
+
+  function setStartInput(value: string) {
+    const next = new URLSearchParams(searchParams);
+    if (value) { next.set("alertFrom", value); } else { next.delete("alertFrom"); }
+    applyParams(next);
+  }
+
+  function setEndInput(value: string) {
+    const next = new URLSearchParams(searchParams);
+    if (value) { next.set("alertTo", value); } else { next.delete("alertTo"); }
+    applyParams(next);
+  }
+
+  function clearDateRange() {
+    const next = new URLSearchParams(searchParams);
+    next.delete("alertFrom");
+    next.delete("alertTo");
+    applyParams(next);
+  }
+
   const params = {
     ...(appId ? { appId } : {}),
     limit: 50,
@@ -77,8 +109,6 @@ export function BudgetAlertHistory({ appId }: Props) {
     },
   });
 
-  const [startInput, setStartInput] = useState("");
-  const [endInput, setEndInput] = useState("");
   const [selectedChannels, setSelectedChannels] = useState<Set<Channel>>(new Set());
 
   const startDate = useMemo(() => {
@@ -127,8 +157,7 @@ export function BudgetAlertHistory({ appId }: Props) {
   }, [entries, startDate, endDate, isDateFiltered, isChannelFiltered, selectedChannels, isFiltered]);
 
   function clearFilter() {
-    setStartInput("");
-    setEndInput("");
+    clearDateRange();
     setSelectedChannels(new Set());
   }
 
@@ -269,7 +298,7 @@ export function BudgetAlertHistory({ appId }: Props) {
             />
             {isDateFiltered && (
               <button
-                onClick={() => { setStartInput(""); setEndInput(""); }}
+                onClick={clearDateRange}
                 className="ml-1 flex items-center justify-center h-4 w-4 rounded-sm hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Clear date filter"
               >
