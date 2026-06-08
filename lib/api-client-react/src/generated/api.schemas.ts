@@ -5,6 +5,18 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+export interface AnomalyDismissalsResponse {
+  /** ISO date keys (YYYY-MM-DD) dismissed in the current session for this app */
+  dismissedDateKeys: string[];
+}
+
+export interface DismissAnomalyRequest {
+  /** ID of the app whose anomaly is being dismissed */
+  appId: string;
+  /** ISO date (YYYY-MM-DD) of the anomalous day to dismiss */
+  dateKey: string;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -1132,6 +1144,13 @@ refresh?: RefreshParameter;
 export type QueryLogsParams = {
 q?: string;
 limit?: number;
+};
+
+export type ListAnomalyDismissalsParams = {
+/**
+ * The app whose dismissals to return.
+ */
+appId: string;
 };
 
 export type ListBudgetAlertLogParams = {

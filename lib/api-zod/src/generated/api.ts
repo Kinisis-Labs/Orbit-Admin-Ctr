@@ -713,6 +713,27 @@ export const ListGlobalEndpointsResponse = zod.object({
 
 
 /**
+ * @summary List anomaly date-keys dismissed in the current session
+ */
+export const ListAnomalyDismissalsQueryParams = zod.object({
+  "appId": zod.coerce.string().describe('The app whose dismissals to return.')
+})
+
+export const ListAnomalyDismissalsResponse = zod.object({
+  "dismissedDateKeys": zod.array(zod.string()).describe('ISO date keys (YYYY-MM-DD) dismissed in the current session for this app')
+})
+
+
+/**
+ * @summary Mark a cost anomaly as dismissed for the current session
+ */
+export const DismissAnomalyBody = zod.object({
+  "appId": zod.string().describe('ID of the app whose anomaly is being dismissed'),
+  "dateKey": zod.string().describe('ISO date (YYYY-MM-DD) of the anomalous day to dismiss')
+})
+
+
+/**
  * @summary Recent budget-overrun notifications that were dispatched by the scheduler
  */
 export const ListBudgetAlertLogQueryParams = zod.object({

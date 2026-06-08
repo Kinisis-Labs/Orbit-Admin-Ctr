@@ -1,6 +1,9 @@
 import {
   useGetCost,
   getGetCostQueryKey,
+  useListAnomalyDismissals,
+  getListAnomalyDismissalsQueryKey,
+  useDismissAnomaly,
 } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
 import { useBudgetThreshold } from "@/lib/spend-threshold";
@@ -79,30 +82,45 @@ const LS_KEY_PREFIX = "orbit-cost-anomaly-dismissed-";
 const LS_DAILY_TABLE_KEY = (scope: string) => `orbit-cost-daily-table-${scope}`;
 
 function AnomalyAlertBanner({
+  appId,
   anomaly,
   formatCurrency,
   onViewInChart,
 }: {
+  appId: string;
   anomaly: ReturnType<typeof detectRecentAnomaly>;
   formatCurrency: (v: number) => string;
   onViewInChart?: () => void;
 }) {
-  const [dismissed, setDismissed] = useState<string | null>(() => {
+  // Optimistic localStorage check — prevents a visible flash on repeat visits
+  const [dismissedLocally, setDismissedLocally] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(LS_KEY_PREFIX + (anomaly?.dateKey ?? "")) ?? null;
+      return localStorage.getItem(LS_KEY_PREFIX + (anomaly?.dateKey ?? "")) === "1";
     } catch {
-      return null;
+      return false;
     }
   });
 
+  // Server-side dismissal state — survives browser storage clears & private windows
+  const dismissalsQueryKey = getListAnomalyDismissalsQueryKey({ appId });
+  const { data: serverDismissals } = useListAnomalyDismissals(
+    { appId },
+    { query: { enabled: !!appId && !!anomaly, queryKey: dismissalsQueryKey } },
+  );
+  const { mutate: serverDismiss } = useDismissAnomaly();
+
   if (!anomaly) return null;
 
-  const lsKey = LS_KEY_PREFIX + anomaly.dateKey;
-  if (dismissed === "1") return null;
+  const dismissedOnServer = serverDismissals?.dismissedDateKeys.includes(anomaly.dateKey) ?? false;
+  if (dismissedLocally || dismissedOnServer) return null;
 
   function dismiss() {
-    try { localStorage.setItem(lsKey, "1"); } catch { /* ignore */ }
-    setDismissed("1");
+    if (!anomaly) return;
+    // Optimistic local update first
+    try { localStorage.setItem(LS_KEY_PREFIX + anomaly.dateKey, "1"); } catch { /* ignore */ }
+    setDismissedLocally(true);
+    // Persist server-side keyed to the session
+    serverDismiss({ data: { appId, dateKey: anomaly.dateKey } });
   }
 
   const dateLabel = format(anomaly.date, "EEE, MMM d");
@@ -379,6 +397,7 @@ function AppCost() {
       )}
       {!isLoading && data?.daily && (
         <AnomalyAlertBanner
+          appId={scope}
           anomaly={anomaly}
           formatCurrency={(v) => fmt(v, data.currency)}
           onViewInChart={anomaly ? handleViewInChart : undefined}

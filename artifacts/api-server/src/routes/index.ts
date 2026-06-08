@@ -10,6 +10,7 @@ import appleSubscriptionsRouter from "./appleSubscriptions";
 import budgetAlertLogRouter from "./budgetAlertLog";
 import infraAlertLogRouter from "./infraAlertLog";
 import alertsConfigRouter from "./alertsConfig";
+import anomalyDismissalsRouter from "./anomalyDismissals";
 import { requireAuth, requireCostReader } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -33,5 +34,7 @@ router.use(requireAuth, requireCostReader, budgetAlertLogRouter);
 router.use(requireAuth, infraAlertLogRouter);
 // Alert threshold config — operational read, gated by requireAuth only.
 router.use(requireAuth, alertsConfigRouter);
+// Anomaly dismissals — cost surface, but dismissal itself is operational (not financial).
+router.use(requireAuth, anomalyDismissalsRouter);
 
 export default router;

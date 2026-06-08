@@ -23,6 +23,7 @@ import type {
   ActivityEntry,
   Alert,
   AlertThresholdConfigLogEntry,
+  AnomalyDismissalsResponse,
   AppAlertConfig,
   AppDetail,
   AppSummary,
@@ -32,6 +33,7 @@ import type {
   BudgetAlertLogEntry,
   CostReport,
   Deployment,
+  DismissAnomalyRequest,
   GetAppAlertsParams,
   GetCostParams,
   GetInfrastructureParams,
@@ -47,6 +49,7 @@ import type {
   LedgerJournalEntry,
   LedgerReconciliation,
   LedgerReport,
+  ListAnomalyDismissalsParams,
   ListAppThresholdsLog403,
   ListAppThresholdsLogParams,
   ListBudgetAlertLogParams,
@@ -2262,6 +2265,161 @@ export function useListGlobalEndpoints<TData = Awaited<ReturnType<typeof listGlo
 
 
 
+
+export const getListAnomalyDismissalsUrl = (params: ListAnomalyDismissalsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/cost/anomaly-dismissals?${stringifiedParams}` : `/api/cost/anomaly-dismissals`
+}
+
+/**
+ * @summary List anomaly date-keys dismissed in the current session
+ */
+export const listAnomalyDismissals = async (params: ListAnomalyDismissalsParams, options?: RequestInit): Promise<AnomalyDismissalsResponse> => {
+
+  return customFetch<AnomalyDismissalsResponse>(getListAnomalyDismissalsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAnomalyDismissalsQueryKey = (params?: ListAnomalyDismissalsParams,) => {
+    return [
+    `/api/cost/anomaly-dismissals`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAnomalyDismissalsQueryOptions = <TData = Awaited<ReturnType<typeof listAnomalyDismissals>>, TError = ErrorType<unknown>>(params: ListAnomalyDismissalsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAnomalyDismissals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAnomalyDismissalsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAnomalyDismissals>>> = ({ signal }) => listAnomalyDismissals(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAnomalyDismissals>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAnomalyDismissalsQueryResult = NonNullable<Awaited<ReturnType<typeof listAnomalyDismissals>>>
+export type ListAnomalyDismissalsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List anomaly date-keys dismissed in the current session
+ */
+
+export function useListAnomalyDismissals<TData = Awaited<ReturnType<typeof listAnomalyDismissals>>, TError = ErrorType<unknown>>(
+ params: ListAnomalyDismissalsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAnomalyDismissals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAnomalyDismissalsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getDismissAnomalyUrl = () => {
+
+
+
+
+  return `/api/cost/anomaly-dismissals`
+}
+
+/**
+ * @summary Mark a cost anomaly as dismissed for the current session
+ */
+export const dismissAnomaly = async (dismissAnomalyRequest: DismissAnomalyRequest, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDismissAnomalyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      dismissAnomalyRequest,)
+  }
+);}
+
+
+
+
+export const getDismissAnomalyMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissAnomaly>>, TError,{data: BodyType<DismissAnomalyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof dismissAnomaly>>, TError,{data: BodyType<DismissAnomalyRequest>}, TContext> => {
+
+const mutationKey = ['dismissAnomaly'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof dismissAnomaly>>, {data: BodyType<DismissAnomalyRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  dismissAnomaly(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DismissAnomalyMutationResult = NonNullable<Awaited<ReturnType<typeof dismissAnomaly>>>
+    export type DismissAnomalyMutationBody = BodyType<DismissAnomalyRequest>
+    export type DismissAnomalyMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Mark a cost anomaly as dismissed for the current session
+ */
+export const useDismissAnomaly = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissAnomaly>>, TError,{data: BodyType<DismissAnomalyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof dismissAnomaly>>,
+        TError,
+        {data: BodyType<DismissAnomalyRequest>},
+        TContext
+      > => {
+      return useMutation(getDismissAnomalyMutationOptions(options));
+    }
 
 export const getListBudgetAlertLogUrl = (params?: ListBudgetAlertLogParams,) => {
   const normalizedParams = new URLSearchParams();

@@ -473,6 +473,35 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/GlobalEndpointsResponse" }
+  /cost/anomaly-dismissals:
+    get:
+      operationId: listAnomalyDismissals
+      tags: [cost]
+      summary: List anomaly date-keys dismissed in the current session
+      parameters:
+        - name: appId
+          in: query
+          required: true
+          description: The app whose dismissals to return.
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnomalyDismissalsResponse" }
+    post:
+      operationId: dismissAnomaly
+      tags: [cost]
+      summary: Mark a cost anomaly as dismissed for the current session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DismissAnomalyRequest" }
+      responses:
+        "204":
+          description: Dismissed
   /budget-alerts/log:
     get:
       operationId: listBudgetAlertLog
@@ -643,6 +672,24 @@ components:
       description: When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
       schema: { type: boolean }
   schemas:
+    AnomalyDismissalsResponse:
+      type: object
+      required: [dismissedDateKeys]
+      properties:
+        dismissedDateKeys:
+          type: array
+          items: { type: string }
+          description: ISO date keys (YYYY-MM-DD) dismissed in the current session for this app
+    DismissAnomalyRequest:
+      type: object
+      required: [appId, dateKey]
+      properties:
+        appId:
+          type: string
+          description: ID of the app whose anomaly is being dismissed
+        dateKey:
+          type: string
+          description: ISO date (YYYY-MM-DD) of the anomalous day to dismiss
     HealthStatus:
       type: object
       required: [status]
