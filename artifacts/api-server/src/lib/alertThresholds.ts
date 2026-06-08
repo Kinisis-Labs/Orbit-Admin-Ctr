@@ -4,11 +4,16 @@
  * Priority order for each per-app value:
  *   1. Row in alert_threshold_config (set by operators via the Orbit UI)
  *   2. Per-app env var (e.g. ALERT_CPU_THRESHOLD_PCT__GRAILBABE)
- *   3. Global env var (e.g. ALERT_CPU_THRESHOLD_PCT)
- *   4. Built-in default (cpu=80, memory=85, consecutiveChecks=2)
+ *   3. APPS inventory baseline (app.cpuThreshold, caller-supplied)
+ *   4. Global env var (e.g. ALERT_CPU_THRESHOLD_PCT)
+ *   5. Built-in default (cpu=80, memory=85, consecutiveChecks=2)
  *
  * isOverride is true whenever a per-app value (DB or env) overrides the global
  * default. isDbOverride is true specifically when the DB row is the source.
+ *
+ * resolveEnvCpuThreshold / resolveEnvMemoryThreshold are exported for use by
+ * callers (e.g. the SLO route) that manage their own DB-override tier and only
+ * need the env-var + inventory + global resolution.
  */
 
 import { db, alertThresholdConfigTable } from "@workspace/db";
@@ -37,15 +42,58 @@ function appEnvKey(appId: string): string {
   return appId.toUpperCase().replace(/-/g, "_");
 }
 
+/**
+ * Resolve CPU threshold % using env vars and an optional inventory baseline —
+ * no DB involvement. Resolution: per-app env var → inventoryValue → global env var → 80.
+ *
+ * Exported so callers that manage their own DB-override tier (e.g. the SLO
+ * route in orbit.ts) can apply the env-var tier without duplicating the logic.
+ */
+export function resolveEnvCpuThreshold(appId: string, inventoryValue?: number): number {
+  const perApp = process.env[`ALERT_CPU_THRESHOLD_PCT__${appEnvKey(appId)}`];
+  if (perApp !== undefined) {
+    const v = Number(perApp);
+    if (Number.isFinite(v) && v > 0 && v <= 100) return v;
+  }
+  if (inventoryValue !== undefined) return inventoryValue;
+  const globalEnv = process.env["ALERT_CPU_THRESHOLD_PCT"];
+  if (globalEnv !== undefined) {
+    const v = Number(globalEnv);
+    if (Number.isFinite(v) && v > 0 && v <= 100) return v;
+  }
+  return 80;
+}
+
+/**
+ * Resolve memory threshold % using env vars and an optional inventory baseline —
+ * no DB involvement. Resolution: per-app env var → inventoryValue → global env var → 85.
+ *
+ * Exported for the same reason as resolveEnvCpuThreshold.
+ */
+export function resolveEnvMemoryThreshold(appId: string, inventoryValue?: number): number {
+  const perApp = process.env[`ALERT_MEMORY_THRESHOLD_PCT__${appEnvKey(appId)}`];
+  if (perApp !== undefined) {
+    const v = Number(perApp);
+    if (Number.isFinite(v) && v > 0 && v <= 100) return v;
+  }
+  if (inventoryValue !== undefined) return inventoryValue;
+  const globalEnv = process.env["ALERT_MEMORY_THRESHOLD_PCT"];
+  if (globalEnv !== undefined) {
+    const v = Number(globalEnv);
+    if (Number.isFinite(v) && v > 0 && v <= 100) return v;
+  }
+  return 85;
+}
+
 function envCpuPct(appId: string): { value: number; isOverride: boolean } {
   const perApp = process.env[`ALERT_CPU_THRESHOLD_PCT__${appEnvKey(appId)}`];
   if (perApp !== undefined) {
     const v = Number(perApp);
     if (Number.isFinite(v) && v > 0 && v <= 100) return { value: v, isOverride: true };
   }
-  const global = process.env["ALERT_CPU_THRESHOLD_PCT"];
-  if (global !== undefined) {
-    const v = Number(global);
+  const globalEnv = process.env["ALERT_CPU_THRESHOLD_PCT"];
+  if (globalEnv !== undefined) {
+    const v = Number(globalEnv);
     if (Number.isFinite(v) && v > 0 && v <= 100) return { value: v, isOverride: false };
   }
   return { value: 80, isOverride: false };
@@ -57,9 +105,9 @@ function envMemoryPct(appId: string): { value: number; isOverride: boolean } {
     const v = Number(perApp);
     if (Number.isFinite(v) && v > 0 && v <= 100) return { value: v, isOverride: true };
   }
-  const global = process.env["ALERT_MEMORY_THRESHOLD_PCT"];
-  if (global !== undefined) {
-    const v = Number(global);
+  const globalEnv = process.env["ALERT_MEMORY_THRESHOLD_PCT"];
+  if (globalEnv !== undefined) {
+    const v = Number(globalEnv);
     if (Number.isFinite(v) && v > 0 && v <= 100) return { value: v, isOverride: false };
   }
   return { value: 85, isOverride: false };

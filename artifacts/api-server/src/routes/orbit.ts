@@ -40,6 +40,7 @@ import { fetchNetworkEndpoints } from "../lib/azureNetwork.js";
 import { fetchDeployments } from "../lib/github.js";
 import { fetchActivityLog } from "../lib/azureActivity.js";
 import { fetchServiceHealth } from "../lib/azureServiceHealth.js";
+import { resolveEnvCpuThreshold, resolveEnvMemoryThreshold } from "../lib/alertThresholds.js";
 import { isStripeConfigured } from "../lib/stripeClient.js";
 import { syncStripeSales } from "../lib/stripeSync.js";
 import { getLedgerMonthRevenue } from "../lib/ledger.js";
@@ -247,8 +248,6 @@ router.get("/apps/:appId", async (req, res) => {
 });
 
 // --- per-app threshold settings ---
-const DEFAULT_CPU_THRESHOLD_GLOBAL = 80;
-const DEFAULT_MEMORY_THRESHOLD_GLOBAL = 85;
 
 /**
  * Load all DB threshold overrides in one query and return a Map<appId, {cpu, mem}>.
@@ -266,11 +265,17 @@ async function loadThresholdOverrides(): Promise<Map<string, { cpuThreshold: num
   return map;
 }
 
-/** Resolve thresholds for an app: DB override → app record → global default. */
+/**
+ * Resolve thresholds for an app using the four-tier order:
+ *   1. DB override (operator-set via Orbit UI — appThresholdsTable)
+ *   2. Per-app env var (e.g. ALERT_CPU_THRESHOLD_PCT__GRAILBABE)
+ *   3. APPS inventory baseline (app.cpuThreshold / app.memoryThreshold)
+ *   4. Global env var / hardcoded default (resolveEnvCpuThreshold fallback)
+ */
 function resolveThresholds(app: AppRecord, override?: { cpuThreshold: number; memoryThreshold: number }) {
   return {
-    cpuThreshold: override?.cpuThreshold ?? app.cpuThreshold ?? DEFAULT_CPU_THRESHOLD_GLOBAL,
-    memoryThreshold: override?.memoryThreshold ?? app.memoryThreshold ?? DEFAULT_MEMORY_THRESHOLD_GLOBAL,
+    cpuThreshold: override?.cpuThreshold ?? resolveEnvCpuThreshold(app.id, app.cpuThreshold),
+    memoryThreshold: override?.memoryThreshold ?? resolveEnvMemoryThreshold(app.id, app.memoryThreshold),
   };
 }
 
