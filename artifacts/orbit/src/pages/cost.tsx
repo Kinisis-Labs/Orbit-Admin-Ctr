@@ -11,7 +11,8 @@ import { StaleCacheBanner } from "@/components/stale-cache-banner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link, useSearch, useLocation } from "wouter";
-import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, Wifi, WifiOff, AlertTriangle, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, Database, TriangleAlert } from "lucide-react";
+import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, TriangleAlert } from "lucide-react";
+import { DataSourceBadge } from "@/components/data-source-badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -23,81 +24,9 @@ import { DailySpendChart, type DailyCostPoint } from "@/components/daily-spend-c
 import { computeAnomalies } from "@/components/daily-spend-utils";
 import { format, parseISO, isValid } from "date-fns";
 
-const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
-
 const fmt = (amount: number, currency = "USD") =>
   new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
 const fmtInt = (n: number) => new Intl.NumberFormat("en-US").format(n);
-
-function fmtDataAsOf(iso: string | undefined | null): string | null {
-  if (!iso) return null;
-  try {
-    const d = new Date(iso);
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      timeZoneName: "short",
-    }).format(d);
-  } catch {
-    return null;
-  }
-}
-
-function DataSourceBadge({
-  dataSource,
-  dataAsOf,
-}: {
-  dataSource: "live" | "cached" | "mock" | undefined;
-  dataAsOf?: string | null;
-}) {
-  if (!dataSource) return null;
-  if (dataSource === "live") {
-    const asOf = fmtDataAsOf(dataAsOf);
-    const isStale = dataAsOf
-      ? Date.now() - new Date(dataAsOf).getTime() > STALE_COST_THRESHOLD_MS
-      : false;
-    return (
-      <span className="inline-flex items-center gap-1.5 select-none flex-wrap">
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
-          <Wifi className="h-3 w-3" />
-          Live — Azure Cost Management
-        </span>
-        {asOf && (
-          <span
-            className={
-              isStale
-                ? "inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400"
-                : "text-[10px] text-muted-foreground"
-            }
-          >
-            {isStale && <AlertTriangle className="h-3 w-3" />}
-            as of {asOf}
-          </span>
-        )}
-      </span>
-    );
-  }
-  if (dataSource === "cached") {
-    const asOf = fmtDataAsOf(dataAsOf);
-    return (
-      <span className="inline-flex items-center gap-1.5 select-none flex-wrap">
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wide">
-          <Database className="h-3 w-3" />
-          Cached — DB snapshot
-        </span>
-        {asOf && (
-          <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400">
-            <AlertTriangle className="h-3 w-3" />
-            as of {asOf}
-          </span>
-        )}
-      </span>
-    );
-  }
-  return null;
-}
 
 const ANOMALY_SIGMAS = 2;
 const ANOMALY_WINDOW = 30;
@@ -362,7 +291,7 @@ function AppCost() {
           {data.dataSource === "live" && (
             <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
           )}
-          <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
+          <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
         </div>
       )}
       {!isLoading && data && (

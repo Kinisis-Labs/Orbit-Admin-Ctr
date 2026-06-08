@@ -23,7 +23,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Activity, AlertTriangle, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi, WifiOff, History, Info, Search, X, Download, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Activity, AlertTriangle, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, History, Info, Search, X, Download, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { DataSourceBadge } from "@/components/data-source-badge";
 import {
   AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -174,54 +175,6 @@ function TrendSparkline({
       </div>
     </div>
   );
-}
-
-const STALE_SLO_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
-
-function fmtDataAsOf(iso: string | undefined | null): string | null {
-  if (!iso) return null;
-  try {
-    return format(new Date(iso), "HH:mm");
-  } catch {
-    return null;
-  }
-}
-
-function DataSourceBadge({
-  dataSource,
-  dataAsOf,
-}: {
-  dataSource: "live" | "mock" | undefined;
-  dataAsOf?: string | null;
-}) {
-  if (!dataSource) return null;
-  if (dataSource === "live") {
-    const asOf = fmtDataAsOf(dataAsOf);
-    const isStale = dataAsOf
-      ? Date.now() - new Date(dataAsOf).getTime() > STALE_SLO_THRESHOLD_MS
-      : false;
-    return (
-      <span className="inline-flex items-center gap-1.5 select-none flex-wrap">
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
-          <Wifi className="h-3 w-3" />
-          Live — Azure Monitor
-        </span>
-        {asOf && (
-          <span
-            className={
-              isStale
-                ? "inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400"
-                : "text-[10px] text-muted-foreground"
-            }
-          >
-            {isStale && <AlertTriangle className="h-3 w-3" />}
-            as of {asOf}
-          </span>
-        )}
-      </span>
-    );
-  }
-  return null;
 }
 
 // --- Engineer group definition (mirrors orbitGroups.ts client-facing id) ---

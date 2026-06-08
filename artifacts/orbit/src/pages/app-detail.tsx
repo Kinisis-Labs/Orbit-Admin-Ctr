@@ -27,9 +27,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { DailySpendChart } from "@/components/daily-spend-chart";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Wifi, WifiOff, Users, Building2, Globe, Smartphone, Database, Bell, Info, X, ExternalLink, ArrowRight } from "lucide-react";
-
-const STALE_COST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight } from "lucide-react";
+import { DataSourceBadge } from "@/components/data-source-badge";
 
 /**
  * Build an Azure Portal deep-link to the App Insights Failures blade for the
@@ -46,14 +45,6 @@ function buildAppInsightsFailuresUrl(resourceId: string, exceptionMessage: strin
   return `https://portal.azure.com/#blade/Microsoft_Azure_Monitoring_Logs/LogsBlade/resourceId/${encodedId}/source/LogsBlade.AnalyticsShareLinkToQuery/query/${encoded}/timespan/P1D`;
 }
 
-function fmtDataAsOf(iso: string | undefined | null): string | null {
-  if (!iso) return null;
-  try {
-    return format(new Date(iso), "MMM d, h:mm a bbb");
-  } catch (e) {
-    return null;
-  }
-}
 import { Button } from "@/components/ui/button";
 import { Tooltip as UITooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/lib/auth";
@@ -347,71 +338,6 @@ function UserAuthBadge({ userAuth }: { userAuth: string }) {
 // ----------------------------------------------------------------------
 // Sub-components for tabs
 // ----------------------------------------------------------------------
-
-function DataSourceBadge({
-  dataSource,
-  dataAsOf,
-  label,
-}: {
-  dataSource: "live" | "cached" | "mock" | undefined;
-  dataAsOf?: string | null;
-  label?: string;
-}) {
-  if (!dataSource) return null;
-
-  if (dataSource === "live") {
-    const asOf = fmtDataAsOf(dataAsOf);
-    const isStale = dataAsOf
-      ? Date.now() - new Date(dataAsOf).getTime() > STALE_COST_THRESHOLD_MS
-      : false;
-    return (
-      <span className="inline-flex items-center gap-1.5 select-none flex-wrap">
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
-          <Wifi className="h-3 w-3" />
-          Live — {label || "Azure Monitor"}
-        </span>
-        {asOf && (
-          <span
-            className={
-              isStale
-                ? "inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400"
-                : "text-[10px] text-muted-foreground"
-            }
-          >
-            {isStale && <AlertTriangle className="h-3 w-3" />}
-            as of {asOf}
-          </span>
-        )}
-      </span>
-    );
-  }
-  if (dataSource === "cached") {
-    const asOf = fmtDataAsOf(dataAsOf);
-    return (
-      <span className="inline-flex items-center gap-1.5 select-none flex-wrap">
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wide">
-          <Database className="h-3 w-3" />
-          Cached — DB snapshot
-        </span>
-        {asOf && (
-          <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400">
-            <AlertTriangle className="h-3 w-3" />
-            as of {asOf}
-          </span>
-        )}
-      </span>
-    );
-  }
-  if (dataSource === "mock") {
-    return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-border bg-muted/50 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide select-none">
-        <WifiOff className="h-3 w-3" />
-        Demo data
-      </span>
-    );
-  }
-  return null;
-}
 
 function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: () => void }) {
   const { data, isLoading, isFetching } = useAppCost(appId);
