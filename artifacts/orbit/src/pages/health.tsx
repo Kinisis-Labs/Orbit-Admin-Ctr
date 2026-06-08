@@ -23,7 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi, WifiOff, History, Info, Search, X, Download } from "lucide-react";
+import { Activity, Settings2, ChevronDown, ChevronRight, Check, Loader2, ExternalLink, Wifi, WifiOff, History, Info, Search, X, Download, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import {
   AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -635,12 +635,28 @@ function ThresholdSettings() {
   );
 }
 
+type SortCol = "cpu" | "memory";
+type SortDir = "asc" | "desc";
+
 export default function Health() {
   const { data, isLoading } = useListSlos();
   const slos = data?.rows;
   const dataSource = data?.dataSource;
   const { hasGroup } = useAuth();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [sortCol, setSortCol] = useState<SortCol | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function handleSortClick(col: SortCol) {
+    setSortCol((prev) => {
+      if (prev === col) {
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+        return col;
+      }
+      setSortDir("asc");
+      return col;
+    });
+  }
 
   const isEmpty = !isLoading && (slos?.length ?? 0) === 0;
 
@@ -654,6 +670,17 @@ export default function Health() {
     : 0;
   const breachingCpu = (slos ?? []).filter((s) => s.cpuPct >= s.cpuThreshold).length;
   const breachingMem = (slos ?? []).filter((s) => s.memoryPct >= s.memoryThreshold).length;
+
+  const sortedSlos = useMemo(() => {
+    if (!slos) return slos;
+    if (!sortCol) return slos;
+    const mul = sortDir === "asc" ? 1 : -1;
+    return [...slos].sort((a, b) => {
+      const va = sortCol === "cpu" ? a.cpuPct : a.memoryPct;
+      const vb = sortCol === "cpu" ? b.cpuPct : b.memoryPct;
+      return mul * (va - vb);
+    });
+  }, [slos, sortCol, sortDir]);
 
   function toggleRow(appId: string) {
     setExpandedRow((prev) => (prev === appId ? null : appId));
@@ -701,13 +728,39 @@ export default function Health() {
                 <TableHead className="h-8 font-semibold text-foreground">Error budget remaining</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground text-right">P95 latency</TableHead>
                 <TableHead className="h-8 font-semibold text-foreground text-right">Error rate</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground">CPU</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground">Memory</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground p-0">
+                  <button
+                    type="button"
+                    onClick={() => handleSortClick("cpu")}
+                    className="flex items-center gap-1 h-full w-full px-4 hover:text-foreground/70 transition-colors"
+                  >
+                    CPU
+                    {sortCol === "cpu" ? (
+                      sortDir === "asc" ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
+                    )}
+                  </button>
+                </TableHead>
+                <TableHead className="h-8 font-semibold text-foreground p-0">
+                  <button
+                    type="button"
+                    onClick={() => handleSortClick("memory")}
+                    className="flex items-center gap-1 h-full w-full px-4 hover:text-foreground/70 transition-colors"
+                  >
+                    Memory
+                    {sortCol === "memory" ? (
+                      sortDir === "asc" ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
+                    )}
+                  </button>
+                </TableHead>
                 <TableHead className="h-8 font-semibold text-foreground">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(slos ?? []).map((s) => {
+              {(sortedSlos ?? []).map((s) => {
                 const latencyOk = s.p95LatencyMs <= s.p95TargetMs;
                 const errOk = s.errorRatePct <= s.errorTargetPct;
                 const cpuOk = infraTone(s.cpuPct, s.cpuThreshold) === "ok";
