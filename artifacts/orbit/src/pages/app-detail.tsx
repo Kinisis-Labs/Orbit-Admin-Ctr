@@ -1177,7 +1177,11 @@ function CostTab({ appId }: { appId: string }) {
           {data.dataSource === "live" && (
             <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
           )}
-          <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
+          {data.dataSource === "live" ? (
+            <LiveBadge />
+          ) : (
+            <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
+          )}
         </div>
       </div>
       <StaleCacheBanner source="azure-cost" dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
