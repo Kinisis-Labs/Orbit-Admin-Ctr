@@ -532,6 +532,19 @@ export const ListGlobalAlertsResponse = zod.array(ListGlobalAlertsResponseItem)
 
 
 /**
+ * @summary Entra ID RBAC group member counts for Orbit groups (Authorized-Users, Cost-Readers, etc.)
+ */
+export const GetStaffStatsResponse = zod.object({
+  "groups": zod.array(zod.object({
+  "id": zod.string().describe('Entra group object ID (GUID)'),
+  "name": zod.string().describe('Group display name'),
+  "memberCount": zod.number().describe('Current direct member count')
+})),
+  "dataSource": zod.enum(['live', 'unconfigured']).describe('\'live\' when Entra client creds are configured; \'unconfigured\' otherwise.')
+})
+
+
+/**
  * @summary Per-app end-user activity (Clerk-sourced aggregate counts)
  */
 export const ListUserActivityResponseItem = zod.object({

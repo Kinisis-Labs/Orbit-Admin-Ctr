@@ -72,6 +72,7 @@ import type {
   SetFeatureFlag404,
   SetFeatureFlagBody,
   SlosResponse,
+  StaffStatsResponse,
   StripeSyncResult,
   TelemetryReport,
   UndismissAnomalyParams,
@@ -1560,6 +1561,83 @@ export function useListGlobalAlerts<TData = Awaited<ReturnType<typeof listGlobal
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListGlobalAlertsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetStaffStatsUrl = () => {
+
+
+
+
+  return `/api/users/staff-stats`
+}
+
+/**
+ * @summary Entra ID RBAC group member counts for Orbit groups (Authorized-Users, Cost-Readers, etc.)
+ */
+export const getStaffStats = async ( options?: RequestInit): Promise<StaffStatsResponse> => {
+
+  return customFetch<StaffStatsResponse>(getGetStaffStatsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStaffStatsQueryKey = () => {
+    return [
+    `/api/users/staff-stats`
+    ] as const;
+    }
+
+
+export const getGetStaffStatsQueryOptions = <TData = Awaited<ReturnType<typeof getStaffStats>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStaffStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStaffStatsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStaffStats>>> = ({ signal }) => getStaffStats({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStaffStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStaffStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getStaffStats>>>
+export type GetStaffStatsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Entra ID RBAC group member counts for Orbit groups (Authorized-Users, Cost-Readers, etc.)
+ */
+
+export function useGetStaffStats<TData = Awaited<ReturnType<typeof getStaffStats>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStaffStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStaffStatsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

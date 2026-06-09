@@ -39,7 +39,7 @@ type TokenCache = {
 
 let _tokenCache: TokenCache | null = null;
 
-async function getGraphToken(): Promise<string | null> {
+export async function getGraphToken(): Promise<string | null> {
   const { ENTRA_TENANT_ID, ENTRA_CLIENT_ID, ENTRA_CLIENT_SECRET } =
     process.env;
   if (!ENTRA_TENANT_ID || !ENTRA_CLIENT_ID || !ENTRA_CLIENT_SECRET) {

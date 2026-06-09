@@ -193,6 +193,32 @@ export type AppDetail = AppSummary & {
   budgetName?: string;
 };
 
+export interface StaffGroupRow {
+  /** Entra group object ID (GUID) */
+  id: string;
+  /** Group display name */
+  name: string;
+  /** Current direct member count */
+  memberCount: number;
+}
+
+/**
+ * 'live' when Entra client creds are configured; 'unconfigured' otherwise.
+ */
+export type StaffStatsResponseDataSource = typeof StaffStatsResponseDataSource[keyof typeof StaffStatsResponseDataSource];
+
+
+export const StaffStatsResponseDataSource = {
+  live: 'live',
+  unconfigured: 'unconfigured',
+} as const;
+
+export interface StaffStatsResponse {
+  groups: StaffGroupRow[];
+  /** 'live' when Entra client creds are configured; 'unconfigured' otherwise. */
+  dataSource: StaffStatsResponseDataSource;
+}
+
 /**
  * live = real Clerk webhook events exist in DB; demo = seeded/placeholder data only
  */

@@ -1,9 +1,9 @@
 import { useMemo } from "react";
-import { useListUserActivity } from "@workspace/api-client-react";
+import { useListUserActivity, useGetStaffStats } from "@workspace/api-client-react";
 import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingDown, TrendingUp, ExternalLink, RefreshCw, Wifi } from "lucide-react";
+import { TrendingDown, TrendingUp, ExternalLink, RefreshCw, Wifi, Shield } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { RefreshingBar } from "@/components/refreshing-bar";
 import { ScopeSelect } from "@/lib/scope";
@@ -14,6 +14,7 @@ const fmt = (n: number) => new Intl.NumberFormat("en-US").format(n);
 export default function Users() {
   const { scope } = useScope();
   const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useListUserActivity();
+  const { data: staffData, isLoading: staffLoading } = useGetStaffStats();
 
   const activity = useMemo(() => data ?? [], [data]);
   const scopedActivity = activity.filter((a) => a.appId === scope);
@@ -39,11 +40,14 @@ export default function Users() {
     </span>
   ) : null;
 
+  const staffGroups = staffData?.groups ?? [];
+  const staffLive = staffData?.dataSource === "live";
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Users & activity"
-        subtitle="Active vs inactive end users per Kinisis consumer app. Source of truth: Clerk webhook ingestion (anonymous counts)."
+        subtitle="Consumer end-user engagement (Clerk) and Orbit staff access (Entra ID)."
         right={
           <div className="flex items-center gap-2">
             {liveBadge}
@@ -54,6 +58,56 @@ export default function Users() {
 
       <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
 
+      {/* ── Orbit staff (Entra ID) ─────────────────────────────────── */}
+      <div className="bg-card border border-border shadow-sm">
+        <div className="flex items-center gap-3 p-3 border-b border-border">
+          <div className="shrink-0 h-8 w-8 rounded-sm bg-blue-500/10 text-blue-500 flex items-center justify-center">
+            <Shield className="h-4 w-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-semibold">Orbit staff — Entra ID</p>
+            <p className="text-[11px] text-muted-foreground">RBAC group membership counts from Microsoft Entra ID. Refreshed every 5 minutes.</p>
+          </div>
+          {staffLive && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-semibold uppercase tracking-wide shrink-0">
+              <Wifi className="h-3 w-3" />
+              Live
+            </span>
+          )}
+        </div>
+
+        {staffLoading ? (
+          <div className="p-4 space-y-2">
+            <Skeleton className="h-8" />
+            <Skeleton className="h-8" />
+          </div>
+        ) : staffGroups.length === 0 ? (
+          <div className="p-6 text-center text-[12px] text-muted-foreground">
+            {staffData?.dataSource === "unconfigured"
+              ? "Entra ID not configured — set ENTRA_TENANT_ID, ENTRA_CLIENT_ID, and ENTRA_CLIENT_SECRET on the API container."
+              : "No RBAC groups configured — set ENTRA_AUTHORIZED_GROUP_ID and ENTRA_COST_READER_GROUP_ID env vars."}
+          </div>
+        ) : (
+          <Table className="text-[13px]">
+            <TableHeader className="bg-muted/50 border-b border-border">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-8 font-semibold text-foreground">Group</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right">Members</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {staffGroups.map((g) => (
+                <TableRow key={g.id} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                  <TableCell className="py-1 font-medium">{g.name}</TableCell>
+                  <TableCell className="py-1 text-right tabular-nums font-semibold">{fmt(g.memberCount)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+
+      {/* ── Consumer end-user engagement (Clerk) ──────────────────── */}
       <ClerkBanner dataUpdatedAt={dataUpdatedAt} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -149,7 +203,7 @@ function ClerkBanner({ dataUpdatedAt }: { dataUpdatedAt: number }) {
         <span className="text-foreground font-semibold">Clerk-sourced, anonymous.</span> Each consumer app's end users sign in via{" "}
         <span className="font-mono text-foreground">Clerk</span>. DAU / WAU / MAU are ingested in real time from Clerk{" "}
         <span className="font-mono text-foreground">webhooks</span> and stored as aggregate rollups — only an opaque user id and
-        timestamps are kept, never emails or names. (Orbit staff still authenticate via corporate Entra ID.)
+        timestamps are kept, never emails or names.
         {timestampLabel && (
           <span className="block mt-1 text-[11px] text-muted-foreground/70 tabular-nums">
             {timestampLabel}{ago ? <span className="text-muted-foreground/50"> · {ago}</span> : null}
