@@ -46,15 +46,6 @@ export function LiveBadge({ label = "Live", className, liveApps, estimatedApps }
   );
 }
 
-export function DemoBadge({ className }: { className?: string }) {
-  return (
-    <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted text-muted-foreground text-[10px] font-semibold uppercase tracking-wide${className ? ` ${className}` : ""}`}
-    >
-      Demo
-    </span>
-  );
-}
 
 const DEFAULT_STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
@@ -134,7 +125,7 @@ export function DataSourceBadge({
   }
 
   if (dataSource === "mock" || dataSource === "placeholder") {
-    return <DemoBadge />;
+    return null;
   }
 
   return null;

@@ -1,9 +1,7 @@
-import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, StatusPill } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { CheckCircle2, XCircle, FlaskConical, Mail, RotateCcw } from "lucide-react";
+import { CheckCircle2, XCircle, Mail } from "lucide-react";
 
 type GroupDef = {
   id: string;
@@ -59,41 +57,14 @@ const ORBIT_GROUPS: GroupDef[] = [
 
 
 export default function Access() {
-  const { hasGroup, user, groups, isMock, grantGroup, revokeGroup, resetGroups, accessContact } = useAuth();
-  const [confirmingReset, setConfirmingReset] = useState(false);
-
-  function handleResetClick() {
-    setConfirmingReset(true);
-  }
-
-  function handleResetConfirm() {
-    resetGroups?.();
-    setConfirmingReset(false);
-  }
-
-  function handleResetCancel() {
-    setConfirmingReset(false);
-  }
+  const { hasGroup, user, groups, accessContact } = useAuth();
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Identity & access"
-        subtitle={
-          isMock
-            ? "Mock/dev mode — use the Simulator column to preview group-restricted surfaces."
-            : "Entra ID groups that govern Orbit. Membership is resolved from your real Entra ID token."
-        }
+        subtitle="Entra ID groups that govern Orbit. Membership is resolved from your real Entra ID token."
       />
-
-      {isMock && (
-        <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-400">
-          <FlaskConical className="h-3.5 w-3.5 shrink-0" />
-          <span>
-            <strong>Dev simulator active.</strong> Orbit-Authorized-Users is always granted. Toggle the other groups below to preview access-restricted surfaces. State is saved in localStorage and persists across refreshes.
-          </span>
-        </div>
-      )}
 
       <div className="bg-card border border-border shadow-sm p-4 text-[13px]">
         <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Signed in as</div>
@@ -123,39 +94,6 @@ export default function Access() {
       <div className="bg-card border border-border shadow-sm">
         <div className="p-2 border-b border-border flex items-center justify-between">
           <h2 className="text-sm font-semibold px-2">Orbit security groups</h2>
-          {isMock && (
-            confirmingReset ? (
-              <div className="flex items-center gap-1.5 mr-2">
-                <span className="text-[11px] text-amber-400">Reset all groups?</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 px-2 text-[11px] border-destructive/50 text-destructive hover:bg-destructive/10"
-                  onClick={handleResetConfirm}
-                >
-                  Reset
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 px-2 text-[11px]"
-                  onClick={handleResetCancel}
-                >
-                  Cancel
-                </Button>
-              </div>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-[11px] gap-1.5 border-amber-500/40 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 mr-2"
-                onClick={handleResetClick}
-              >
-                <RotateCcw className="h-3 w-3" />
-                Reset simulator
-              </Button>
-            )
-          )}
         </div>
         <Table className="text-[13px]">
           <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
@@ -163,14 +101,6 @@ export default function Access() {
               <TableHead className="h-8 font-semibold text-foreground">Group</TableHead>
               <TableHead className="h-8 font-semibold text-foreground">Grants</TableHead>
               <TableHead className="h-8 font-semibold text-foreground">My membership</TableHead>
-              {isMock && (
-                <TableHead className="h-8 font-semibold text-foreground">
-                  <span className="flex items-center gap-1">
-                    <FlaskConical className="h-3 w-3 text-amber-400" />
-                    Simulator
-                  </span>
-                </TableHead>
-              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -192,29 +122,6 @@ export default function Access() {
                       <StatusPill tone="muted"><XCircle className="h-3 w-3 mr-1" /> Not a member</StatusPill>
                     )}
                   </TableCell>
-                  {isMock && (
-                    <TableCell className="py-2">
-                      {isMember ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 px-2 text-[11px] border-destructive/50 text-destructive hover:bg-destructive/10"
-                          onClick={() => revokeGroup?.(g.id)}
-                        >
-                          Revoke
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 px-2 text-[11px] border-primary/50 text-primary hover:bg-primary/10"
-                          onClick={() => grantGroup?.(g.id)}
-                        >
-                          Grant
-                        </Button>
-                      )}
-                    </TableCell>
-                  )}
                 </TableRow>
               );
             })}

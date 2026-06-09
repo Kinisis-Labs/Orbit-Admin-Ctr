@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/lib/auth";
 import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { PageHeader, StatusPill } from "@/components/page-header";
-import { LiveBadge, DemoBadge } from "@/components/data-source-badge";
+import { LiveBadge } from "@/components/data-source-badge";
 
 export default function Subscriptions() {
   const { data: apps, isLoading } = useApps();
@@ -15,7 +15,7 @@ export default function Subscriptions() {
   const isLive = apps != null && apps.some((a) => a.subscriptionName != null);
   const isLoaded = !isLoading && apps != null;
 
-  const liveBadge = isLoaded ? (isLive ? <LiveBadge /> : <DemoBadge />) : null;
+  const liveBadge = isLoaded && isLive ? <LiveBadge /> : null;
 
   const rows = useMemo(() => {
     if (!apps) return [];

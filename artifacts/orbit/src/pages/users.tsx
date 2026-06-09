@@ -32,17 +32,11 @@ export default function Users() {
 
   const isLoaded = !isLoading && data != null;
   const isLive = isLoaded && activity.some((a) => a.dataSource === "live");
-  const liveBadge = isLoaded ? (
-    isLive ? (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
-        <Wifi className="h-3 w-3" />
-        Live
-      </span>
-    ) : (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
-        Demo
-      </span>
-    )
+  const liveBadge = isLoaded && isLive ? (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
+      <Wifi className="h-3 w-3" />
+      Live
+    </span>
   ) : null;
 
   return (

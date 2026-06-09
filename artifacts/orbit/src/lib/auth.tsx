@@ -7,9 +7,7 @@ import {
 } from "./auth-context";
 import type { EntraGroup, EntraUser } from "./auth-types";
 import {
-  AUTHORIZED_USERS_GROUP,
-  COST_READER_GROUP,
-  TOGGLEABLE_GROUPS,
+  ALL_ORBIT_GROUPS,
 } from "./auth-groups";
 import { toast } from "@/hooks/use-toast";
 
@@ -19,8 +17,6 @@ const AUTH_ME = "/api/auth/me";
 const AUTH_LOGIN = "/api/auth/login";
 const AUTH_LOGOUT = "/api/auth/logout";
 
-const MOCK_LS_KEY = "orbit-mock-groups";
-
 const MOCK_USER: EntraUser = {
   id: "dev-mock-user",
   displayName: "Dev User",
@@ -29,35 +25,6 @@ const MOCK_USER: EntraUser = {
   initial: "D",
 };
 
-/** Persist the set of toggled-on group IDs to localStorage. */
-function saveMockGroups(ids: Set<string>) {
-  try {
-    localStorage.setItem(MOCK_LS_KEY, JSON.stringify([...ids]));
-  } catch {
-    /* ignore */
-  }
-}
-
-/**
- * Load the set of toggled-on group IDs from localStorage.
- * On first load (no key yet) we default to AUTHORIZED_USERS + COST_READER so
- * the Budget Status widget and anomaly badges are visible immediately in the
- * dev preview without any manual simulator toggling.
- */
-function loadMockGroups(): Set<string> {
-  const FRESH_DEFAULTS = new Set([AUTHORIZED_USERS_GROUP.id, COST_READER_GROUP.id]);
-  try {
-    const raw = localStorage.getItem(MOCK_LS_KEY);
-    if (raw === null) {
-      return FRESH_DEFAULTS;
-    }
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return FRESH_DEFAULTS;
-    return new Set(parsed.filter((x): x is string => typeof x === "string"));
-  } catch {
-    return FRESH_DEFAULTS;
-  }
-}
 
 type MeResponse =
   | { mode: "mock"; accessContact?: string }
@@ -78,9 +45,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { entraRef.current = entra; }, [entra]);
   const [authError, setAuthError] = useState<AuthError | null>(null);
   const [accessContact, setAccessContact] = useState<string>(ORBIT_ACCESS_EMAIL);
-
-  // Mock mode — extra toggled groups (AUTHORIZED_USERS is always on)
-  const [mockExtras, setMockExtras] = useState<Set<string>>(() => loadMockGroups());
 
   useEffect(() => {
     let cancelled = false;
@@ -201,51 +165,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  const grantGroup = useCallback((id: string) => {
-    setMockExtras((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      saveMockGroups(next);
-      return next;
-    });
-  }, []);
-
-  const revokeGroup = useCallback((id: string) => {
-    setMockExtras((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      saveMockGroups(next);
-      return next;
-    });
-  }, []);
-
-  const resetGroups = useCallback(() => {
-    try {
-      localStorage.removeItem(MOCK_LS_KEY);
-    } catch {
-      /* ignore */
-    }
-    setMockExtras(loadMockGroups());
-  }, []);
-
   const value = useMemo<AuthContextValue | null>(() => {
     if (mode === null) return null;
 
     if (mode === "mock") {
-      const toggleableIds = new Set(TOGGLEABLE_GROUPS.map((g) => g.id));
-      const groups: EntraGroup[] = TOGGLEABLE_GROUPS.filter((g) => mockExtras.has(g.id));
-      const ids = new Set(groups.map((g) => g.id));
+      const ids = new Set(ALL_ORBIT_GROUPS.map((g) => g.id));
       return {
         user: MOCK_USER,
-        groups,
+        groups: ALL_ORBIT_GROUPS,
         hasGroup: (id: string) => ids.has(id),
         mode: "mock",
-        isMock: true,
         signOut,
         accessContact,
-        grantGroup: (id: string) => toggleableIds.has(id) && grantGroup(id),
-        revokeGroup: (id: string) => toggleableIds.has(id) && revokeGroup(id),
-        resetGroups,
       };
     }
 
@@ -256,11 +187,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       groups: entra.groups,
       hasGroup: (id: string) => ids.has(id),
       mode: "entra",
-      isMock: false,
       signOut,
       accessContact,
     };
-  }, [mode, entra, mockExtras, signOut, grantGroup, revokeGroup, resetGroups, accessContact]);
+  }, [mode, entra, signOut, accessContact]);
 
   if (authError) {
     return (

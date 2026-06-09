@@ -16,16 +16,9 @@ export type AuthContextValue = {
   groups: EntraGroup[];
   hasGroup: (groupId: string) => boolean;
   mode: AuthMode;
-  isMock: boolean;
   signOut: () => void;
   /** The access-request contact address served by /api/auth/me (or the fallback default). */
   accessContact: string;
-  /** Only present in mock mode — grant a group for the current dev session. */
-  grantGroup?: (id: string) => void;
-  /** Only present in mock mode — revoke a group for the current dev session. */
-  revokeGroup?: (id: string) => void;
-  /** Only present in mock mode — revoke all toggled groups and restore fresh defaults in one click. */
-  resetGroups?: () => void;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
