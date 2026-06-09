@@ -1206,14 +1206,14 @@ function BudgetSummaryWidget({
                   <td className="px-3 py-2.5 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
                   <td className="px-3 py-2.5"><Skeleton className="h-3 w-full" /></td>
                   <td className="px-3 py-2.5"><Skeleton className="h-5 w-16" /></td>
-                  <td className="px-3 py-2.5" />
+                  <td className="px-3 py-2.5 text-right"><Skeleton className="h-4 w-10 ml-auto" /></td>
                   <td className="px-3 py-2.5"><Skeleton className="h-6 w-[72px]" /></td>
                   <td className="px-2 py-2.5" />
                 </tr>
               ))
             ) : filteredApps.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-[13px] text-muted-foreground">
+                <td colSpan={10} className="px-4 py-6 text-center text-[13px] text-muted-foreground">
                   No apps match the active filters.
                 </td>
               </tr>
@@ -1493,6 +1493,29 @@ function BudgetSummaryWidget({
                   )}
                 </td>
                 <td className="px-3 py-2.5" />
+                <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                  {(() => {
+                    const trend = globalCostSummary?.wowTrend ?? null;
+                    if (!trend) return <span className="text-muted-foreground/50 text-[11px]">—</span>;
+                    const isPos = trend.startsWith("+");
+                    const isNeg = trend.startsWith("-");
+                    const cls = isPos
+                      ? "text-red-500"
+                      : isNeg
+                      ? "text-emerald-500"
+                      : "text-muted-foreground";
+                    return (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className={`font-mono text-[11px] font-semibold ${cls}`}>{trend}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>Fleet-wide week-over-week cost change</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })()}
+                </td>
                 <td className="px-3 py-2.5" />
                 <td className="px-2 py-2.5" />
               </tr>
