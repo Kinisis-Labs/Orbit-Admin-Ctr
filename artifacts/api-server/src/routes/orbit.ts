@@ -178,7 +178,7 @@ router.get("/apps", async (req, res) => {
   const [alertResults, costWithSourceResults, budgetWithSourceResults] = await Promise.all([
     Promise.all(APPS.map((a) => fetchActiveAlerts(a, {}))),
     Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, { bypassCache, billingScope: billingScope(a.id) }))),
-    Promise.all(APPS.map((a) => fetchBudgetForAppWithFallback(a, { bypassCache }))),
+    Promise.all(APPS.map((a) => fetchBudgetForAppWithFallback(a, { bypassCache, budgetScope: billingScope(a.id) }))),
   ]);
 
   // Resolve subscription names from Azure once (cached; returns empty map in mock mode).
@@ -551,7 +551,7 @@ router.get("/apps/:appId/cost", async (req, res) => {
   const scope = billingScope(app.id);
   const [costWS, budgetWithSource, rev, priorMonthTotal] = await Promise.all([
     fetchMonthToDateCostWithFallback(app, { bypassCache, billingScope: scope }),
-    fetchBudgetForAppWithFallback(app, { bypassCache }),
+    fetchBudgetForAppWithFallback(app, { bypassCache, budgetScope: scope }),
     syncAndReadRevenue(app),
     // Fetch the prior month's comparable MTD cost for the MoM calculation.
     // Queries Cost Management for the same elapsed day-of-month window last

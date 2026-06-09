@@ -81,7 +81,7 @@ export function clearBudgetCacheForApp(appId: string): void {
  */
 export async function fetchBudgetForApp(
   app: AppRecord,
-  { bypassCache = false }: { bypassCache?: boolean } = {},
+  { bypassCache = false, budgetScope = "rg" }: { bypassCache?: boolean; budgetScope?: "subscription" | "rg" } = {},
 ): Promise<BudgetResult | null> {
   // Evict before the configuration gate so a force-refresh always clears the
   // stale entry, even when Azure is temporarily unconfigured.
@@ -109,10 +109,9 @@ export async function fetchBudgetForApp(
     const consumptionClient = getConsumptionClient(subscriptionId);
 
     if (app.budgetName) {
-      // Named budget: fetch directly by name. Scope determined by billing scope:
-      // subscription-billed apps use the sub scope; RG-billed apps use RG scope.
-      const { billingScope } = await import("../routes/orbit.js");
-      const scope = billingScope(app.id) === "subscription" ? subScope : rgScope;
+      // Named budget: fetch directly by name. Scope determined by the budgetScope
+      // parameter passed by the caller (avoids a circular import back to orbit.ts).
+      const scope = budgetScope === "subscription" ? subScope : rgScope;
       try {
         const budget = await consumptionClient.budgets.get(scope, app.budgetName);
         if (typeof budget.amount === "number" && budget.amount > 0) {
@@ -259,7 +258,7 @@ async function readBudgetSnapshot(appId: string): Promise<BudgetResult | null> {
  */
 export async function fetchBudgetForAppWithFallback(
   app: AppRecord,
-  opts: { bypassCache?: boolean } = {},
+  opts: { bypassCache?: boolean; budgetScope?: "subscription" | "rg" } = {},
 ): Promise<BudgetWithSource | null> {
   const live = await fetchBudgetForApp(app, opts);
 
