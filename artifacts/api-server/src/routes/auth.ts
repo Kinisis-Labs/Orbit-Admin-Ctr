@@ -422,7 +422,7 @@ router.post("/auth/logout", async (req, res, next) => {
             /* fall through to default redirect */
           }
         }
-        res.json({ redirect: "/" });
+        res.json({ redirect: "/signed-out" });
       })();
     });
   } catch (err) {

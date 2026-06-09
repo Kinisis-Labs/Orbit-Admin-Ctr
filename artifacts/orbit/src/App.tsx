@@ -28,6 +28,7 @@ import Users from "@/pages/users";
 import Preferences from "@/pages/preferences";
 import FeatureFlags from "@/pages/feature-flags";
 import NotFound from "@/pages/not-found";
+import SignedOut from "@/pages/signed-out";
 
 function Gated({ children }: { children: React.ReactNode }) {
   return (
@@ -72,12 +73,25 @@ function Router() {
 }
 
 function App() {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const path = window.location.pathname;
+  const isSignedOut = path === `${base}/signed-out` || path === "/signed-out";
+
+  if (isSignedOut) {
+    return (
+      <TooltipProvider>
+        <SignedOut />
+        <Toaster />
+      </TooltipProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ScopeProvider>
           <TooltipProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <WouterRouter base={base}>
               <Router />
             </WouterRouter>
             <Toaster />
