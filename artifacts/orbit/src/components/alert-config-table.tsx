@@ -127,7 +127,7 @@ function SourceBadge({
   effectiveValue,
   suffix = "",
 }: {
-  source: "db" | "env" | "inventory" | "default" | undefined;
+  source: "db" | "env" | "inventory" | "appconfig" | "default" | undefined;
   envVarName?: string | null;
   envValue?: number | null;
   effectiveValue?: number;
@@ -179,6 +179,16 @@ function SourceBadge({
       </span>
     );
   }
+  if (source === "appconfig") {
+    return (
+      <span
+        className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-teal-500/40 bg-teal-500/10 text-teal-600 dark:text-teal-400 text-[10px] font-semibold uppercase tracking-wide cursor-help"
+        title="Set via Azure App Configuration (ALERT_COOLDOWN_HOURS). Change it in the App Configuration store — no redeploy needed. Saving a value here will create a DB override that takes precedence."
+      >
+        App Config
+      </span>
+    );
+  }
   return (
     <span
       className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-muted-foreground text-[10px] font-semibold uppercase tracking-wide cursor-help"
@@ -223,7 +233,7 @@ interface EditableCellProps {
   appId: string;
   field: ThresholdField;
   value: number;
-  source: "db" | "env" | "inventory" | "default" | undefined;
+  source: "db" | "env" | "inventory" | "appconfig" | "default" | undefined;
   envVarName?: string | null;
   envValue?: number | null;
   isPercent?: boolean;

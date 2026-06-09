@@ -64,6 +64,7 @@ import { db, budgetAlertLogTable, infraAlertLogTable, alertThresholdConfigTable 
 import { resolveThresholds } from "./alertThresholds.js";
 import { eq } from "drizzle-orm";
 import { broadcastAlertEvent } from "./alertSse.js";
+import { getAppConfigSetting } from "./appConfig.js";
 
 // ---------------------------------------------------------------------------
 // Config helpers
@@ -177,14 +178,15 @@ export async function getSilencedUntil(appId: string): Promise<string | null> {
  * Resolve the effective alert cooldown for an app and report its source.
  *
  * Priority order:
- *   1. DB override (set via Orbit UI)   — source: "db", isOverride: true
- *   2. ALERT_COOLDOWN_HOURS__<APPID>    — per-app env-var override, source: "env", isOverride: true
- *   3. ALERT_COOLDOWN_HOURS             — global env var, source: "env", isOverride: false
- *   4. 12h                              — hardcoded default, source: "default"
+ *   1. DB override (set via Orbit UI)          — source: "db", isOverride: true
+ *   2. ALERT_COOLDOWN_HOURS__<APPID>           — per-app env-var override, source: "env", isOverride: true
+ *   3. App Configuration "ALERT_COOLDOWN_HOURS" — live, no redeploy, source: "appconfig"
+ *   4. ALERT_COOLDOWN_HOURS                    — global env var, source: "env", isOverride: false
+ *   5. 12h                                     — hardcoded default, source: "default"
  */
 export async function resolveCooldownHours(appId: string): Promise<{
   hours: number;
-  source: "db" | "env" | "default";
+  source: "db" | "env" | "appconfig" | "default";
   isOverride: boolean;
 }> {
   try {
@@ -198,7 +200,7 @@ export async function resolveCooldownHours(appId: string): Promise<{
       return { hours: dbVal, source: "db", isOverride: true };
     }
   } catch {
-    // DB unavailable — fall through to env/default
+    // DB unavailable — fall through to env/appconfig/default
   }
 
   const perApp = process.env[`ALERT_COOLDOWN_HOURS__${appEnvKey(appId)}`];
@@ -206,9 +208,16 @@ export async function resolveCooldownHours(appId: string): Promise<{
     const v = Number(perApp);
     if (Number.isFinite(v) && v > 0) return { hours: v, source: "env", isOverride: true };
   }
-  const global = process.env["ALERT_COOLDOWN_HOURS"];
-  if (global !== undefined) {
-    const v = Number(global);
+
+  const fromAppConfig = await getAppConfigSetting("ALERT_COOLDOWN_HOURS");
+  if (fromAppConfig !== null) {
+    const v = Number(fromAppConfig);
+    if (Number.isFinite(v) && v > 0) return { hours: v, source: "appconfig", isOverride: false };
+  }
+
+  const globalEnv = process.env["ALERT_COOLDOWN_HOURS"];
+  if (globalEnv !== undefined) {
+    const v = Number(globalEnv);
     if (Number.isFinite(v) && v > 0) return { hours: v, source: "env", isOverride: false };
   }
   return { hours: 12, source: "default", isOverride: false };
@@ -825,17 +834,43 @@ export async function checkInfraThresholds(): Promise<{
 // Scheduler
 // ---------------------------------------------------------------------------
 
-let _schedulerHandle: ReturnType<typeof setInterval> | null = null;
+const DEFAULT_CHECK_INTERVAL_MINUTES = 60;
+
+/**
+ * Resolve the check interval in milliseconds.
+ *
+ * Resolution order:
+ *   1. Azure App Configuration key "ALERT_CHECK_INTERVAL_MINUTES" (live, no redeploy)
+ *   2. Env var ALERT_CHECK_INTERVAL_MINUTES
+ *   3. Built-in default (60 min)
+ */
+async function getCheckIntervalMs(): Promise<number> {
+  const fromAppConfig = await getAppConfigSetting("ALERT_CHECK_INTERVAL_MINUTES");
+  if (fromAppConfig !== null) {
+    const v = Number(fromAppConfig);
+    if (Number.isFinite(v) && v > 0) return v * 60 * 1000;
+  }
+  const fromEnv = process.env["ALERT_CHECK_INTERVAL_MINUTES"];
+  if (fromEnv !== undefined) {
+    const v = Number(fromEnv);
+    if (Number.isFinite(v) && v > 0) return v * 60 * 1000;
+  }
+  return DEFAULT_CHECK_INTERVAL_MINUTES * 60 * 1000;
+}
+
+let _schedulerRunning = false;
 
 /**
  * Start the background alert scheduler.
  *
  * Each run checks both budget forecasts and infra thresholds (CPU + memory).
+ * The check interval is re-read from App Configuration before each tick so it
+ * can be adjusted without redeploying.
  * No-op if no notification channel is configured, or if already running.
  * Safe to call at server startup.
  */
-export function startBudgetAlertScheduler(): void {
-  if (_schedulerHandle !== null) return;
+export async function startBudgetAlertScheduler(): Promise<void> {
+  if (_schedulerRunning) return;
 
   if (!isBudgetAlertsConfigured()) {
     logger.info(
@@ -844,11 +879,7 @@ export function startBudgetAlertScheduler(): void {
     return;
   }
 
-  const intervalMinutes = Number(process.env["ALERT_CHECK_INTERVAL_MINUTES"] ?? 60);
-  const intervalMs =
-    Number.isFinite(intervalMinutes) && intervalMinutes > 0
-      ? intervalMinutes * 60 * 1000
-      : 60 * 60 * 1000;
+  _schedulerRunning = true;
 
   const cpuDefault = Number(process.env["ALERT_CPU_THRESHOLD_PCT"] ?? 80);
   const memDefault = Number(process.env["ALERT_MEMORY_THRESHOLD_PCT"] ?? 85);
@@ -856,36 +887,50 @@ export function startBudgetAlertScheduler(): void {
 
   logger.info(
     {
-      intervalMinutes: intervalMs / 60_000,
-      cooldownHoursDefault: Number(process.env["ALERT_COOLDOWN_HOURS"] ?? 12),
       cpuThresholdPctDefault: Number.isFinite(cpuDefault) ? cpuDefault : 80,
       memoryThresholdPctDefault: Number.isFinite(memDefault) ? memDefault : 85,
       infraConsecutiveChecks: Number.isFinite(consecDefault) ? consecDefault : 2,
     },
-    "budget-alert: scheduler started (budget + infra checks; per-app DB/env overrides apply at check time)",
+    "budget-alert: scheduler started (budget + infra checks; interval + cooldown re-read from App Configuration each tick; per-app DB/env overrides apply at check time)",
   );
 
-  const run = async (): Promise<void> => {
-    try {
-      const [budgetResult, infraResult] = await Promise.all([
-        checkBudgetForecasts(),
-        checkInfraThresholds(),
-      ]);
-      logger.info({ budget: budgetResult, infra: infraResult }, "budget-alert: check complete");
-    } catch (err) {
-      logger.error({ err }, "budget-alert: unexpected error during check");
-    }
+  const scheduleNextTick = async (): Promise<void> => {
+    const intervalMs = await getCheckIntervalMs();
+
+    logger.debug(
+      { intervalMinutes: intervalMs / 60_000 },
+      "budget-alert: scheduling next tick",
+    );
+
+    const timer = setTimeout(async () => {
+      try {
+        const [budgetResult, infraResult] = await Promise.all([
+          checkBudgetForecasts(),
+          checkInfraThresholds(),
+        ]);
+        logger.info({ budget: budgetResult, infra: infraResult }, "budget-alert: check complete");
+      } catch (err) {
+        logger.error({ err }, "budget-alert: unexpected error during check");
+      }
+      if (_schedulerRunning) void scheduleNextTick();
+    }, intervalMs);
+    timer.unref();
   };
 
-  void run();
-  _schedulerHandle = setInterval(() => void run(), intervalMs);
-  _schedulerHandle.unref();
+  try {
+    const [budgetResult, infraResult] = await Promise.all([
+      checkBudgetForecasts(),
+      checkInfraThresholds(),
+    ]);
+    logger.info({ budget: budgetResult, infra: infraResult }, "budget-alert: initial check complete");
+  } catch (err) {
+    logger.error({ err }, "budget-alert: unexpected error during initial check");
+  }
+
+  void scheduleNextTick();
 }
 
 /** Stop the scheduler (primarily for tests). */
 export function stopBudgetAlertScheduler(): void {
-  if (_schedulerHandle !== null) {
-    clearInterval(_schedulerHandle);
-    _schedulerHandle = null;
-  }
+  _schedulerRunning = false;
 }

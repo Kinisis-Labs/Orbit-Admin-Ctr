@@ -42,7 +42,7 @@ app.listen(port, async (err) => {
   logger.info({ port }, "Server listening");
   logAzureConfig();
 
-  startBudgetAlertScheduler();
+  void startBudgetAlertScheduler();
   await startCostSnapshotRefresh();
-  startAnomalyDismissalCleanup();
+  void startAnomalyDismissalCleanup();
 });

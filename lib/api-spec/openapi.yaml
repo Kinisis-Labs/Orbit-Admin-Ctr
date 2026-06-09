@@ -1553,8 +1553,8 @@ components:
           description: Which source provides the effective consecutive-checks value
         cooldownSource:
           type: string
-          enum: [db, env, default]
-          description: Which source provides the effective cooldown (db = Orbit UI override, env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in)
+          enum: [db, env, appconfig, default]
+          description: "Which source provides the effective cooldown (db = Orbit UI override, env = ALERT_COOLDOWN_HOURS[__APPID], appconfig = Azure App Configuration key ALERT_COOLDOWN_HOURS, default = 12h built-in)"
         silencedUntil:
           type: string
           format: date-time

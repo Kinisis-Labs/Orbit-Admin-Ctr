@@ -35,7 +35,7 @@ export interface AppAlertConfig {
   memorySource?: AppAlertConfigMemorySource;
   /** Which source provides the effective consecutive-checks value */
   consecutiveChecksSource?: AppAlertConfigConsecutiveChecksSource;
-  /** Which source provides the effective cooldown (db = Orbit UI override, env = ALERT_COOLDOWN_HOURS[__APPID], default = 12h built-in) */
+  /** Which source provides the effective cooldown (db = Orbit UI override, env = ALERT_COOLDOWN_HOURS[__APPID], appconfig = Azure App Configuration key ALERT_COOLDOWN_HOURS, default = 12h built-in) */
   cooldownSource?: AppAlertConfigCooldownSource;
   /** ISO-8601 timestamp at which the app's active alert cooldown expires; null when the app is not currently silenced */
   silencedUntil?: string | null;
