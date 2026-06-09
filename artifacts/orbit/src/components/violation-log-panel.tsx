@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { BellOff, Check, History, Trash2 } from "lucide-react";
+import { BellOff, Check, History, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useViolationLog } from "@/hooks/use-violation-log";
 import type { ViolationEntry } from "@/hooks/use-violation-log";
@@ -24,7 +24,15 @@ function MetricBadge({ metric }: { metric: string }) {
   );
 }
 
-function ViolationRow({ entry, showAppCol }: { entry: ViolationEntry; showAppCol: boolean }) {
+function ViolationRow({
+  entry,
+  showAppCol,
+  onDismiss,
+}: {
+  entry: ViolationEntry;
+  showAppCol: boolean;
+  onDismiss?: (id: string) => void;
+}) {
   const over = entry.value - entry.threshold;
   const pct = entry.threshold > 0 ? (over / entry.threshold) * 100 : 0;
   const valueCls =
@@ -34,7 +42,7 @@ function ViolationRow({ entry, showAppCol }: { entry: ViolationEntry; showAppCol
 
   return (
     <tr
-      className={`border-b border-border/50 h-9 hover:bg-muted/30 transition-colors ${
+      className={`border-b border-border/50 h-9 hover:bg-muted/30 transition-colors group ${
         entry.dismissed ? "opacity-50" : ""
       }`}
     >
@@ -67,18 +75,29 @@ function ViolationRow({ entry, showAppCol }: { entry: ViolationEntry; showAppCol
           </span>
         )}
       </td>
-      {!entry.seen && (
-        <td className="py-1 px-3">
-          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-destructive" title="Not yet seen" />
+      <td className="py-1 px-3">
+        <span className="inline-flex h-1.5 w-1.5 rounded-full bg-destructive" title="Not yet seen"
+          style={{ visibility: entry.seen ? "hidden" : "visible" }}
+        />
+      </td>
+      {onDismiss && (
+        <td className="py-1 px-2">
+          <button
+            type="button"
+            onClick={() => onDismiss(entry.id)}
+            title="Dismiss this entry"
+            className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center justify-center h-5 w-5 rounded-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          >
+            <X className="h-3 w-3" />
+          </button>
         </td>
       )}
-      {entry.seen && <td className="py-1 px-3" />}
     </tr>
   );
 }
 
 export function ViolationLogPanel({ appId }: { appId?: string } = {}) {
-  const { entries, unseenCount, markSeen, clear, clearByApp } = useViolationLog();
+  const { entries, unseenCount, markSeen, clear, clearByApp, removeById } = useViolationLog();
 
   const filtered = appId ? entries.filter((e) => e.appId === appId) : entries;
   const filteredUnseen = filtered.filter((e) => !e.seen).length;
@@ -167,11 +186,17 @@ export function ViolationLogPanel({ appId }: { appId?: string } = {}) {
                   Status
                 </th>
                 <th className="h-8 px-3 w-5" />
+                {appId && <th className="h-8 px-2 w-7" />}
               </tr>
             </thead>
             <tbody>
               {filtered.map((entry) => (
-                <ViolationRow key={entry.id} entry={entry} showAppCol={showAppCol} />
+                <ViolationRow
+                  key={entry.id}
+                  entry={entry}
+                  showAppCol={showAppCol}
+                  onDismiss={appId ? removeById : undefined}
+                />
               ))}
             </tbody>
           </table>
