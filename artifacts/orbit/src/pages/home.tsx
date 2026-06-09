@@ -1179,6 +1179,16 @@ function BudgetSummaryWidget({
         </button>
       </div>
 
+      {someLive && filteredApps && (
+        <div className="flex items-center gap-1.5 px-4 py-1.5 border-b border-border bg-muted/10 text-[11px] text-muted-foreground">
+          <span>
+            {liveCount} of {totalSourced} app{totalSourced !== 1 ? "s" : ""} showing live data
+          </span>
+          <span className="text-border">·</span>
+          <span>{estimatedAppNames.length} estimated</span>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead>
