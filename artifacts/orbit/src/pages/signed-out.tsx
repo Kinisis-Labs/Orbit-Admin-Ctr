@@ -1,14 +1,25 @@
 import { LogIn } from "lucide-react";
+import { useEffect } from "react";
 
 const LETTERS = [
-  { letter: "O", word: "Operational" },
-  { letter: "R", word: "Resource" },
-  { letter: "B", word: "Business" },
-  { letter: "I", word: "Intelligence" },
-  { letter: "T", word: "Terminal" },
+  { letter: "O", word: "Organizational" },
+  { letter: "R", word: "Resource Management" },
+  { letter: "B", word: "Business Operations" },
+  { letter: "I", word: "Insights" },
+  { letter: "T", word: "Telemetry" },
 ];
 
 export default function SignedOut() {
+  useEffect(() => {
+    const stored = window.localStorage.getItem("orbit-theme");
+    const root = document.documentElement;
+    if (stored === "light") {
+      root.classList.remove("dark");
+    } else {
+      root.classList.add("dark");
+    }
+  }, []);
+
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background text-foreground px-4">
       <div className="w-full max-w-sm flex flex-col items-center gap-8">
@@ -24,7 +35,7 @@ export default function SignedOut() {
               </span>
             ))}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-center">
             {LETTERS.map(({ letter, word }, i) => (
               <span key={letter} className="flex items-center gap-2">
                 <span className="text-[11px] text-muted-foreground tracking-widest uppercase">
