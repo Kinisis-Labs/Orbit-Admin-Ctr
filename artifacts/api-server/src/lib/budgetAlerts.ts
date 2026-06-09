@@ -586,8 +586,12 @@ async function resolveCostAndBudget(
 
   const mtd = liveCost ? liveCost.monthToDate : app.monthToDateCost;
 
-  const budget = budgetWithSource?.result.amount ?? Number((mtd * 2.0).toFixed(2));
-  const forecastMultiplier = !budgetWithSource && app.id === "orbit" ? 2.3 : 1.7;
+  // Use the real budget amount only when a budget is actually defined in Azure.
+  // hasBudget: false means the result is forecast-only (amount = 0 sentinel) — fall
+  // back to the formula estimate so the alert threshold isn't artificially zero.
+  const hasBudget = budgetWithSource?.result.hasBudget ?? false;
+  const budget = hasBudget ? budgetWithSource!.result.amount : Number((mtd * 2.0).toFixed(2));
+  const forecastMultiplier = !hasBudget && app.id === "orbit" ? 2.3 : 1.7;
   const forecast =
     budgetWithSource?.result.forecastAmount ?? Number((mtd * forecastMultiplier).toFixed(2));
 

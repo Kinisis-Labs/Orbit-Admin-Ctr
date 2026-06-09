@@ -22,10 +22,10 @@ import {
 } from "@workspace/api-zod";
 import { db, appThresholdsTable, appThresholdsLogTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
-import { requireEngineerOrAdmin } from "../middlewares/auth.js";
+import { requireEngineerOrAdmin, requireAuth } from "../middlewares/auth.js";
 import { fetchResourcesByResourceGroup, fetchResourceGroupTags, getResourcesFetchedAt } from "../lib/azureResources.js";
 import { fetchMonthToDateCostWithFallback, fetchLastMonthComparableCostTotal } from "../lib/azureCost.js";
-import { fetchBudgetForAppWithFallback } from "../lib/azureBudgets.js";
+import { fetchBudgetForAppWithFallback, diagnoseBudgetsForApp } from "../lib/azureBudgets.js";
 import { fetchSubscriptionNames } from "../lib/azureSubscriptions.js";
 import {
   fetchAppMetrics,
@@ -192,7 +192,8 @@ router.get("/apps", async (req, res) => {
       const budgetWS = budgetWithSourceResults[i];
       const subName = subNames.get(app.subscriptionId.toLowerCase()) ?? app.subscriptionName;
       const mtd = costWS?.result.monthToDate ?? 0;
-      const budget = budgetWS?.result.amount ?? null;
+      const hasBudget = budgetWS?.result.hasBudget ?? false;
+      const budget = hasBudget ? (budgetWS?.result.amount ?? null) : null;
       const forecast = budgetWS?.result.forecastAmount ?? null;
       return {
         id: app.id,
@@ -562,9 +563,10 @@ router.get("/apps/:appId/cost", async (req, res) => {
   const liveCost = costWS?.result ?? null;
   const mtd = liveCost?.monthToDate ?? 0;
   const byService = liveCost?.byService ?? [];
-  const budget = budgetWithSource?.result.amount ?? 0;
+  const hasBudget = budgetWithSource?.result.hasBudget ?? false;
+  const budget = hasBudget ? (budgetWithSource?.result.amount ?? 0) : 0;
   const forecast = budgetWithSource?.result.forecastAmount ?? 0;
-  const budgetDataSource = budgetWithSource?.source ?? "estimated";
+  const budgetDataSource = budgetWithSource ? (hasBudget ? budgetWithSource.source : "estimated") : "estimated";
 
   // Month-over-month percentage change: compares current MTD against the
   // prior month's comparable cost. Returns null when either figure is zero
@@ -1001,6 +1003,18 @@ router.get("/global/endpoints", async (_req, res) => {
     dataSource,
     ...(anyLive ? { dataAsOf: new Date().toISOString() } : {}),
   }));
+});
+
+// ---------------------------------------------------------------------------
+// Debug: Azure budget diagnostics (requireAuth — internal staff only)
+// Hit GET /api/debug/azure-budgets to see exactly what the Consumption API
+// returns (or errors) for each app's budget lookup strategies.
+// ---------------------------------------------------------------------------
+router.get("/debug/azure-budgets", async (_req, res) => {
+  const results = await Promise.all(
+    APPS.map((app) => diagnoseBudgetsForApp(app, billingScope(app.id))),
+  );
+  res.json({ results });
 });
 
 export default router;

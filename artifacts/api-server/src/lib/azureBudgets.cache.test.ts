@@ -23,6 +23,7 @@ const FAKE_APP: AppRecord = {
 };
 
 const FAKE_BUDGET_RESULT = {
+  hasBudget: true,
   amount: 500,
   forecastAmount: 420,
 };
