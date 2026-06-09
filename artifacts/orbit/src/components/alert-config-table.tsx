@@ -596,6 +596,42 @@ function formatUpdatedAt(iso: string | null | undefined): string | null {
   }
 }
 
+function LastUpdatedFallback({
+  cooldownSource,
+}: {
+  cooldownSource: AppAlertConfig["cooldownSource"];
+}) {
+  if (cooldownSource === "env") {
+    return (
+      <span className="italic opacity-70" title="Cooldown hours set via an environment variable; no operator has saved a DB override yet">
+        Set via env var
+      </span>
+    );
+  }
+  if (cooldownSource === "appconfig") {
+    return (
+      <span className="italic opacity-70" title="Cooldown hours set via Azure App Configuration; no operator has saved a DB override yet">
+        Set via App Config
+      </span>
+    );
+  }
+  if (cooldownSource === "inventory") {
+    return (
+      <span className="italic opacity-70" title="Cooldown hours using the app's inventory baseline; no operator has saved a DB override yet">
+        Using inventory baseline
+      </span>
+    );
+  }
+  if (cooldownSource === "default") {
+    return (
+      <span className="italic opacity-70" title="Cooldown hours using the built-in global default; no operator has saved a DB override yet">
+        Using global default
+      </span>
+    );
+  }
+  return <span className="opacity-40">—</span>;
+}
+
 export function AlertConfigTable({ appId }: Props) {
   const { data, isLoading } = useListAlertConfig({ query: { queryKey: getListAlertConfigQueryKey(), staleTime: 5 * 60 * 1000 } });
   const queryClient = useQueryClient();
@@ -808,7 +844,7 @@ export function AlertConfigTable({ appId }: Props) {
                             {row.updatedAt ? ` on ${formatUpdatedAt(row.updatedAt)}` : ""}
                           </span>
                         ) : (
-                          <span className="opacity-40">—</span>
+                          <LastUpdatedFallback cooldownSource={row.cooldownSource} />
                         )}
                       </TableCell>
                       <TableCell className="py-1 w-16 text-right pr-3">
