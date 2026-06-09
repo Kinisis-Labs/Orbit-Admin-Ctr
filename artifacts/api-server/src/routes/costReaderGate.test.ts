@@ -91,20 +91,30 @@ function buildGateApp(): express.Express {
   app.get("/api/play/subscriptions", requireAuth, requireCostReader, stub);
   app.get("/api/apple/subscriptions", requireAuth, requireCostReader, stub);
   app.get("/api/budget-alerts/log", requireAuth, requireCostReader, stub);
+  // Decision: PATCH acknowledge requires cost-reader, not admin-only.
+  // Rationale: cost-readers are the natural audience for budget alerts; they
+  // need to acknowledge them as part of normal FinOps workflow. Admin-only
+  // would be unnecessarily restrictive. The acknowledgedBy field records who
+  // performed the action, providing adequate accountability.
+  app.patch("/api/budget-alerts/log/:id/acknowledge", requireAuth, requireCostReader, stub);
 
   return app;
 }
 
 // ---------------------------------------------------------------------------
-// HTTP helper — fire a GET request to the test server, return status + body.
+// HTTP helpers — fire GET / PATCH requests to the test server.
 // ---------------------------------------------------------------------------
 
-function get(server: http.Server, path: string): Promise<{ status: number; body: unknown }> {
+function request(
+  server: http.Server,
+  method: string,
+  path: string,
+): Promise<{ status: number; body: unknown }> {
   return new Promise((resolve, reject) => {
     const addr = server.address();
     const port = typeof addr === "object" && addr !== null ? addr.port : 0;
     const req = http.request(
-      { hostname: "127.0.0.1", port, path, method: "GET" },
+      { hostname: "127.0.0.1", port, path, method },
       (res) => {
         let raw = "";
         res.on("data", (chunk: Buffer) => { raw += chunk.toString(); });
@@ -120,6 +130,14 @@ function get(server: http.Server, path: string): Promise<{ status: number; body:
     req.on("error", reject);
     req.end();
   });
+}
+
+function get(server: http.Server, path: string) {
+  return request(server, "GET", path);
+}
+
+function patch(server: http.Server, path: string) {
+  return request(server, "PATCH", path);
 }
 
 // ---------------------------------------------------------------------------
@@ -158,6 +176,13 @@ describe("cost-reader gate — mock mode (Entra not configured)", () => {
   test("GET /api/budget-alerts/log returns 200 when there is no session (mock mode)", async () => {
     currentUser = undefined;
     const { status, body } = await get(server, "/api/budget-alerts/log");
+    assert.equal(status, 200);
+    assert.deepEqual(body, { ok: true });
+  });
+
+  test("PATCH /api/budget-alerts/log/:id/acknowledge returns 200 when there is no session (mock mode)", async () => {
+    currentUser = undefined;
+    const { status, body } = await patch(server, "/api/budget-alerts/log/1/acknowledge");
     assert.equal(status, 200);
     assert.deepEqual(body, { ok: true });
   });
@@ -278,6 +303,44 @@ describe("cost-reader gate — Entra mode", () => {
     test("returns 200 for an admin user (admin implies cost-reader access)", async () => {
       currentUser = makeUser({ isAdmin: true, isCostReader: false });
       const { status, body } = await get(server, "/api/budget-alerts/log");
+      assert.equal(status, 200, "admin must be allowed through even without explicit cost-reader flag");
+      assert.deepEqual(body, { ok: true });
+    });
+  });
+
+  // --- PATCH /api/budget-alerts/log/:id/acknowledge ---
+  //
+  // Decision: cost-reader gate (not admin-only).
+  // Cost-readers are the natural audience for budget alerts; they need to
+  // acknowledge them as part of normal FinOps workflow.  Admin-only would be
+  // unnecessarily restrictive.  The acknowledgedBy field records who performed
+  // the action, which is adequate accountability for a write of this scope.
+
+  describe("PATCH /api/budget-alerts/log/:id/acknowledge", () => {
+    test("returns 401 when there is no session (unauthenticated)", async () => {
+      currentUser = undefined;
+      const { status, body } = await patch(server, "/api/budget-alerts/log/1/acknowledge");
+      assert.equal(status, 401, "unauthenticated request must be rejected with 401");
+      assert.deepEqual(body, { error: "unauthorized" });
+    });
+
+    test("returns 403 for an authenticated user without cost-reader or admin", async () => {
+      currentUser = makeUser({ isCostReader: false, isAdmin: false });
+      const { status, body } = await patch(server, "/api/budget-alerts/log/1/acknowledge");
+      assert.equal(status, 403, "authenticated non-cost-reader must be rejected with 403");
+      assert.deepEqual(body, { error: "forbidden", requiredGroup: "Orbit-Cost-Readers" });
+    });
+
+    test("returns 200 for a user with isCostReader: true (gate passes; real route would 404 on unknown id)", async () => {
+      currentUser = makeUser({ isCostReader: true });
+      const { status, body } = await patch(server, "/api/budget-alerts/log/1/acknowledge");
+      assert.equal(status, 200, "cost-reader must be allowed through the gate");
+      assert.deepEqual(body, { ok: true });
+    });
+
+    test("returns 200 for an admin user (admin implies cost-reader access)", async () => {
+      currentUser = makeUser({ isAdmin: true, isCostReader: false });
+      const { status, body } = await patch(server, "/api/budget-alerts/log/1/acknowledge");
       assert.equal(status, 200, "admin must be allowed through even without explicit cost-reader flag");
       assert.deepEqual(body, { ok: true });
     });
