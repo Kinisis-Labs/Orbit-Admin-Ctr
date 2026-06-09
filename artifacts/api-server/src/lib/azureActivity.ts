@@ -55,7 +55,7 @@ export async function fetchActivityLog(
     const credential = getAzureCredential();
     const client = new MonitorClient(credential, subscriptionId);
 
-    const start = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const filter = `eventTimestamp ge '${start}' and resourceGroupName eq '${resourceGroup}'`;
 
     const entries: ActivityLogEntry[] = [];
@@ -118,7 +118,7 @@ export async function diagnoseActivityLog(
   try {
     const credential = getAzureCredential();
     const client = new MonitorClient(credential, subscriptionId);
-    const start = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const filter = `eventTimestamp ge '${start}' and resourceGroupName eq '${resourceGroup}'`;
 
     let count = 0;
