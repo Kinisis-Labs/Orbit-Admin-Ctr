@@ -651,7 +651,7 @@ function AuthFilterPills({
 }
 
 type BudgetStatus = "over" | "warning" | "ok" | "none";
-type BudgetSortCol = "name" | "auth" | "spent" | "budget" | "forecast" | "utilization" | "status" | "wow";
+type BudgetSortCol = "name" | "auth" | "spent" | "budget" | "forecast" | "utilization" | "status" | "wow" | "trend";
 type SortDir = "asc" | "desc";
 
 const BUDGET_STATUS_RANK: Record<BudgetStatus, number> = { over: 0, warning: 1, ok: 2, none: 3 };
@@ -898,10 +898,16 @@ function BudgetSummaryWidget({
         diff = pctA - pctB;
       } else if (sortCol === "wow") {
         diff = parseTrend(trendByAppId.get(a.id)) - parseTrend(trendByAppId.get(b.id));
+      } else if (sortCol === "trend") {
+        const seriesA = dailySpend.get(a.id);
+        const seriesB = dailySpend.get(b.id);
+        const lastA = seriesA && seriesA.length > 0 ? seriesA[seriesA.length - 1].value : -Infinity;
+        const lastB = seriesB && seriesB.length > 0 ? seriesB[seriesB.length - 1].value : -Infinity;
+        diff = lastA - lastB;
       }
       return sortDir === "asc" ? diff : -diff;
     });
-  }, [apps, authFilter, envFilter, budgetBreachFilter, thresholdVersion, sortCol, sortDir, trendByAppId]);
+  }, [apps, authFilter, envFilter, budgetBreachFilter, thresholdVersion, sortCol, sortDir, trendByAppId, dailySpend]);
 
   function goToCost(appId: string) {
     setScope(appId);
@@ -1185,7 +1191,7 @@ function BudgetSummaryWidget({
               <BudgetTh col="utilization" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="px-3 w-[120px]">Utilization</BudgetTh>
               <BudgetTh col="status" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="px-3">Status</BudgetTh>
               <BudgetTh col="wow" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" className="px-3 w-[60px]">WoW</BudgetTh>
-              <th className="text-left font-medium text-muted-foreground px-3 py-2 w-[88px]">{sparklineRange}d trend</th>
+              <BudgetTh col="trend" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="px-3 w-[88px]">{sparklineRange}d trend</BudgetTh>
               <th className="w-8 px-2 py-2" />
             </tr>
           </thead>
