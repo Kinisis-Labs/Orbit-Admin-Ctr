@@ -1,3 +1,4 @@
+import "./lib/telemetry"; // must be first — patches Node built-ins before any other module loads
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startBudgetAlertScheduler } from "./lib/budgetAlerts";
