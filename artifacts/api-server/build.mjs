@@ -52,7 +52,6 @@ async function buildAll() {
       "handlebars",
       "knex",
       "typeorm",
-      "protobufjs",
       "onnxruntime-node",
       "@tensorflow/*",
       "@prisma/client",
@@ -60,10 +59,12 @@ async function buildAll() {
       "@grpc/*",
       "@swc/*",
       "@aws-sdk/*",
-      // @azure/* is intentionally NOT externalized — the Azure SDKs are pure JS
-      // and bundle cleanly with esbuild. The runtime Docker stage copies only
-      // dist/ (no node_modules), so they must be inlined to resolve at startup.
-      "@opentelemetry/*",
+      // @azure/*, @opentelemetry/*, and protobufjs are intentionally NOT
+      // externalized — they are pure JS and bundle cleanly with esbuild. The
+      // runtime Docker stage copies only dist/ (no node_modules), so any
+      // externalized package that is required at startup will throw
+      // MODULE_NOT_FOUND. applicationinsights v3 transitively requires
+      // @opentelemetry/otlp-transformer → protobufjs/minimal at startup.
       "@google-cloud/*",
       "@google/*",
       "googleapis",
