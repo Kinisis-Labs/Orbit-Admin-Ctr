@@ -3,7 +3,7 @@ import { useListAppleSubscriptions } from "@workspace/api-client-react";
 import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingDown, TrendingUp, ExternalLink, Clock, AlertTriangle } from "lucide-react";
+import { TrendingDown, TrendingUp, ExternalLink, Clock, AlertTriangle, PowerOff } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
@@ -24,7 +24,31 @@ const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 export default function AppleSubscriptions() {
   const { toast } = useToast();
   const { scope } = useScope();
-  const { data, isLoading, dataUpdatedAt } = useListAppleSubscriptions();
+  const { data, isLoading, isError, error, dataUpdatedAt } = useListAppleSubscriptions();
+
+  const isDisabled = isError && (error as { status?: number } | null)?.status === 404;
+
+  if (isDisabled) {
+    return (
+      <div className="space-y-4">
+        <PageHeader
+          title="App Store subscriptions"
+          subtitle="Apple App Store subscription financials and subscriber states per Kinisis iOS app."
+          right={
+            <div className="flex items-center gap-2">
+              <AdminAccessBadge />
+              <ScopeSelect />
+            </div>
+          }
+        />
+        <SurfaceDisabled
+          icon="AS"
+          title="App Store subscriptions surface is disabled"
+          description="This surface has been turned off via a feature flag in Azure App Configuration. To re-enable it, set the flag back on and redeploy (or wait for the next config refresh)."
+        />
+      </div>
+    );
+  }
 
   const rows = useMemo(() => data ?? [], [data]);
   const scoped = rows.filter((r) => r.appId === scope);
@@ -273,6 +297,23 @@ function Tile({ title, value, sub }: { title: string; value: string | null; sub:
       <div className="text-[12px] text-muted-foreground font-medium mb-1 truncate">{title}</div>
       {value === null ? <Skeleton className="h-7 w-20 mb-1" /> : <div className="text-xl font-semibold tabular-nums mb-1">{value}</div>}
       <div className="text-[11px] text-muted-foreground truncate">{sub}</div>
+    </div>
+  );
+}
+
+function SurfaceDisabled({ icon, title, description }: { icon: string; title: string; description: string }) {
+  return (
+    <div className="bg-card border border-border shadow-sm p-4 flex items-start gap-4">
+      <div className="shrink-0 h-10 w-10 rounded-sm bg-muted text-muted-foreground flex items-center justify-center">
+        <PowerOff className="h-5 w-5" />
+      </div>
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-foreground">{title}</div>
+        <p className="text-[13px] text-muted-foreground mt-1">{description}</p>
+        <p className="text-[12px] text-muted-foreground/60 mt-2">
+          Surface identifier: <span className="font-mono">{icon.toLowerCase()}-subscriptions</span>
+        </p>
+      </div>
     </div>
   );
 }
