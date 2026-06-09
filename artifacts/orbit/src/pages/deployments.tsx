@@ -137,10 +137,13 @@ export default function Deployments() {
 
   const selectedApp = apps?.find((a) => a.id === scope);
 
+  const isGlobal = scope === "global";
+
   const appsToQuery = useMemo(() => {
     if (!apps) return [];
+    if (isGlobal) return apps;
     return apps.filter((a) => a.id === scope);
-  }, [apps, scope]);
+  }, [apps, scope, isGlobal]);
 
   const deploymentQueries = useQueries({
     queries: appsToQuery.map((app) => ({
@@ -199,13 +202,13 @@ export default function Deployments() {
     <div className="space-y-4">
       <PageHeader
         title="Deployments"
-        subtitle={selectedApp ? `Release activity for ${selectedApp.name}` : "Release activity"}
+        subtitle={isGlobal ? "Release activity — all apps" : selectedApp ? `Release activity for ${selectedApp.name}` : "Release activity"}
         right={
           <div className="flex items-center gap-2">
             {!isLoading && dataSource && (
               <DataSourceBadge dataSource={dataSource} dataAsOf={fetchedAt} label="GitHub Actions" />
             )}
-            <ScopeSelect />
+            <ScopeSelect allowGlobal />
           </div>
         }
       />
@@ -276,9 +279,11 @@ export default function Deployments() {
               <GitBranch className="h-8 w-8 mx-auto text-muted-foreground/40" />
               <div className="text-[14px] font-semibold text-foreground">No workflow history available</div>
               <div className="text-[12px] text-muted-foreground max-w-md mx-auto">
-                Set <code className="bg-muted px-1 rounded">GITHUB_TOKEN</code> to pull live GitHub Actions run
-                history. Repos: <code className="bg-muted px-1 rounded">Kinisis-Labs/GrailBabe</code>{" "}
-                and <code className="bg-muted px-1 rounded">Kinisis-Labs/Orbit-Admin-Ctr</code>.
+                No runs found for the selected scope. If GitHub integration is not yet configured,
+                set <code className="bg-muted px-1 rounded">ORBIT_DEPLOY_ID</code> to a fine-grained
+                PAT with Actions: Read-only on{" "}
+                <code className="bg-muted px-1 rounded">Kinisis-Labs/GrailBabe</code> and{" "}
+                <code className="bg-muted px-1 rounded">Kinisis-Labs/Orbit-Admin-Ctr</code>.
               </div>
             </div>
           ) : (
