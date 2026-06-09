@@ -38,8 +38,12 @@ type CacheEntry = {
 
 const _cache = new Map<string, CacheEntry>();
 
+function getToken(): string | undefined {
+  return process.env.GITHUB_TOKEN ?? process.env.ORBIT_DEPLOY_ID;
+}
+
 function isConfigured(): boolean {
-  return Boolean(process.env.GITHUB_TOKEN);
+  return Boolean(getToken());
 }
 
 function mapRunStatus(
@@ -63,7 +67,7 @@ async function fetchRunsFromGitHub(
   appRepo: string,
   environment: string,
 ): Promise<GitHubDeployment[]> {
-  const token = process.env.GITHUB_TOKEN;
+  const token = getToken();
   if (!token) return [];
 
   const url = `https://api.github.com/repos/${GITHUB_ORG}/${appRepo}/actions/runs?per_page=50`;
