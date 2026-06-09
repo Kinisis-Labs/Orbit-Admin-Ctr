@@ -7,6 +7,7 @@
     "hello": "tsx ./src/hello.ts",
     "seed-clerk-activity": "tsx ./src/seed-clerk-activity.ts",
     "backfill-threshold-history": "tsx ./src/backfill-threshold-history.ts",
+    "purge-ledger-demo-data": "tsx ./src/purge-ledger-demo-data.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
