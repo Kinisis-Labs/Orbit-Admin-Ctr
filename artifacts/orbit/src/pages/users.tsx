@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useListUserActivity, useGetStaffStats } from "@workspace/api-client-react";
+import { useListUserActivity, useGetStaffStats, useListClerkEventSummary } from "@workspace/api-client-react";
 import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,6 +15,7 @@ export default function Users() {
   const { scope } = useScope();
   const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useListUserActivity();
   const { data: staffData, isLoading: staffLoading } = useGetStaffStats();
+  const { data: eventsData, isLoading: eventsLoading } = useListClerkEventSummary();
 
   const activity = useMemo(() => data ?? [], [data]);
   const scopedActivity = activity.filter((a) => a.appId === scope);
@@ -186,6 +187,84 @@ export default function Users() {
           </Table>
         )}
       </div>
+
+      {/* ── Account event log (Clerk lifecycle events) ─────────────── */}
+      <ClerkEventLog data={eventsData ?? []} isLoading={eventsLoading} scope={scope} />
+    </div>
+  );
+}
+
+function ClerkEventLog({
+  data,
+  isLoading,
+  scope,
+}: {
+  data: import("@workspace/api-client-react").ClerkEventSummaryRow[];
+  isLoading: boolean;
+  scope: string;
+}) {
+  const row = data.find((r) => r.appId === scope);
+  const hasAny = row
+    ? row.signups30d + row.updates30d + row.deletions30d > 0
+    : false;
+
+  return (
+    <div className="bg-card border border-border shadow-sm">
+      <div className="p-3 border-b border-border">
+        <p className="text-[13px] font-semibold">Account events — last 30 days</p>
+        <p className="text-[11px] text-muted-foreground">
+          Lifecycle events from Clerk webhooks. Counts start from when the webhook was first configured — no historical backfill.
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="p-4 space-y-2"><Skeleton className="h-8" /><Skeleton className="h-8" /></div>
+      ) : !row || !hasAny ? (
+        <div className="p-6 text-center text-[12px] text-muted-foreground">
+          No account events yet. Events appear here as Clerk webhooks arrive.
+        </div>
+      ) : (
+        <>
+          {/* Summary tiles */}
+          <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
+            {[
+              { label: "Sign-ups", v7: row.signups7d, v30: row.signups30d, color: "text-emerald-500" },
+              { label: "Profile updates", v7: row.updates7d, v30: row.updates30d, color: "text-blue-500" },
+              { label: "Deletions", v7: row.deletions7d, v30: row.deletions30d, color: "text-destructive" },
+            ].map(({ label, v7, v30, color }) => (
+              <div key={label} className="p-3 flex flex-col gap-0.5">
+                <span className="text-[11px] text-muted-foreground font-medium">{label}</span>
+                <span className={`text-xl font-semibold tabular-nums ${color}`}>{fmt(v30)}</span>
+                <span className="text-[11px] text-muted-foreground">{fmt(v7)} in last 7d</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Daily timeline */}
+          <Table className="text-[13px]">
+            <TableHeader className="bg-muted/50 border-b border-border">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-8 font-semibold text-foreground">Date</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right text-emerald-600 dark:text-emerald-400">Sign-ups</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right text-blue-600 dark:text-blue-400">Updates</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right text-destructive">Deletions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {row.daily.slice(0, 14).map((d) => (
+                <TableRow key={d.day} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                  <TableCell className="py-1 text-muted-foreground tabular-nums">
+                    {new Date(d.day + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  </TableCell>
+                  <TableCell className="py-1 text-right tabular-nums">{d.signups > 0 ? <span className="text-emerald-600 dark:text-emerald-400 font-medium">+{fmt(d.signups)}</span> : <span className="text-muted-foreground/50">—</span>}</TableCell>
+                  <TableCell className="py-1 text-right tabular-nums">{d.updates > 0 ? fmt(d.updates) : <span className="text-muted-foreground/50">—</span>}</TableCell>
+                  <TableCell className="py-1 text-right tabular-nums">{d.deletions > 0 ? <span className="text-destructive">{fmt(d.deletions)}</span> : <span className="text-muted-foreground/50">—</span>}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </>
+      )}
     </div>
   );
 }

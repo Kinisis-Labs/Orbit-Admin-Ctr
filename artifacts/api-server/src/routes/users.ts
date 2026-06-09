@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { ListUserActivityResponse, GetStaffStatsResponse } from "@workspace/api-zod";
-import { getActivity } from "../lib/clerkActivity";
+import { ListUserActivityResponse, GetStaffStatsResponse, ListClerkEventSummaryResponse } from "@workspace/api-zod";
+import { getActivity, getClerkEventSummary } from "../lib/clerkActivity";
 import { getStaffStats } from "../lib/entraStats";
 
 const router: IRouter = Router();
@@ -10,6 +10,12 @@ const router: IRouter = Router();
 router.get("/users/activity", async (_req, res) => {
   const rows = await getActivity();
   res.json(ListUserActivityResponse.parse(rows));
+});
+
+// Per-app Clerk user lifecycle event breakdown (signups / updates / deletions).
+router.get("/users/clerk-events", async (_req, res) => {
+  const rows = await getClerkEventSummary();
+  res.json(ListClerkEventSummaryResponse.parse(rows));
 });
 
 // Entra ID RBAC group member counts for Orbit groups. Returns

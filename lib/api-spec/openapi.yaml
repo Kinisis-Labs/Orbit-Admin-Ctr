@@ -351,6 +351,19 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/Alert" }
+  /users/clerk-events:
+    get:
+      operationId: listClerkEventSummary
+      tags: [users]
+      summary: Per-app Clerk user lifecycle event breakdown (signups, updates, deletions) for the last 30 days
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ClerkEventSummaryRow" }
   /users/staff-stats:
     get:
       operationId: getStaffStats
@@ -1001,6 +1014,28 @@ components:
                 Named Azure Cost Management budget for this app (e.g. "bgt-grailbabe-prod").
                 When set, the budget is fetched directly by name rather than by scanning the
                 subscription. Scope is resolved from APP_BILLING_SCOPE (subscription or RG).
+    ClerkEventSummaryDay:
+      type: object
+      required: [day, signups, updates, deletions]
+      properties:
+        day: { type: string, format: date, description: "YYYY-MM-DD" }
+        signups: { type: integer }
+        updates: { type: integer }
+        deletions: { type: integer }
+    ClerkEventSummaryRow:
+      type: object
+      required: [appId, signups7d, signups30d, updates7d, updates30d, deletions7d, deletions30d, daily]
+      properties:
+        appId: { type: string }
+        signups7d: { type: integer }
+        signups30d: { type: integer }
+        updates7d: { type: integer }
+        updates30d: { type: integer }
+        deletions7d: { type: integer }
+        deletions30d: { type: integer }
+        daily:
+          type: array
+          items: { $ref: "#/components/schemas/ClerkEventSummaryDay" }
     StaffGroupRow:
       type: object
       required: [id, name, memberCount]

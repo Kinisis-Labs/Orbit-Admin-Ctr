@@ -34,6 +34,8 @@ export * from './appThresholdsLogEntry';
 export * from './appThresholdsLogPage';
 export * from './budgetAlertLogEntry';
 export * from './budgetAlertLogPage';
+export * from './clerkEventSummaryDay';
+export * from './clerkEventSummaryRow';
 export * from './costByService';
 export * from './costReport';
 export * from './costReportBudgetDataSource';

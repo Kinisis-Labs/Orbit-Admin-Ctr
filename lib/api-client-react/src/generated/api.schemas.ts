@@ -193,6 +193,25 @@ export type AppDetail = AppSummary & {
   budgetName?: string;
 };
 
+export interface ClerkEventSummaryDay {
+  /** YYYY-MM-DD */
+  day: string;
+  signups: number;
+  updates: number;
+  deletions: number;
+}
+
+export interface ClerkEventSummaryRow {
+  appId: string;
+  signups7d: number;
+  signups30d: number;
+  updates7d: number;
+  updates30d: number;
+  deletions7d: number;
+  deletions30d: number;
+  daily: ClerkEventSummaryDay[];
+}
+
 export interface StaffGroupRow {
   /** Entra group object ID (GUID) */
   id: string;

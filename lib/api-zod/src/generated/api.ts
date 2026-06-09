@@ -532,6 +532,27 @@ export const ListGlobalAlertsResponse = zod.array(ListGlobalAlertsResponseItem)
 
 
 /**
+ * @summary Per-app Clerk user lifecycle event breakdown (signups, updates, deletions) for the last 30 days
+ */
+export const ListClerkEventSummaryResponseItem = zod.object({
+  "appId": zod.string(),
+  "signups7d": zod.number(),
+  "signups30d": zod.number(),
+  "updates7d": zod.number(),
+  "updates30d": zod.number(),
+  "deletions7d": zod.number(),
+  "deletions30d": zod.number(),
+  "daily": zod.array(zod.object({
+  "day": zod.string().date().describe('YYYY-MM-DD'),
+  "signups": zod.number(),
+  "updates": zod.number(),
+  "deletions": zod.number()
+}))
+})
+export const ListClerkEventSummaryResponse = zod.array(ListClerkEventSummaryResponseItem)
+
+
+/**
  * @summary Entra ID RBAC group member counts for Orbit groups (Authorized-Users, Cost-Readers, etc.)
  */
 export const GetStaffStatsResponse = zod.object({

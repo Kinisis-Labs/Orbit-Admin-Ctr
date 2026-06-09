@@ -258,6 +258,123 @@ export async function recordEvent(
   });
 }
 
+// ── Clerk event summary ────────────────────────────────────────────────────
+
+export type ClerkEventSummaryDay = {
+  day: string; // YYYY-MM-DD
+  signups: number;
+  updates: number;
+  deletions: number;
+};
+
+export type ClerkEventSummaryRow = {
+  appId: string;
+  signups7d: number;
+  signups30d: number;
+  updates7d: number;
+  updates30d: number;
+  deletions7d: number;
+  deletions30d: number;
+  /** Last 30 days, most-recent first. */
+  daily: ClerkEventSummaryDay[];
+};
+
+/**
+ * Per-app breakdown of user lifecycle events (created / updated / deleted)
+ * sourced from `clerk_events`. Returns zeroes for apps with no events yet.
+ */
+export async function getClerkEventSummary(): Promise<ClerkEventSummaryRow[]> {
+  const apps = clerkApps();
+  if (apps.length === 0) return [];
+
+  type DbRow = {
+    app_id: string;
+    event_type: string;
+    day: unknown;
+    cnt: unknown;
+  };
+
+  const cutoff30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const cutoff7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const rows = (
+    await db.execute(sql`
+      SELECT
+        app_id,
+        event_type,
+        DATE(COALESCE(occurred_at, received_at) AT TIME ZONE 'UTC')::text AS day,
+        COUNT(*)::int AS cnt
+      FROM clerk_events
+      WHERE COALESCE(occurred_at, received_at) >= ${cutoff30.toISOString()}
+        AND event_type IN ('user.created', 'user.updated', 'user.deleted')
+      GROUP BY app_id, event_type, day
+      ORDER BY app_id, day DESC
+    `)
+  ).rows as DbRow[];
+
+  type AppAgg = {
+    signups7d: number; signups30d: number;
+    updates7d: number; updates30d: number;
+    deletions7d: number; deletions30d: number;
+    byDay: Map<string, ClerkEventSummaryDay>;
+  };
+
+  const byApp = new Map<string, AppAgg>();
+  for (const app of apps) {
+    byApp.set(app.id, {
+      signups7d: 0, signups30d: 0,
+      updates7d: 0, updates30d: 0,
+      deletions7d: 0, deletions30d: 0,
+      byDay: new Map(),
+    });
+  }
+
+  for (const r of rows) {
+    const entry = byApp.get(r.app_id);
+    if (!entry) continue;
+
+    const dayStr = String(r.day).slice(0, 10);
+    const cnt = Number(r.cnt);
+    const isIn7d = dayStr >= cutoff7.toISOString().slice(0, 10);
+
+    if (!entry.byDay.has(dayStr)) {
+      entry.byDay.set(dayStr, { day: dayStr, signups: 0, updates: 0, deletions: 0 });
+    }
+    const d = entry.byDay.get(dayStr)!;
+
+    if (r.event_type === "user.created") {
+      entry.signups30d += cnt;
+      if (isIn7d) entry.signups7d += cnt;
+      d.signups += cnt;
+    } else if (r.event_type === "user.updated") {
+      entry.updates30d += cnt;
+      if (isIn7d) entry.updates7d += cnt;
+      d.updates += cnt;
+    } else if (r.event_type === "user.deleted") {
+      entry.deletions30d += cnt;
+      if (isIn7d) entry.deletions7d += cnt;
+      d.deletions += cnt;
+    }
+  }
+
+  return apps.map((app) => {
+    const e = byApp.get(app.id)!;
+    const daily = [...e.byDay.values()].sort((a, b) =>
+      b.day.localeCompare(a.day),
+    );
+    return {
+      appId: app.id,
+      signups7d: e.signups7d,
+      signups30d: e.signups30d,
+      updates7d: e.updates7d,
+      updates30d: e.updates30d,
+      deletions7d: e.deletions7d,
+      deletions30d: e.deletions30d,
+      daily,
+    };
+  });
+}
+
 // Returns true when at least one real (non-seeded) Clerk webhook event exists in
 // the DB. A single row in clerk_events means real webhook traffic has arrived.
 async function hasRealClerkEvents(): Promise<boolean> {

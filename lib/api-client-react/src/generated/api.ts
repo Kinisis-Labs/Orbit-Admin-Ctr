@@ -34,6 +34,7 @@ import type {
   AppleSubscriptionRow,
   BudgetAlertLogEntry,
   BudgetAlertLogPage,
+  ClerkEventSummaryRow,
   CostReport,
   DismissAnomalyRequest,
   FeatureFlag,
@@ -1561,6 +1562,83 @@ export function useListGlobalAlerts<TData = Awaited<ReturnType<typeof listGlobal
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListGlobalAlertsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListClerkEventSummaryUrl = () => {
+
+
+
+
+  return `/api/users/clerk-events`
+}
+
+/**
+ * @summary Per-app Clerk user lifecycle event breakdown (signups, updates, deletions) for the last 30 days
+ */
+export const listClerkEventSummary = async ( options?: RequestInit): Promise<ClerkEventSummaryRow[]> => {
+
+  return customFetch<ClerkEventSummaryRow[]>(getListClerkEventSummaryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListClerkEventSummaryQueryKey = () => {
+    return [
+    `/api/users/clerk-events`
+    ] as const;
+    }
+
+
+export const getListClerkEventSummaryQueryOptions = <TData = Awaited<ReturnType<typeof listClerkEventSummary>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listClerkEventSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListClerkEventSummaryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listClerkEventSummary>>> = ({ signal }) => listClerkEventSummary({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listClerkEventSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListClerkEventSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof listClerkEventSummary>>>
+export type ListClerkEventSummaryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Per-app Clerk user lifecycle event breakdown (signups, updates, deletions) for the last 30 days
+ */
+
+export function useListClerkEventSummary<TData = Awaited<ReturnType<typeof listClerkEventSummary>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listClerkEventSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListClerkEventSummaryQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
