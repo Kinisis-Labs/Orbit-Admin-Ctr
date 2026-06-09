@@ -71,6 +71,49 @@ const wantSsl =
   process.env.DATABASE_SSL === "1" ||
   process.env.PGSSLMODE === "require";
 
+/**
+ * True when all four required Entra env vars are present (mirrors isEntraConfigured()
+ * without importing from entra.ts to keep this module free of circular deps).
+ * When false the app is in mock/dev mode and the session store does not need
+ * to be backed by a real database — use MemoryStore so the middleware never
+ * errors due to a missing DATABASE_URL or unprovided user_sessions table.
+ */
+const entraActive =
+  !!process.env.ENTRA_TENANT_ID &&
+  !!process.env.ENTRA_CLIENT_ID &&
+  !!process.env.ENTRA_CLIENT_SECRET &&
+  !!process.env.ENTRA_REDIRECT_URI;
+
+/**
+ * Build the session store appropriate for the current environment:
+ * - Entra configured (production): PgSession backed by DATABASE_URL.
+ * - Mock/dev mode: in-memory store that never requires a database.
+ *   MemoryStore leaks memory under sustained load, which is irrelevant for the
+ *   single-developer Replit preview; it is never selected in production because
+ *   Entra is always configured there.
+ */
+function buildStore(): session.Store {
+  if (entraActive && process.env.DATABASE_URL) {
+    return new PgSession({
+      conObject: {
+        connectionString: process.env.DATABASE_URL,
+        ssl: wantSsl
+          ? {
+              rejectUnauthorized:
+                process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false",
+            }
+          : undefined,
+      },
+      tableName: "user_sessions",
+      // The table is owned by lib/db's schema and provisioned via `db push`
+      // (see lib/db/src/schema/session.ts). connect-pg-simple's auto-create
+      // can't run here because the bundled server has no `table.sql` on disk.
+      createTableIfMissing: false,
+    });
+  }
+  return new session.MemoryStore();
+}
+
 export const sessionMiddleware: RequestHandler = session({
   name: "orbit.sid",
   secret: sessionSecret ?? "dev-insecure-secret-change-me",
@@ -79,22 +122,7 @@ export const sessionMiddleware: RequestHandler = session({
   // Behind Azure Front Door (and the Replit proxy) the app sits behind a TLS
   // terminator, so trust the proxy for secure-cookie handling.
   proxy: true,
-  store: new PgSession({
-    conObject: {
-      connectionString: process.env.DATABASE_URL,
-      ssl: wantSsl
-        ? {
-            rejectUnauthorized:
-              process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false",
-          }
-        : undefined,
-    },
-    tableName: "user_sessions",
-    // The table is owned by lib/db's schema and provisioned via `db push`
-    // (see lib/db/src/schema/session.ts). connect-pg-simple's auto-create
-    // can't run here because the bundled server has no `table.sql` on disk.
-    createTableIfMissing: false,
-  }),
+  store: buildStore(),
   cookie: {
     httpOnly: true,
     sameSite: "lax",
