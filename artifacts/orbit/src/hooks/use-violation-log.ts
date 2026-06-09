@@ -99,6 +99,15 @@ export function removeViolationById(id: string): void {
   writeLog(remaining);
 }
 
+export function restoreViolationEntry(entry: ViolationEntry): void {
+  const existing = readLog();
+  if (existing.some((e) => e.id === entry.id)) return;
+  const merged = [...existing, entry].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+  writeLog(merged.slice(0, MAX_ENTRIES));
+}
+
 export function useViolationLog() {
   const [entries, setEntries] = useState<ViolationEntry[]>(() => readLog());
 
@@ -139,7 +148,12 @@ export function useViolationLog() {
     setEntries(readLog());
   }, []);
 
+  const restoreEntry = useCallback((entry: ViolationEntry) => {
+    restoreViolationEntry(entry);
+    setEntries(readLog());
+  }, []);
+
   const unseenCount = entries.filter((e) => !e.seen).length;
 
-  return { entries, unseenCount, markSeen, markSeenByApp, clear, clearByApp, removeById };
+  return { entries, unseenCount, markSeen, markSeenByApp, clear, clearByApp, removeById, restoreEntry };
 }

@@ -1,6 +1,8 @@
 import { format } from "date-fns";
 import { BellOff, Check, History, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ToastAction } from "@/components/ui/toast";
+import { toast } from "@/hooks/use-toast";
 import { useViolationLog } from "@/hooks/use-violation-log";
 import type { ViolationEntry } from "@/hooks/use-violation-log";
 
@@ -96,12 +98,35 @@ function ViolationRow({
   );
 }
 
+const UNDO_DURATION_MS = 4000;
+
 export function ViolationLogPanel({ appId }: { appId?: string } = {}) {
-  const { entries, unseenCount, markSeen, clear, clearByApp, removeById } = useViolationLog();
+  const { entries, unseenCount, markSeen, clear, clearByApp, removeById, restoreEntry } = useViolationLog();
 
   const filtered = appId ? entries.filter((e) => e.appId === appId) : entries;
   const filteredUnseen = filtered.filter((e) => !e.seen).length;
   const showAppCol = !appId;
+
+  function handleDismiss(id: string) {
+    const entry = entries.find((e) => e.id === id);
+    if (!entry) return;
+    removeById(id);
+    const { dismiss } = toast({
+      description: "Violation dismissed.",
+      duration: UNDO_DURATION_MS,
+      action: (
+        <ToastAction
+          altText="Undo dismiss"
+          onClick={() => {
+            restoreEntry(entry);
+            dismiss();
+          }}
+        >
+          Undo
+        </ToastAction>
+      ),
+    });
+  }
 
   return (
     <div className="bg-card border border-border shadow-sm flex flex-col">
@@ -195,7 +220,7 @@ export function ViolationLogPanel({ appId }: { appId?: string } = {}) {
                   key={entry.id}
                   entry={entry}
                   showAppCol={showAppCol}
-                  onDismiss={appId ? removeById : undefined}
+                  onDismiss={appId ? handleDismiss : undefined}
                 />
               ))}
             </tbody>
