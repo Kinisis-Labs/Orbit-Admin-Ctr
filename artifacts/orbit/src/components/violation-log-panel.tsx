@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { BellOff, Check, History, Trash2, X } from "lucide-react";
+import { BellOff, Check, History, Info, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToastAction } from "@/components/ui/toast";
 import { toast } from "@/hooks/use-toast";
@@ -101,7 +101,7 @@ function ViolationRow({
 const UNDO_DURATION_MS = 4000;
 
 export function ViolationLogPanel({ appId }: { appId?: string } = {}) {
-  const { entries, unseenCount, markSeen, clear, clearByApp, removeById, restoreEntry } = useViolationLog();
+  const { entries, unseenCount, prunedCount, dismissPruneNotice, markSeen, clear, clearByApp, removeById, restoreEntry } = useViolationLog();
 
   const filtered = appId ? entries.filter((e) => e.appId === appId) : entries;
   const filteredUnseen = filtered.filter((e) => !e.seen).length;
@@ -130,6 +130,24 @@ export function ViolationLogPanel({ appId }: { appId?: string } = {}) {
 
   return (
     <div className="bg-card border border-border shadow-sm flex flex-col">
+      {prunedCount > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/40 text-[12px] text-muted-foreground">
+          <Info className="h-3.5 w-3.5 shrink-0 text-blue-500 dark:text-blue-400" />
+          <span>
+            <span className="font-medium text-foreground">{prunedCount}</span>
+            {" "}
+            {prunedCount === 1 ? "entry" : "entries"} older than 24 h removed on load
+          </span>
+          <button
+            className="ml-auto p-0.5 rounded hover:bg-muted transition-colors"
+            onClick={dismissPruneNotice}
+            title="Dismiss"
+            aria-label="Dismiss pruned entries notice"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
       <div className="flex items-center gap-2 p-3 border-b border-border flex-wrap">
         <History className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <h2 className="text-sm font-semibold">Client-side threshold violations</h2>

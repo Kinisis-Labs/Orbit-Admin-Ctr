@@ -17,9 +17,13 @@ export interface ViolationEntry {
   seen: boolean;
 }
 
-function pruneExpired(entries: ViolationEntry[]): ViolationEntry[] {
+function pruneExpired(entries: ViolationEntry[]): {
+  entries: ViolationEntry[];
+  prunedCount: number;
+} {
   const cutoff = Date.now() - TTL_MS;
-  return entries.filter((e) => new Date(e.timestamp).getTime() >= cutoff);
+  const kept = entries.filter((e) => new Date(e.timestamp).getTime() >= cutoff);
+  return { entries: kept, prunedCount: entries.length - kept.length };
 }
 
 function readLog(): ViolationEntry[] {
@@ -27,9 +31,28 @@ function readLog(): ViolationEntry[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as ViolationEntry[];
-    return pruneExpired(parsed);
+    return pruneExpired(parsed).entries;
   } catch {
     return [];
+  }
+}
+
+function readLogAndPrune(): { entries: ViolationEntry[]; prunedCount: number } {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { entries: [], prunedCount: 0 };
+    const parsed = JSON.parse(raw) as ViolationEntry[];
+    const result = pruneExpired(parsed);
+    if (result.prunedCount > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(result.entries));
+      } catch {
+        // ignore write failures
+      }
+    }
+    return result;
+  } catch {
+    return { entries: [], prunedCount: 0 };
   }
 }
 
@@ -108,8 +131,14 @@ export function restoreViolationEntry(entry: ViolationEntry): void {
   writeLog(merged.slice(0, MAX_ENTRIES));
 }
 
+function initFromStorage(): { entries: ViolationEntry[]; prunedCount: number } {
+  return readLogAndPrune();
+}
+
 export function useViolationLog() {
-  const [entries, setEntries] = useState<ViolationEntry[]>(() => readLog());
+  const [{ entries, prunedCount: initialPrunedCount }] = useState(initFromStorage);
+  const [entriesState, setEntries] = useState<ViolationEntry[]>(entries);
+  const [prunedCount, setPrunedCount] = useState<number>(initialPrunedCount);
 
   useEffect(() => {
     function refresh() {
@@ -153,7 +182,11 @@ export function useViolationLog() {
     setEntries(readLog());
   }, []);
 
-  const unseenCount = entries.filter((e) => !e.seen).length;
+  const dismissPruneNotice = useCallback(() => {
+    setPrunedCount(0);
+  }, []);
 
-  return { entries, unseenCount, markSeen, markSeenByApp, clear, clearByApp, removeById, restoreEntry };
+  const unseenCount = entriesState.filter((e) => !e.seen).length;
+
+  return { entries: entriesState, unseenCount, prunedCount, dismissPruneNotice, markSeen, markSeenByApp, clear, clearByApp, removeById, restoreEntry };
 }
