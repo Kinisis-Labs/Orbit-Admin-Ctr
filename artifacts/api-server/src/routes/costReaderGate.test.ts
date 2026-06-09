@@ -143,54 +143,6 @@ function patch(server: http.Server, path: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Mock-mode tests (Entra NOT configured)
-//
-// When Entra is not configured the app runs in dev/mock mode: requireAuth and
-// requireCostReader are no-ops, so all routes must be accessible regardless of
-// session state.
-// ---------------------------------------------------------------------------
-
-describe("cost-reader gate — mock mode (Entra not configured)", () => {
-  let server: http.Server;
-
-  before(() => {
-    disableEntra();
-    server = http.createServer(buildGateApp());
-    return new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
-  });
-
-  after(() => new Promise<void>((resolve, reject) => server.close((e) => (e ? reject(e) : resolve()))));
-
-  test("GET /api/play/subscriptions returns 200 when there is no session (mock mode)", async () => {
-    currentUser = undefined;
-    const { status, body } = await get(server, "/api/play/subscriptions");
-    assert.equal(status, 200);
-    assert.deepEqual(body, { ok: true });
-  });
-
-  test("GET /api/apple/subscriptions returns 200 when there is no session (mock mode)", async () => {
-    currentUser = undefined;
-    const { status, body } = await get(server, "/api/apple/subscriptions");
-    assert.equal(status, 200);
-    assert.deepEqual(body, { ok: true });
-  });
-
-  test("GET /api/budget-alerts/log returns 200 when there is no session (mock mode)", async () => {
-    currentUser = undefined;
-    const { status, body } = await get(server, "/api/budget-alerts/log");
-    assert.equal(status, 200);
-    assert.deepEqual(body, { ok: true });
-  });
-
-  test("PATCH /api/budget-alerts/log/:id/acknowledge returns 200 when there is no session (mock mode)", async () => {
-    currentUser = undefined;
-    const { status, body } = await patch(server, "/api/budget-alerts/log/1/acknowledge");
-    assert.equal(status, 200);
-    assert.deepEqual(body, { ok: true });
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Entra-mode tests — gate enforcement
 //
 // With Entra configured the middleware is active. Tests cover:

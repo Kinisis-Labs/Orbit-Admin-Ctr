@@ -6,9 +6,6 @@ import {
   type AuthMode,
 } from "./auth-context";
 import type { EntraGroup, EntraUser } from "./auth-types";
-import {
-  ALL_ORBIT_GROUPS,
-} from "./auth-groups";
 import { toast } from "@/hooks/use-toast";
 
 export type { EntraGroup, EntraUser } from "./auth-types";
@@ -17,17 +14,7 @@ const AUTH_ME = "/api/auth/me";
 const AUTH_LOGIN = "/api/auth/login";
 const AUTH_LOGOUT = "/api/auth/logout";
 
-const MOCK_USER: EntraUser = {
-  id: "dev-mock-user",
-  displayName: "Dev User",
-  userPrincipalName: "dev@kinisislabs.com",
-  jobTitle: "Developer",
-  initial: "D",
-};
-
-
 type MeResponse =
-  | { mode: "mock"; accessContact?: string }
   | { mode: "entra"; authenticated: false; accessContact?: string }
   | { mode: "entra"; authenticated: true; user: EntraUser; groups: EntraGroup[]; accessContact?: string };
 
@@ -57,10 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         if (res.status === 401 || res.status === 503) {
           if (cancelled) return;
-          // Try to read accessContact from the 401 body before handling the error.
           try {
             const body = (await res.clone().json()) as MeResponse;
-            if (body.accessContact) setAccessContact(body.accessContact);
+            if ("accessContact" in body && body.accessContact) setAccessContact(body.accessContact);
           } catch {
             /* ignore — body may not be JSON */
           }
@@ -75,11 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         const data = (await res.json()) as MeResponse;
         if (cancelled) return;
-        if (data.accessContact) setAccessContact(data.accessContact);
-        if (data.mode === "mock") {
-          setMode("mock");
-          return;
-        }
+        if ("accessContact" in data && data.accessContact) setAccessContact(data.accessContact);
         if (data.mode === "entra" && "authenticated" in data && data.authenticated) {
           setEntra({ user: data.user, groups: data.groups });
           setMode("entra");
@@ -101,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Poll /auth/me every 15 min while the tab is visible (entra mode only).
+  // Poll /auth/me every 15 min while the tab is visible.
   // Updates badges immediately when group membership changes; redirects on 401.
   useEffect(() => {
     if (mode !== "entra") return;
@@ -166,21 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue | null>(() => {
-    if (mode === null) return null;
-
-    if (mode === "mock") {
-      const ids = new Set(ALL_ORBIT_GROUPS.map((g) => g.id));
-      return {
-        user: MOCK_USER,
-        groups: ALL_ORBIT_GROUPS,
-        hasGroup: (id: string) => ids.has(id),
-        mode: "mock",
-        signOut,
-        accessContact,
-      };
-    }
-
-    if (!entra) return null;
+    if (mode === null || !entra) return null;
     const ids = new Set(entra.groups.map((g) => g.id));
     return {
       user: entra.user,

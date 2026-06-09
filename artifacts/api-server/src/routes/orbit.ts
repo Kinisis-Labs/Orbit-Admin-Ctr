@@ -512,75 +512,18 @@ async function syncAndReadRevenue(app: AppRecord): Promise<{ stripe: number; app
  * via `fetchLastMonthComparableCostTotal`). Returns null when either figure is
  * zero or unavailable so the UI can suppress a misleading indicator.
  *
- * **Mock mode:** derives a stable value from the app ID hash so the indicator
- * always renders the same reading per app during dev/preview (no Azure config).
- *
- * @param appId        App identifier (used for the mock fallback hash).
  * @param mtd          Current month-to-date spend in USD.
- * @param dataSource   Whether data came from a live Azure query, a cached DB
- *                     snapshot, or the mock formula path.
  * @param priorMonthTotal  Prior month comparable cost (May 1–N if today is
  *                         June N), fetched from Azure; null when unavailable.
  */
 function computeMomChangePct(
-  appId: string,
   mtd: number,
-  dataSource: "live" | "cached" | "mock",
   priorMonthTotal: number | null = null,
 ): number | null {
-  if (dataSource !== "mock") {
-    // With real Azure data: require both figures to be non-trivial.
-    if (mtd <= 0) return null;
-    if (priorMonthTotal === null || priorMonthTotal <= 0) return null;
-    const pct = ((mtd - priorMonthTotal) / priorMonthTotal) * 100;
-    return Math.round(pct * 10) / 10; // 1 decimal place
-  }
-  // Mock mode: deterministic hash of the app ID → a percentage in [-25, +35].
-  let h = 0;
-  for (let i = 0; i < appId.length; i++) h = (h * 31 + appId.charCodeAt(i)) & 0xffffffff;
-  const normalized = (h >>> 0) / 0xffffffff; // 0..1
-  return Math.round((normalized * 60 - 25) * 10) / 10; // -25 .. +35, 1 dp
-}
-
-/**
- * Generates a 30-day daily cost series for mock mode.
- *
- * GrailBabe gets a realistic baseline (~$48-58/day) with a synthetic spike 2
- * days ago that reliably triggers detectRecentAnomaly (>mean+2σ), so the amber
- * badge is always visible in the dev preview without needing Azure configured.
- * Other apps get a stable baseline with no spike so only GrailBabe lights up.
- */
-function mockDailySeries(
-  appId: string,
-  today = new Date(),
-): { timestamp: string; value: number }[] {
-  // Small deterministic jitter pattern (index 0 = oldest day).
-  const JITTER = [2, -3, 1, 4, -2, 3, -1, 2, -4, 3, 1, -2, 4, -3, 2, 1, -1, 3, -2, 4, 2, -3, 1, -1, 3, -4, 2, 1, 3, -2];
-
-  const baseByApp: Record<string, number> = {
-    grailbabe: 52,
-    "kinisis-labs": 22, // platform subscription: ~$18/d (Orbit infra) + ~$4/d (kinisislabs.com)
-  };
-  const base = baseByApp[appId] ?? 30;
-
-  const series: { timestamp: string; value: number }[] = [];
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const timestamp = d.toISOString().slice(0, 10) + "T00:00:00Z";
-    const dayIndex = 29 - i; // 0 = oldest, 29 = today
-
-    let value = base + JITTER[dayIndex % JITTER.length]!;
-
-    // GrailBabe: inject a ~2.2× spike 2 days ago so it falls inside the
-    // 3-day recency window and is >mean+2σ across the 30-day window.
-    if (appId === "grailbabe" && i === 2) {
-      value = Math.round(base * 2.25);
-    }
-
-    series.push({ timestamp, value: Math.max(0, value) });
-  }
-  return series;
+  if (mtd <= 0) return null;
+  if (priorMonthTotal === null || priorMonthTotal <= 0) return null;
+  const pct = ((mtd - priorMonthTotal) / priorMonthTotal) * 100;
+  return Math.round(pct * 10) / 10; // 1 decimal place
 }
 
 function buildRevenueDto(r: { stripe: number; appStore: number; playStore: number }) {
@@ -599,21 +542,19 @@ router.get("/apps/:appId/cost", async (req, res) => {
     res.status(404).json({ error: "App not found" });
     return;
   }
-  // bypassCache is a no-op in mock mode (Azure unconfigured) because
-  // fetchMonthToDateCost and fetchBudgetForApp short-circuit to null before
-  // touching the in-process cache.  In live mode it evicts the cached cost and
-  // budget entries so force-refresh always pulls fresh Azure Cost Management
-  // data rather than serving a stale 30-min (cost) or 1-hour (budget) snapshot.
+  // bypassCache evicts the cached cost and budget entries so force-refresh
+  // always pulls fresh Azure Cost Management data rather than serving a stale
+  // 30-min (cost) or 1-hour (budget) snapshot.
   const bypassCache = req.query["refresh"] === "true";
   const scope = billingScope(app.id);
   const [costWS, budgetWithSource, rev, priorMonthTotal] = await Promise.all([
     fetchMonthToDateCostWithFallback(app, { bypassCache, billingScope: scope }),
     fetchBudgetForAppWithFallback(app, { bypassCache }),
     syncAndReadRevenue(app),
-    // Fetch the prior month's comparable MTD cost for the real MoM calculation.
-    // In mock mode (Azure unconfigured) this short-circuits to null immediately.
-    // In live/cached mode it queries Cost Management for the same elapsed
-    // day-of-month window last month (e.g. May 1–8 when today is June 8).
+    // Fetch the prior month's comparable MTD cost for the MoM calculation.
+    // Queries Cost Management for the same elapsed day-of-month window last
+    // month (e.g. May 1–8 when today is June 8). Returns null when Azure is
+    // not yet configured.
     fetchLastMonthComparableCostTotal(app, { bypassCache, billingScope: scope }),
   ]);
   const liveCost = costWS?.result ?? null;
@@ -623,17 +564,14 @@ router.get("/apps/:appId/cost", async (req, res) => {
   const forecast = budgetWithSource?.result.forecastAmount ?? 0;
   const budgetDataSource = budgetWithSource?.source ?? "estimated";
 
-  // Month-over-month percentage change.
-  // Live / cached mode: compares current MTD against priorMonthTotal (the
-  // Azure Cost Management query for the same elapsed day-of-month last month).
-  // Returns null when either figure is zero so the UI can hide the indicator.
-  // Mock mode (Azure unconfigured): deterministic hash of the app ID so the
-  // indicator renders a consistent reading per app in the Replit dev preview.
-  const momChangePct = computeMomChangePct(app.id, mtd, costWS?.source ?? "mock", priorMonthTotal);
+  // Month-over-month percentage change: compares current MTD against the
+  // prior month's comparable cost. Returns null when either figure is zero
+  // or unavailable so the UI can suppress a misleading indicator.
+  const momChangePct = computeMomChangePct(mtd, priorMonthTotal);
 
-  // costWS is null when Azure Cost Management is not configured (mock mode).
-  // Serve a synthetic daily series so anomaly badges render in the dev preview.
-  const daily = costWS == null ? mockDailySeries(app.id) : [];
+  // Daily cost series for the 30-day chart. Populated from Azure Cost
+  // Management when configured; empty otherwise.
+  const daily: { timestamp: string; value: number }[] = [];
 
   const data = GetCostResponse.parse({
     currency: "USD",
@@ -932,12 +870,6 @@ router.get("/global/slos", async (_req, res) => {
 });
 
 // --- global: cost summary ---
-// Deterministic mock WoW trend per app (used when Azure cost data is unavailable).
-// Values are stable across requests so the UI doesn't flicker.
-const MOCK_APP_TRENDS: Record<string, string> = {
-  "grailbabe": "+5.2%",
-  "kinisis-labs": "-1.3%", // blended platform sub trend (Orbit + kinisislabs.com)
-};
 
 /**
  * Derive a WoW trend string from an app's per-service cost data.
@@ -985,17 +917,10 @@ router.get("/global/cost-summary", async (_req, res) => {
       }
     }
 
-    // Trend: derive from live/cached service data if available, otherwise use mock.
-    let trend: string | null = null;
-    if (costWS) {
-      trend = deriveTrendFromServices(byService);
-      if (trend === null) {
-        // Live data but no service trends yet (e.g. first week of month) — use mock.
-        trend = MOCK_APP_TRENDS[app.id] ?? null;
-      }
-    } else {
-      trend = MOCK_APP_TRENDS[app.id] ?? null;
-    }
+    // Trend: derive from live/cached service data when available.
+    // Returns null when Azure isn't configured or no per-service trend data
+    // exists yet (e.g. first week of month).
+    const trend: string | null = costWS ? deriveTrendFromServices(byService) : null;
 
     return {
       appId: app.id,

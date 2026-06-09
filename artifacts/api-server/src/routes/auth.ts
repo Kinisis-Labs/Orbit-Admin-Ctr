@@ -143,7 +143,7 @@ router.get("/auth/me", async (req, res, next) => {
   try {
     const cfg = getEntraConfig();
     if (!cfg) {
-      res.json({ mode: "mock", accessContact: getAccessContact() });
+      res.status(503).json({ error: "Entra ID is not configured" });
       return;
     }
     const u = req.session.user;

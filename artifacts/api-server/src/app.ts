@@ -7,9 +7,8 @@ import { logger } from "./lib/logger";
 import { sessionMiddleware } from "./lib/session";
 import { isEntraConfigured } from "./lib/entra";
 
-// Fail closed in production: never serve protected routes with auth disabled.
-// The mock fallback (requireAuth no-op) is only acceptable in development.
-if (process.env.NODE_ENV === "production" && !isEntraConfigured()) {
+// Refuse to start if Entra ID is not fully configured.
+if (!isEntraConfigured()) {
   const missing = [
     ["ENTRA_TENANT_ID", process.env.ENTRA_TENANT_ID],
     ["ENTRA_CLIENT_ID", process.env.ENTRA_CLIENT_ID],

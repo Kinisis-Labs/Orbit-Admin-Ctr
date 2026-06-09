@@ -84,63 +84,7 @@ function withEntra<T>(fn: () => T): T {
 }
 
 // ---------------------------------------------------------------------------
-// Mock-mode bypass (Entra NOT configured)
-// All middlewares must call next() immediately when isEntraConfigured() is
-// false so the dev/test preview keeps working without real Entra credentials.
-// ---------------------------------------------------------------------------
-
-describe("mock-mode bypass (Entra not configured)", () => {
-  test("requireAuth calls next() when Entra is not configured, regardless of session", () => {
-    const req = makeReq(undefined);
-    const res = makeRes();
-    let nextCalled = false;
-    const next: NextFunction = () => { nextCalled = true; };
-
-    requireAuth(req as Request, res as unknown as Response, next);
-
-    assert.ok(nextCalled, "requireAuth must pass through in mock mode even with no session user");
-    assert.equal(res.statusCode, undefined, "no status code should be set in mock mode");
-  });
-
-  test("requireCostReader calls next() when Entra is not configured", () => {
-    const req = makeReq(undefined);
-    const res = makeRes();
-    let nextCalled = false;
-    const next: NextFunction = () => { nextCalled = true; };
-
-    requireCostReader(req as Request, res as unknown as Response, next);
-
-    assert.ok(nextCalled, "requireCostReader must pass through in mock mode");
-    assert.equal(res.statusCode, undefined);
-  });
-
-  test("requireAdmin calls next() when Entra is not configured", () => {
-    const req = makeReq(undefined);
-    const res = makeRes();
-    let nextCalled = false;
-    const next: NextFunction = () => { nextCalled = true; };
-
-    requireAdmin(req as Request, res as unknown as Response, next);
-
-    assert.ok(nextCalled, "requireAdmin must pass through in mock mode");
-    assert.equal(res.statusCode, undefined);
-  });
-
-  test("requireEngineerOrAdmin calls next() when Entra is not configured", () => {
-    const req = makeReq(undefined);
-    const res = makeRes();
-    let nextCalled = false;
-    const next: NextFunction = () => { nextCalled = true; };
-
-    requireEngineerOrAdmin(req as Request, res as unknown as Response, next);
-
-    assert.ok(nextCalled, "requireEngineerOrAdmin must pass through in mock mode");
-    assert.equal(res.statusCode, undefined);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// requireCostReader — Entra-configured mode
+// requireCostReader
 // ---------------------------------------------------------------------------
 
 describe("requireCostReader (Entra configured)", () => {

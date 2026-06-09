@@ -1,7 +1,7 @@
 import { createContext } from "react";
 import type { EntraGroup, EntraUser } from "./auth-types";
 
-export type AuthMode = "entra" | "mock";
+export type AuthMode = "entra";
 
 /**
  * A dedicated context that carries only the access-contact address.

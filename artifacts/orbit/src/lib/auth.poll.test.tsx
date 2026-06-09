@@ -29,7 +29,6 @@ const GROUP_A = { id: "group-a", displayName: "Group A", description: "" };
 const GROUP_B = { id: "group-b", displayName: "Group B", description: "" };
 
 type MeBody =
-  | { mode: "mock" }
   | { mode: "entra"; authenticated: false }
   | {
       mode: "entra";
