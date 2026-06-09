@@ -30,7 +30,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { DailySpendChart } from "@/components/daily-spend-chart";
-import { RefreshCw, Play, Square, Settings, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus, BarChart2, Clipboard, CheckCircle2, Clock } from "lucide-react";
+import { RefreshCw, Share, AlertTriangle, Lock, Users, Building2, Globe, Smartphone, Bell, Info, X, ExternalLink, ArrowRight, TrendingUp, TrendingDown, Minus, BarChart2, Clipboard, CheckCircle2, Clock } from "lucide-react";
 import { DataSourceBadge, LiveBadge } from "@/components/data-source-badge";
 import { AuthBadge } from "@/components/auth-badge";
 
@@ -204,22 +204,6 @@ export default function AppDetail() {
           </div>
         </div>
 
-        {/* Global Resource Command Bar */}
-        <div className="flex flex-wrap items-center gap-1 border-b border-border pb-2">
-          <Button variant="ghost" size="sm" className="h-7 text-[13px] px-2 rounded-sm hover:bg-muted">
-            <Play className="h-3.5 w-3.5 mr-1.5 text-[#7FBA00]" /> Start
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-[13px] px-2 rounded-sm hover:bg-muted">
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5 text-primary" /> Restart
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-[13px] px-2 rounded-sm hover:bg-muted">
-            <Square className="h-3.5 w-3.5 mr-1.5 text-muted-foreground fill-current" /> Stop
-          </Button>
-          <div className="w-px h-4 bg-border mx-1" />
-          <Button variant="ghost" size="sm" className="h-7 text-[13px] px-2 rounded-sm hover:bg-muted">
-            <Settings className="h-3.5 w-3.5 mr-1.5 text-primary" /> Configuration
-          </Button>
-        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
