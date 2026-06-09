@@ -155,7 +155,7 @@ jobs:
                 echo "Revision $REVISION is Running ✓"
                 exit 0
               fi
-              if [ "$STATE" = "Failed" ] || [ "$STATE" = "Stopped" ]; then
+              if [ "$STATE" = "Failed" ] || [ "$STATE" = "Stopped" ] || [ "$STATE" = "ActivationFailed" ]; then
                 echo "Revision $REVISION entered terminal state: $STATE"
                 echo "Check revision logs in the Azure portal for ImagePullBackOff or startup errors."
                 exit 1
