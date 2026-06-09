@@ -59,7 +59,7 @@ function makeApp(user: SessionUser | undefined) {
   // Inject a fake session — bypasses the DB-backed express-session middleware
   // while still exercising the real requireAuth / requireAdmin middlewares.
   app.use((req, _res, next) => {
-    (req as Record<string, unknown>).session = { user };
+    (req as unknown as Record<string, unknown>).session = { user };
     next();
   });
   app.use("/api", requireAuth, alertsConfigRouter);

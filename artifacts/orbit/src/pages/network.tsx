@@ -27,7 +27,7 @@ export default function NetworkPage() {
     ? Math.round(eps.reduce((s, e) => s + e.latencyMs, 0) / eps.length)
     : 0;
 
-  const dataSource = data?.dataSource;
+  const dataSource = data?.dataSource === "none" ? undefined : data?.dataSource;
   const dataAsOf = data?.dataAsOf;
 
   return (

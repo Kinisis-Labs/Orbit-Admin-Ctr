@@ -60,7 +60,7 @@ function makeApp(user: SessionUser | undefined) {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    (req as Record<string, unknown>).session = { user };
+    (req as unknown as Record<string, unknown>).session = { user };
     next();
   });
   app.use("/api", requireAuth, orbitRouter);
