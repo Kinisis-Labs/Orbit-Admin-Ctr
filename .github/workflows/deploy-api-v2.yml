@@ -98,8 +98,14 @@ jobs:
         with:
           azcliversion: latest
           inlineScript: |
+            # Give Azure 20s to transition from the previous Succeeded state into
+            # InProgress for the registry-set operation before we start polling.
+            # Without this delay the poll immediately sees the old Succeeded state
+            # and exits, then az containerapp update hits ContainerAppOperationInProgress.
+            echo "Sleeping 20s to let Azure register the registry-set operation..."
+            sleep 20
             echo "Waiting for registry-set operation to complete before rolling image..."
-            for i in $(seq 1 18); do
+            for i in $(seq 1 24); do
               PROV=$(az containerapp show \
                 --name ca-orbit-prod-v2 \
                 --resource-group rg-kinisislabs-platform-shared-prod-eus2 \

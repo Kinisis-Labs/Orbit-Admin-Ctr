@@ -18,6 +18,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: swa-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
