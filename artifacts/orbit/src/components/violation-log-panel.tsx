@@ -216,7 +216,7 @@ export function ViolationLogPanel({ appId }: { appId?: string } = {}) {
               title="Clear violation log"
             >
               <Trash2 className="h-3 w-3 mr-1" />
-              Clear
+              Clear ({entries.length})
             </Button>
           )}
         </div>
