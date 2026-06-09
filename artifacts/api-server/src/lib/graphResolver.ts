@@ -132,9 +132,8 @@ export async function resolveActorName(caller: string): Promise<string> {
 
   try {
     const name = await lookupGuid(token, caller);
-    const result = name ?? truncate(caller);
-    _nameCache.set(caller, result);
-    return result;
+    if (name) _nameCache.set(caller, name);
+    return name ?? truncate(caller);
   } catch (err) {
     logger.warn({ err, caller }, "graphResolver: lookup error");
     return truncate(caller);
@@ -167,9 +166,8 @@ export async function resolveActorNames(
       }
       try {
         const name = await lookupGuid(token, guid);
-        const resolved = name ?? truncate(guid);
-        _nameCache.set(guid, resolved);
-        result.set(guid, resolved);
+        if (name) _nameCache.set(guid, name);
+        result.set(guid, name ?? truncate(guid));
       } catch {
         result.set(guid, truncate(guid));
       }
