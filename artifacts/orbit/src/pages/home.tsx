@@ -604,7 +604,7 @@ function AuthFilterPills({
 }
 
 type BudgetStatus = "over" | "warning" | "ok" | "none";
-type BudgetSortCol = "name" | "auth" | "spent" | "budget" | "forecast" | "utilization" | "status";
+type BudgetSortCol = "name" | "auth" | "spent" | "budget" | "forecast" | "utilization" | "status" | "wow";
 type SortDir = "asc" | "desc";
 
 const BUDGET_STATUS_RANK: Record<BudgetStatus, number> = { over: 0, warning: 1, ok: 2, none: 3 };
@@ -702,6 +702,12 @@ function BudgetTh({
       </span>
     </th>
   );
+}
+
+function parseTrend(trend: string | undefined | null): number {
+  if (!trend) return -Infinity;
+  const n = parseFloat(trend.replace(/[^0-9.\-+]/g, ""));
+  return isNaN(n) ? -Infinity : n;
 }
 
 function BudgetSummaryWidget({
@@ -843,10 +849,12 @@ function BudgetSummaryWidget({
         const pctA = a.budget != null && a.budget > 0 ? (a.monthToDateCost / a.budget) * 100 : -1;
         const pctB = b.budget != null && b.budget > 0 ? (b.monthToDateCost / b.budget) * 100 : -1;
         diff = pctA - pctB;
+      } else if (sortCol === "wow") {
+        diff = parseTrend(trendByAppId.get(a.id)) - parseTrend(trendByAppId.get(b.id));
       }
       return sortDir === "asc" ? diff : -diff;
     });
-  }, [apps, authFilter, envFilter, budgetBreachFilter, thresholdVersion, sortCol, sortDir]);
+  }, [apps, authFilter, envFilter, budgetBreachFilter, thresholdVersion, sortCol, sortDir, trendByAppId]);
 
   function goToCost(appId: string) {
     setScope(appId);
@@ -1129,7 +1137,7 @@ function BudgetSummaryWidget({
               <BudgetTh col="forecast" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" className="px-3">Forecast</BudgetTh>
               <BudgetTh col="utilization" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="px-3 w-[120px]">Utilization</BudgetTh>
               <BudgetTh col="status" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="px-3">Status</BudgetTh>
-              <th className="text-right font-medium text-muted-foreground px-3 py-2 w-[60px]">WoW</th>
+              <BudgetTh col="wow" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="right" className="px-3 w-[60px]">WoW</BudgetTh>
               <th className="text-left font-medium text-muted-foreground px-3 py-2 w-[88px]">{sparklineRange}d trend</th>
               <th className="w-8 px-2 py-2" />
             </tr>
