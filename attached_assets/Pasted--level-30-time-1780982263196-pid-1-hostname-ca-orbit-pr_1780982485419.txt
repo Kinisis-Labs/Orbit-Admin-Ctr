@@ -1,0 +1,128 @@
+
+{"level":30,"time":1780982263196,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","appId":"kinisis-labs","scope":"/subscriptions/893689ff-a8aa-4ab0-b2e9-b7668963eb92","columns":["PreTaxCost","UsageDate","ServiceName","Currency"],"rowCount":69,"firstRow":[1.2,20260601,"App Configuration","USD"],"msg":"Azure Cost Management response received"}
+06/09/2026, 05:17:40
+
+{"level":30,"time":1780982259593,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","appId":"grailbabe","scope":"/subscriptions/01390551-38aa-4b4e-9027-24717ecb2522","columns":["PreTaxCost","UsageDate","ServiceName","Currency"],"rowCount":40,"firstRow":[0.295890410958904,20260601,"Azure App Service","USD"],"msg":"Azure Cost Management response received"}
+06/09/2026, 05:02:15
+
+{"level":30,"time":1780981334697,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":181,"method":"GET","url":"/api/healthz"},"res":{"statusCode":200},"responseTime":0,"msg":"request completed"}
+06/09/2026, 05:00:20
+
+{"level":30,"time":1780981218979,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":180,"method":"GET","url":"/api/apps/kinisis-labs/infrastructure"},"res":{"statusCode":304},"responseTime":579,"msg":"request completed"}
+06/09/2026, 05:00:12
+
+{"level":30,"time":1780981211901,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":179,"method":"GET","url":"/api/budget-alerts/log"},"res":{"statusCode":304},"responseTime":57,"msg":"request completed"}
+06/09/2026, 05:00:12
+
+{"level":30,"time":1780981211847,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":178,"method":"GET","url":"/api/apps/grailbabe/infrastructure"},"res":{"statusCode":304},"responseTime":8,"msg":"request completed"}
+06/09/2026, 05:00:04
+
+{"level":30,"time":1780981203201,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":177,"method":"GET","url":"/api/budget-alerts/log"},"res":{"statusCode":200},"responseTime":130,"msg":"request completed"}
+06/09/2026, 04:59:19
+
+{"level":30,"time":1780981158209,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":176,"method":"GET","url":"/api/apps/kinisis-labs/infrastructure"},"res":{"statusCode":304},"responseTime":1141,"msg":"request completed"}
+06/09/2026, 04:59:12
+
+{"level":30,"time":1780981151690,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":175,"method":"GET","url":"/api/apps/grailbabe/infrastructure"},"res":{"statusCode":304},"responseTime":74,"msg":"request completed"}
+06/09/2026, 04:59:12
+
+{"level":30,"time":1780981151696,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":174,"method":"GET","url":"/api/budget-alerts/log"},"res":{"statusCode":304},"responseTime":127,"msg":"request completed"}
+06/09/2026, 04:58:33
+
+{"level":30,"time":1780981112925,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":173,"method":"GET","url":"/api/budget-alerts/log"},"res":{"statusCode":200},"responseTime":62,"msg":"request completed"}
+06/09/2026, 04:58:32
+
+{"level":30,"time":1780981111149,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":172,"method":"GET","url":"/api/apps/grailbabe/deployments"},"res":{"statusCode":304},"responseTime":64,"msg":"request completed"}
+06/09/2026, 04:58:18
+
+{"level":30,"time":1780981096948,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":171,"method":"GET","url":"/api/apps/kinisis-labs/infrastructure"},"res":{"statusCode":304},"responseTime":5149,"msg":"request completed"}
+06/09/2026, 04:58:12
+
+{"level":30,"time":1780981091441,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":169,"method":"GET","url":"/api/budget-alerts/log"},"res":{"statusCode":304},"responseTime":109,"msg":"request completed"}
+06/09/2026, 04:58:12
+
+{"level":30,"time":1780981091505,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":170,"method":"GET","url":"/api/apps/grailbabe/infrastructure"},"res":{"statusCode":304},"responseTime":7,"msg":"request completed"}
+06/09/2026, 04:57:43
+
+{"level":30,"time":1780981062767,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":167,"method":"GET","url":"/api/global/health"},"res":{"statusCode":200},"responseTime":728,"msg":"request completed"}
+06/09/2026, 04:57:43
+
+{"level":30,"time":1780981062450,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":168,"method":"GET","url":"/api/apps/grailbabe"},"res":{"statusCode":304},"responseTime":410,"msg":"request completed"}
+06/09/2026, 04:57:42
+
+{"level":30,"time":1780981062203,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":166,"method":"GET","url":"/api/global/cost-summary"},"res":{"statusCode":200},"responseTime":164,"msg":"request completed"}
+06/09/2026, 04:57:18
+
+{"level":30,"time":1780981038054,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":164,"method":"GET","url":"/api/budget-alerts/log"},"res":{"statusCode":200},"responseTime":10,"msg":"request completed"}
+06/09/2026, 04:57:18
+
+{"level":30,"time":1780981038202,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":165,"method":"GET","url":"/api/apps/kinisis-labs"},"res":{"statusCode":304},"responseTime":150,"msg":"request completed"}
+06/09/2026, 04:57:18
+
+{"level":30,"time":1780981037630,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":161,"method":"GET","url":"/api/apps/grailbabe/cost"},"res":{"statusCode":200},"responseTime":3451,"msg":"request completed"}
+06/09/2026, 04:57:18
+
+{"level":30,"time":1780981037357,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":163,"method":"GET","url":"/api/apps/kinisis-labs/cost"},"res":{"statusCode":200},"responseTime":3173,"msg":"request completed"}
+06/09/2026, 04:57:14
+
+{"level":30,"time":1780981034072,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":155,"method":"GET","url":"/api/apps"},"res":{"statusCode":200},"responseTime":2928,"msg":"request completed"}
+06/09/2026, 04:57:14
+
+{"level":30,"time":1780981034192,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":162,"method":"GET","url":"/api/apps/kinisis-labs/deployments"},"res":{"statusCode":304},"responseTime":12,"msg":"request completed"}
+06/09/2026, 04:57:12
+
+{"level":30,"time":1780981031690,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":159,"method":"GET","url":"/api/apps/kinisis-labs/infrastructure"},"res":{"statusCode":200},"responseTime":306,"msg":"request completed"}
+06/09/2026, 04:57:11
+
+{"level":30,"time":1780981031228,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":158,"method":"GET","url":"/api/budget-alerts/log"},"res":{"statusCode":304},"responseTime":13,"msg":"request completed"}
+06/09/2026, 04:57:11
+
+{"level":30,"time":1780981031401,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":160,"method":"GET","url":"/api/apps/grailbabe/infrastructure"},"res":{"statusCode":304},"responseTime":13,"msg":"request completed"}
+06/09/2026, 04:57:11
+
+{"level":30,"time":1780981031278,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":156,"method":"GET","url":"/api/alerts/config"},"res":{"statusCode":304},"responseTime":74,"msg":"request completed"}
+06/09/2026, 04:57:11
+
+{"level":30,"time":1780981031006,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":154,"method":"GET","url":"/api/auth/me"},"res":{"statusCode":304},"responseTime":7,"msg":"request completed"}
+06/09/2026, 04:57:10
+
+{"level":30,"time":1780981030207,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":142,"method":"GET","url":"/api/alerts/stream"},"res":{"statusCode":200},"responseTime":1750271,"msg":"request aborted"}
+06/09/2026, 04:57:10
+
+{"level":30,"time":1780981030208,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":152,"method":"GET","url":"/api/apps/kinisis-labs/infrastructure"},"res":{"statusCode":null},"responseTime":1464,"msg":"request aborted"}
+06/09/2026, 04:57:09
+
+{"level":30,"time":1780981029037,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":153,"method":"GET","url":"/api/apps/grailbabe/infrastructure"},"res":{"statusCode":200},"responseTime":288,"msg":"request completed"}
+06/09/2026, 04:57:09
+
+{"level":30,"time":1780981029003,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","appId":"grailbabe","rowCount":0,"msg":"fetchResourcesByResourceGroup returned"}
+06/09/2026, 04:57:09
+
+{"level":30,"time":1780981029115,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","appId":"kinisis-labs","rowCount":0,"msg":"fetchResourcesByResourceGroup returned"}
+06/09/2026, 04:57:09
+
+{"level":30,"time":1780981028765,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":151,"method":"GET","url":"/api/budget-alerts/log"},"res":{"statusCode":304},"responseTime":125,"msg":"request completed"}
+06/09/2026, 04:52:37
+
+{"level":30,"time":1780980757048,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","appId":"kinisis-labs","scope":"/subscriptions/893689ff-a8aa-4ab0-b2e9-b7668963eb92","columns":["PreTaxCost","UsageDate","ServiceName","Currency"],"rowCount":64,"firstRow":[1.2,20260601,"App Configuration","USD"],"msg":"Azure Cost Management response received"}
+06/09/2026, 04:52:35
+
+{"level":30,"time":1780980754763,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","appId":"grailbabe","scope":"/subscriptions/01390551-38aa-4b4e-9027-24717ecb2522","columns":["PreTaxCost","UsageDate","ServiceName","Currency"],"rowCount":40,"firstRow":[0.295890410958904,20260601,"Azure App Service","USD"],"msg":"Azure Cost Management response received"}
+06/09/2026, 04:28:40
+
+{"level":30,"time":1780979315746,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":150,"method":"GET","url":"/api/apps/kinisis-labs/deployments"},"res":{"statusCode":200},"responseTime":7,"msg":"request completed"}
+06/09/2026, 04:28:30
+
+{"level":30,"time":1780979308876,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":149,"method":"GET","url":"/api/apps/grailbabe/deployments"},"res":{"statusCode":200},"responseTime":51,"msg":"request completed"}
+06/09/2026, 04:28:04
+
+{"level":30,"time":1780979283024,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":145,"method":"GET","url":"/api/apps/grailbabe/cost"},"res":{"statusCode":200},"responseTime":1426,"msg":"request completed"}
+06/09/2026, 04:28:04
+
+{"level":30,"time":1780979283184,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","req":{"id":146,"method":"GET","url":"/api/apps/kinisis-labs/cost"},"res":{"statusCode":200},"responseTime":1586,"msg":"request completed"}
+06/09/2026, 04:28:03
+
+{"level":40,"time":1780979282745,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","err":{"type":"_RestError","message":"Too many requests. Please retry.","stack":"RestError: Too many requests. Please retry.\n at handleErrorResponse (/node_modules/.pnpm/@azure+core-client@1.10.1/node_modules/@azure/core-client/src/deserializationPolicy.ts:255:17)\n at deserializeResponseBody2 (/node_modules/.pnpm/@azure+core-client@1.10.1/node_modules/@azure/core-client/src/deserializationPolicy.ts:159:43)\n at process.processTicksAndRejections (node:internal/process/task_queues:104:5)","code":"429","statusCode":429,"details":{"error":{"code":"429","message":"Too many requests. Please retry."}},"name":"RestError"},"appId":"grailbabe","scope":"/subscriptions/01390551-38aa-4b4e-9027-24717ecb2522","start":"2026-05-01","end":"2026-05-09","msg":"Last-month comparable cost query failed"}
+06/09/2026, 04:28:03
+
+{"level":40,"time":1780979282418,"pid":1,"hostname":"ca-orbit-prod-v2--0000011-594ff74cd5-g9mrh","err":{"type":"_RestError","message":"Too many requests. Please retry.","stack":"RestError: Too many requests. Please retry.\n at handleErrorResponse (/node_modules/.pnpm/@azure+core-client@1.10.1/node_modules/@azure/core-client/src/deserializationPolicy.ts:255:17)\n at deserializeResponseBody2 (/node_modules/.pnpm/@azure+core-client@1.10.1/node_modules/@azure/core-client/src/deserializationPolicy.ts:159:43)\n at process.processTicksAndRejections (node:internal/process/task_queues:104:5)","code":"429","statusCode":429,"details":{"error":{"code":"429","message":"Too many requests. Please retry."}},"name":"RestError"},"appId":"grailbabe","scope":"/subscriptions/01390551-38aa-4b4e-9027-24717ecb2522","msg":"Azure Cost Management query failed — falling back to cached/mock"}
