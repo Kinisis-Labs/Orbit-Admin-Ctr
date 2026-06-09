@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Fragment } from "react";
+import { useState, useEffect, useRef, useMemo, Fragment } from "react";
 import { Link } from "wouter";
 import {
   useListSlos,
@@ -502,15 +502,24 @@ function ThresholdRow({ appId, appName, canEditThresholds }: { appId: string; ap
   const [cpu, setCpu] = useState<string>("");
   const [mem, setMem] = useState<string>("");
   const [saved, setSaved] = useState(false);
+  const initialised = useRef(false);
 
-  const effective = {
-    cpu: cpu !== "" ? cpu : data ? String(data.cpuThreshold) : "",
-    mem: mem !== "" ? mem : data ? String(data.memoryThreshold) : "",
-  };
+  // Pre-fill inputs once data arrives (don't overwrite user edits).
+  useEffect(() => {
+    if (data && !initialised.current) {
+      initialised.current = true;
+      setCpu(String(data.cpuThreshold));
+      setMem(String(data.memoryThreshold));
+    }
+  }, [data]);
+
+  const dirty =
+    data !== undefined &&
+    (cpu !== String(data.cpuThreshold) || mem !== String(data.memoryThreshold));
 
   const handleSave = async () => {
-    const cpuVal = parseFloat(effective.cpu);
-    const memVal = parseFloat(effective.mem);
+    const cpuVal = parseFloat(cpu);
+    const memVal = parseFloat(mem);
     if (!Number.isFinite(cpuVal) || cpuVal < 1 || cpuVal > 100) {
       toast({ title: "Invalid CPU threshold", description: "Must be between 1 and 100.", variant: "destructive" });
       return;
@@ -522,12 +531,14 @@ function ThresholdRow({ appId, appName, canEditThresholds }: { appId: string; ap
     await mutateAsync(
       { appId, data: { cpuThreshold: cpuVal, memoryThreshold: memVal } },
       {
-        onSuccess: () => {
+        onSuccess: (saved) => {
           void queryClient.invalidateQueries({ queryKey: getListSlosQueryKey() });
+          // Re-baseline dirty tracking against the just-saved values.
+          setCpu(String(saved.cpuThreshold));
+          setMem(String(saved.memoryThreshold));
+          initialised.current = true;
           setSaved(true);
           setTimeout(() => setSaved(false), 2000);
-          setCpu("");
-          setMem("");
         },
         onError: () => {
           toast({ title: "Save failed", description: "Check your permissions.", variant: "destructive" });
@@ -535,8 +546,6 @@ function ThresholdRow({ appId, appName, canEditThresholds }: { appId: string; ap
       },
     );
   };
-
-  const dirty = cpu !== "" || mem !== "";
 
   const auditLine =
     data?.updatedBy && data.updatedBy !== "system"
@@ -557,7 +566,6 @@ function ThresholdRow({ appId, appName, canEditThresholds }: { appId: string; ap
                 type="number"
                 min={1}
                 max={100}
-                placeholder={data ? String(data.cpuThreshold) : "80"}
                 value={cpu}
                 onChange={(e) => { setCpu(e.target.value); setSaved(false); }}
                 className="h-7 w-[70px] rounded-sm text-[13px] text-right"
@@ -570,7 +578,6 @@ function ThresholdRow({ appId, appName, canEditThresholds }: { appId: string; ap
                 type="number"
                 min={1}
                 max={100}
-                placeholder={data ? String(data.memoryThreshold) : "85"}
                 value={mem}
                 onChange={(e) => { setMem(e.target.value); setSaved(false); }}
                 className="h-7 w-[70px] rounded-sm text-[13px] text-right"
