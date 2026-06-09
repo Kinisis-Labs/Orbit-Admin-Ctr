@@ -13,3 +13,4 @@
 - [Parallel per-app queries in React](parallel-per-app-queries.md) — use `useQueries` from `@tanstack/react-query` to fan-out per-app API calls; available in orbit via catalog dep; hook auto-disables on empty appId.
 - [Ledger postedAt Zod vs interface mismatch](ledger-posted-at.md) — Zod schema has `postedAt: z.string().datetime()` but `PostEntryInput`/`IngestSaleInput` use `Date`; convert at the route boundary with `new Date(parsed.data.postedAt)`.
 - [Azure Container App managed identity setup](aca-managed-identity.md) — three required steps; @azure/arm-resourcegraph v4 AbortSignal incompatibility; fine-grained PAT endpoint gotcha.
+- [Azure subscription config pattern](azure-subscription-config.md) — isAzureConfigured() only checks AZURE_SUBSCRIPTION_IDS; build it from per-sub secrets in the workflow, never require a standalone secret.

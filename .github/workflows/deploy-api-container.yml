@@ -125,7 +125,7 @@ jobs:
                 ENTRA_ADMIN_GROUP_ID="${{ secrets.ENTRA_ADMIN_GROUP_ID }}" \
                 ENTRA_ENGINEER_GROUP_ID="${{ secrets.ENTRA_ENGINEER_GROUP_ID }}" \
                 ENTRA_FINOPS_GROUP_ID="${{ secrets.ENTRA_FINOPS_GROUP_ID }}" \
-                AZURE_SUBSCRIPTION_IDS="${{ secrets.AZURE_SUBSCRIPTION_IDS }}" \
+                AZURE_SUBSCRIPTION_IDS="${{ secrets.AZURE_SUB_GRAILBABE }},${{ secrets.AZURE_SUB_SHARED_INFRA }}" \
                 AZURE_CLIENT_ID="${{ secrets.AZURE_MANAGED_IDENTITY_CLIENT_ID }}" \
                 AZURE_TENANT_ID="${{ secrets.ENTRA_TENANT_ID }}" \
                 AZURE_SUB_GRAILBABE="${{ secrets.AZURE_SUB_GRAILBABE }}" \
