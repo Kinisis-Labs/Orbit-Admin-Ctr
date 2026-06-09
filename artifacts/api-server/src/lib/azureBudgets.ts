@@ -114,43 +114,57 @@ export async function fetchBudgetForApp(
       const scope = budgetScope === "subscription" ? subScope : rgScope;
       try {
         const budget = await consumptionClient.budgets.get(scope, app.budgetName);
+        logger.debug({ appId: app.id, scope, budgetName: app.budgetName, amount: budget.amount }, "budget named-get succeeded");
         if (typeof budget.amount === "number" && budget.amount > 0) {
           budgetAmount = budget.amount;
           if (typeof budget.forecastSpend?.amount === "number") {
             forecastFromBudget = budget.forecastSpend.amount;
           }
         }
-      } catch {
-        // Budget not found or API error — fall through to list-scan below
+      } catch (err) {
+        logger.warn({ err, appId: app.id, scope, budgetName: app.budgetName }, "budget named-get failed — falling through to list-scan");
       }
     }
 
     if (budgetAmount === null) {
       // 1. Try RG-scope budgets (most specific)
-      for await (const budget of consumptionClient.budgets.list(rgScope)) {
-        if (typeof budget.amount === "number" && budget.amount > 0) {
-          budgetAmount = budget.amount;
-          if (typeof budget.forecastSpend?.amount === "number") {
-            forecastFromBudget = budget.forecastSpend.amount;
+      try {
+        for await (const budget of consumptionClient.budgets.list(rgScope)) {
+          if (typeof budget.amount === "number" && budget.amount > 0) {
+            budgetAmount = budget.amount;
+            if (typeof budget.forecastSpend?.amount === "number") {
+              forecastFromBudget = budget.forecastSpend.amount;
+            }
+            break;
           }
-          break;
         }
+      } catch (err) {
+        logger.warn({ err, appId: app.id, rgScope }, "budget RG-scope list failed");
       }
     }
 
     // 2. Fall back to subscription-scope budgets
     if (budgetAmount === null) {
-      for await (const budget of consumptionClient.budgets.list(subScope)) {
-        if (typeof budget.amount === "number" && budget.amount > 0) {
-          budgetAmount = budget.amount;
-          if (typeof budget.forecastSpend?.amount === "number") {
-            forecastFromBudget = budget.forecastSpend.amount;
+      try {
+        for await (const budget of consumptionClient.budgets.list(subScope)) {
+          if (typeof budget.amount === "number" && budget.amount > 0) {
+            budgetAmount = budget.amount;
+            if (typeof budget.forecastSpend?.amount === "number") {
+              forecastFromBudget = budget.forecastSpend.amount;
+            }
+            break;
           }
-          break;
         }
+      } catch (err) {
+        logger.warn({ err, appId: app.id, subScope }, "budget sub-scope list failed");
       }
     }
-  } catch {
+
+    if (budgetAmount === null) {
+      logger.warn({ appId: app.id, subscriptionId, budgetName: app.budgetName, rgScope, subScope }, "no budget found after all lookup strategies");
+    }
+  } catch (err) {
+    logger.warn({ err, appId: app.id, subscriptionId }, "budget fetch outer error");
     return null;
   }
 
@@ -182,9 +196,13 @@ export async function fetchBudgetForApp(
         for (const row of rows) total += Number(row[costIdx] ?? 0);
         forecastAmount = Number(total.toFixed(2));
       }
-    } catch {
-      // Forecast API unavailable — leave as null, caller uses formula
+    } catch (err) {
+      logger.warn({ err, appId: app.id, rgScope }, "budget forecast API failed — will use null forecast");
     }
+  }
+
+  if (budgetAmount !== null) {
+    logger.info({ appId: app.id, subscriptionId, budgetAmount, forecastAmount }, "budget fetch succeeded");
   }
 
   const result: BudgetResult = {
