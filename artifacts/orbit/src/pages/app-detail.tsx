@@ -592,6 +592,7 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
           <div className="text-[11px] text-muted-foreground mt-0.5">
             {headroom >= 0 ? "Remaining vs forecast" : "Overrun vs budget"}
           </div>
+          {data.dataSource === "live" && <LiveBadge className="mt-0.5" />}
         </div>
       </div>
       </TooltipProvider>
