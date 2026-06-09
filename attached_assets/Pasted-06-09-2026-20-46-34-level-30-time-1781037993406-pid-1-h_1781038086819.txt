@@ -1,0 +1,98 @@
+06/09/2026, 20:46:34
+
+{"level":30,"time":1781037993406,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":61,"method":"GET","url":"/api/apps/kinisis-labs/infrastructure"},"res":{"statusCode":304},"responseTime":556,"msg":"request completed"}
+06/09/2026, 20:46:33
+
+{"level":30,"time":1781037992840,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":60,"method":"GET","url":"/api/apps/grailbabe/infrastructure"},"res":{"statusCode":304},"responseTime":431,"msg":"request completed"}
+06/09/2026, 20:46:30
+
+{"level":30,"time":1781037989694,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":59,"method":"GET","url":"/api/budget-alerts/log"},"res":{"statusCode":304},"responseTime":116,"msg":"request completed"}
+06/09/2026, 20:46:19
+- /app/dist/index.mjs
+06/09/2026, 20:46:19
+at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)
+06/09/2026, 20:46:19
+code: 'MODULE_NOT_FOUND',
+06/09/2026, 20:46:19
+at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+06/09/2026, 20:46:19
+Error: Cannot find module 'protobufjs/minimal'
+06/09/2026, 20:46:19
+Require stack:
+06/09/2026, 20:46:19
+const err = new Error(message);
+06/09/2026, 20:46:19
+06/09/2026, 20:46:19
+Node.js v24.16.0
+06/09/2026, 20:46:19
+at Module._load (node:internal/modules/cjs/loader:1285:25)
+06/09/2026, 20:46:19
+06/09/2026, 20:46:19
+node:internal/modules/cjs/loader:1500
+06/09/2026, 20:46:19
+at require (node:internal/modules/helpers:153:16)
+06/09/2026, 20:46:19
+requireStack: [ '/app/dist/index.mjs' ]
+06/09/2026, 20:46:19
+^
+06/09/2026, 20:46:19
+at ../../node_modules/.pnpm/@opentelemetry+otlp-transformer@0.217.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-transformer/build/src/generated/root.js (/node_modules/.pnpm/@opentelemetry+otlp-transformer@0.217.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-transformer/src/generated/root.js:4:17)
+06/09/2026, 20:46:19
+at Module.require (node:internal/modules/cjs/loader:1600:12)
+06/09/2026, 20:46:19
+at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1116:12)
+06/09/2026, 20:46:19
+at Module._resolveFilename (node:internal/modules/cjs/loader:1500:15)
+06/09/2026, 20:46:19
+at __require2 (file:///app/dist/index.mjs:25:50) {
+06/09/2026, 20:46:19
+}
+06/09/2026, 20:46:19
+at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)
+06/09/2026, 20:45:33
+
+{"level":30,"time":1781037932259,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":57,"method":"GET","url":"/api/apps/grailbabe/infrastructure"},"res":{"statusCode":304},"responseTime":1470,"msg":"request completed"}
+06/09/2026, 20:45:33
+
+{"level":30,"time":1781037932733,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":58,"method":"GET","url":"/api/apps/kinisis-labs/infrastructure"},"res":{"statusCode":304},"responseTime":1774,"msg":"request completed"}
+06/09/2026, 20:45:30
+
+{"level":30,"time":1781037929444,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":56,"method":"GET","url":"/api/budget-alerts/log"},"res":{"statusCode":304},"responseTime":113,"msg":"request completed"}
+06/09/2026, 20:44:31
+
+{"level":30,"time":1781037870677,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":54,"method":"GET","url":"/api/apps/grailbabe/infrastructure"},"res":{"statusCode":304},"responseTime":489,"msg":"request completed"}
+06/09/2026, 20:44:31
+
+{"level":30,"time":1781037870812,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":55,"method":"GET","url":"/api/apps/kinisis-labs/infrastructure"},"res":{"statusCode":304},"responseTime":532,"msg":"request completed"}
+06/09/2026, 20:44:30
+
+{"level":30,"time":1781037869188,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":53,"method":"GET","url":"/api/budget-alerts/log"},"res":{"statusCode":304},"responseTime":98,"msg":"request completed"}
+06/09/2026, 20:44:08
+
+{"level":30,"time":1781037847514,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":52,"method":"GET","url":"/api/global/health"},"res":{"statusCode":304},"responseTime":1579,"msg":"request completed"}
+06/09/2026, 20:44:07
+
+{"level":30,"time":1781037846081,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":51,"method":"GET","url":"/api/global/cost-summary"},"res":{"statusCode":200},"responseTime":151,"msg":"request completed"}
+06/09/2026, 20:43:52
+
+{"level":30,"time":1781037831657,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":50,"method":"GET","url":"/api/apps/kinisis-labs"},"res":{"statusCode":304},"responseTime":157,"msg":"request completed"}
+06/09/2026, 20:43:32
+
+{"level":30,"time":1781037811343,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":44,"method":"GET","url":"/api/apps/grailbabe/cost"},"res":{"statusCode":200},"responseTime":2464,"msg":"request completed"}
+06/09/2026, 20:43:31
+
+{"level":30,"time":1781037810078,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":47,"method":"GET","url":"/api/apps/grailbabe/infrastructure"},"res":{"statusCode":304},"responseTime":989,"msg":"request completed"}
+06/09/2026, 20:43:31
+
+{"level":30,"time":1781037810169,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":48,"method":"GET","url":"/api/apps/kinisis-labs/infrastructure"},"res":{"statusCode":304},"responseTime":1076,"msg":"request completed"}
+06/09/2026, 20:43:30
+
+{"level":30,"time":1781037809448,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":49,"method":"GET","url":"/api/apps/kinisis-labs/cost"},"res":{"statusCode":200},"responseTime":14,"msg":"request completed"}
+06/09/2026, 20:43:30
+
+{"level":30,"time":1781037809316,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":41,"method":"GET","url":"/api/apps"},"res":{"statusCode":304},"responseTime":482,"msg":"request completed"}
+06/09/2026, 20:43:30
+
+{"level":30,"time":1781037809058,"pid":1,"hostname":"ca-orbit-prod-v2--0000056-7699564f77-h8nkg","req":{"id":43,"method":"GET","url":"/api/apps/grailbabe"},"res":{"statusCode":304},"responseTime":186,"msg":"request completed"}
+06/09/2026, 20:41:18
+^
