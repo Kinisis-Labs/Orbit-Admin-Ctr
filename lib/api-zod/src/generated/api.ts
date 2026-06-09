@@ -89,7 +89,8 @@ export const GetAppResponse = zod.object({
   "appleAppId": zod.string().optional().describe('Numeric Apple App ID as shown in App Store Connect (e.g. \"6741234567\"). Used to construct direct links into the App Store Connect management console.'),
   "appRepo": zod.string().optional().describe('GitHub repository name (under the Kinisis-Labs org) used to fetch deployment history from GitHub Actions. Absent for apps without a tracked CI\/CD pipeline.'),
   "cpuThreshold": zod.number().optional().describe('CPU utilisation percentage at which the SLO badge turns warning\/critical. Overrides the global default (80%) for this app. Optional.'),
-  "memoryThreshold": zod.number().optional().describe('Memory utilisation percentage at which the SLO badge turns warning\/critical. Overrides the global default (85%) for this app. Optional.')
+  "memoryThreshold": zod.number().optional().describe('Memory utilisation percentage at which the SLO badge turns warning\/critical. Overrides the global default (85%) for this app. Optional.'),
+  "budgetName": zod.string().optional().describe('Named Azure Cost Management budget for this app (e.g. \"bgt-grailbabe-prod\"). When set, the budget is fetched directly by name rather than by scanning the subscription. Scope is resolved from APP_BILLING_SCOPE (subscription or RG).')
 }))
 
 

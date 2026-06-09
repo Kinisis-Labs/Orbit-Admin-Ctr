@@ -189,6 +189,8 @@ export type AppDetail = AppSummary & {
   cpuThreshold?: number;
   /** Memory utilisation percentage at which the SLO badge turns warning/critical. Overrides the global default (85%) for this app. Optional. */
   memoryThreshold?: number;
+  /** Named Azure Cost Management budget for this app (e.g. "bgt-grailbabe-prod"). When set, the budget is fetched directly by name rather than by scanning the subscription. Scope is resolved from APP_BILLING_SCOPE (subscription or RG). */
+  budgetName?: string;
 };
 
 /**

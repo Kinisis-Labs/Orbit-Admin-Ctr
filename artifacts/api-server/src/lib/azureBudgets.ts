@@ -108,14 +108,34 @@ export async function fetchBudgetForApp(
   try {
     const consumptionClient = getConsumptionClient(subscriptionId);
 
-    // 1. Try RG-scope budgets (most specific)
-    for await (const budget of consumptionClient.budgets.list(rgScope)) {
-      if (typeof budget.amount === "number" && budget.amount > 0) {
-        budgetAmount = budget.amount;
-        if (typeof budget.forecastSpend?.amount === "number") {
-          forecastFromBudget = budget.forecastSpend.amount;
+    if (app.budgetName) {
+      // Named budget: fetch directly by name. Scope determined by billing scope:
+      // subscription-billed apps use the sub scope; RG-billed apps use RG scope.
+      const { billingScope } = await import("../routes/orbit.js");
+      const scope = billingScope(app.id) === "subscription" ? subScope : rgScope;
+      try {
+        const budget = await consumptionClient.budgets.get(scope, app.budgetName);
+        if (typeof budget.amount === "number" && budget.amount > 0) {
+          budgetAmount = budget.amount;
+          if (typeof budget.forecastSpend?.amount === "number") {
+            forecastFromBudget = budget.forecastSpend.amount;
+          }
         }
-        break;
+      } catch {
+        // Budget not found or API error — fall through to list-scan below
+      }
+    }
+
+    if (budgetAmount === null) {
+      // 1. Try RG-scope budgets (most specific)
+      for await (const budget of consumptionClient.budgets.list(rgScope)) {
+        if (typeof budget.amount === "number" && budget.amount > 0) {
+          budgetAmount = budget.amount;
+          if (typeof budget.forecastSpend?.amount === "number") {
+            forecastFromBudget = budget.forecastSpend.amount;
+          }
+          break;
+        }
       }
     }
 

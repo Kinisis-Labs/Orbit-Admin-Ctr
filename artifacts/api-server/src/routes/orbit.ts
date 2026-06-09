@@ -87,6 +87,7 @@ export const APPS: AppRecord[] = [
     appRepo: "GrailBabe",
     cpuThreshold: 75,
     memoryThreshold: 80,
+    budgetName: "bgt-grailbabe-prod",
   },
   {
     id: "kinisis-labs",
@@ -111,6 +112,7 @@ export const APPS: AppRecord[] = [
     userAuth: "entra",
     appRepo: "Orbit-Admin-Ctr",
     group: "Platform",
+    budgetName: "bgt-sharedplatform-prod",
   },
 ];
 
