@@ -17,6 +17,7 @@ import { useScope } from "@/lib/scope-context";
 import { RefreshCw } from "lucide-react";
 import { AuthBadge } from "@/components/auth-badge";
 import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
+import { useViolationLog } from "@/hooks/use-violation-log";
 import { useAuth } from "@/lib/auth";
 import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { getBudgetThreshold, DEFAULT_BUDGET_THRESHOLD, BUDGET_THRESHOLDS_STORAGE_KEY } from "@/lib/spend-threshold";
@@ -781,6 +782,17 @@ function BudgetSummaryWidget({
   const { setScope } = useScope();
   const [, navigate] = useLocation();
 
+  const { entries: violationEntries } = useViolationLog();
+  const unseenViolationsByApp = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of violationEntries) {
+      if (!e.seen && !e.dismissed) {
+        map.set(e.appId, (map.get(e.appId) ?? 0) + 1);
+      }
+    }
+    return map;
+  }, [violationEntries]);
+
   const [thresholdVersion, setThresholdVersion] = useState(0);
   useEffect(() => {
     const refresh = () => setThresholdVersion((v) => v + 1);
@@ -1236,6 +1248,7 @@ function BudgetSummaryWidget({
                   : null;
                 const hasAlert = recentAlerts.has(app.id);
                 const hasAnomaly = anomalousApps.has(app.id);
+                const unseenViolations = unseenViolationsByApp.get(app.id) ?? 0;
 
                 return (
                   <tr
@@ -1306,6 +1319,20 @@ function BudgetSummaryWidget({
                               </TooltipTrigger>
                               <TooltipContent>
                                 Budget alert sent {formatDistanceToNow(recentAlerts.get(app.id)!, { addSuffix: true })}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {unseenViolations > 0 && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold bg-red-500 text-white shrink-0 tabular-nums">
+                                  {unseenViolations > 99 ? "99+" : unseenViolations}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {unseenViolations} unseen infra threshold {unseenViolations === 1 ? "violation" : "violations"} — open app to review
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
