@@ -78,7 +78,7 @@ function ViolationRow({ entry, showAppCol }: { entry: ViolationEntry; showAppCol
 }
 
 export function ViolationLogPanel({ appId }: { appId?: string } = {}) {
-  const { entries, unseenCount, markSeen, clear } = useViolationLog();
+  const { entries, unseenCount, markSeen, clear, clearByApp } = useViolationLog();
 
   const filtered = appId ? entries.filter((e) => e.appId === appId) : entries;
   const filteredUnseen = filtered.filter((e) => !e.seen).length;
@@ -107,6 +107,18 @@ export function ViolationLogPanel({ appId }: { appId?: string } = {}) {
               title="Mark all violations as seen"
             >
               Mark all seen
+            </Button>
+          )}
+          {filtered.length > 0 && appId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-[11px] px-2 rounded-sm text-muted-foreground hover:text-destructive"
+              onClick={() => clearByApp(appId)}
+              title="Clear this app's violations"
+            >
+              <Trash2 className="h-3 w-3 mr-1" />
+              Clear app violations
             </Button>
           )}
           {entries.length > 0 && !appId && (

@@ -79,6 +79,13 @@ export function clearViolationLog(): void {
   }
 }
 
+export function clearViolationsByApp(appId: string): void {
+  const existing = readLog();
+  const remaining = existing.filter((e) => e.appId !== appId);
+  if (remaining.length === existing.length) return;
+  writeLog(remaining);
+}
+
 export function useViolationLog() {
   const [entries, setEntries] = useState<ViolationEntry[]>(() => readLog());
 
@@ -104,7 +111,12 @@ export function useViolationLog() {
     setEntries([]);
   }, []);
 
+  const clearByApp = useCallback((appId: string) => {
+    clearViolationsByApp(appId);
+    setEntries(readLog());
+  }, []);
+
   const unseenCount = entries.filter((e) => !e.seen).length;
 
-  return { entries, unseenCount, markSeen, clear };
+  return { entries, unseenCount, markSeen, clear, clearByApp };
 }
