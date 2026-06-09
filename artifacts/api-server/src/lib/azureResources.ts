@@ -88,7 +88,10 @@ export async function fetchResourceGroupTags(
     if (entry && entry.expiresAt > Date.now()) return entry.tags;
   }
 
-  const subscriptionIds = getSubscriptionIds();
+  const globalSubs = getSubscriptionIds();
+  const subscriptionIds = app.subscriptionId
+    ? [...new Set([...globalSubs, app.subscriptionId])]
+    : globalSubs;
   const rg = app.resourceGroup.toLowerCase();
 
   const query = `
@@ -135,7 +138,10 @@ export async function fetchResourcesByResourceGroup(
     }
   }
 
-  const subscriptionIds = getSubscriptionIds();
+  const globalSubs = getSubscriptionIds();
+  const subscriptionIds = app.subscriptionId
+    ? [...new Set([...globalSubs, app.subscriptionId])]
+    : globalSubs;
   const rg = app.resourceGroup.toLowerCase();
 
   const query = `
