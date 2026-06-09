@@ -93,6 +93,26 @@ jobs:
                 --password "$GHCR_PAT"
             fi
 
+      - name: Wait for registry update to settle
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            echo "Waiting for registry-set operation to complete before rolling image..."
+            for i in $(seq 1 18); do
+              PROV=$(az containerapp show \
+                --name ca-orbit-prod-v2 \
+                --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
+                --query "properties.provisioningState" -o tsv 2>/dev/null || echo "Unknown")
+              echo "Attempt $i/18 — provisioningState: $PROV"
+              if [ "$PROV" = "Succeeded" ] || [ "$PROV" = "Failed" ] || [ "$PROV" = "Canceled" ]; then
+                echo "Container App is idle (state: $PROV) ✓"
+                exit 0
+              fi
+              sleep 10
+            done
+            echo "Warning: timed out waiting for registry update to settle — proceeding anyway"
+
       - name: Roll Container App
         uses: azure/cli@v2
         with:

@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import authRouter from "./auth";
 import diagnosticsRouter from "./diagnostics";
-import orbitRouter from "./orbit";
+import orbitRouter, { debugRouter } from "./orbit";
 import ledgerRouter from "./ledger";
 import usersRouter from "./users";
 import playSubscriptionsRouter from "./playSubscriptions";
@@ -20,6 +20,8 @@ const router: IRouter = Router();
 // Public: health + the auth handshake endpoints.
 router.use(healthRouter);
 router.use(authRouter);
+// Public diagnostic endpoint — no auth required (internal tooling, read-only Azure diagnostics).
+router.use(debugRouter);
 // Diagnostics: admin gate is applied inside diagnosticsRouter on its specific route.
 router.use(requireAuth, diagnosticsRouter);
 

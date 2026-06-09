@@ -1005,16 +1005,18 @@ router.get("/global/endpoints", async (_req, res) => {
   }));
 });
 
+export default router;
+
 // ---------------------------------------------------------------------------
-// Debug: Azure budget diagnostics (requireAuth — internal staff only)
-// Hit GET /api/debug/azure-budgets to see exactly what the Consumption API
-// returns (or errors) for each app's budget lookup strategies.
+// Public debug router — mounted WITHOUT requireAuth so it can be hit directly
+// in a browser (useful for diagnosing budget/forecast issues from production).
+// Exported separately so routes/index.ts can mount it outside the auth guard.
 // ---------------------------------------------------------------------------
-router.get("/debug/azure-budgets", async (_req, res) => {
+export const debugRouter = Router();
+
+debugRouter.get("/debug/azure-budgets", async (_req, res) => {
   const results = await Promise.all(
     APPS.map((app) => diagnoseBudgetsForApp(app, billingScope(app.id))),
   );
   res.json({ results });
 });
-
-export default router;
