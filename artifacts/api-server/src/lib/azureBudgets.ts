@@ -32,6 +32,66 @@ export const _budgetCache = new Map<string, BudgetCacheEntry>();
 const _consumptionClients = new Map<string, ConsumptionManagementClient>();
 let _costClient: CostManagementClient | null = null;
 
+/** Read the MCA billing account ID from env — set AZURE_BILLING_ACCOUNT_ID to enable billing-scope budget lookups. */
+function getBillingAccountId(): string | null {
+  return process.env.AZURE_BILLING_ACCOUNT_ID?.trim() || null;
+}
+
+/** Minimal shape of a budget resource returned by the ARM Consumption API. */
+interface ArmBudget {
+  id: string;
+  name: string;
+  properties: {
+    amount?: number;
+    currentSpend?: { amount?: number };
+    forecastSpend?: { amount?: number };
+    filter?: unknown;
+  };
+}
+
+/**
+ * Fetch all budgets at an MCA billing account scope via the ARM REST API.
+ * The arm-consumption SDK only queries subscription scope; this REST path is
+ * needed for budgets created under a billing account / billing profile.
+ */
+async function listBudgetsAtBillingScope(billingAccountId: string): Promise<ArmBudget[]> {
+  const tokenResponse = await getAzureCredential().getToken("https://management.azure.com/.default");
+  if (!tokenResponse) throw new Error("getToken returned null — credential not available");
+  const scope = `providers/Microsoft.Billing/billingAccounts/${billingAccountId}`;
+  const url = `https://management.azure.com/${scope}/providers/Microsoft.Consumption/budgets?api-version=2021-10-01`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${tokenResponse.token}` },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${res.status}: ${text.slice(0, 300)}`);
+  }
+  const data = (await res.json()) as { value?: ArmBudget[] };
+  return data.value ?? [];
+}
+
+/**
+ * Returns true if an ARM budget applies to the given subscription.
+ * Budgets with no SubscriptionId filter in their conditions apply broadly.
+ */
+function budgetMatchesSubscription(budget: ArmBudget, subscriptionId: string): boolean {
+  const filter = budget.properties.filter as Record<string, unknown> | undefined;
+  if (!filter) return true;
+
+  const conditions: unknown[] = Array.isArray(filter["and"])
+    ? (filter["and"] as unknown[])
+    : [filter];
+
+  for (const cond of conditions) {
+    const c = cond as Record<string, unknown>;
+    const dims = c["dimensions"] as { name?: string; values?: string[] } | undefined;
+    if (dims?.name === "SubscriptionId" && Array.isArray(dims.values)) {
+      return dims.values.some((v) => v.toLowerCase() === subscriptionId.toLowerCase());
+    }
+  }
+  return true; // no subscription dimension filter → applies to all
+}
+
 function getConsumptionClient(subscriptionId: string): ConsumptionManagementClient {
   let client = _consumptionClients.get(subscriptionId);
   if (!client) {
@@ -159,6 +219,38 @@ export async function fetchBudgetForApp(
         }
       } catch (err) {
         logger.warn({ err, appId: app.id, subScope }, "budget sub-scope list failed");
+      }
+    }
+
+    // 3. Try MCA billing account scope — budgets created via Cost Management at
+    //    billing account level don't appear at subscription scope via arm-consumption.
+    //    Requires AZURE_BILLING_ACCOUNT_ID env var + Billing Account Reader RBAC on
+    //    the managed identity.
+    if (budgetAmount === null) {
+      const billingAccountId = getBillingAccountId();
+      if (billingAccountId) {
+        try {
+          const allBudgets = await listBudgetsAtBillingScope(billingAccountId);
+          for (const budget of allBudgets) {
+            if (!budgetMatchesSubscription(budget, subscriptionId)) continue;
+            if (app.budgetName && budget.name !== app.budgetName) continue;
+            const amount = budget.properties.amount;
+            if (typeof amount === "number" && amount > 0) {
+              budgetAmount = amount;
+              const forecastAmt = budget.properties.forecastSpend?.amount;
+              if (typeof forecastAmt === "number") {
+                forecastFromBudget = forecastAmt;
+              }
+              logger.debug({ appId: app.id, billingAccountId, budgetName: budget.name, amount }, "billing-scope budget found");
+              break;
+            }
+          }
+          if (budgetAmount === null) {
+            logger.debug({ appId: app.id, billingAccountId, subscriptionId }, "billing-scope list returned no matching budget");
+          }
+        } catch (err) {
+          logger.warn({ err, appId: app.id, billingAccountId }, "billing-scope budget list failed");
+        }
       }
     }
 
@@ -382,7 +474,35 @@ export async function diagnoseBudgetsForApp(
     entries.push({ strategy: "sub-list", scope: subScope, outcome: "error", error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}` });
   }
 
-  // 4. Forecast probe (independent of budget lookup)
+  // 4. Billing account scope (MCA) — direct ARM REST API call
+  const billingAccountId = getBillingAccountId();
+  if (billingAccountId) {
+    try {
+      const allBudgets = await listBudgetsAtBillingScope(billingAccountId);
+      const matching = allBudgets.filter((b) => budgetMatchesSubscription(b, subscriptionId));
+      if (matching.length === 0) {
+        entries.push({ strategy: "billing-scope-list", scope: `billingAccounts/${billingAccountId}`, outcome: "not_found", error: `empty list (${allBudgets.length} total budgets, 0 match subscriptionId ${subscriptionId})` });
+      } else {
+        for (const b of matching) {
+          entries.push({
+            strategy: "billing-scope-list",
+            scope: `billingAccounts/${billingAccountId}`,
+            budgetName: b.name,
+            outcome: "found",
+            amount: b.properties.amount ?? undefined,
+            forecastAmount: b.properties.forecastSpend?.amount ?? null,
+          });
+        }
+      }
+    } catch (err: unknown) {
+      const e = err as { message?: string; code?: string; statusCode?: number };
+      entries.push({ strategy: "billing-scope-list", scope: `billingAccounts/${billingAccountId}`, outcome: "error", error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}` });
+    }
+  } else {
+    entries.push({ strategy: "billing-scope-list", scope: "n/a", outcome: "error", error: "AZURE_BILLING_ACCOUNT_ID not set — skipped" });
+  }
+
+  // 5. Forecast probe (independent of budget lookup)
   try {
     const forecastScope = budgetScope === "subscription" ? subScope : rgScope;
     const forecastResult = await getCostClient().forecast.usage(forecastScope, {
