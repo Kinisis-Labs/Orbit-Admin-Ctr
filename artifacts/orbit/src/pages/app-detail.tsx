@@ -67,6 +67,7 @@ import { AccessDenied } from "@/components/access-denied";
 import { useToast } from "@/hooks/use-toast";
 import { BAR_COLOR_DEFAULT, BAR_COLOR_UP_MILD, BAR_COLOR_UP_HIGH, BAR_COLOR_DOWN, getBarFill } from "@/lib/bar-trend";
 import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
+import { useViolationLog } from "@/hooks/use-violation-log";
 import { InfraAlertHistory } from "@/components/infra-alert-history";
 import { ViolationLogPanel } from "@/components/violation-log-panel";
 import { AlertConfigTable } from "@/components/alert-config-table";
@@ -134,7 +135,13 @@ export default function AppDetail() {
     }
   }, [activeTab, hasTabParam, appId]);
 
+  const { entries: violationEntries, markSeenByApp: markViolationsSeenByApp } = useViolationLog();
+  const infraUnseenCount = violationEntries.filter((e) => e.appId === appId && !e.seen).length;
+
   function handleTabChange(tab: string) {
+    if (tab === "infrastructure") {
+      markViolationsSeenByApp(appId);
+    }
     setLocation(`${location}?tab=${tab}`);
   }
 
@@ -219,7 +226,16 @@ export default function AppDetail() {
         {/* Azure Pivot / Tab Strip */}
         <TabsList className="flex h-10 w-full justify-start rounded-none border-b border-border bg-transparent p-0">
           <TabsTrigger value="overview" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">Overview</TabsTrigger>
-          <TabsTrigger value="infrastructure" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">Infrastructure</TabsTrigger>
+          <TabsTrigger value="infrastructure" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">
+            <span className="inline-flex items-center gap-1.5">
+              Infrastructure
+              {infraUnseenCount > 0 && (
+                <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-[10px] font-semibold leading-none text-white">
+                  {infraUnseenCount > 99 ? "99+" : infraUnseenCount}
+                </span>
+              )}
+            </span>
+          </TabsTrigger>
           <TabsTrigger value="network" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">Network</TabsTrigger>
           <TabsTrigger value="telemetry" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">Telemetry</TabsTrigger>
           <TabsTrigger value="cost" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">

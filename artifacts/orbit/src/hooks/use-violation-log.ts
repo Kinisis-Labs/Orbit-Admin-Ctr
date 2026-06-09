@@ -70,6 +70,12 @@ export function markAllViolationsSeen(): void {
   writeLog(existing.map((e) => ({ ...e, seen: true })));
 }
 
+export function markViolationsSeenByApp(appId: string): void {
+  const existing = readLog();
+  if (existing.every((e) => e.appId !== appId || e.seen)) return;
+  writeLog(existing.map((e) => (e.appId === appId ? { ...e, seen: true } : e)));
+}
+
 export function clearViolationLog(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
@@ -113,6 +119,11 @@ export function useViolationLog() {
     setEntries(readLog());
   }, []);
 
+  const markSeenByApp = useCallback((appId: string) => {
+    markViolationsSeenByApp(appId);
+    setEntries(readLog());
+  }, []);
+
   const clear = useCallback(() => {
     clearViolationLog();
     setEntries([]);
@@ -130,5 +141,5 @@ export function useViolationLog() {
 
   const unseenCount = entries.filter((e) => !e.seen).length;
 
-  return { entries, unseenCount, markSeen, clear, clearByApp, removeById };
+  return { entries, unseenCount, markSeen, markSeenByApp, clear, clearByApp, removeById };
 }
