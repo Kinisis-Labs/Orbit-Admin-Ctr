@@ -477,7 +477,7 @@ export default function Home() {
 
       {canSeeCost && (
         <BudgetSummaryWidget
-          apps={apps}
+          apps={isGlobal ? apps : apps?.filter((a) => a.id === scope)}
           isFetching={appsFetching}
           recentAlerts={recentAlerts}
           anomalousApps={appAnomalies}
