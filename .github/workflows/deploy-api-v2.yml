@@ -151,6 +151,7 @@ jobs:
                 ENTRA_FINOPS_GROUP_ID="${{ secrets.ENTRA_FINOPS_GROUP_ID }}" \
                 ENTRA_POST_LOGOUT_REDIRECT_URI=https://orbit.kinisislabs.com/signed-out \
                 AZURE_SUBSCRIPTION_IDS="${{ secrets.AZURE_SUB_GRAILBABE }},${{ secrets.AZURE_SUB_SHARED_INFRA }}" \
+                AZURE_CLIENT_ID="${{ secrets.AZURE_MANAGED_IDENTITY_CLIENT_ID }}" \
                 AZURE_MANAGED_IDENTITY_CLIENT_ID="${{ secrets.AZURE_MANAGED_IDENTITY_CLIENT_ID }}" \
                 AZURE_TENANT_ID="${{ secrets.ENTRA_TENANT_ID }}" \
                 AZURE_SUB_GRAILBABE="${{ secrets.AZURE_SUB_GRAILBABE }}" \

@@ -1028,3 +1028,40 @@ debugRouter.get("/debug/azure-activity", async (_req, res) => {
   );
   res.json({ results });
 });
+
+debugRouter.get("/debug/azure-network", async (_req, res) => {
+  const { getSubscriptionIds, isAzureConfigured } = await import("../lib/azure.js");
+  const { getSharedInfraSubscriptionId, fetchNetworkEndpoints } = await import("../lib/azureNetwork.js");
+
+  const isConfigured = isAzureConfigured();
+  const globalSubs = getSubscriptionIds();
+  const sharedInfraSub = getSharedInfraSubscriptionId();
+
+  const perApp = APPS.map((app) => {
+    const appSub = app.subscriptionId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(app.subscriptionId)
+      ? app.subscriptionId : null;
+    const subscriptionIds = [...new Set([...globalSubs, ...(appSub ? [appSub] : []), ...(sharedInfraSub ? [sharedInfraSub] : [])])];
+    return { appId: app.id, appSub, subscriptionIds };
+  });
+
+  // Attempt a live query for the first app to see if auth/RBAC works
+  let liveTest: unknown = null;
+  if (APPS.length > 0) {
+    try {
+      const result = await fetchNetworkEndpoints(APPS[0], { bypassCache: true });
+      liveTest = { endpoints: result?.length ?? null, error: null };
+    } catch (err: unknown) {
+      liveTest = { endpoints: null, error: String(err) };
+    }
+  }
+
+  res.json({
+    isAzureConfigured: isConfigured,
+    AZURE_CLIENT_ID: process.env.AZURE_CLIENT_ID ? "set" : "MISSING",
+    AZURE_TENANT_ID: process.env.AZURE_TENANT_ID ? "set" : "MISSING",
+    globalSubs,
+    sharedInfraSub,
+    perApp,
+    liveTest,
+  });
+});
