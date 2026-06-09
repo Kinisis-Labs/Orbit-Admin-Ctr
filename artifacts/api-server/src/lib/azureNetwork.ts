@@ -70,11 +70,20 @@ export function normalizeResourceGraphRows(data: unknown): Record<string, unknow
   }
   if (data && typeof data === "object") {
     const d = data as Record<string, unknown>;
+    // Table format: { columns: [{name,type},...], rows: [[val,...],...] }
     if (Array.isArray(d["rows"]) && Array.isArray(d["columns"])) {
       const columns = (d["columns"] as Array<{ name: string }>).map((c) => c.name);
       return (d["rows"] as unknown[][]).map((row) =>
         Object.fromEntries(columns.map((col, i) => [col, row[i]])),
       );
+    }
+    // Numeric-keyed object format: { "0": {...}, "1": {...} }
+    // The Azure SDK sometimes deserialises the result this way instead of as an array.
+    const keys = Object.keys(d);
+    if (keys.length > 0 && keys.every((k) => /^\d+$/.test(k))) {
+      return keys
+        .sort((a, b) => parseInt(a) - parseInt(b))
+        .map((k) => d[k] as Record<string, unknown>);
     }
   }
   return [];

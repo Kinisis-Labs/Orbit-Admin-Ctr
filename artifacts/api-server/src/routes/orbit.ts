@@ -1095,12 +1095,14 @@ debugRouter.get("/debug/azure-network", async (_req, res) => {
     const allSubs = [...new Set([...globalSubs, ...(sharedInfraSub ? [sharedInfraSub] : [])])];
     const rgClient = new ResourceGraphClient(getAzureCredential());
     const raw = await rgClient.resources({
-      query: `resources | where type in~ ('microsoft.app/containerapps','microsoft.app/managedenvironments','microsoft.network/frontdoors','microsoft.cdn/profiles','microsoft.network/networkwatchers','microsoft.network/virtualnetworks','microsoft.network/loadbalancers') | project name, type, resourceGroup, subscriptionId | limit 20`,
+      query: `resources | project name, type, resourceGroup, subscriptionId | limit 10`,
       subscriptions: allSubs,
     });
     const { normalizeResourceGraphRows } = await import("../lib/azureNetwork.js");
     const rows = normalizeResourceGraphRows(raw.data);
-    rawQuery = { rowCount: rows.length, rows: rows.slice(0, 10), subscriptionsQueried: allSubs, error: null };
+    const rawDataPreview = JSON.stringify(raw.data).slice(0, 500);
+    const rawResultKeys = raw ? Object.keys(raw as object) : [];
+    rawQuery = { rowCount: rows.length, rows: rows.slice(0, 10), subscriptionsQueried: allSubs, rawDataPreview, rawResultKeys, totalRecords: raw.totalRecords, error: null };
   } catch (err: unknown) {
     rawQuery = { rowCount: null, rows: [], error: String(err) };
   }
