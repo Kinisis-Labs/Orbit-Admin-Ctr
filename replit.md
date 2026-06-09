@@ -70,7 +70,7 @@ Hosted on Azure in `rg-orbit-prod-eus2` (region East US 2), fronted by the share
 
 - `AZURE_SUBSCRIPTION_IDS` — comma-separated GUIDs of every subscription hosting tracked apps (e.g. the shared platform sub + the internal tools sub)
 - `AZURE_MANAGED_IDENTITY_CLIENT_ID` — client ID of `id-platformshared-prod` (Azure Portal → Managed Identities → id-platformshared-prod → Overview → Client ID); tells DefaultAzureCredential which user-assigned identity to use
-- `AZURE_SUB_GRAILBABE` — subscription GUID for GrailBabe's resource group `rg-grailbabeprod-compute-prod-eus2` (optional if it's the same sub as orbit)
+- `AZURE_SUB_GRAILBABE` — subscription GUID for GrailBabe's resource group `rg-grailbabedprod-compute-prod-eus2` (optional if it's the same sub as orbit)
 - `AZURE_SUB_ORBIT` — subscription GUID for Orbit's resource group `rg-orbit-prod-eus2` (optional)
 - `AZURE_SUB_KINISIS_LABS` — subscription GUID for `rg-kinisislabs-platform-shared-prod-eus2` (optional)
 - `AZURE_SUB_SHARED_INFRA` — subscription GUID for the shared-platform subscription (`sub-sharedplatform`) that hosts `ca-orbit-prod-v2`, `afd-shared-prod`, and shared VNets/Network Watchers. **Required for the network page to find any resources.** When set, every network Resource Graph query includes this subscription regardless of which app is in scope. Set it to the same GUID as `AZURE_SUB_ORBIT` if both live in `sub-sharedplatform`, or to a distinct GUID if they differ. Deduplicated automatically — no double-query if it matches a value already in `AZURE_SUBSCRIPTION_IDS`.

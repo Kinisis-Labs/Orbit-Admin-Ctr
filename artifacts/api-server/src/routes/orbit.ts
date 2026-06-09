@@ -65,7 +65,7 @@ export const APPS: AppRecord[] = [
     name: "GrailBabe",
     environment: "prod",
     region: "eastus2",
-    resourceGroup: "rg-grailbabeprod-compute-prod-eus2",
+    resourceGroup: "rg-grailbabedprod-compute-prod-eus2",
     status: "healthy",
     activeAlerts: 0,
     monthToDateCost: 0,
