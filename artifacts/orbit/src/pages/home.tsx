@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
-import { getListAppsQueryKey, getGetCostQueryKey, getCost, getGetAppQueryKey, getApp, useGetGlobalHealth, getGetGlobalHealthQueryKey, useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey } from "@workspace/api-client-react";
+import { getListAppsQueryKey, getGetCostQueryKey, getCost, getGetAppQueryKey, getApp, useGetGlobalHealth, getGetGlobalHealthQueryKey, useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey, useGetCost } from "@workspace/api-client-react";
 import type { AppSummary, AppDetail } from "@workspace/api-client-react";
 import type { UserAuthType } from "@workspace/api-client-react";
 import type { DailyCostPoint } from "@/components/daily-spend-utils";
@@ -177,7 +177,7 @@ function BudgetSparkline({ data, status }: { data: DailyCostPoint[] | undefined;
   );
 }
 
-function WoWTrendBadge({ trend }: { trend: string | null | undefined }) {
+function WoWTrendBadge({ trend, label = "Week-over-week spend trend (fleet total)" }: { trend: string | null | undefined; label?: string }) {
   if (!trend) return null;
   const isUp = trend.startsWith("+");
   const isDown = trend.startsWith("-");
@@ -198,10 +198,27 @@ function WoWTrendBadge({ trend }: { trend: string | null | undefined }) {
             {trend}
           </span>
         </TooltipTrigger>
-        <TooltipContent>Week-over-week spend trend (fleet total)</TooltipContent>
+        <TooltipContent>{label}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
+}
+
+function deriveTrendFromServices(byService: Array<{ service: string; amount: number; trend?: string | null }>): string | null {
+  let totalAmount = 0;
+  let weightedPct = 0;
+  let hasAny = false;
+  for (const svc of byService) {
+    if (!svc.trend) continue;
+    const pct = parseFloat(svc.trend.replace("%", ""));
+    if (!Number.isFinite(pct)) continue;
+    totalAmount += svc.amount;
+    weightedPct += pct * svc.amount;
+    hasAny = true;
+  }
+  if (!hasAny || totalAmount === 0) return null;
+  const avg = weightedPct / totalAmount;
+  return (avg >= 0 ? "+" : "") + avg.toFixed(1) + "%";
 }
 
 
@@ -231,6 +248,17 @@ export default function Home() {
   const { data: appDetail, isLoading: appDetailLoading, queryKey: appQueryKey } = useApp(isGlobal ? undefined : (scope || undefined));
 
   const selectedApp = isGlobal ? undefined : apps?.find((a) => a.id === scope);
+
+  const { data: appCost, isLoading: appCostLoading } = useGetCost(
+    scope ?? "",
+    {},
+    { query: { queryKey: getGetCostQueryKey(scope ?? ""), enabled: !isGlobal && !!scope && canSeeCost, staleTime: 5 * 60 * 1000 } },
+  );
+
+  const appWoWTrend = useMemo(() => {
+    if (!appCost?.byService) return null;
+    return deriveTrendFromServices(appCost.byService);
+  }, [appCost?.byService]);
 
   const search = useSearch();
   const [, navigate] = useLocation();
@@ -410,11 +438,30 @@ export default function Home() {
             sub={selectedApp ? `${selectedApp.environment} · ${selectedApp.region}` : ""}
           />
           <Tile title="Active Alerts" value={appDetailLoading ? null : appDetail?.activeAlerts ?? 0} sub="Open on this application" />
-          <Tile
-            title="Region"
-            value={selectedApp ? selectedApp.region : "—"}
-            sub={selectedApp ? `${selectedApp.environment} environment` : ""}
-          />
+          {canSeeCost ? (
+            <Tile
+              title="MTD Spend"
+              value={
+                appCostLoading
+                  ? null
+                  : appCost
+                  ? (
+                    <span className="flex items-center gap-2 flex-wrap">
+                      <span>{fmt(appCost.monthToDate)}</span>
+                      <WoWTrendBadge trend={appWoWTrend} label="Week-over-week spend trend (this app)" />
+                    </span>
+                  )
+                  : "—"
+              }
+              sub="Month-to-date cost"
+            />
+          ) : (
+            <Tile
+              title="Region"
+              value={selectedApp ? selectedApp.region : "—"}
+              sub={selectedApp ? `${selectedApp.environment} environment` : ""}
+            />
+          )}
           <Tile
             title="Resource Group"
             value={appDetailLoading ? null : appDetail?.resourceGroup ?? "—"}
