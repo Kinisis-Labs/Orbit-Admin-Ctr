@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { StaleCacheBanner } from "@/components/stale-cache-banner";
 import { AdminAccessBadge } from "@/components/admin-access-badge";
+import { DataSourceBadge } from "@/components/data-source-badge";
 
 const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
@@ -63,6 +64,16 @@ export default function PlaySubscriptions() {
   );
   const isPlaceholder = scoped.some((r) => r.dataSource === "placeholder");
   const isLive = scoped.some((r) => r.dataSource === "live");
+  const isCached = scoped.some((r) => r.dataSource === "cached");
+  const badgeDataSource = scoped.length === 0
+    ? undefined
+    : isLive
+    ? "live"
+    : isCached
+    ? "cached"
+    : isPlaceholder
+    ? "placeholder"
+    : undefined;
 
   const staleCachedRow = useMemo(() => {
     const cached = scoped.filter((r) => r.dataSource === "cached" && !!r.dataAsOf);
@@ -105,6 +116,7 @@ export default function PlaySubscriptions() {
         subtitle="Google Play subscription financials and subscriber states per Kinisis Android app."
         right={
           <div className="flex items-center gap-2">
+            <DataSourceBadge dataSource={badgeDataSource} dataAsOf={staleCachedRow?.dataAsOf} label="Google Play" />
             <AdminAccessBadge />
             <ScopeSelect />
           </div>
