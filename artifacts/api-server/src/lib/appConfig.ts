@@ -13,6 +13,8 @@
  *     (e.g. https://appcs-orbit-prod-eus2.azconfig.io). When absent,
  *     `getAppConfigSetting()` always returns null and
  *     `getAppConfigFeatureFlag()` always returns true (enabled).
+ *   APP_CONFIG_FEATURE_FLAG_TTL_SECONDS — TTL for the in-process feature flag
+ *     cache (default 60). Set to 0 to disable caching entirely.
  *
  * Feature flags:
  *   Azure App Configuration stores feature flags at the key prefix
@@ -23,6 +25,9 @@
  *   the flag is absent or App Configuration is unreachable. This means all
  *   surfaces remain visible in dev/mock mode and are only toggled off by an
  *   explicit `"enabled": false` entry in the store.
+ *
+ *   Results are cached in-process for `APP_CONFIG_FEATURE_FLAG_TTL_SECONDS`
+ *   seconds (default 60) to avoid a live network call on every request.
  */
 
 import { AppConfigurationClient } from "@azure/app-configuration";
@@ -30,6 +35,19 @@ import { getAzureCredential } from "./azure.js";
 import { logger } from "./logger.js";
 
 let _client: AppConfigurationClient | null = null;
+
+interface FlagCacheEntry {
+  value: boolean;
+  expiresAt: number;
+}
+
+const _flagCache = new Map<string, FlagCacheEntry>();
+
+function getFlagTtlMs(): number {
+  const raw = process.env.APP_CONFIG_FEATURE_FLAG_TTL_SECONDS;
+  const seconds = raw !== undefined ? Number(raw) : 60;
+  return (isNaN(seconds) ? 60 : seconds) * 1000;
+}
 
 export function isAppConfigConfigured(): boolean {
   return Boolean(process.env.APP_CONFIGURATION_ENDPOINT);
@@ -78,18 +96,40 @@ export async function getAppConfigSetting(key: string): Promise<string | null> {
  */
 export async function getAppConfigFeatureFlag(flagName: string): Promise<boolean> {
   if (!isAppConfigConfigured()) return true;
+
+  const ttlMs = getFlagTtlMs();
+  const now = Date.now();
+
+  if (ttlMs > 0) {
+    const cached = _flagCache.get(flagName);
+    if (cached !== undefined && now < cached.expiresAt) {
+      return cached.value;
+    }
+  }
+
   const key = `.appconfig.featureflag/${flagName}`;
+  let result: boolean;
   try {
     const response = await getClient().getConfigurationSetting({ key });
-    if (!response.value) return true;
-    const parsed = JSON.parse(response.value) as { enabled?: boolean };
-    return parsed.enabled !== false;
+    if (!response.value) {
+      result = true;
+    } else {
+      const parsed = JSON.parse(response.value) as { enabled?: boolean };
+      result = parsed.enabled !== false;
+    }
   } catch (err: unknown) {
     const code = (err as { code?: string }).code;
     if (code === "FeatureNotFound" || code === "ConfigurationSettingNotFound") {
-      return true;
+      result = true;
+    } else {
+      logger.warn({ err, flagName }, "App Configuration feature flag read failed — defaulting to enabled");
+      result = true;
     }
-    logger.warn({ err, flagName }, "App Configuration feature flag read failed — defaulting to enabled");
-    return true;
   }
+
+  if (ttlMs > 0) {
+    _flagCache.set(flagName, { value: result, expiresAt: now + ttlMs });
+  }
+
+  return result;
 }
