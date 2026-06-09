@@ -162,7 +162,7 @@ export function ViolationLogPanel({ appId }: { appId?: string } = {}) {
               title="Clear this app's violations"
             >
               <Trash2 className="h-3 w-3 mr-1" />
-              Clear app violations
+              Clear app violations ({filtered.length})
             </Button>
           )}
           {entries.length > 0 && !appId && (
