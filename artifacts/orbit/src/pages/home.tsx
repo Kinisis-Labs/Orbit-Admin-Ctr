@@ -475,9 +475,9 @@ export default function Home() {
         </div>
       )}
 
-      {canSeeCost && (
+      {canSeeCost && isGlobal && (
         <BudgetSummaryWidget
-          apps={isGlobal ? apps : apps?.filter((a) => a.id === scope)}
+          apps={apps}
           isFetching={appsFetching}
           recentAlerts={recentAlerts}
           anomalousApps={appAnomalies}
@@ -490,6 +490,10 @@ export default function Home() {
             setBudgetBreachFilter(false);
           }}
         />
+      )}
+
+      {canSeeCost && !isGlobal && selectedApp && (
+        <PerAppBudgetPanel app={selectedApp} recentAlerts={recentAlerts} />
       )}
 
       {!isGlobal && (
@@ -1590,6 +1594,95 @@ const AUTH_LABELS: Record<UserAuthType, string> = {
   entra: "Entra ID",
   none: "Public",
 };
+
+function PerAppBudgetPanel({
+  app,
+  recentAlerts,
+}: {
+  app: AppSummary;
+  recentAlerts: Map<string, Date>;
+}) {
+  const threshold = getBudgetThreshold(app.id);
+  const status = budgetStatus(app, threshold);
+  const pct =
+    app.budget != null && app.budget > 0
+      ? Math.min((app.monthToDateCost / app.budget) * 100, 100)
+      : null;
+  const hasAlert = recentAlerts.has(app.id);
+
+  return (
+    <div className="bg-card border border-border shadow-sm">
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border">
+        <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+        <h2 className="text-sm font-semibold">Budget Status</h2>
+        {hasAlert && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center">
+                  <Bell className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                Budget alert sent {formatDistanceToNow(recentAlerts.get(app.id)!, { addSuffix: true })}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        {app.costDataSource && app.costDataSource !== "mock" && (
+          <CostDataSourceBadge dataSource={app.costDataSource} />
+        )}
+      </div>
+      <div className="flex flex-wrap divide-x divide-border">
+        <div className="px-6 py-3 flex flex-col gap-0.5 min-w-[150px]">
+          <div className="text-[11px] text-muted-foreground font-medium">Spent MTD</div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {app.costDataSource && app.costDataSource !== "mock" && (
+              <CostDataSourceBadge dataSource={app.costDataSource} />
+            )}
+            <span className="text-lg font-semibold tabular-nums">{fmt(app.monthToDateCost)}</span>
+          </div>
+        </div>
+        <div className="px-6 py-3 flex flex-col gap-0.5 min-w-[120px]">
+          <div className="text-[11px] text-muted-foreground font-medium">Budget</div>
+          <div className="text-lg font-semibold tabular-nums text-foreground">
+            {app.budget != null ? fmt(app.budget) : <span className="text-muted-foreground/50 text-base">—</span>}
+          </div>
+        </div>
+        <div className="px-6 py-3 flex flex-col gap-0.5 min-w-[120px]">
+          <div className="text-[11px] text-muted-foreground font-medium">Forecast</div>
+          <div className="text-lg font-semibold tabular-nums text-foreground">
+            {app.forecast != null ? fmt(app.forecast) : <span className="text-muted-foreground/50 text-base">—</span>}
+          </div>
+        </div>
+        <div className="px-6 py-3 flex flex-col gap-1 min-w-[160px]">
+          <div className="text-[11px] text-muted-foreground font-medium">Utilization</div>
+          {pct !== null ? (
+            <div className="flex items-center gap-2">
+              <Progress
+                value={pct}
+                className={`h-1.5 w-24 ${
+                  status === "over"
+                    ? "[&>div]:bg-red-500"
+                    : status === "warning"
+                    ? "[&>div]:bg-amber-500"
+                    : "[&>div]:bg-emerald-500"
+                }`}
+              />
+              <span className="text-sm tabular-nums text-foreground">{Math.round(pct)}%</span>
+            </div>
+          ) : (
+            <span className="text-muted-foreground/50">—</span>
+          )}
+        </div>
+        <div className="px-6 py-3 flex flex-col gap-1 min-w-[140px]">
+          <div className="text-[11px] text-muted-foreground font-medium">Status</div>
+          <StatusPill status={status} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function GlobalStrips({
   apps,
