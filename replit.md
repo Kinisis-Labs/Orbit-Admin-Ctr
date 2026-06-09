@@ -144,6 +144,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
+- **Front Door origin must be updated manually when the Container App name changes.** Front Door's API origin group stores the CA hostname directly — it does not auto-follow Container App renames. After migrating from an old CA to a new one (e.g. `ca-orbit-api-prod` → `ca-orbit-prod-v2`), update the origin in `afd-shared-prod` → Origin groups → API origin group. Propagation takes ~2–5 minutes. Symptom: site shows "Orbit is temporarily unavailable" (SWA up, API unreachable).
 - **Session table is schema-owned, not auto-created.** The API ships as a single esbuild bundle (no `node_modules` at runtime), so `connect-pg-simple`'s `createTableIfMissing` can't find its `table.sql` (ENOENT) — symptom is sign-in failing at the OAuth callback ("Sign-in could not be completed"). The `user_sessions` table lives in `lib/db/src/schema/session.ts` and is provisioned by `pnpm --filter @workspace/db run push`; `createTableIfMissing` is `false`. Run a `db push` against any new environment's database (incl. Azure prod) before sign-in will work.
 - **`ENTRA_TENANT_ID` must be the bare tenant GUID** — no `ID ` prefix or stray whitespace. A malformed value makes OIDC discovery build an invalid `login.microsoftonline.com/<tenant>/v2.0` URL and the whole app 500s on every auth route.
 
