@@ -527,6 +527,33 @@ function MomTrendBadge({ pct }: { pct: number }) {
   );
 }
 
+function WoWTrendBadge({ trend, label = "Week-over-week spend trend" }: { trend: string | null | undefined; label?: string }) {
+  if (!trend) return null;
+  const isUp = trend.startsWith("+");
+  const isDown = trend.startsWith("-");
+  const Icon = isUp ? TrendingUp : isDown ? TrendingDown : null;
+  const colorClass = isUp
+    ? "text-destructive bg-destructive/10 border-destructive/30"
+    : isDown
+    ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
+    : "text-muted-foreground bg-muted border-border";
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[11px] font-medium border font-mono ${colorClass}`}
+          >
+            {Icon && <Icon className="h-3 w-3 shrink-0" />}
+            {trend}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 function GlobalCost() {
   const { data: apps, isLoading: appsLoading } = useApps();
   const { data: globalHealth } = useGetGlobalHealth({ query: { queryKey: getGetGlobalHealthQueryKey(), staleTime: 5 * 60 * 1000 } });
@@ -893,6 +920,13 @@ function AppCost() {
   const { data, isLoading, isFetching } = useGetCost(scope, undefined, {
     query: { queryKey, staleTime: 5 * 60 * 1000 },
   });
+  const { data: globalCostSummary } = useGetGlobalCostSummary({
+    query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
+  });
+  const wowTrend = useMemo(() => {
+    const entry = globalCostSummary?.byApp?.find((a) => a.appId === scope);
+    return entry?.trend ?? null;
+  }, [globalCostSummary?.byApp, scope]);
   const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${scope}/cost`, queryKey, [
     { url: "/api/apps", queryKey: getListAppsQueryKey() },
   ]);
@@ -1183,7 +1217,14 @@ function AppCost() {
         <Tile
           title="Actual cost (MTD)"
           value={isLoading ? null : data ? fmt(data.monthToDate, data.currency) : "$0.00"}
-          badge={!isLoading && data?.momChangePct != null ? <MomTrendBadge pct={data.momChangePct} /> : undefined}
+          badge={
+            !isLoading && (data?.momChangePct != null || wowTrend) ? (
+              <span className="inline-flex items-center gap-1">
+                {wowTrend && <WoWTrendBadge trend={wowTrend} label="Week-over-week spend trend (this app)" />}
+                {data?.momChangePct != null && <MomTrendBadge pct={data.momChangePct} />}
+              </span>
+            ) : undefined
+          }
           subLabel={!isLoading && data?.dataAsOf ? `as of ${fmtRelativeTime(data.dataAsOf)}` : undefined}
         />
         <Tile
