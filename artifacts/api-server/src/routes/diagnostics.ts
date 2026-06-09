@@ -36,8 +36,8 @@ async function checkAzureCredential(): Promise<CheckResult> {
 }
 
 async function checkGitHubToken(): Promise<CheckResult> {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) return { status: "not_configured", detail: "GITHUB_TOKEN not set" };
+  const token = process.env.GITHUB_TOKEN ?? process.env.ORBIT_DEPLOY_ID;
+  if (!token) return { status: "not_configured", detail: "GITHUB_TOKEN / ORBIT_DEPLOY_ID not set" };
   try {
     // Use the Actions runs endpoint — the PAT is fine-grained with Actions: Read
     // (not repo metadata read), so hitting /repos/{org}/{repo} returns 403.
@@ -250,7 +250,9 @@ router.get("/diagnostics", requireAdmin, async (_req, res) => {
       ENTRA_REDIRECT_URI: envVar("ENTRA_REDIRECT_URI"),
       ENTRA_AUTHORIZED_GROUP_ID: envVar("ENTRA_AUTHORIZED_GROUP_ID"),
       ENTRA_COST_READER_GROUP_ID: envVar("ENTRA_COST_READER_GROUP_ID"),
-      GITHUB_TOKEN: process.env.GITHUB_TOKEN ? `✓ set (${process.env.GITHUB_TOKEN.length} chars)` : "❌ not set",
+      GITHUB_TOKEN: (process.env.GITHUB_TOKEN ?? process.env.ORBIT_DEPLOY_ID)
+        ? `✓ set via ${process.env.GITHUB_TOKEN ? "GITHUB_TOKEN" : "ORBIT_DEPLOY_ID"} (${(process.env.GITHUB_TOKEN ?? process.env.ORBIT_DEPLOY_ID)!.length} chars)`
+        : "❌ not set (checked GITHUB_TOKEN + ORBIT_DEPLOY_ID)",
       SESSION_SECRET: process.env.SESSION_SECRET ? `✓ set (${process.env.SESSION_SECRET.length} chars)` : "❌ not set",
       DATABASE_URL: process.env.DATABASE_URL ? "✓ set" : "❌ not set",
       DATABASE_SSL: envVar("DATABASE_SSL"),
