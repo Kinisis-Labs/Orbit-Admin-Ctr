@@ -1,6 +1,7 @@
 import { MetricsQueryClient, LogsQueryClient } from "@azure/monitor-query";
 import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
+import { normalizeResourceGraphRows } from "./azureNetwork.js";
 import type { AppRecord } from "../routes/orbit.js";
 
 export type TelemetrySummary = {
@@ -235,7 +236,7 @@ export async function resolveAppInsightsResourceId(
       query,
       subscriptions: subscriptionIds,
     });
-    const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
+    const rows = normalizeResourceGraphRows(result.data);
     const id = rows.length === 0 ? null : String(rows[0]?.["id"] ?? "");
     const ttl = id !== null ? APP_INSIGHTS_ID_TTL_MS : APP_INSIGHTS_NULL_TTL_MS;
     _appInsightsIdCache.set(app.id, { id, expiresAt: Date.now() + ttl });

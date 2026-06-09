@@ -1,5 +1,6 @@
 import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
+import { normalizeResourceGraphRows } from "./azureNetwork.js";
 import { logger } from "./logger.js";
 
 /**
@@ -81,7 +82,7 @@ export async function fetchServiceHealth(): Promise<ServiceHealthEvent[]> {
       subscriptions: subscriptionIds,
     });
 
-    const rows = (result.data as unknown as Array<Record<string, unknown>>) ?? [];
+    const rows = normalizeResourceGraphRows(result.data);
     const events: ServiceHealthEvent[] = [];
 
     for (const row of rows) {

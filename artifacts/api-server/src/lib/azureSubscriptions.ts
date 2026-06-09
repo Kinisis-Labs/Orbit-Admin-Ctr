@@ -1,5 +1,6 @@
 import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
+import { normalizeResourceGraphRows } from "./azureNetwork.js";
 
 // Cache: subscriptionId (lowercase) → display name
 const SUB_NAME_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours — subscription names rarely change
@@ -62,7 +63,7 @@ export async function fetchSubscriptionNames(
       subscriptions: missing,
     });
 
-    const rows = (response.data as unknown as Record<string, unknown>[]) ?? [];
+    const rows = normalizeResourceGraphRows(response.data);
     for (const row of rows) {
       const subId = (row["subscriptionId"] as string | undefined) ?? "";
       const name = (row["name"] as string | undefined) ?? "";

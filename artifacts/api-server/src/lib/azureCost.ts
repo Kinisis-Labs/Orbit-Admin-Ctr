@@ -3,6 +3,7 @@ import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { eq } from "drizzle-orm";
 import { db, costSnapshotsTable } from "@workspace/db";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
+import { normalizeResourceGraphRows } from "./azureNetwork.js";
 import { logger } from "./logger.js";
 import type { AppRecord } from "../routes/orbit.js";
 
@@ -154,7 +155,7 @@ export async function resolveSubscriptionId(app: AppRecord): Promise<string | nu
       query,
       subscriptions: subscriptionIds,
     });
-    const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
+    const rows = normalizeResourceGraphRows(result.data);
     const subId = rows[0]?.["subscriptionId"] as string | undefined;
     if (subId && isGuid(subId)) {
       _rgSubCache.set(rgKey, subId);

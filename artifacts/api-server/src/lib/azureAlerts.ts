@@ -1,5 +1,6 @@
 import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
+import { normalizeResourceGraphRows } from "./azureNetwork.js";
 import type { AppRecord } from "../routes/orbit.js";
 
 export type AlertEntry = {
@@ -125,7 +126,7 @@ export async function fetchActiveAlerts(
       subscriptions: subscriptionIds,
     });
 
-    const rows = (result.data as unknown as Record<string, unknown>[]) ?? [];
+    const rows = normalizeResourceGraphRows(result.data);
 
     const alerts = rows.map((row, i) => {
       const sev = String(row["severity"] ?? "Sev4").replace(/sev/i, "");
