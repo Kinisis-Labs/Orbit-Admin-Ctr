@@ -25,6 +25,7 @@ const FAKE_APP: AppRecord = {
 const FAKE_COST_RESULT = {
   monthToDate: 42.5,
   byService: [{ service: "Azure Container Apps", amount: 42.5 }],
+  daily: [],
   dataAsOf: "2026-06-08",
 };
 

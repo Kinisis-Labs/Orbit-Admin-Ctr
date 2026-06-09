@@ -13,7 +13,7 @@ export type EnrichedPoint = DailyCostPoint & {
   };
 };
 
-export type DailySpendRange = 7 | 14 | 30;
+export type DailySpendRange = 7 | 14 | 30 | 60 | 90;
 
 export function computeAnomalies(
   data: DailyCostPoint[],

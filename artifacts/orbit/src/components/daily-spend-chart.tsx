@@ -54,6 +54,8 @@ const RANGE_OPTIONS: { label: string; days: Range }[] = [
   { label: "7d", days: 7 },
   { label: "14d", days: 14 },
   { label: "30d", days: 30 },
+  { label: "60d", days: 60 },
+  { label: "90d", days: 90 },
 ];
 
 const BUDGET_LINE_COLOR = "hsl(var(--destructive))";

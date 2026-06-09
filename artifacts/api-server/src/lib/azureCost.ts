@@ -8,9 +8,17 @@ import type { AppRecord } from "../routes/orbit.js";
 
 export type CostByService = { service: string; amount: number; trend?: string };
 
+export type DailyPoint = {
+  timestamp: string;
+  value: number;
+  vsLastWeek?: number | null;
+};
+
 export type CostResult = {
   monthToDate: number;
   byService: CostByService[];
+  /** 90-day daily totals across all services, sorted ascending. */
+  daily: DailyPoint[];
   dataAsOf: string;
 };
 
@@ -280,7 +288,7 @@ export async function fetchMonthToDateCost(
     const result = await getCostClient().query.usage(scope, {
       type: "Usage",
       timeframe: "Custom",
-      timePeriod: { from: new Date(monthStart()), to: new Date(today()) },
+      timePeriod: { from: new Date(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)), to: new Date(today()) },
       dataset: {
         granularity: "Daily",
         aggregation: {
@@ -311,7 +319,7 @@ export async function fetchMonthToDateCost(
       return null;
     }
 
-    // Compute WoW trend cutoffs as integers (YYYYMMDD).
+    // Compute cutoffs as integers (YYYYMMDD).
     const nowUtc = new Date();
     const todayInt = parseInt(nowUtc.toISOString().slice(0, 10).replace(/-/g, ""), 10);
     const d7 = new Date(nowUtc);
@@ -320,9 +328,13 @@ export async function fetchMonthToDateCost(
     const d14 = new Date(nowUtc);
     d14.setUTCDate(d14.getUTCDate() - 14);
     const d14Int = parseInt(d14.toISOString().slice(0, 10).replace(/-/g, ""), 10);
+    // Current month start — MTD and byService totals are scoped to this.
+    const currentMonthStartInt = parseInt(monthStart().replace(/-/g, ""), 10);
 
-    // Per-service daily buckets: service → { total, recent7, prior7 }
+    // Per-service daily buckets: service → { total (current month only), recent7, prior7 }
     const svcBuckets = new Map<string, { total: number; recent7: number; prior7: number }>();
+    // Daily totals across all services for the full 90-day window: dateInt → amount
+    const dailyTotals = new Map<number, number>();
     let grandTotal = 0;
 
     for (const row of rows) {
@@ -330,20 +342,32 @@ export async function fetchMonthToDateCost(
       const service = svcIdx !== -1 ? String(row[svcIdx] ?? "Other") : "Other";
       const dateInt = dateIdx !== -1 ? Number(row[dateIdx] ?? 0) : 0;
 
-      grandTotal += amount;
+      // Daily series: accumulate all 90 days.
+      if (dateInt > 0) {
+        dailyTotals.set(dateInt, (dailyTotals.get(dateInt) ?? 0) + amount);
+      }
 
+      // Ensure the service bucket exists.
       let bucket = svcBuckets.get(service);
       if (!bucket) {
         bucket = { total: 0, recent7: 0, prior7: 0 };
         svcBuckets.set(service, bucket);
       }
-      bucket.total += amount;
+
+      // MTD and byService.total: current month only.
+      if (dateInt >= currentMonthStartInt) {
+        grandTotal += amount;
+        bucket.total += amount;
+      }
+
+      // WoW trend: last 14 days regardless of month boundary.
       if (dateInt >= d7Int && dateInt <= todayInt) bucket.recent7 += amount;
       else if (dateInt >= d14Int && dateInt < d7Int) bucket.prior7 += amount;
     }
 
     const byService: CostByService[] = [];
     for (const [service, b] of svcBuckets) {
+      if (b.total === 0 && b.recent7 === 0 && b.prior7 === 0) continue;
       let trend: string | undefined;
       if (b.prior7 > 0.01) {
         const pct = ((b.recent7 - b.prior7) / b.prior7) * 100;
@@ -354,9 +378,28 @@ export async function fetchMonthToDateCost(
 
     byService.sort((a, b) => b.amount - a.amount);
 
+    // Build 90-day daily series sorted ascending with vsLastWeek.
+    const daily: DailyPoint[] = [...dailyTotals.keys()]
+      .sort((a, b) => a - b)
+      .map((di) => {
+        const value = dailyTotals.get(di) ?? 0;
+        const ds = String(di);
+        const timestamp = `${ds.slice(0, 4)}-${ds.slice(4, 6)}-${ds.slice(6, 8)}T00:00:00.000Z`;
+        const priorDate = new Date(timestamp);
+        priorDate.setUTCDate(priorDate.getUTCDate() - 7);
+        const priorInt = parseInt(priorDate.toISOString().slice(0, 10).replace(/-/g, ""), 10);
+        const priorValue = dailyTotals.get(priorInt);
+        const vsLastWeek =
+          priorValue != null && priorValue > 0.01
+            ? Number((((value - priorValue) / priorValue) * 100).toFixed(1))
+            : null;
+        return { timestamp, value: Number(value.toFixed(4)), vsLastWeek };
+      });
+
     const costResult: CostResult = {
       monthToDate: Number(grandTotal.toFixed(2)),
       byService,
+      daily,
       dataAsOf: new Date().toISOString(),
     };
     _costCache.set(app.id, { result: costResult, expiresAt: Date.now() + COST_CACHE_TTL_MS });
@@ -410,6 +453,7 @@ async function readCostSnapshot(appId: string): Promise<CostResult | null> {
     return {
       monthToDate: Number(row.monthToDate),
       byService: row.byService as CostByService[],
+      daily: [],
       dataAsOf: row.dataAsOf.toISOString(),
     };
   } catch (err) {

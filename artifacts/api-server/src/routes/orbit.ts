@@ -576,7 +576,7 @@ router.get("/apps/:appId/cost", async (req, res) => {
 
   // Daily cost series for the 30-day chart. Populated from Azure Cost
   // Management when configured; empty otherwise.
-  const daily: { timestamp: string; value: number }[] = [];
+  const daily = liveCost?.daily ?? [];
 
   const data = GetCostResponse.parse({
     currency: "USD",
