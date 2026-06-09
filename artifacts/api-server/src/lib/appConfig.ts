@@ -49,8 +49,13 @@ interface SettingCacheEntry {
   expiresAt: number;
 }
 
-const _flagCache = new Map<string, FlagCacheEntry>();
+export const _flagCache = new Map<string, FlagCacheEntry>();
 const _settingCache = new Map<string, SettingCacheEntry>();
+
+/** Inject a mock client in tests. Pass `null` to reset to the real lazy-init path. */
+export function _setAppConfigClientForTest(client: AppConfigurationClient | null): void {
+  _client = client;
+}
 
 function getFlagTtlMs(): number {
   const raw = process.env.APP_CONFIG_FEATURE_FLAG_TTL_SECONDS;
