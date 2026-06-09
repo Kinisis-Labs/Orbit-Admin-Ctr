@@ -3,7 +3,7 @@ import { useListPlaySubscriptions } from "@workspace/api-client-react";
 import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingDown, TrendingUp, ExternalLink, Clock } from "lucide-react";
+import { TrendingDown, TrendingUp, ExternalLink, Clock, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { StaleCacheBanner } from "@/components/stale-cache-banner";
 import { AdminAccessBadge } from "@/components/admin-access-badge";
+
+const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 const num = (n: number) => new Intl.NumberFormat("en-US").format(n);
 const usd = (n: number) =>
@@ -181,17 +183,19 @@ function PlayBanner({ placeholder, isLive, dataUpdatedAt, dataAsOf }: { placehol
   const timestampMs = dataAsOf ? new Date(dataAsOf).getTime() : dataUpdatedAt ?? 0;
   const ago = useUpdatedAgo(timestampMs);
 
+  const isStale = dataAsOf ? Date.now() - new Date(dataAsOf).getTime() > STALE_THRESHOLD_MS : false;
+
   const timestampLabel = (() => {
     if (dataAsOf) {
       const d = new Date(dataAsOf);
       const isToday = d.toDateString() === new Date().toDateString();
       const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       const label = isToday ? time : `${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${time}`;
-      return { text: `Data as of ${label}` };
+      return { text: `Data as of ${label}`, stale: isStale };
     }
     if (dataUpdatedAt) {
       const time = new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-      return { text: `${placeholder ? "Generated" : "Fetched"} at ${time}` };
+      return { text: `${placeholder ? "Generated" : "Fetched"} at ${time}`, stale: false };
     }
     return null;
   })();
@@ -219,8 +223,8 @@ function PlayBanner({ placeholder, isLive, dataUpdatedAt, dataAsOf }: { placehol
           <>Subscriber states and revenue are pulled live from the Google Play Developer APIs for each tracked Android app.</>
         )}
         {timestampLabel && (
-          <span className="inline-flex items-center gap-1 ml-2 text-muted-foreground/70">
-            <Clock className="h-3 w-3" />
+          <span className={`inline-flex items-center gap-1 ml-2 ${timestampLabel.stale ? "text-amber-500" : "text-muted-foreground/70"}`}>
+            {timestampLabel.stale ? <AlertTriangle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
             {timestampLabel.text}
             {ago && <span>· {ago}</span>}
           </span>
