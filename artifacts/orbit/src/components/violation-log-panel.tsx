@@ -24,7 +24,7 @@ function MetricBadge({ metric }: { metric: string }) {
   );
 }
 
-function ViolationRow({ entry }: { entry: ViolationEntry }) {
+function ViolationRow({ entry, showAppCol }: { entry: ViolationEntry; showAppCol: boolean }) {
   const over = entry.value - entry.threshold;
   const pct = entry.threshold > 0 ? (over / entry.threshold) * 100 : 0;
   const valueCls =
@@ -41,9 +41,11 @@ function ViolationRow({ entry }: { entry: ViolationEntry }) {
       <td className="py-1 px-3 text-[12px] text-muted-foreground whitespace-nowrap tabular-nums">
         {format(new Date(entry.timestamp), "MMM d, yyyy HH:mm")}
       </td>
-      <td className="py-1 px-3 text-[13px] font-medium truncate max-w-[140px]">
-        {entry.appName}
-      </td>
+      {showAppCol && (
+        <td className="py-1 px-3 text-[13px] font-medium truncate max-w-[140px]">
+          {entry.appName}
+        </td>
+      )}
       <td className="py-1 px-3">
         <MetricBadge metric={entry.metric} />
       </td>
@@ -75,17 +77,21 @@ function ViolationRow({ entry }: { entry: ViolationEntry }) {
   );
 }
 
-export function ViolationLogPanel() {
+export function ViolationLogPanel({ appId }: { appId?: string } = {}) {
   const { entries, unseenCount, markSeen, clear } = useViolationLog();
+
+  const filtered = appId ? entries.filter((e) => e.appId === appId) : entries;
+  const filteredUnseen = filtered.filter((e) => !e.seen).length;
+  const showAppCol = !appId;
 
   return (
     <div className="bg-card border border-border shadow-sm flex flex-col">
       <div className="flex items-center gap-2 p-3 border-b border-border flex-wrap">
         <History className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <h2 className="text-sm font-semibold">Client-side threshold violations</h2>
-        {unseenCount > 0 && (
+        {filteredUnseen > 0 && (
           <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-white text-[10px] font-bold leading-none">
-            {unseenCount > 99 ? "99+" : unseenCount}
+            {filteredUnseen > 99 ? "99+" : filteredUnseen}
           </span>
         )}
         <span className="text-[11px] text-muted-foreground ml-0.5">
@@ -103,7 +109,7 @@ export function ViolationLogPanel() {
               Mark all seen
             </Button>
           )}
-          {entries.length > 0 && (
+          {entries.length > 0 && !appId && (
             <Button
               variant="ghost"
               size="sm"
@@ -118,7 +124,7 @@ export function ViolationLogPanel() {
         </div>
       </div>
 
-      {entries.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
           <BellOff className="h-6 w-6 opacity-40" />
           <p className="text-sm">No threshold violations in the last 24 hours.</p>
@@ -134,9 +140,11 @@ export function ViolationLogPanel() {
                 <th className="h-8 px-3 text-left text-[12px] font-semibold text-foreground whitespace-nowrap w-[160px]">
                   Detected at
                 </th>
-                <th className="h-8 px-3 text-left text-[12px] font-semibold text-foreground w-[140px]">
-                  App
-                </th>
+                {showAppCol && (
+                  <th className="h-8 px-3 text-left text-[12px] font-semibold text-foreground w-[140px]">
+                    App
+                  </th>
+                )}
                 <th className="h-8 px-3 text-left text-[12px] font-semibold text-foreground w-[80px]">
                   Metric
                 </th>
@@ -150,8 +158,8 @@ export function ViolationLogPanel() {
               </tr>
             </thead>
             <tbody>
-              {entries.map((entry) => (
-                <ViolationRow key={entry.id} entry={entry} />
+              {filtered.map((entry) => (
+                <ViolationRow key={entry.id} entry={entry} showAppCol={showAppCol} />
               ))}
             </tbody>
           </table>

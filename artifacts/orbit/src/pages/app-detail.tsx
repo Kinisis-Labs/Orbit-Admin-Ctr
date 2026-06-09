@@ -68,6 +68,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BAR_COLOR_DEFAULT, BAR_COLOR_UP_MILD, BAR_COLOR_UP_HIGH, BAR_COLOR_DOWN, getBarFill } from "@/lib/bar-trend";
 import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
 import { InfraAlertHistory } from "@/components/infra-alert-history";
+import { ViolationLogPanel } from "@/components/violation-log-panel";
 import { AlertConfigTable } from "@/components/alert-config-table";
 import { BudgetThresholdPopover, getBudgetBarClass } from "@/components/budget-threshold-popover";
 import { POLL_OPTIONS, type PollValue, usePollingInterval } from "@/hooks/use-polling-interval";
@@ -383,6 +384,7 @@ export default function AppDetail() {
           
           <TabsContent value="infrastructure" className="m-0 space-y-4">
             <InfraTab appId={appId} />
+            <ViolationLogPanel appId={appId} />
           </TabsContent>
 
           <TabsContent value="network" className="m-0 space-y-4">
