@@ -1044,7 +1044,7 @@ debugRouter.get("/debug/azure-network", async (_req, res) => {
     return { appId: app.id, appSub, subscriptionIds };
   });
 
-  // Attempt a live query for the first app to see if auth/RBAC works
+  // Attempt a live query to confirm auth + RBAC are working.
   let liveTest: unknown = null;
   if (APPS.length > 0) {
     try {
@@ -1055,58 +1055,6 @@ debugRouter.get("/debug/azure-network", async (_req, res) => {
     }
   }
 
-  // Token probe — fetch an ARM token and inspect what identity issued it.
-  // Decodes the JWT to show which oid/appid the managed identity is presenting.
-  let tokenProbe: unknown = null;
-  try {
-    const { getAzureCredential } = await import("../lib/azure.js");
-    const cred = getAzureCredential();
-    const token = await cred.getToken("https://management.azure.com/.default");
-    if (token?.token) {
-      // Decode payload (no verify — we just need the claims)
-      const parts = token.token.split(".");
-      if (parts.length === 3) {
-        const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf-8")) as Record<string, unknown>;
-        tokenProbe = {
-          oid: payload["oid"],
-          appid: payload["appid"],
-          idtyp: payload["idtyp"],
-          sub: payload["sub"],
-          tid: payload["tid"],
-          expiresOnTimestamp: token.expiresOnTimestamp,
-          error: null,
-        };
-      } else {
-        tokenProbe = { raw: token.token.slice(0, 40), error: "unexpected token format" };
-      }
-    } else {
-      tokenProbe = { error: "no token returned" };
-    }
-  } catch (err: unknown) {
-    tokenProbe = { error: String(err) };
-  }
-
-  // Raw Resource Graph query — bypasses all filtering so we can see if Azure returns
-  // ANY rows at all (helps distinguish RBAC empty vs filter-suppressed results).
-  let rawQuery: unknown = null;
-  try {
-    const { ResourceGraphClient } = await import("@azure/arm-resourcegraph");
-    const { getAzureCredential } = await import("../lib/azure.js");
-    const allSubs = [...new Set([...globalSubs, ...(sharedInfraSub ? [sharedInfraSub] : [])])];
-    const rgClient = new ResourceGraphClient(getAzureCredential());
-    const raw = await rgClient.resources({
-      query: `resources | project name, type, resourceGroup, subscriptionId | limit 10`,
-      subscriptions: allSubs,
-    });
-    const { normalizeResourceGraphRows } = await import("../lib/azureNetwork.js");
-    const rows = normalizeResourceGraphRows(raw.data);
-    const rawDataPreview = JSON.stringify(raw.data).slice(0, 500);
-    const rawResultKeys = raw ? Object.keys(raw as object) : [];
-    rawQuery = { rowCount: rows.length, rows: rows.slice(0, 10), subscriptionsQueried: allSubs, rawDataPreview, rawResultKeys, totalRecords: raw.totalRecords, error: null };
-  } catch (err: unknown) {
-    rawQuery = { rowCount: null, rows: [], error: String(err) };
-  }
-
   res.json({
     isAzureConfigured: isConfigured,
     AZURE_CLIENT_ID: process.env.AZURE_CLIENT_ID ? "set" : "MISSING",
@@ -1115,7 +1063,5 @@ debugRouter.get("/debug/azure-network", async (_req, res) => {
     sharedInfraSub,
     perApp,
     liveTest,
-    tokenProbe,
-    rawQuery,
   });
 });
