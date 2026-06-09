@@ -86,3 +86,43 @@ export async function fetchActivityLog(
     return [];
   }
 }
+
+export type ActivityLogDiagnostic = {
+  appId: string;
+  subscriptionId: string;
+  resourceGroup: string;
+  isAzureConfigured: boolean;
+  outcome: "not_configured" | "success" | "error";
+  count: number;
+  error?: string;
+};
+
+export async function diagnoseActivityLog(
+  appId: string,
+  resourceGroup: string,
+  subscriptionId: string,
+): Promise<ActivityLogDiagnostic> {
+  if (!isAzureConfigured()) {
+    return { appId, subscriptionId, resourceGroup, isAzureConfigured: false, outcome: "not_configured", count: 0 };
+  }
+
+  try {
+    const credential = getAzureCredential();
+    const client = new MonitorClient(credential, subscriptionId);
+    const start = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const filter = `eventTimestamp ge '${start}' and resourceGroupName eq '${resourceGroup}'`;
+
+    let count = 0;
+    for await (const _ of client.activityLogs.list(filter, {
+      select: "eventTimestamp,eventDataId",
+    })) {
+      count++;
+      if (count >= 5) break;
+    }
+
+    return { appId, subscriptionId, resourceGroup, isAzureConfigured: true, outcome: "success", count };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { appId, subscriptionId, resourceGroup, isAzureConfigured: true, outcome: "error", count: 0, error: msg.slice(0, 300) };
+  }
+}

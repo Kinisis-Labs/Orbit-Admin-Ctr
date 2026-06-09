@@ -32,10 +32,13 @@ export default function ActivityLog() {
   const { data: apps, isLoading: appsLoading } = useApps();
   const [filter, setFilter] = useState("");
 
+  const isGlobal = scope === "global";
+
   const appsToQuery = useMemo(() => {
     if (!apps) return [];
+    if (isGlobal) return apps;
     return apps.filter((a) => a.id === scope);
-  }, [apps, scope]);
+  }, [apps, scope, isGlobal]);
 
   const activityQueries = useQueries({
     queries: appsToQuery.map((app) => ({
@@ -47,7 +50,10 @@ export default function ActivityLog() {
 
   const isLoading = appsLoading || activityQueries.some((q) => q.isLoading);
   const isFetching = activityQueries.some((q) => q.isFetching);
-  const allEmpty = !isLoading && activityQueries.every((q) => !q.isLoading && (q.data?.length ?? 0) === 0);
+  const allEmpty =
+    !isLoading &&
+    appsToQuery.length > 0 &&
+    activityQueries.every((q) => !q.isLoading && (q.data?.length ?? 0) === 0);
 
   function handleRefresh() {
     activityQueries.forEach((q) => void q.refetch());
@@ -117,9 +123,9 @@ export default function ActivityLog() {
           ) : allEmpty ? (
             <div className="p-8 text-center space-y-3">
               <ScrollText className="h-8 w-8 mx-auto text-muted-foreground/40" />
-              <div className="text-[14px] font-semibold text-foreground">No activity log data</div>
+              <div className="text-[14px] font-semibold text-foreground">No activity in the last 7 days</div>
               <div className="text-[12px] text-muted-foreground max-w-md mx-auto">
-                No Azure Activity Log entries found for the selected application.
+                No Azure Activity Log entries found for {isGlobal ? "any tracked application" : "this application"} in the past 7 days.
               </div>
             </div>
           ) : (

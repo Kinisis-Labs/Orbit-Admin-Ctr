@@ -26,6 +26,7 @@ import { requireEngineerOrAdmin, requireAuth } from "../middlewares/auth.js";
 import { fetchResourcesByResourceGroup, fetchResourceGroupTags, getResourcesFetchedAt } from "../lib/azureResources.js";
 import { fetchMonthToDateCostWithFallback, fetchLastMonthComparableCostTotal } from "../lib/azureCost.js";
 import { fetchBudgetForAppWithFallback, diagnoseBudgetsForApp } from "../lib/azureBudgets.js";
+import { diagnoseActivityLog } from "../lib/azureActivity.js";
 import { fetchSubscriptionNames } from "../lib/azureSubscriptions.js";
 import {
   fetchAppMetrics,
@@ -1017,6 +1018,13 @@ export const debugRouter = Router();
 debugRouter.get("/debug/azure-budgets", async (_req, res) => {
   const results = await Promise.all(
     APPS.map((app) => diagnoseBudgetsForApp(app, billingScope(app.id))),
+  );
+  res.json({ results });
+});
+
+debugRouter.get("/debug/azure-activity", async (_req, res) => {
+  const results = await Promise.all(
+    APPS.map((app) => diagnoseActivityLog(app.id, app.resourceGroup, app.subscriptionId)),
   );
   res.json({ results });
 });
