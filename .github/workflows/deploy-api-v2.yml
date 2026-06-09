@@ -161,7 +161,7 @@ jobs:
                 AZURE_BILLING_ACCOUNT_ID="${{ secrets.AZURE_BILLING_ACCOUNT_ID }}" \
                 BUDGET_AMOUNT__GRAILBABE="${{ secrets.BUDGET_AMOUNT__GRAILBABE }}" \
                 BUDGET_AMOUNT__KINISIS_LABS="${{ secrets.BUDGET_AMOUNT__KINISIS_LABS }}" \
-                GITHUB_TOKEN="${{ secrets.ORBIT_DEPLOY_ID }}" \
+                GITHUB_TOKEN="${{ secrets.ORBIT_DEPLOYMENT_ID }}" \
                 STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}"
             az containerapp ingress update \
               --name ca-orbit-prod-v2 \

@@ -280,7 +280,7 @@ export default function Deployments() {
               <div className="text-[14px] font-semibold text-foreground">No workflow history available</div>
               <div className="text-[12px] text-muted-foreground max-w-md mx-auto">
                 No runs found for the selected scope. If GitHub integration is not yet configured,
-                set <code className="bg-muted px-1 rounded">ORBIT_DEPLOY_ID</code> to a fine-grained
+                set <code className="bg-muted px-1 rounded">ORBIT_DEPLOYMENT_ID</code> to a fine-grained
                 PAT with Actions: Read-only on{" "}
                 <code className="bg-muted px-1 rounded">Kinisis-Labs/GrailBabe</code> and{" "}
                 <code className="bg-muted px-1 rounded">Kinisis-Labs/Orbit-Admin-Ctr</code>.

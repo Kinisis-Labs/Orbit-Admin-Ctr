@@ -39,7 +39,7 @@ type CacheEntry = {
 const _cache = new Map<string, CacheEntry>();
 
 function getToken(): string | undefined {
-  return process.env.GITHUB_TOKEN ?? process.env.ORBIT_DEPLOY_ID;
+  return process.env.GITHUB_TOKEN ?? process.env.ORBIT_DEPLOYMENT_ID;
 }
 
 function isConfigured(): boolean {
