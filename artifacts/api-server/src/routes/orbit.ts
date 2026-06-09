@@ -428,7 +428,11 @@ router.get("/apps/:appId/infrastructure", async (req, res) => {
   const series = seriesAll.filter((s) => s.points.length > 0);
   const resourcesFetchedAt = getResourcesFetchedAt(app.id);
   const infraCachedAt = liveResources && resourcesFetchedAt ? new Date(resourcesFetchedAt).toISOString() : undefined;
-  const data = GetInfrastructureResponse.parse({ resources, series, dataSource: liveResources ? "live" : "mock", ...(infraCachedAt ? { cachedAt: infraCachedAt } : {}) });
+  // Only mark dataSource "live" when we actually have live metric series — if
+  // resources are fetched but Log Analytics is unconfigured, series is empty
+  // and we want the generic "no data" UI (not the "Log Analytics returned nothing" message).
+  const metricsDataSource = series.length > 0 ? "live" : "mock";
+  const data = GetInfrastructureResponse.parse({ resources, series, dataSource: metricsDataSource, ...(infraCachedAt ? { cachedAt: infraCachedAt } : {}) });
   res.json(data);
 });
 
