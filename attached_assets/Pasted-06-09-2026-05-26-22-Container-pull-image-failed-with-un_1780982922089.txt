@@ -1,0 +1,165 @@
+06/09/2026, 05:26:22
+
+Container pull image failed with unauthorized error.
+06/09/2026, 05:26:22
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:657bc71607509e75327bc3f2d086660489a74b43'
+06/09/2026, 05:26:22
+
+Container 'ca-orbit-prod-v2' was terminated with exit code '' and reason 'ImagePullFailure'
+06/09/2026, 05:21:22
+
+Container pull image failed with unauthorized error.
+06/09/2026, 05:21:22
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:657bc71607509e75327bc3f2d086660489a74b43'
+06/09/2026, 05:21:22
+
+Container 'ca-orbit-prod-v2' was terminated with exit code '' and reason 'ImagePullFailure'
+06/09/2026, 05:16:22
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:657bc71607509e75327bc3f2d086660489a74b43'
+06/09/2026, 05:16:22
+
+Container 'ca-orbit-prod-v2' was terminated with exit code '' and reason 'ImagePullFailure'
+06/09/2026, 05:16:22
+
+Container pull image failed with unauthorized error.
+06/09/2026, 05:11:22
+
+Container pull image failed with unauthorized error.
+06/09/2026, 05:11:22
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:657bc71607509e75327bc3f2d086660489a74b43'
+06/09/2026, 05:11:22
+
+Container 'ca-orbit-prod-v2' was terminated with exit code '' and reason 'ImagePullFailure'
+06/09/2026, 05:06:22
+
+Container pull image failed with unauthorized error.
+06/09/2026, 05:06:22
+
+Container 'ca-orbit-prod-v2' was terminated with exit code '' and reason 'ImagePullFailure'
+06/09/2026, 05:06:21
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:657bc71607509e75327bc3f2d086660489a74b43'
+06/09/2026, 05:01:50
+
+Revision 'ca-orbit-prod-v2--0000013' provisioning timed out after progression deadline.
+06/09/2026, 05:01:50
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-prod-v2
+06/09/2026, 05:01:35
+
+Revision 'ca-orbit-prod-v2--0000013' provisioning timed out after progression deadline.
+06/09/2026, 05:01:35
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-prod-v2
+06/09/2026, 05:01:25
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-prod-v2
+06/09/2026, 05:01:25
+
+Revision 'ca-orbit-prod-v2--0000013' updated. No new revision was provisioned.
+06/09/2026, 05:01:25
+
+Revision 'ca-orbit-prod-v2--0000013' updated. No new revision was provisioned.
+06/09/2026, 05:01:25
+
+Setting traffic weight of '100%' for revision 'ca-orbit-prod-v2--0000011'
+06/09/2026, 05:01:24
+
+Sync with secrets from Azure Key Vault was successful for container app ca-orbit-prod-v2
+06/09/2026, 05:01:24
+
+Revision 'ca-orbit-prod-v2--0000013' provisioning timed out after progression deadline.
+06/09/2026, 05:01:23
+
+Sync with secrets from Azure Key Vault was successful for container app ca-orbit-prod-v2
+06/09/2026, 05:01:21
+
+Container pull image failed with unauthorized error.
+06/09/2026, 05:01:21
+
+Container 'ca-orbit-prod-v2' was terminated with exit code '' and reason 'ImagePullFailure'
+06/09/2026, 05:01:21
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-prod-v2
+06/09/2026, 05:01:21
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:657bc71607509e75327bc3f2d086660489a74b43'
+06/09/2026, 05:01:21
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-prod-v2
+06/09/2026, 04:56:21
+
+Container 'ca-orbit-prod-v2' was terminated with exit code '' and reason 'ImagePullFailure'
+06/09/2026, 04:56:21
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:657bc71607509e75327bc3f2d086660489a74b43'
+06/09/2026, 04:56:21
+
+Container pull image failed with unauthorized error.
+06/09/2026, 04:51:21
+
+Container pull image failed with unauthorized error.
+06/09/2026, 04:51:21
+
+Container 'ca-orbit-prod-v2' was terminated with exit code '' and reason 'ImagePullFailure'
+06/09/2026, 04:51:21
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:657bc71607509e75327bc3f2d086660489a74b43'
+06/09/2026, 04:46:21
+
+Container pull image failed with unauthorized error.
+06/09/2026, 04:46:21
+
+Container 'ca-orbit-prod-v2' was terminated with exit code '' and reason 'ImagePullFailure'
+06/09/2026, 04:46:21
+
+Pulling image 'ghcr.io/kinisis-labs/orbit-api:657bc71607509e75327bc3f2d086660489a74b43'
+06/09/2026, 04:45:54
+
+Revision 'ca-orbit-prod-v2--0000013' provisioning timed out after progression deadline.
+06/09/2026, 04:45:54
+
+Revision 'ca-orbit-prod-v2--0000013' provisioning timed out after progression deadline.
+06/09/2026, 04:44:44
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-prod-v2
+06/09/2026, 04:44:31
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-prod-v2
+06/09/2026, 04:44:18
+
+Revision 'ca-orbit-prod-v2--0000013' updated. No new revision was provisioned.
+06/09/2026, 04:44:18
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-prod-v2
+06/09/2026, 04:44:18
+
+Revision 'ca-orbit-prod-v2--0000013' updated. No new revision was provisioned.
+06/09/2026, 04:44:17
+
+Sync with secrets from Azure Key Vault was successful for container app ca-orbit-prod-v2
+06/09/2026, 04:44:16
+
+Sync with secrets from Azure Key Vault was successful for container app ca-orbit-prod-v2
+06/09/2026, 04:44:15
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-prod-v2
+06/09/2026, 04:35:53
+
+Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: ca-orbit-prod-v2
+06/09/2026, 04:35:53
+
+Target resource doesn't exist
+06/09/2026, 04:35:53
+
+Target resource doesn't exist
+06/09/2026, 04:35:53
+
+Successfully provisioned revision 'ca-orbit-prod-v2--0000013'
+06/09/2026, 04:35:53
+
+Creating a new revision: ca-orbit-prod-v2--0000013
