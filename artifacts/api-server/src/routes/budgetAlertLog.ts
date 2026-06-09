@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, budgetAlertLogTable } from "@workspace/db";
 import { and, count, desc, eq, gte, isNull } from "drizzle-orm";
 import { APPS } from "./orbit.js";
+import { requireAdmin } from "../middlewares/auth.js";
 
 const router: IRouter = Router();
 
@@ -59,8 +60,8 @@ router.get("/budget-alerts/log", async (req, res) => {
   });
 });
 
-router.patch("/budget-alerts/log/:id/acknowledge", async (req, res) => {
-  const id = parseInt(req.params["id"] ?? "", 10);
+router.patch("/budget-alerts/log/:id/acknowledge", requireAdmin, async (req, res) => {
+  const id = parseInt(String(req.params["id"] ?? ""), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
     return;

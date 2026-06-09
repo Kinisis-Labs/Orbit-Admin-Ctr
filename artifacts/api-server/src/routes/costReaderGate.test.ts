@@ -20,7 +20,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
-import { requireAuth, requireCostReader } from "../middlewares/auth.js";
+import { requireAuth, requireAdmin, requireCostReader } from "../middlewares/auth.js";
 import type { SessionUser } from "../lib/session.js";
 
 // ---------------------------------------------------------------------------
@@ -91,12 +91,14 @@ function buildGateApp(): express.Express {
   app.get("/api/play/subscriptions", requireAuth, requireCostReader, stub);
   app.get("/api/apple/subscriptions", requireAuth, requireCostReader, stub);
   app.get("/api/budget-alerts/log", requireAuth, requireCostReader, stub);
-  // Decision: PATCH acknowledge requires cost-reader, not admin-only.
-  // Rationale: cost-readers are the natural audience for budget alerts; they
-  // need to acknowledge them as part of normal FinOps workflow. Admin-only
-  // would be unnecessarily restrictive. The acknowledgedBy field records who
-  // performed the action, providing adequate accountability.
-  app.patch("/api/budget-alerts/log/:id/acknowledge", requireAuth, requireCostReader, stub);
+  // Decision: PATCH acknowledge requires admin (Orbit-Admins), not just cost-reader.
+  // Rationale: acknowledging a budget overrun is a write action with audit implications;
+  // restricting it to designated operators (admins) ensures accountability as the team
+  // grows. Cost-readers retain read access to the alert log via GET. The acknowledgedBy
+  // field records who performed the action for the audit trail.
+  // The router is mounted behind requireCostReader in index.ts; requireAdmin is applied
+  // on the PATCH route inside the router for the additional privilege check.
+  app.patch("/api/budget-alerts/log/:id/acknowledge", requireAuth, requireCostReader, requireAdmin, stub);
 
   return app;
 }
@@ -310,11 +312,16 @@ describe("cost-reader gate — Entra mode", () => {
 
   // --- PATCH /api/budget-alerts/log/:id/acknowledge ---
   //
-  // Decision: cost-reader gate (not admin-only).
-  // Cost-readers are the natural audience for budget alerts; they need to
-  // acknowledge them as part of normal FinOps workflow.  Admin-only would be
-  // unnecessarily restrictive.  The acknowledgedBy field records who performed
-  // the action, which is adequate accountability for a write of this scope.
+  // Decision: admin gate (Orbit-Admins), not cost-reader.
+  // Acknowledging a budget overrun is a write action with audit implications;
+  // restricting it to designated operators ensures accountability as the team
+  // grows.  Cost-readers retain full read access to the alert log via GET.
+  // The acknowledgedBy field provides the audit trail of who performed the action.
+  //
+  // Gate chain in production: requireAuth → requireCostReader (router mount) → requireAdmin (route).
+  // A cost-reader without admin membership is stopped by requireAdmin (403, Orbit-Admins).
+  // An admin without explicit cost-reader is still admitted at requireCostReader because
+  // requireCostReader allows isAdmin: true.
 
   describe("PATCH /api/budget-alerts/log/:id/acknowledge", () => {
     test("returns 401 when there is no session (unauthenticated)", async () => {
@@ -327,21 +334,21 @@ describe("cost-reader gate — Entra mode", () => {
     test("returns 403 for an authenticated user without cost-reader or admin", async () => {
       currentUser = makeUser({ isCostReader: false, isAdmin: false });
       const { status, body } = await patch(server, "/api/budget-alerts/log/1/acknowledge");
-      assert.equal(status, 403, "authenticated non-cost-reader must be rejected with 403");
+      assert.equal(status, 403, "authenticated non-cost-reader must be rejected with 403 at the cost-reader gate");
       assert.deepEqual(body, { error: "forbidden", requiredGroup: "Orbit-Cost-Readers" });
     });
 
-    test("returns 200 for a user with isCostReader: true (gate passes; real route would 404 on unknown id)", async () => {
-      currentUser = makeUser({ isCostReader: true });
+    test("returns 403 for a cost-reader without admin (gate passes requireCostReader but fails requireAdmin)", async () => {
+      currentUser = makeUser({ isCostReader: true, isAdmin: false });
       const { status, body } = await patch(server, "/api/budget-alerts/log/1/acknowledge");
-      assert.equal(status, 200, "cost-reader must be allowed through the gate");
-      assert.deepEqual(body, { ok: true });
+      assert.equal(status, 403, "cost-reader without admin must be blocked at the admin gate");
+      assert.deepEqual(body, { error: "forbidden", requiredGroup: "Orbit-Admins" });
     });
 
-    test("returns 200 for an admin user (admin implies cost-reader access)", async () => {
+    test("returns 200 for an admin user (gate passes; real route would 404 on unknown id)", async () => {
       currentUser = makeUser({ isAdmin: true, isCostReader: false });
       const { status, body } = await patch(server, "/api/budget-alerts/log/1/acknowledge");
-      assert.equal(status, 200, "admin must be allowed through even without explicit cost-reader flag");
+      assert.equal(status, 200, "admin must be allowed through both gates");
       assert.deepEqual(body, { ok: true });
     });
   });

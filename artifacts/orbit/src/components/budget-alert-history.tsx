@@ -1,5 +1,7 @@
 import { useListBudgetAlertLog, listBudgetAlertLog, useAcknowledgeBudgetAlertLogEntry, getListBudgetAlertLogQueryKey, useGetAlertChannelStatus } from "@workspace/api-client-react";
 import type { BudgetAlertLogEntry } from "@workspace/api-client-react";
+import { useAuth } from "@/lib/auth";
+import { ADMIN_GROUP } from "@/lib/auth-groups";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -136,6 +138,8 @@ interface Props {
 export function BudgetAlertHistory({ appId }: Props) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { hasGroup } = useAuth();
+  const isAdmin = hasGroup(ADMIN_GROUP.id);
 
   const { data: channelStatus } = useGetAlertChannelStatus();
 
@@ -919,7 +923,7 @@ export function BudgetAlertHistory({ appId }: Props) {
                         </div>
                       </TableCell>
                       <TableCell className="py-1 text-right">
-                        {isAcked ? null : (
+                        {isAcked ? null : isAdmin ? (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -929,6 +933,24 @@ export function BudgetAlertHistory({ appId }: Props) {
                           >
                             Acknowledge
                           </Button>
+                        ) : (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 text-[11px] px-2 rounded-sm text-muted-foreground/40 cursor-not-allowed"
+                                  disabled
+                                >
+                                  Acknowledge
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="text-[12px]">
+                              Requires Orbit-Admins membership
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                       </TableCell>
                     </TableRow>
