@@ -929,7 +929,7 @@ function BudgetSummaryWidget({
 
   const appCount = filteredApps?.length ?? apps?.length;
 
-  const csvHeaders = ["Application", "Environment", "Auth", "Spent MTD (USD)", "Budget (USD)", "Forecast (USD)", "Utilization %", "Status", "Budget breach"];
+  const csvHeaders = ["Application", "Environment", "Auth", "Spent MTD (USD)", "Budget (USD)", "Forecast (USD)", "Utilization %", "Status", "Budget breach", "WoW Trend"];
   const csvRows = useMemo(() => {
     if (!filteredApps) return null;
     const appRows = filteredApps.map((app) => {
@@ -947,6 +947,7 @@ function BudgetSummaryWidget({
         pct != null ? String(pct) : "",
         status,
         app.forecastOverBudget ? "Yes" : "No",
+        trendByAppId.get(app.id) ?? "",
       ];
     });
 
@@ -961,17 +962,18 @@ function BudgetSummaryWidget({
       totalUtilizationPct != null ? String(Math.round(totalUtilizationPct)) : "",
       totalUtilizationStatus,
       "",
+      globalCostSummary?.wowTrend ?? "",
     ];
 
     const rows: string[][] = [...appRows, totalRow];
     if (unbudgetedCount > 0) {
       rows.push([
         `Note: ${unbudgetedCount} app${unbudgetedCount === 1 ? "" : "s"} not included in budget/forecast totals (no budget set)`,
-        "", "", "", "", "", "", "", "",
+        "", "", "", "", "", "", "", "", "",
       ]);
     }
     return rows;
-  }, [filteredApps, totalSpentMTD, totalBudget, totalForecast, totalUtilizationPct, totalUtilizationStatus]);
+  }, [filteredApps, totalSpentMTD, totalBudget, totalForecast, totalUtilizationPct, totalUtilizationStatus, trendByAppId, globalCostSummary?.wowTrend]);
 
   const { copied, disabled: csvDisabled, handleExport, handleCopy } = useCsvExport(csvRows, csvHeaders, "app-services-budget");
 
