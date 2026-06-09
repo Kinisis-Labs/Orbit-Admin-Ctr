@@ -1,6 +1,7 @@
 import { MonitorClient } from "@azure/arm-monitor";
 import { getAzureCredential, isAzureConfigured } from "./azure.js";
 import { logger } from "./logger.js";
+import { resolveActorNames } from "./graphResolver.js";
 
 /**
  * Azure Activity Log — operator-action audit trail per resource group.
@@ -79,6 +80,13 @@ export async function fetchActivityLog(
     }
 
     entries.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+    const actorNames = await resolveActorNames(entries.map((e) => e.actor));
+    for (const entry of entries) {
+      const resolved = actorNames.get(entry.actor);
+      if (resolved !== undefined) entry.actor = resolved;
+    }
+
     _cache.set(appId, { data: entries, fetchedAt: Date.now() });
     return entries;
   } catch (err) {
@@ -94,6 +102,7 @@ export type ActivityLogDiagnostic = {
   isAzureConfigured: boolean;
   outcome: "not_configured" | "success" | "error";
   count: number;
+  sampleActors: string[];
   error?: string;
 };
 
@@ -103,7 +112,7 @@ export async function diagnoseActivityLog(
   subscriptionId: string,
 ): Promise<ActivityLogDiagnostic> {
   if (!isAzureConfigured()) {
-    return { appId, subscriptionId, resourceGroup, isAzureConfigured: false, outcome: "not_configured", count: 0 };
+    return { appId, subscriptionId, resourceGroup, isAzureConfigured: false, outcome: "not_configured", count: 0, sampleActors: [] };
   }
 
   try {
@@ -113,16 +122,20 @@ export async function diagnoseActivityLog(
     const filter = `eventTimestamp ge '${start}' and resourceGroupName eq '${resourceGroup}'`;
 
     let count = 0;
-    for await (const _ of client.activityLogs.list(filter, {
-      select: "eventTimestamp,eventDataId",
+    const sampleActors: string[] = [];
+    for await (const event of client.activityLogs.list(filter, {
+      select: "eventTimestamp,eventDataId,caller",
     })) {
       count++;
-      if (count >= 5) break;
+      if (event.caller && !sampleActors.includes(event.caller)) {
+        sampleActors.push(event.caller);
+      }
+      if (count >= 20) break;
     }
 
-    return { appId, subscriptionId, resourceGroup, isAzureConfigured: true, outcome: "success", count };
+    return { appId, subscriptionId, resourceGroup, isAzureConfigured: true, outcome: "success", count, sampleActors };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { appId, subscriptionId, resourceGroup, isAzureConfigured: true, outcome: "error", count: 0, error: msg.slice(0, 300) };
+    return { appId, subscriptionId, resourceGroup, isAzureConfigured: true, outcome: "error", count: 0, sampleActors: [], error: msg.slice(0, 300) };
   }
 }
