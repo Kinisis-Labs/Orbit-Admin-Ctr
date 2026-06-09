@@ -14,7 +14,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AuthBadge } from "@/components/auth-badge";
 import { ScopeContext, useScope } from "./scope-context";
 import { useInfraViolations } from "@/lib/infra-violation-context";
 import type { UserAuthType } from "@workspace/api-client-react";
@@ -132,7 +131,6 @@ export function ScopeSelect({
                 {selectedApp.name}
                 <span className="text-muted-foreground"> · {selectedApp.environment}</span>
               </span>
-              <AuthBadge userAuth={selectedApp.userAuth} />
             </span>
           ) : (
             <SelectValue placeholder="Select scope" />
@@ -154,7 +152,6 @@ export function ScopeSelect({
                   />
                 )}
                 {a.name}
-                <AuthBadge userAuth={a.userAuth} />
                 {a.androidPackage && (
                   <TooltipProvider>
                     <Tooltip>
