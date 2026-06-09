@@ -1,21 +1,28 @@
 import { useMemo } from "react";
-import { useListUserActivity, useGetStaffStats, useListClerkEventSummary } from "@workspace/api-client-react";
+import { useListUserActivity, useGetStaffStats, useListClerkEventSummary, useListClerkIdentities } from "@workspace/api-client-react";
+import type { ClerkIdentityRow } from "@workspace/api-client-react";
 import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingDown, TrendingUp, ExternalLink, RefreshCw, Wifi, Shield } from "lucide-react";
-import { PageHeader } from "@/components/page-header";
+import { TrendingDown, TrendingUp, ExternalLink, RefreshCw, Wifi, Shield, Users as UsersIcon } from "lucide-react";
+import { PageHeader, StatusPill } from "@/components/page-header";
 import { RefreshingBar } from "@/components/refreshing-bar";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
+import { formatDistanceToNow, format } from "date-fns";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-US").format(n);
+
+const BUSINESS_OPS_ID = "kinisis-labs";
 
 export default function Users() {
   const { scope } = useScope();
   const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useListUserActivity();
   const { data: staffData, isLoading: staffLoading } = useGetStaffStats();
   const { data: eventsData, isLoading: eventsLoading } = useListClerkEventSummary();
+
+  const isSpecificClerkApp = scope !== "global" && scope !== BUSINESS_OPS_ID;
+  const showEntra = scope === BUSINESS_OPS_ID;
 
   const activity = useMemo(() => data ?? [], [data]);
   const scopedActivity = activity.filter((a) => a.appId === scope);
@@ -59,54 +66,56 @@ export default function Users() {
 
       <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
 
-      {/* ── Orbit staff (Entra ID) ─────────────────────────────────── */}
-      <div className="bg-card border border-border shadow-sm">
-        <div className="flex items-center gap-3 p-3 border-b border-border">
-          <div className="shrink-0 h-8 w-8 rounded-sm bg-blue-500/10 text-blue-500 flex items-center justify-center">
-            <Shield className="h-4 w-4" />
+      {/* ── Orbit staff (Entra ID) — only shown for Business Ops scope ── */}
+      {showEntra && (
+        <div className="bg-card border border-border shadow-sm">
+          <div className="flex items-center gap-3 p-3 border-b border-border">
+            <div className="shrink-0 h-8 w-8 rounded-sm bg-blue-500/10 text-blue-500 flex items-center justify-center">
+              <Shield className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold">Orbit staff — Entra ID</p>
+              <p className="text-[11px] text-muted-foreground">RBAC group membership counts from Microsoft Entra ID. Refreshed every 5 minutes.</p>
+            </div>
+            {staffLive && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-semibold uppercase tracking-wide shrink-0">
+                <Wifi className="h-3 w-3" />
+                Live
+              </span>
+            )}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold">Orbit staff — Entra ID</p>
-            <p className="text-[11px] text-muted-foreground">RBAC group membership counts from Microsoft Entra ID. Refreshed every 5 minutes.</p>
-          </div>
-          {staffLive && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-semibold uppercase tracking-wide shrink-0">
-              <Wifi className="h-3 w-3" />
-              Live
-            </span>
+
+          {staffLoading ? (
+            <div className="p-4 space-y-2">
+              <Skeleton className="h-8" />
+              <Skeleton className="h-8" />
+            </div>
+          ) : staffGroups.length === 0 ? (
+            <div className="p-6 text-center text-[12px] text-muted-foreground">
+              {staffData?.dataSource === "unconfigured"
+                ? "Entra ID not configured — set ENTRA_TENANT_ID, ENTRA_CLIENT_ID, and ENTRA_CLIENT_SECRET on the API container."
+                : "No RBAC groups configured — set ENTRA_AUTHORIZED_GROUP_ID and ENTRA_COST_READER_GROUP_ID env vars."}
+            </div>
+          ) : (
+            <Table className="text-[13px]">
+              <TableHeader className="bg-muted/50 border-b border-border">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-8 font-semibold text-foreground">Group</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground text-right">Members</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {staffGroups.map((g) => (
+                  <TableRow key={g.id} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                    <TableCell className="py-1 font-medium">{g.name}</TableCell>
+                    <TableCell className="py-1 text-right tabular-nums font-semibold">{fmt(g.memberCount)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </div>
-
-        {staffLoading ? (
-          <div className="p-4 space-y-2">
-            <Skeleton className="h-8" />
-            <Skeleton className="h-8" />
-          </div>
-        ) : staffGroups.length === 0 ? (
-          <div className="p-6 text-center text-[12px] text-muted-foreground">
-            {staffData?.dataSource === "unconfigured"
-              ? "Entra ID not configured — set ENTRA_TENANT_ID, ENTRA_CLIENT_ID, and ENTRA_CLIENT_SECRET on the API container."
-              : "No RBAC groups configured — set ENTRA_AUTHORIZED_GROUP_ID and ENTRA_COST_READER_GROUP_ID env vars."}
-          </div>
-        ) : (
-          <Table className="text-[13px]">
-            <TableHeader className="bg-muted/50 border-b border-border">
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="h-8 font-semibold text-foreground">Group</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground text-right">Members</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {staffGroups.map((g) => (
-                <TableRow key={g.id} className="h-8 border-b border-border/50 hover:bg-muted/40">
-                  <TableCell className="py-1 font-medium">{g.name}</TableCell>
-                  <TableCell className="py-1 text-right tabular-nums font-semibold">{fmt(g.memberCount)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+      )}
 
       {/* ── Consumer end-user engagement (Clerk) ──────────────────── */}
       <ClerkBanner dataUpdatedAt={dataUpdatedAt} />
@@ -190,7 +199,105 @@ export default function Users() {
 
       {/* ── Account event log (Clerk lifecycle events) ─────────────── */}
       <ClerkEventLog data={eventsData ?? []} isLoading={eventsLoading} scope={scope} />
+
+      {/* ── Individual user identities — only for a specific Clerk app ── */}
+      {isSpecificClerkApp && <ClerkIdentityTable appId={scope} />}
     </div>
+  );
+}
+
+function ClerkIdentityTable({ appId }: { appId: string }) {
+  const { data, isLoading } = useListClerkIdentities({ appId });
+  const users = data ?? [];
+
+  return (
+    <div className="bg-card border border-border shadow-sm">
+      <div className="flex items-center gap-3 p-3 border-b border-border">
+        <div className="shrink-0 h-8 w-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center">
+          <UsersIcon className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-semibold">User accounts</p>
+          <p className="text-[11px] text-muted-foreground">
+            Individual Clerk accounts — email and account age from webhook ingestion. Most recently joined first.
+          </p>
+        </div>
+        {!isLoading && (
+          <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
+            {users.length === 50 ? "50+" : users.length} {users.length === 1 ? "account" : "accounts"}
+          </span>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="p-4 space-y-2">
+          <Skeleton className="h-8" />
+          <Skeleton className="h-8" />
+          <Skeleton className="h-8" />
+        </div>
+      ) : users.length === 0 ? (
+        <div className="p-8 text-center text-[12px] text-muted-foreground">
+          No user records yet. Accounts appear here as Clerk webhooks arrive.
+        </div>
+      ) : (
+        <Table className="text-[13px]">
+          <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="h-8 font-semibold text-foreground">Email</TableHead>
+              <TableHead className="h-8 font-semibold text-foreground">Account age</TableHead>
+              <TableHead className="h-8 font-semibold text-foreground">Last sign-in</TableHead>
+              <TableHead className="h-8 font-semibold text-foreground">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((u) => (
+              <ClerkIdentityRowComponent key={u.clerkUserId} user={u} />
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  );
+}
+
+function ClerkIdentityRowComponent({ user }: { user: ClerkIdentityRow }) {
+  const createdDate = new Date(user.createdAt);
+  const lastSignIn = user.lastSignInAt ? new Date(user.lastSignInAt) : null;
+
+  const domainPart = user.email?.split("@")[1];
+  const emailDomain = domainPart ? `@${domainPart}` : null;
+  const emailLocal = user.email?.split("@")[0] ?? null;
+
+  return (
+    <TableRow className="h-9 border-b border-border/50 hover:bg-muted/40">
+      <TableCell className="py-1">
+        {user.email ? (
+          <span className="font-mono text-[12px]">
+            <span className="text-foreground font-medium">{emailLocal}</span>
+            <span className="text-muted-foreground">{emailDomain}</span>
+          </span>
+        ) : (
+          <span className="text-muted-foreground/50 text-[12px] font-mono">{user.clerkUserId}</span>
+        )}
+      </TableCell>
+      <TableCell className="py-1 text-muted-foreground" title={format(createdDate, "PPpp")}>
+        {formatDistanceToNow(createdDate, { addSuffix: true })}
+      </TableCell>
+      <TableCell className="py-1 text-muted-foreground">
+        {lastSignIn ? (
+          <span title={format(lastSignIn, "PPpp")}>{formatDistanceToNow(lastSignIn, { addSuffix: true })}</span>
+        ) : (
+          <span className="text-muted-foreground/40">—</span>
+        )}
+      </TableCell>
+      <TableCell className="py-1">
+        {user.deleted ? (
+          <StatusPill tone="bad">Deleted</StatusPill>
+        ) : (
+          <StatusPill tone="ok">Active</StatusPill>
+        )}
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -279,10 +386,11 @@ function ClerkBanner({ dataUpdatedAt }: { dataUpdatedAt: number }) {
     <div className="bg-card border border-border shadow-sm p-3 flex items-start gap-3">
       <div className="shrink-0 h-8 w-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center text-[11px] font-semibold">CK</div>
       <div className="flex-1 text-[12px] text-muted-foreground">
-        <span className="text-foreground font-semibold">Clerk-sourced, anonymous.</span> Each consumer app's end users sign in via{" "}
+        <span className="text-foreground font-semibold">Clerk-sourced.</span> Each consumer app's end users sign in via{" "}
         <span className="font-mono text-foreground">Clerk</span>. DAU / WAU / MAU are ingested in real time from Clerk{" "}
-        <span className="font-mono text-foreground">webhooks</span> and stored as aggregate rollups — only an opaque user id and
-        timestamps are kept, never emails or names.
+        <span className="font-mono text-foreground">webhooks</span>. Email addresses are captured from{" "}
+        <span className="font-mono text-foreground">user.created</span> and{" "}
+        <span className="font-mono text-foreground">user.updated</span> events and stored in Orbit's database.
         {timestampLabel && (
           <span className="block mt-1 text-[11px] text-muted-foreground/70 tabular-nums">
             {timestampLabel}{ago ? <span className="text-muted-foreground/50"> · {ago}</span> : null}

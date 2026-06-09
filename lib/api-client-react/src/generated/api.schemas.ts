@@ -264,6 +264,15 @@ export interface UserActivityRow {
   dataSource: UserActivityRowDataSource;
 }
 
+export interface ClerkIdentityRow {
+  clerkUserId: string;
+  email?: string | null;
+  createdAt: string;
+  lastSignInAt?: string | null;
+  lastActiveAt?: string | null;
+  deleted: boolean;
+}
+
 export type PlaySubscriptionRowDataSource = typeof PlaySubscriptionRowDataSource[keyof typeof PlaySubscriptionRowDataSource];
 
 
@@ -1431,6 +1440,12 @@ export type ListGlobalAlertsParams = {
  * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
  */
 refresh?: RefreshParameter;
+};
+
+export type ListClerkIdentitiesParams = {
+appId: string;
+limit?: number;
+offset?: number;
 };
 
 export type QueryLogsParams = {

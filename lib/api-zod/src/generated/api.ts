@@ -585,6 +585,29 @@ export const ListUserActivityResponse = zod.array(ListUserActivityResponseItem)
 
 
 /**
+ * @summary Individual Clerk user records for a given app (email + account age), most recently joined first
+ */
+export const listClerkIdentitiesQueryLimitDefault = 50;
+export const listClerkIdentitiesQueryOffsetDefault = 0;
+
+export const ListClerkIdentitiesQueryParams = zod.object({
+  "appId": zod.coerce.string(),
+  "limit": zod.coerce.number().default(listClerkIdentitiesQueryLimitDefault),
+  "offset": zod.coerce.number().default(listClerkIdentitiesQueryOffsetDefault)
+})
+
+export const ListClerkIdentitiesResponseItem = zod.object({
+  "clerkUserId": zod.string(),
+  "email": zod.string().nullish(),
+  "createdAt": zod.string().datetime({"offset":true}),
+  "lastSignInAt": zod.string().datetime({"offset":true}).nullish(),
+  "lastActiveAt": zod.string().datetime({"offset":true}).nullish(),
+  "deleted": zod.boolean()
+})
+export const ListClerkIdentitiesResponse = zod.array(ListClerkIdentitiesResponseItem)
+
+
+/**
  * @summary Per-app Google Play subscription states + revenue (placeholder until the app is live)
  */
 export const ListPlaySubscriptionsResponseItem = zod.object({

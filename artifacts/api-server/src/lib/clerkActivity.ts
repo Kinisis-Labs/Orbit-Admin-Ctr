@@ -122,13 +122,26 @@ function createdTime(evt: ClerkEvent): Date {
 }
 
 // Clerk user events carry the user id on `data.id`; session events carry it on
-// `data.user_id`. Only this opaque id is read — never email/name.
+// `data.user_id`.
 function extractUserId(evt: ClerkEvent): string | undefined {
   const d = evt.data ?? {};
   if (evt.type.startsWith("session.")) {
     return typeof d.user_id === "string" ? d.user_id : undefined;
   }
   return typeof d.id === "string" ? d.id : undefined;
+}
+
+// Extract the primary email address from a Clerk user event payload.
+// Returns undefined for session events (which carry no user email).
+function extractEmail(evt: ClerkEvent): string | undefined {
+  if (evt.type.startsWith("session.")) return undefined;
+  const d = evt.data ?? {};
+  const addresses = d.email_addresses as
+    | Array<{ id: string; email_address: string }>
+    | undefined;
+  const primaryId = d.primary_email_address_id as string | undefined;
+  if (!addresses || !primaryId) return undefined;
+  return addresses.find((e) => e.id === primaryId)?.email_address;
 }
 
 async function applyUserEvent(
@@ -157,15 +170,20 @@ async function applyUserEvent(
   const newestActive = sql`greatest(${appUsersTable.lastActiveAt}, ${active})`;
 
   if (type === "user.created") {
+    const email = extractEmail(evt) ?? null;
     await exec
       .insert(appUsersTable)
       .values({
         appId,
         clerkUserId: userId,
+        email,
         createdAt: createdTime(evt),
         lastActiveAt: active,
       })
-      .onConflictDoNothing();
+      .onConflictDoUpdate({
+        target: [appUsersTable.appId, appUsersTable.clerkUserId],
+        set: { email: sql`coalesce(${appUsersTable.email}, ${email})` },
+      });
     return;
   }
 
@@ -190,13 +208,17 @@ async function applyUserEvent(
     return;
   }
 
-  // user.updated / other activity — advance last-active, ensure the row.
+  // user.updated / other activity — advance last-active, update email if present.
+  const email = extractEmail(evt) ?? null;
   await exec
     .insert(appUsersTable)
-    .values({ appId, clerkUserId: userId, lastActiveAt: active })
+    .values({ appId, clerkUserId: userId, email, lastActiveAt: active })
     .onConflictDoUpdate({
       target: [appUsersTable.appId, appUsersTable.clerkUserId],
-      set: { lastActiveAt: newestActive },
+      set: {
+        lastActiveAt: newestActive,
+        ...(email ? { email } : {}),
+      },
     });
 }
 
@@ -415,6 +437,49 @@ export async function getClerkEventSummary(): Promise<ClerkEventSummaryRow[]> {
       daily,
     };
   });
+}
+
+// ── Individual user identities ─────────────────────────────────────────────
+
+export type ClerkIdentityRow = {
+  clerkUserId: string;
+  email: string | null;
+  createdAt: string;
+  lastSignInAt: string | null;
+  lastActiveAt: string | null;
+  deleted: boolean;
+};
+
+/**
+ * Paginated list of individual Clerk user records for a given app, ordered by
+ * sign-up date (most recent first). Returns an empty array for unknown apps.
+ */
+export async function getIdentities(
+  appId: string,
+  limit = 50,
+  offset = 0,
+): Promise<ClerkIdentityRow[]> {
+  const rows = await db.execute(sql`
+    SELECT clerk_user_id, email, created_at, last_sign_in_at, last_active_at, deleted
+    FROM app_users
+    WHERE app_id = ${appId}
+    ORDER BY created_at DESC
+    LIMIT ${limit} OFFSET ${offset}
+  `);
+  return ((rows.rows ?? []) as Record<string, unknown>[]).map((r) => ({
+    clerkUserId: String(r.clerk_user_id ?? ""),
+    email: r.email != null ? String(r.email) : null,
+    createdAt: r.created_at instanceof Date
+      ? r.created_at.toISOString()
+      : String(r.created_at ?? new Date().toISOString()),
+    lastSignInAt: r.last_sign_in_at instanceof Date
+      ? r.last_sign_in_at.toISOString()
+      : r.last_sign_in_at != null ? String(r.last_sign_in_at) : null,
+    lastActiveAt: r.last_active_at instanceof Date
+      ? r.last_active_at.toISOString()
+      : r.last_active_at != null ? String(r.last_active_at) : null,
+    deleted: Boolean(r.deleted),
+  }));
 }
 
 // Returns true when at least one real (non-seeded) Clerk webhook event exists in

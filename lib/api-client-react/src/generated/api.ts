@@ -35,6 +35,7 @@ import type {
   BudgetAlertLogEntry,
   BudgetAlertLogPage,
   ClerkEventSummaryRow,
+  ClerkIdentityRow,
   CostReport,
   DismissAnomalyRequest,
   FeatureFlag,
@@ -59,6 +60,7 @@ import type {
   ListAppThresholdsLog403,
   ListAppThresholdsLogParams,
   ListBudgetAlertLogParams,
+  ListClerkIdentitiesParams,
   ListDeploymentsResponse,
   ListFeatureFlags403,
   ListGlobalAlertsParams,
@@ -1793,6 +1795,90 @@ export function useListUserActivity<TData = Awaited<ReturnType<typeof listUserAc
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListUserActivityQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListClerkIdentitiesUrl = (params: ListClerkIdentitiesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/users/identities?${stringifiedParams}` : `/api/users/identities`
+}
+
+/**
+ * @summary Individual Clerk user records for a given app (email + account age), most recently joined first
+ */
+export const listClerkIdentities = async (params: ListClerkIdentitiesParams, options?: RequestInit): Promise<ClerkIdentityRow[]> => {
+
+  return customFetch<ClerkIdentityRow[]>(getListClerkIdentitiesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListClerkIdentitiesQueryKey = (params?: ListClerkIdentitiesParams,) => {
+    return [
+    `/api/users/identities`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListClerkIdentitiesQueryOptions = <TData = Awaited<ReturnType<typeof listClerkIdentities>>, TError = ErrorType<unknown>>(params: ListClerkIdentitiesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listClerkIdentities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListClerkIdentitiesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listClerkIdentities>>> = ({ signal }) => listClerkIdentities(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listClerkIdentities>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListClerkIdentitiesQueryResult = NonNullable<Awaited<ReturnType<typeof listClerkIdentities>>>
+export type ListClerkIdentitiesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Individual Clerk user records for a given app (email + account age), most recently joined first
+ */
+
+export function useListClerkIdentities<TData = Awaited<ReturnType<typeof listClerkIdentities>>, TError = ErrorType<unknown>>(
+ params: ListClerkIdentitiesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listClerkIdentities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListClerkIdentitiesQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

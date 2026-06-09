@@ -31,6 +31,7 @@ export const appUsersTable = pgTable(
   {
     appId: text("app_id").notNull(),
     clerkUserId: text("clerk_user_id").notNull(),
+    email: text("email"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

@@ -388,6 +388,32 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/UserActivityRow" }
+  /users/identities:
+    get:
+      operationId: listClerkIdentities
+      tags: [users]
+      summary: Individual Clerk user records for a given app (email + account age), most recently joined first
+      parameters:
+        - name: appId
+          in: query
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 50 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ClerkIdentityRow" }
   /play/subscriptions:
     get:
       operationId: listPlaySubscriptions
@@ -1069,6 +1095,16 @@ components:
         newLast7d: { type: integer }
         dauTrendPct: { type: number }
         dataSource: { type: string, enum: [live, demo], description: "live = real Clerk webhook events exist in DB; demo = seeded/placeholder data only" }
+    ClerkIdentityRow:
+      type: object
+      required: [clerkUserId, createdAt, deleted]
+      properties:
+        clerkUserId: { type: string }
+        email: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        lastSignInAt: { type: string, format: date-time, nullable: true }
+        lastActiveAt: { type: string, format: date-time, nullable: true }
+        deleted: { type: boolean }
     PlaySubscriptionRow:
       type: object
       required: [appId, appName, environment, packageName, activeSubscribers, canceledSubscribers, expiredSubscribers, mrr, revenueLast30d, currency, activeTrendPct, dataSource]
