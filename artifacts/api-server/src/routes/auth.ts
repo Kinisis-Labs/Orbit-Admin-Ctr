@@ -407,6 +407,10 @@ router.get("/auth/callback", async (req, res, next) => {
 router.post("/auth/logout", async (req, res, next) => {
   try {
     const cfg = getEntraConfig();
+    // Capture UPN before the session is destroyed — used as logout_hint so
+    // Entra skips the "pick an account to sign out" screen and redirects
+    // directly to the post-logout page.
+    const upn = req.session.user?.userPrincipalName;
     req.session.destroy(() => {
       res.clearCookie("orbit.sid");
       void (async () => {
@@ -415,6 +419,7 @@ router.post("/auth/logout", async (req, res, next) => {
             const config = await getOidcConfiguration(cfg);
             const url = client.buildEndSessionUrl(config, {
               post_logout_redirect_uri: cfg.postLogoutRedirectUri,
+              ...(upn ? { logout_hint: upn } : {}),
             });
             res.json({ redirect: url.href });
             return;
