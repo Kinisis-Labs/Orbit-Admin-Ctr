@@ -5,11 +5,21 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { RefreshEndpointsParameter } from './refreshEndpointsParameter';
 import type { RefreshParameter } from './refreshParameter';
+import type { RefreshThroughputParameter } from './refreshThroughputParameter';
 
 export type GetNetworkParams = {
 /**
  * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
  */
 refresh?: RefreshParameter;
+/**
+ * When true, bypasses the endpoint-probe cache only (network tab). Independent of refreshThroughput.
+ */
+refreshEndpoints?: RefreshEndpointsParameter;
+/**
+ * When true, bypasses the throughput time-series cache only (network tab). Independent of refreshEndpoints.
+ */
+refreshThroughput?: RefreshThroughputParameter;
 };

@@ -12,6 +12,7 @@ export function useForceRefresh(
   url: string,
   queryKey: readonly unknown[],
   sideEffectRefreshes?: SideEffectRefresh[],
+  refreshParam = "refresh",
 ) {
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -29,7 +30,7 @@ export function useForceRefresh(
     if (isRefreshing || isCoolingDown) return;
     setIsRefreshing(true);
     try {
-      const res = await fetch(`${url}?refresh=true`, { credentials: "same-origin" });
+      const res = await fetch(`${url}?${refreshParam}=true`, { credentials: "same-origin" });
       if (res.ok) {
         const data: unknown = await res.json();
         queryClient.setQueryData([...queryKey], data);
@@ -37,7 +38,7 @@ export function useForceRefresh(
       if (sideEffectRefreshes && sideEffectRefreshes.length > 0) {
         await Promise.all(
           sideEffectRefreshes.map(async (side) => {
-            const sideRes = await fetch(`${side.url}?refresh=true`, { credentials: "same-origin" });
+            const sideRes = await fetch(`${side.url}?${refreshParam}=true`, { credentials: "same-origin" });
             if (sideRes.ok) {
               const sideData: unknown = await sideRes.json();
               queryClient.setQueryData([...side.queryKey], sideData);

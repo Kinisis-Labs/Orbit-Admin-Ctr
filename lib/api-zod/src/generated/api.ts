@@ -207,7 +207,9 @@ export const GetNetworkParams = zod.object({
 })
 
 export const GetNetworkQueryParams = zod.object({
-  "refresh": zod.coerce.boolean().optional().describe('When true, bypasses the in-process server-side cache and fetches fresh data from Azure.')
+  "refresh": zod.coerce.boolean().optional().describe('When true, bypasses the in-process server-side cache and fetches fresh data from Azure.'),
+  "refreshEndpoints": zod.coerce.boolean().optional().describe('When true, bypasses the endpoint-probe cache only (network tab). Independent of refreshThroughput.'),
+  "refreshThroughput": zod.coerce.boolean().optional().describe('When true, bypasses the throughput time-series cache only (network tab). Independent of refreshEndpoints.')
 })
 
 export const GetNetworkResponse = zod.object({

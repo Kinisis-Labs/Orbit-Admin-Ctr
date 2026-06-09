@@ -160,6 +160,8 @@ paths:
       parameters:
         - $ref: "#/components/parameters/AppId"
         - $ref: "#/components/parameters/Refresh"
+        - $ref: "#/components/parameters/RefreshEndpoints"
+        - $ref: "#/components/parameters/RefreshThroughput"
       responses:
         "200":
           description: OK
@@ -719,6 +721,18 @@ components:
       in: query
       required: false
       description: When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+      schema: { type: boolean }
+    RefreshEndpoints:
+      name: refreshEndpoints
+      in: query
+      required: false
+      description: When true, bypasses the endpoint-probe cache only (network tab). Independent of refreshThroughput.
+      schema: { type: boolean }
+    RefreshThroughput:
+      name: refreshThroughput
+      in: query
+      required: false
+      description: When true, bypasses the throughput time-series cache only (network tab). Independent of refreshEndpoints.
       schema: { type: boolean }
   schemas:
     AnomalyDismissalsResponse:

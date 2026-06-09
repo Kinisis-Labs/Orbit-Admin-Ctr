@@ -865,7 +865,17 @@ function InfraTab({ appId }: { appId: string }) {
 function NetworkTab({ appId }: { appId: string }) {
   const { mode } = useAuth();
   const { data, isLoading, isFetching, dataUpdatedAt, queryKey } = useAppNetwork(appId);
-  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${appId}/network`, queryKey);
+  const networkUrl = `/api/apps/${appId}/network`;
+  const {
+    isRefreshing: isRefreshingEndpoints,
+    isCoolingDown: isCoolingDownEndpoints,
+    forceRefresh: forceRefreshEndpoints,
+  } = useForceRefresh(networkUrl, queryKey, undefined, "refreshEndpoints");
+  const {
+    isRefreshing: isRefreshingThroughput,
+    isCoolingDown: isCoolingDownThroughput,
+    forceRefresh: forceRefreshThroughput,
+  } = useForceRefresh(networkUrl, queryKey, undefined, "refreshThroughput");
   const updatedLabel = useUpdatedAgo(dataUpdatedAt);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
@@ -883,12 +893,12 @@ function NetworkTab({ appId }: { appId: string }) {
           <div className="flex items-center gap-2">
             {updatedLabel && (
               <span className="text-[11px] text-muted-foreground">
-                {isFetching ? "Refreshing…" : `Updated ${updatedLabel}`}
+                {isRefreshingEndpoints ? "Refreshing…" : `Updated ${updatedLabel}`}
               </span>
             )}
             <DataSourceBadge dataSource={data.endpointsDataSource ?? data.dataSource} />
             {isLiveMode(mode) && (
-              <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
+              <ForceRefreshButton isRefreshing={isRefreshingEndpoints} isCoolingDown={isCoolingDownEndpoints} onRefresh={forceRefreshEndpoints} />
             )}
           </div>
         </div>
@@ -930,7 +940,7 @@ function NetworkTab({ appId }: { appId: string }) {
             <div className="flex items-center gap-2">
               <DataSourceBadge dataSource={data.dataSource} />
               {isLiveMode(mode) && (
-                <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
+                <ForceRefreshButton isRefreshing={isRefreshingThroughput} isCoolingDown={isCoolingDownThroughput} onRefresh={forceRefreshThroughput} />
               )}
             </div>
           </div>

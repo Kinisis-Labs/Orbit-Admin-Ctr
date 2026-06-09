@@ -1273,6 +1273,16 @@ export interface InfraAlertLogPage {
  */
 export type RefreshParameter = boolean;
 
+/**
+ * When true, bypasses the endpoint-probe cache only (network tab). Independent of refreshThroughput.
+ */
+export type RefreshEndpointsParameter = boolean;
+
+/**
+ * When true, bypasses the throughput time-series cache only (network tab). Independent of refreshEndpoints.
+ */
+export type RefreshThroughputParameter = boolean;
+
 export type UpdateAppThresholds403 = {
   error?: string;
   requiredGroup?: string;
@@ -1309,6 +1319,14 @@ export type GetNetworkParams = {
  * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
  */
 refresh?: RefreshParameter;
+/**
+ * When true, bypasses the endpoint-probe cache only (network tab). Independent of refreshThroughput.
+ */
+refreshEndpoints?: RefreshEndpointsParameter;
+/**
+ * When true, bypasses the throughput time-series cache only (network tab). Independent of refreshEndpoints.
+ */
+refreshThroughput?: RefreshThroughputParameter;
 };
 
 export type GetCostParams = {

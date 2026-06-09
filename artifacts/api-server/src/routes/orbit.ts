@@ -454,11 +454,13 @@ router.get("/apps/:appId/network", async (req, res) => {
     res.status(404).json({ error: "App not found" });
     return;
   }
-  const bypassCache = req.query["refresh"] === "true";
+  const bypassAll = req.query["refresh"] === "true";
+  const bypassEndpoints = bypassAll || req.query["refreshEndpoints"] === "true";
+  const bypassThroughput = bypassAll || req.query["refreshThroughput"] === "true";
   const [liveEndpoints, liveIngressSeries, liveEgressSeries] = await Promise.all([
-    fetchNetworkEndpoints(app, { bypassCache }),
-    fetchAppTimeSeries(app, "network_ingress_mbps", 24, { bypassCache }),
-    fetchAppTimeSeries(app, "network_egress_mbps", 24, { bypassCache }),
+    fetchNetworkEndpoints(app, { bypassCache: bypassEndpoints }),
+    fetchAppTimeSeries(app, "network_ingress_mbps", 24, { bypassCache: bypassThroughput }),
+    fetchAppTimeSeries(app, "network_egress_mbps", 24, { bypassCache: bypassThroughput }),
   ]);
   const endpoints = liveEndpoints ?? [];
   const throughputAll: { name: string; unit: string; points: { timestamp: string; value: number }[] }[] =
