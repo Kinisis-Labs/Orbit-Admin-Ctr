@@ -313,23 +313,27 @@ export default function AppDetail() {
                   <div className="grid grid-cols-3 gap-2">
                     <div className="text-muted-foreground font-medium">Subscription</div>
                     <div className="col-span-2 truncate">
-                      {app.subscriptionId ? (
-                        <a
-                          href={`https://portal.azure.com/#resource/subscriptions/${app.subscriptionId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-primary hover:underline"
-                        >
-                          {app.subscriptionName ? (
-                            <>
-                              <span className="font-medium">{app.subscriptionName}</span>
-                              <span className="font-mono text-[11px] text-muted-foreground ml-1.5">{app.subscriptionId}</span>
-                            </>
-                          ) : (
-                            <span className="font-mono">{app.subscriptionId}</span>
-                          )}
-                          <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
-                        </a>
+                      {(app.subscriptionId || app.subscriptionName) ? (
+                        app.subscriptionId && /^[0-9a-f-]{36}$/i.test(app.subscriptionId) ? (
+                          <a
+                            href={`https://portal.azure.com/#resource/subscriptions/${app.subscriptionId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-primary hover:underline"
+                          >
+                            {app.subscriptionName ? (
+                              <>
+                                <span className="font-medium">{app.subscriptionName}</span>
+                                <span className="font-mono text-[11px] text-muted-foreground ml-1.5">{app.subscriptionId}</span>
+                              </>
+                            ) : (
+                              <span className="font-mono">{app.subscriptionId}</span>
+                            )}
+                            <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+                          </a>
+                        ) : (
+                          <span className="font-medium">{app.subscriptionName ?? app.subscriptionId}</span>
+                        )
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
