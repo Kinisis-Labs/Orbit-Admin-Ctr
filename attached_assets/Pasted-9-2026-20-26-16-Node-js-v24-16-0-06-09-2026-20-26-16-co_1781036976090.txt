@@ -1,0 +1,104 @@
+9/2026, 20:26:16
+Node.js v24.16.0
+06/09/2026, 20:26:16
+code: 'MODULE_NOT_FOUND',
+06/09/2026, 20:26:16
+Error: Cannot find module 'protobufjs/minimal'
+06/09/2026, 20:26:16
+^
+06/09/2026, 20:26:16
+at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)
+06/09/2026, 20:26:16
+Require stack:
+06/09/2026, 20:26:16
+at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)
+06/09/2026, 20:26:16
+requireStack: [ '/app/dist/index.mjs' ]
+06/09/2026, 20:26:16
+at require (node:internal/modules/helpers:153:16)
+06/09/2026, 20:26:16
+node:internal/modules/cjs/loader:1500
+06/09/2026, 20:26:16
+at ../../node_modules/.pnpm/@opentelemetry+otlp-transformer@0.217.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-transformer/build/src/generated/root.js (/node_modules/.pnpm/@opentelemetry+otlp-transformer@0.217.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-transformer/src/generated/root.js:4:17)
+06/09/2026, 20:26:16
+}
+06/09/2026, 20:26:16
+at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1116:12)
+06/09/2026, 20:26:16
+06/09/2026, 20:26:16
+at __require2 (file:///app/dist/index.mjs:25:50) {
+06/09/2026, 20:26:16
+const err = new Error(message);
+06/09/2026, 20:26:16
+at Module._resolveFilename (node:internal/modules/cjs/loader:1500:15)
+06/09/2026, 20:26:16
+06/09/2026, 20:26:16
+at Module.require (node:internal/modules/cjs/loader:1600:12)
+06/09/2026, 20:26:16
+at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+06/09/2026, 20:26:16
+at Module._load (node:internal/modules/cjs/loader:1285:25)
+06/09/2026, 20:26:16
+- /app/dist/index.mjs
+06/09/2026, 20:21:15
+at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+06/09/2026, 20:21:15
+at Module._load (node:internal/modules/cjs/loader:1285:25)
+06/09/2026, 20:21:15
+at require (node:internal/modules/helpers:153:16)
+06/09/2026, 20:21:15
+at Module._resolveFilename (node:internal/modules/cjs/loader:1500:15)
+06/09/2026, 20:21:15
+at ../../node_modules/.pnpm/@opentelemetry+otlp-transformer@0.217.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-transformer/build/src/generated/root.js (/node_modules/.pnpm/@opentelemetry+otlp-transformer@0.217.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-transformer/src/generated/root.js:4:17)
+06/09/2026, 20:21:15
+at __require2 (file:///app/dist/index.mjs:25:50) {
+06/09/2026, 20:21:15
+at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1116:12)
+06/09/2026, 20:21:15
+at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)
+06/09/2026, 20:21:15
+06/09/2026, 20:21:15
+Error: Cannot find module 'protobufjs/minimal'
+06/09/2026, 20:21:15
+Require stack:
+06/09/2026, 20:21:15
+Node.js v24.16.0
+06/09/2026, 20:21:15
+code: 'MODULE_NOT_FOUND',
+06/09/2026, 20:21:15
+- /app/dist/index.mjs
+06/09/2026, 20:21:15
+06/09/2026, 20:21:15
+node:internal/modules/cjs/loader:1500
+06/09/2026, 20:21:15
+const err = new Error(message);
+06/09/2026, 20:21:15
+requireStack: [ '/app/dist/index.mjs' ]
+06/09/2026, 20:21:15
+at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)
+06/09/2026, 20:21:15
+}
+06/09/2026, 20:21:15
+^
+06/09/2026, 20:21:15
+at Module.require (node:internal/modules/cjs/loader:1600:12)
+06/09/2026, 20:18:34
+Node.js v24.16.0
+06/09/2026, 20:18:34
+node:internal/modules/cjs/loader:1500
+06/09/2026, 20:18:34
+at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)
+06/09/2026, 20:18:34
+const err = new Error(message);
+06/09/2026, 20:18:34
+at require (node:internal/modules/helpers:153:16)
+06/09/2026, 20:18:34
+code: 'MODULE_NOT_FOUND',
+06/09/2026, 20:16:01
+node:internal/modules/cjs/loader:1500
+06/09/2026, 20:16:01
+at Module._load (node:internal/modules/cjs/loader:1285:25)
+06/09/2026, 20:16:01
+at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)
+06/09/2026, 20:16:01
+at ../../node_modules/.pnpm/@opentelemetry+otlp-transformer@0.217.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-transformer/build/src/generated/root.js (/node_modules/.pnpm/@opentelemetry+otlp-transformer@0.217.0_@opentelemetry+api@1.9.1/node_modules/@opentelemetry/otlp-transformer/src/generated/root.js:4:17)
