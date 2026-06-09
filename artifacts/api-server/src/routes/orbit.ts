@@ -69,6 +69,7 @@ export const APPS: AppRecord[] = [
     activeAlerts: 0,
     monthToDateCost: 0,
     subscriptionId: process.env.AZURE_SUB_GRAILBABE ?? "a1f4-shared-platform",
+    subscriptionName: "GrailBabe Production",
     description: "Consumer marketplace for limited-edition collectibles.",
     tags: {
       workload: "GrailBabeProd",
@@ -97,6 +98,7 @@ export const APPS: AppRecord[] = [
     activeAlerts: 0,
     monthToDateCost: 0,
     subscriptionId: process.env.AZURE_SUB_SHARED_INFRA ?? process.env.AZURE_SUB_KINISIS_LABS ?? "a1f4-shared-platform",
+    subscriptionName: "Shared Platform Production",
     description: "Kinisis platform — Orbit admin center and kinisislabs.com, sharing the platform subscription (sub-sharedplatform-prod).",
     tags: {
       workload: "Platform",
@@ -186,7 +188,7 @@ router.get("/apps", async (req, res) => {
       const liveAlerts = alertResults[i];
       const costWS = costWithSourceResults[i];
       const budgetWS = budgetWithSourceResults[i];
-      const subName = subNames.get(app.subscriptionId.toLowerCase());
+      const subName = subNames.get(app.subscriptionId.toLowerCase()) ?? app.subscriptionName;
       const mtd = costWS?.result.monthToDate ?? 0;
       const budget = budgetWS?.result.amount ?? null;
       const forecast = budgetWS?.result.forecastAmount ?? null;
@@ -227,7 +229,7 @@ router.get("/apps/:appId", async (req, res) => {
     fetchResourceGroupTags(app, { bypassCache }),
     fetchSubscriptionNames([app.subscriptionId]),
   ]);
-  const subName = subNameMap.get(app.subscriptionId.toLowerCase());
+  const subName = subNameMap.get(app.subscriptionId.toLowerCase()) ?? app.subscriptionName;
   const data = GetAppResponse.parse({
     ...app,
     tags: liveTags ?? app.tags,
