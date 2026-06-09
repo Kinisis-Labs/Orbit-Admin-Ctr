@@ -82,17 +82,22 @@ jobs:
           allow-no-subscriptions: true
 
       - name: Configure GHCR pull credentials
-        if: ${{ secrets.GHCR_PAT != '' }}
         uses: azure/cli@v2
+        env:
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
         with:
           azcliversion: latest
           inlineScript: |
+            if [ -z "$GHCR_PAT" ]; then
+              echo "GHCR_PAT not set — skipping GHCR credential configuration"
+              exit 0
+            fi
             az containerapp registry set \
               --name ca-orbit-prod-v2 \
               --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
               --server ghcr.io \
               --username "${{ github.repository_owner }}" \
-              --password "${{ secrets.GHCR_PAT }}"
+              --password "$GHCR_PAT"
 
       - name: Roll Container App
         uses: azure/cli@v2
