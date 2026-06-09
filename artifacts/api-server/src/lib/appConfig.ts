@@ -175,3 +175,31 @@ export async function getAppConfigFeatureFlag(flagName: string): Promise<boolean
 
   return result;
 }
+
+/**
+ * Writes a feature flag to Azure App Configuration.
+ *
+ * Creates or updates the flag at `.appconfig.featureflag/<flagName>` with the
+ * standard Azure App Configuration feature flag JSON body.
+ *
+ * Throws if App Configuration is not configured (`APP_CONFIGURATION_ENDPOINT` unset)
+ * or if the write fails — callers should handle the error and return an appropriate
+ * HTTP response.
+ */
+export async function setAppConfigFeatureFlag(flagName: string, enabled: boolean): Promise<void> {
+  if (!isAppConfigConfigured()) {
+    throw new Error("APP_CONFIGURATION_ENDPOINT is not set — cannot write feature flags");
+  }
+  const key = `.appconfig.featureflag/${flagName}`;
+  const value = JSON.stringify({
+    id: flagName,
+    description: "",
+    enabled,
+    conditions: { client_filters: [] },
+  });
+  await getClient().setConfigurationSetting({
+    key,
+    value,
+    contentType: "application/vnd.microsoft.appconfig.ff+json;charset=utf-8",
+  });
+}

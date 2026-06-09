@@ -5,6 +5,35 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+/**
+ * live = read from App Configuration store; mock = APP_CONFIGURATION_ENDPOINT not set (always enabled)
+ */
+export type FeatureFlagConfigStore = typeof FeatureFlagConfigStore[keyof typeof FeatureFlagConfigStore];
+
+
+export const FeatureFlagConfigStore = {
+  live: 'live',
+  mock: 'mock',
+} as const;
+
+export interface FeatureFlag {
+  /** Stable identifier used in App Configuration (e.g. "play-subscriptions") */
+  name: string;
+  /** Human-readable display name */
+  label: string;
+  /** What surface this flag controls */
+  description: string;
+  /** Current effective state of the flag */
+  enabled: boolean;
+  /** live = read from App Configuration store; mock = APP_CONFIGURATION_ENDPOINT not set (always enabled) */
+  configStore: FeatureFlagConfigStore;
+}
+
+export interface SetFeatureFlagBody {
+  /** Desired state for the flag */
+  enabled: boolean;
+}
+
 export interface GlobalAnomalyDismissal {
   /** ISO date (YYYY-MM-DD) of the anomalous day */
   dateKey: string;
@@ -1426,5 +1455,19 @@ unacknowledgedOnly?: boolean;
  * ISO 8601 datetime. When set, only return entries with sentAt >= since.
  */
 since?: string;
+};
+
+export type ListFeatureFlags403 = {
+  error?: string;
+  requiredGroup?: string;
+};
+
+export type SetFeatureFlag403 = {
+  error?: string;
+  requiredGroup?: string;
+};
+
+export type SetFeatureFlag404 = {
+  error?: string;
 };
 

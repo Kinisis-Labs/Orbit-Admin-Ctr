@@ -12,6 +12,7 @@ import infraAlertLogRouter from "./infraAlertLog";
 import alertsConfigRouter from "./alertsConfig";
 import anomalyDismissalsRouter from "./anomalyDismissals";
 import alertSseRouter from "./alertSse";
+import featureFlagsRouter from "./featureFlags";
 import { requireAuth, requireCostReader } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -39,5 +40,7 @@ router.use(requireAuth, alertsConfigRouter);
 router.use(requireAuth, anomalyDismissalsRouter);
 // SSE stream for instant alert push — gated by requireAuth only (stream carries no data, just a signal).
 router.use(requireAuth, alertSseRouter);
+// Feature flag admin — requireAdmin is enforced inside the router on each route.
+router.use(featureFlagsRouter);
 
 export default router;

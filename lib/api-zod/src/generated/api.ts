@@ -1003,6 +1003,39 @@ export const ListInfraAlertLogResponse = zod.object({
 
 
 /**
+ * @summary List all known feature flags with their current enabled/disabled state. Requires Orbit-Admins.
+ */
+export const ListFeatureFlagsResponseItem = zod.object({
+  "name": zod.string().describe('Stable identifier used in App Configuration (e.g. \"play-subscriptions\")'),
+  "label": zod.string().describe('Human-readable display name'),
+  "description": zod.string().describe('What surface this flag controls'),
+  "enabled": zod.boolean().describe('Current effective state of the flag'),
+  "configStore": zod.enum(['live', 'mock']).describe('live = read from App Configuration store; mock = APP_CONFIGURATION_ENDPOINT not set (always enabled)')
+})
+export const ListFeatureFlagsResponse = zod.array(ListFeatureFlagsResponseItem)
+
+
+/**
+ * @summary Enable or disable a feature flag. Requires Orbit-Admins.
+ */
+export const SetFeatureFlagParams = zod.object({
+  "flagName": zod.coerce.string()
+})
+
+export const SetFeatureFlagBody = zod.object({
+  "enabled": zod.boolean().describe('Desired state for the flag')
+})
+
+export const SetFeatureFlagResponse = zod.object({
+  "name": zod.string().describe('Stable identifier used in App Configuration (e.g. \"play-subscriptions\")'),
+  "label": zod.string().describe('Human-readable display name'),
+  "description": zod.string().describe('What surface this flag controls'),
+  "enabled": zod.boolean().describe('Current effective state of the flag'),
+  "configStore": zod.enum(['live', 'mock']).describe('live = read from App Configuration store; mock = APP_CONFIGURATION_ENDPOINT not set (always enabled)')
+})
+
+
+/**
  * @summary Acknowledge (dismiss) an infra-pressure alert log entry
  */
 export const AcknowledgeInfraAlertLogEntryParams = zod.object({

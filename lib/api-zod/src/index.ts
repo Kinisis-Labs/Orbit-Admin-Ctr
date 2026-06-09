@@ -19,4 +19,5 @@ export {
   // types when a new schema is introduced — re-export from Zod side to win the collision.
   GetGlobalCostSummaryResponse,
   ListDeploymentsResponse,
+  SetFeatureFlagBody,
 } from "./generated/api";

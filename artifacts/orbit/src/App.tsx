@@ -26,6 +26,7 @@ import Tags from "@/pages/tags";
 import Access from "@/pages/access";
 import Users from "@/pages/users";
 import Preferences from "@/pages/preferences";
+import FeatureFlags from "@/pages/feature-flags";
 import NotFound from "@/pages/not-found";
 
 function Gated({ children }: { children: React.ReactNode }) {
@@ -61,6 +62,7 @@ function Router() {
         <Route path="/tags" component={Tags} />
         <Route path="/access" component={Access} />
         <Route path="/preferences" component={Preferences} />
+        <Route path="/admin/feature-flags" component={FeatureFlags} />
         <Route path="/apps/:appId" component={AppDetail} />
         <Route path="/cost/:rest*"><Redirect to="/cost" /></Route>
         <Route component={NotFound} />

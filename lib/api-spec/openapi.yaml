@@ -30,6 +30,8 @@ tags:
     description: Global cross-app views
   - name: users
     description: End-user activity (Clerk-sourced) for consumer apps
+  - name: admin
+    description: Administration — feature flags and platform configuration (requires Orbit-Admins)
 paths:
   /healthz:
     get:
@@ -691,6 +693,66 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/InfraAlertLogPage" }
+  /admin/feature-flags:
+    get:
+      operationId: listFeatureFlags
+      tags: [admin]
+      summary: List all known feature flags with their current enabled/disabled state. Requires Orbit-Admins.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FeatureFlag" }
+        "403":
+          description: Forbidden — requires Orbit-Admins
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                  requiredGroup: { type: string }
+  /admin/feature-flags/{flagName}:
+    put:
+      operationId: setFeatureFlag
+      tags: [admin]
+      summary: Enable or disable a feature flag. Requires Orbit-Admins.
+      parameters:
+        - name: flagName
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetFeatureFlagBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeatureFlag" }
+        "403":
+          description: Forbidden — requires Orbit-Admins
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                  requiredGroup: { type: string }
+        "404":
+          description: Flag not found (unknown flag name)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
   /infra-alerts/log/{id}/acknowledge:
     patch:
       operationId: acknowledgeInfraAlertLogEntry
@@ -735,6 +797,33 @@ components:
       description: When true, bypasses the throughput time-series cache only (network tab). Independent of refreshEndpoints.
       schema: { type: boolean }
   schemas:
+    FeatureFlag:
+      type: object
+      required: [name, label, description, enabled, configStore]
+      properties:
+        name:
+          type: string
+          description: Stable identifier used in App Configuration (e.g. "play-subscriptions")
+        label:
+          type: string
+          description: Human-readable display name
+        description:
+          type: string
+          description: What surface this flag controls
+        enabled:
+          type: boolean
+          description: Current effective state of the flag
+        configStore:
+          type: string
+          enum: [live, mock]
+          description: "live = read from App Configuration store; mock = APP_CONFIGURATION_ENDPOINT not set (always enabled)"
+    SetFeatureFlagBody:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+          description: Desired state for the flag
     AnomalyDismissalsResponse:
       type: object
       required: [dismissedDateKeys, globalDismissals]

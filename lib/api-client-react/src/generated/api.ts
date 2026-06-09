@@ -36,6 +36,7 @@ import type {
   BudgetAlertLogPage,
   CostReport,
   DismissAnomalyRequest,
+  FeatureFlag,
   GetAppAlertsParams,
   GetCostParams,
   GetGlobalCostSummaryResponse,
@@ -58,6 +59,7 @@ import type {
   ListAppThresholdsLogParams,
   ListBudgetAlertLogParams,
   ListDeploymentsResponse,
+  ListFeatureFlags403,
   ListGlobalAlertsParams,
   ListInfraAlertLogParams,
   LogLine,
@@ -66,6 +68,9 @@ import type {
   PostLedgerEntryRequest,
   QueryLogsParams,
   ServiceHealthResponse,
+  SetFeatureFlag403,
+  SetFeatureFlag404,
+  SetFeatureFlagBody,
   SlosResponse,
   StripeSyncResult,
   TelemetryReport,
@@ -3123,6 +3128,155 @@ export function useListInfraAlertLog<TData = Awaited<ReturnType<typeof listInfra
 
 
 
+
+export const getListFeatureFlagsUrl = () => {
+
+
+
+
+  return `/api/admin/feature-flags`
+}
+
+/**
+ * @summary List all known feature flags with their current enabled/disabled state. Requires Orbit-Admins.
+ */
+export const listFeatureFlags = async ( options?: RequestInit): Promise<FeatureFlag[]> => {
+
+  return customFetch<FeatureFlag[]>(getListFeatureFlagsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFeatureFlagsQueryKey = () => {
+    return [
+    `/api/admin/feature-flags`
+    ] as const;
+    }
+
+
+export const getListFeatureFlagsQueryOptions = <TData = Awaited<ReturnType<typeof listFeatureFlags>>, TError = ErrorType<ListFeatureFlags403>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFeatureFlags>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFeatureFlagsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFeatureFlags>>> = ({ signal }) => listFeatureFlags({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFeatureFlags>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFeatureFlagsQueryResult = NonNullable<Awaited<ReturnType<typeof listFeatureFlags>>>
+export type ListFeatureFlagsQueryError = ErrorType<ListFeatureFlags403>
+
+
+/**
+ * @summary List all known feature flags with their current enabled/disabled state. Requires Orbit-Admins.
+ */
+
+export function useListFeatureFlags<TData = Awaited<ReturnType<typeof listFeatureFlags>>, TError = ErrorType<ListFeatureFlags403>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFeatureFlags>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFeatureFlagsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSetFeatureFlagUrl = (flagName: string,) => {
+
+
+
+
+  return `/api/admin/feature-flags/${flagName}`
+}
+
+/**
+ * @summary Enable or disable a feature flag. Requires Orbit-Admins.
+ */
+export const setFeatureFlag = async (flagName: string,
+    setFeatureFlagBody: SetFeatureFlagBody, options?: RequestInit): Promise<FeatureFlag> => {
+
+  return customFetch<FeatureFlag>(getSetFeatureFlagUrl(flagName),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      setFeatureFlagBody,)
+  }
+);}
+
+
+
+
+export const getSetFeatureFlagMutationOptions = <TError = ErrorType<SetFeatureFlag403 | SetFeatureFlag404>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setFeatureFlag>>, TError,{flagName: string;data: BodyType<SetFeatureFlagBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setFeatureFlag>>, TError,{flagName: string;data: BodyType<SetFeatureFlagBody>}, TContext> => {
+
+const mutationKey = ['setFeatureFlag'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setFeatureFlag>>, {flagName: string;data: BodyType<SetFeatureFlagBody>}> = (props) => {
+          const {flagName,data} = props ?? {};
+
+          return  setFeatureFlag(flagName,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetFeatureFlagMutationResult = NonNullable<Awaited<ReturnType<typeof setFeatureFlag>>>
+    export type SetFeatureFlagMutationBody = BodyType<SetFeatureFlagBody>
+    export type SetFeatureFlagMutationError = ErrorType<SetFeatureFlag403 | SetFeatureFlag404>
+
+    /**
+ * @summary Enable or disable a feature flag. Requires Orbit-Admins.
+ */
+export const useSetFeatureFlag = <TError = ErrorType<SetFeatureFlag403 | SetFeatureFlag404>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setFeatureFlag>>, TError,{flagName: string;data: BodyType<SetFeatureFlagBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setFeatureFlag>>,
+        TError,
+        {flagName: string;data: BodyType<SetFeatureFlagBody>},
+        TContext
+      > => {
+      return useMutation(getSetFeatureFlagMutationOptions(options));
+    }
 
 export const getAcknowledgeInfraAlertLogEntryUrl = (id: number,) => {
 

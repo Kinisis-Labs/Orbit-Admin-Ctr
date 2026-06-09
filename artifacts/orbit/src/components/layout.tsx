@@ -6,13 +6,13 @@ import {
   Cloud, Search, Settings as SettingsIcon, Home, Bell, DollarSign, LayoutDashboard,
   ChevronRight, Menu, Sun, Moon, Lock, Rocket, AlertOctagon, Activity,
   HeartPulse, Network, FileText, ShieldAlert, Users, Layers, Tags, SlidersHorizontal, UserCheck, Smartphone,
-  ChevronDown,
+  ChevronDown, ToggleLeft,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/lib/auth";
-import { COST_READER_GROUP } from "@/lib/auth-groups";
+import { ADMIN_GROUP, COST_READER_GROUP } from "@/lib/auth-groups";
 import { useOverBudgetDays } from "@/hooks/use-over-budget-days";
 import { useInfraThresholdAlerts } from "@/hooks/use-infra-threshold-alerts";
 import type { InfraViolation } from "@/hooks/use-infra-threshold-alerts";
@@ -39,6 +39,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/tags": "Tags",
   "/access": "Identity & access",
   "/preferences": "Preferences",
+  "/admin/feature-flags": "Feature flags",
 };
 
 function getInitialTheme(): Theme {
@@ -52,6 +53,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { data: apps } = useApps();
   const { hasGroup } = useAuth();
   const canSeeCost = hasGroup(COST_READER_GROUP.id);
+  const isAdmin = hasGroup(ADMIN_GROUP.id);
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [navCollapsed, setNavCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -212,6 +214,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
             <NavSection sectionKey="settings" label="Settings" navCollapsed={navCollapsed}>
               <NavItem href="/preferences" icon={<SlidersHorizontal className="h-[18px] w-[18px]" />} label="Preferences" active={location === "/preferences"} collapsed={navCollapsed} />
+              {isAdmin && (
+                <NavItem
+                  href="/admin/feature-flags"
+                  icon={<ToggleLeft className="h-[18px] w-[18px]" />}
+                  label="Feature flags"
+                  active={location === "/admin/feature-flags"}
+                  collapsed={navCollapsed}
+                />
+              )}
             </NavSection>
           </nav>
         </aside>
