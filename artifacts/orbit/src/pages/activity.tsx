@@ -87,7 +87,7 @@ export default function ActivityLog() {
       <PageHeader
         title="Activity log"
         subtitle={selectedApp ? `Audit trail of operator and automation actions for ${selectedApp.name}` : "Audit trail of operator and automation actions"}
-        right={<ScopeSelect />}
+        right={<ScopeSelect allowGlobal />}
       />
 
       <div className="bg-card border border-border shadow-sm">
