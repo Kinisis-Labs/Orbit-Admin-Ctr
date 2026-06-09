@@ -22,6 +22,48 @@ export function clerkSecretFor(appId: string): string | undefined {
   return process.env[key];
 }
 
+// Per-app Clerk Backend API secret key, stored as an env secret keyed by app:
+//   CLERK_SECRET_KEY__<APPID>   (appId upper-cased, non-alnum -> "_")
+// e.g. "grailbabe" -> CLERK_SECRET_KEY__GRAILBABE
+// Used to fetch authoritative user counts directly from Clerk, bypassing the
+// webhook-based DB which only sees users who have fired events since setup.
+export function clerkApiKeyFor(appId: string): string | undefined {
+  const key =
+    "CLERK_SECRET_KEY__" + appId.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+  return process.env[key];
+}
+
+// Cache: appId → { count, expiresAt }
+const _clerkCountCache = new Map<string, { count: number; expiresAt: number }>();
+
+/**
+ * Fetch the authoritative total user count directly from the Clerk Backend API.
+ * Returns null when the API key is not configured for this app.
+ * Cached for 5 minutes to avoid hammering Clerk on every activity request.
+ */
+export async function fetchClerkMemberCount(appId: string): Promise<number | null> {
+  const apiKey = clerkApiKeyFor(appId);
+  if (!apiKey) return null;
+
+  const cached = _clerkCountCache.get(appId);
+  if (cached && cached.expiresAt > Date.now()) return cached.count;
+
+  try {
+    const res = await fetch("https://api.clerk.com/v1/users/count", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { total_count?: number };
+    const count = typeof body.total_count === "number" ? body.total_count : null;
+    if (count !== null) {
+      _clerkCountCache.set(appId, { count, expiresAt: Date.now() + 5 * 60 * 1000 });
+    }
+    return count;
+  } catch {
+    return null;
+  }
+}
+
 export type ClerkEvent = {
   type: string;
   data: Record<string, unknown>;
@@ -391,15 +433,22 @@ export async function getActivity(): Promise<UserActivityRow[]> {
   const out: UserActivityRow[] = [];
   for (const app of apps) {
     const c = await computeCounts(db, app.id);
+
+    // Prefer the authoritative Clerk API count over the webhook-derived DB count.
+    // The DB only contains users who have fired a webhook event since the webhook
+    // was configured — users created before setup are invisible to the DB.
+    const apiCount = await fetchClerkMemberCount(app.id);
+    const totalMembers = apiCount ?? c.totalMembers;
+
     out.push({
       appId: app.id,
       appName: app.name,
       environment: app.environment,
-      totalMembers: c.totalMembers,
+      totalMembers,
       dau: c.dau,
       wau: c.wau,
       mau: c.mau,
-      inactive30d: Math.max(0, c.totalMembers - c.mau),
+      inactive30d: Math.max(0, totalMembers - c.mau),
       newLast7d: c.newLast7d,
       dauTrendPct: await dauTrend(db, app.id, c.dau),
       dataSource,

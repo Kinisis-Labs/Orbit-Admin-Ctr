@@ -1,9 +1,7 @@
 name: API Deploy
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+  workflow_dispatch: # push trigger removed — superseded by deploy-api-v2.yml
 
 permissions:
   id-token: write
