@@ -50,15 +50,18 @@ interface ArmBudget {
 }
 
 /**
- * Fetch all budgets at an MCA billing account scope via the ARM REST API.
- * The arm-consumption SDK only queries subscription scope; this REST path is
- * needed for budgets created under a billing account / billing profile.
+ * Fetch budgets via the Cost Management budgets REST API at any ARM scope.
+ * Uses Microsoft.CostManagement/budgets (not Microsoft.Consumption/budgets),
+ * which is the correct API for MCA subscriptions and billing account scopes.
+ *
+ * @param scope  Bare ARM scope path, e.g.:
+ *   "subscriptions/{subId}"
+ *   "providers/Microsoft.Billing/billingAccounts/{billingAccountId}"
  */
-async function listBudgetsAtBillingScope(billingAccountId: string): Promise<ArmBudget[]> {
+async function listBudgetsViaCostManagement(scope: string): Promise<ArmBudget[]> {
   const tokenResponse = await getAzureCredential().getToken("https://management.azure.com/.default");
   if (!tokenResponse) throw new Error("getToken returned null — credential not available");
-  const scope = `providers/Microsoft.Billing/billingAccounts/${billingAccountId}`;
-  const url = `https://management.azure.com/${scope}/providers/Microsoft.Consumption/budgets?api-version=2021-10-01`;
+  const url = `https://management.azure.com/${scope}/providers/Microsoft.CostManagement/budgets?api-version=2023-11-01`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${tokenResponse.token}` },
   });
@@ -68,6 +71,11 @@ async function listBudgetsAtBillingScope(billingAccountId: string): Promise<ArmB
   }
   const data = (await res.json()) as { value?: ArmBudget[] };
   return data.value ?? [];
+}
+
+/** @deprecated Use listBudgetsViaCostManagement with billing account scope instead. */
+async function listBudgetsAtBillingScope(billingAccountId: string): Promise<ArmBudget[]> {
+  return listBudgetsViaCostManagement(`providers/Microsoft.Billing/billingAccounts/${billingAccountId}`);
 }
 
 /**
@@ -120,6 +128,22 @@ function monthEndDate(): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
 }
 
+/**
+ * Returns a manually-configured budget amount from env vars.
+ * Format: BUDGET_AMOUNT__<APPID_UPPER> where hyphens become underscores.
+ * Example: BUDGET_AMOUNT__GRAILBABE=500, BUDGET_AMOUNT__KINISIS_LABS=1000
+ * This is the highest-priority strategy — it bypasses all Azure API calls
+ * and is useful when MCA budgets are at billing profile/invoice-section scope
+ * that the managed identity cannot read.
+ */
+function getBudgetOverride(appId: string): number | null {
+  const key = `BUDGET_AMOUNT__${appId.toUpperCase().replace(/-/g, "_")}`;
+  const raw = process.env[key];
+  if (!raw) return null;
+  const n = parseFloat(raw);
+  return isNaN(n) || n <= 0 ? null : n;
+}
+
 /** Evict all cached budget entries. */
 export function clearBudgetCache(): void {
   _budgetCache.clear();
@@ -149,6 +173,49 @@ export async function fetchBudgetForApp(
   // stale entry, even when Azure is temporarily unconfigured.
   if (bypassCache) {
     _budgetCache.delete(app.id);
+  }
+
+  // 0. Env-var override — highest priority, bypasses all Azure API calls.
+  //    Set BUDGET_AMOUNT__<APPID_UPPER> (hyphens → underscores) on the Container App.
+  //    Useful for MCA subscriptions where budgets live at billing profile scope.
+  const budgetOverride = getBudgetOverride(app.id);
+  if (budgetOverride !== null) {
+    const result: BudgetResult = { hasBudget: true, amount: budgetOverride, forecastAmount: null };
+    // Still need forecast even with manual override — fetch it below.
+    // Store partial result and fall through to forecast only.
+    if (!bypassCache) {
+      const entry = _budgetCache.get(app.id);
+      if (entry && entry.expiresAt > Date.now()) return entry.result;
+    }
+    // Fetch forecast independently then return.
+    if (!isAzureConfigured()) {
+      return result;
+    }
+    const subscriptionIdOvr = await resolveSubscriptionId(app);
+    if (subscriptionIdOvr) {
+      const subScopeOvr = `/subscriptions/${subscriptionIdOvr}`;
+      const rgScopeOvr = `/subscriptions/${subscriptionIdOvr}/resourceGroups/${app.resourceGroup}`;
+      const forecastScopeOvr = budgetScope === "subscription" ? subScopeOvr : rgScopeOvr;
+      try {
+        const forecastResult = await getCostClient().forecast.usage(forecastScopeOvr, {
+          type: "ActualCost",
+          timeframe: "Custom",
+          timePeriod: { from: monthStartDate(), to: monthEndDate() },
+          dataset: { granularity: "Monthly", aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } } },
+          includeActualCost: false,
+          includeFreshPartialCost: false,
+        });
+        const cols: string[] = (forecastResult.columns ?? []).map((c) => String(c.name ?? ""));
+        const costIdx = cols.findIndex((c) => c.toLowerCase().includes("cost"));
+        const rows = (forecastResult.rows ?? []) as unknown[][];
+        let total = 0;
+        if (costIdx !== -1) for (const row of rows) total += Number(row[costIdx] ?? 0);
+        if (total > 0) result.forecastAmount = Number(total.toFixed(2));
+      } catch (_) { /* ignore — forecast is best-effort */ }
+    }
+    const withOvr = { result, expiresAt: Date.now() + BUDGET_CACHE_TTL_MS };
+    _budgetCache.set(app.id, withOvr);
+    return result;
   }
 
   if (!isAzureConfigured()) return null;
@@ -222,10 +289,34 @@ export async function fetchBudgetForApp(
       }
     }
 
-    // 3. Try MCA billing account scope — budgets created via Cost Management at
-    //    billing account level don't appear at subscription scope via arm-consumption.
-    //    Requires AZURE_BILLING_ACCOUNT_ID env var + Billing Account Reader RBAC on
-    //    the managed identity.
+    // 3. Subscription-scope Cost Management budgets API (Microsoft.CostManagement/budgets).
+    //    arm-consumption uses Microsoft.Consumption/budgets which returns empty for MCA
+    //    subscriptions. The Cost Management API supports MCA with the existing
+    //    Cost Management Reader role — no additional RBAC needed.
+    if (budgetAmount === null) {
+      try {
+        const cmBudgets = await listBudgetsViaCostManagement(`subscriptions/${subscriptionId}`);
+        for (const budget of cmBudgets) {
+          if (app.budgetName && budget.name !== app.budgetName) continue;
+          const amount = budget.properties.amount;
+          if (typeof amount === "number" && amount > 0) {
+            budgetAmount = amount;
+            const forecastAmt = budget.properties.forecastSpend?.amount;
+            if (typeof forecastAmt === "number") {
+              forecastFromBudget = forecastAmt;
+            }
+            logger.debug({ appId: app.id, budgetName: budget.name, amount }, "sub-scope CM budget found");
+            break;
+          }
+        }
+      } catch (err) {
+        logger.warn({ err, appId: app.id, subScope }, "sub-scope CM budget list failed");
+      }
+    }
+
+    // 4. Try MCA billing account scope — budgets created via Cost Management at
+    //    billing account level. Requires AZURE_BILLING_ACCOUNT_ID env var + Billing
+    //    Account Reader RBAC on the managed identity.
     if (budgetAmount === null) {
       const billingAccountId = getBillingAccountId();
       if (billingAccountId) {
@@ -423,8 +514,17 @@ export async function diagnoseBudgetsForApp(
 ): Promise<{ appId: string; subscriptionId: string | null; entries: BudgetDiagnosticEntry[] }> {
   const entries: BudgetDiagnosticEntry[] = [];
 
+  // 0. Env-var override
+  const budgetOverride = getBudgetOverride(app.id);
+  const overrideKey = `BUDGET_AMOUNT__${app.id.toUpperCase().replace(/-/g, "_")}`;
+  if (budgetOverride !== null) {
+    entries.push({ strategy: "env-override", scope: overrideKey, outcome: "found", amount: budgetOverride });
+  } else {
+    entries.push({ strategy: "env-override", scope: overrideKey, outcome: "not_found", error: `${overrideKey} not set` });
+  }
+
   if (!isAzureConfigured()) {
-    return { appId: app.id, subscriptionId: null, entries: [{ strategy: "pre-check", scope: "n/a", outcome: "error", error: "isAzureConfigured() = false" }] };
+    return { appId: app.id, subscriptionId: null, entries: [...entries, { strategy: "pre-check", scope: "n/a", outcome: "error", error: "isAzureConfigured() = false" }] };
   }
 
   const subscriptionId = await resolveSubscriptionId(app);
@@ -474,7 +574,22 @@ export async function diagnoseBudgetsForApp(
     entries.push({ strategy: "sub-list", scope: subScope, outcome: "error", error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}` });
   }
 
-  // 4. Billing account scope (MCA) — direct ARM REST API call
+  // 4. Subscription-scope Cost Management budgets (Microsoft.CostManagement/budgets)
+  try {
+    const cmBudgets = await listBudgetsViaCostManagement(`subscriptions/${subscriptionId}`);
+    if (cmBudgets.length === 0) {
+      entries.push({ strategy: "sub-cm-list", scope: `subscriptions/${subscriptionId}`, outcome: "not_found", error: "empty list" });
+    } else {
+      for (const b of cmBudgets) {
+        entries.push({ strategy: "sub-cm-list", scope: `subscriptions/${subscriptionId}`, budgetName: b.name, outcome: "found", amount: b.properties.amount ?? undefined, forecastAmount: b.properties.forecastSpend?.amount ?? null });
+      }
+    }
+  } catch (err: unknown) {
+    const e = err as { message?: string; code?: string; statusCode?: number };
+    entries.push({ strategy: "sub-cm-list", scope: `subscriptions/${subscriptionId}`, outcome: "error", error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}` });
+  }
+
+  // 5. Billing account scope (MCA) — direct ARM REST API call
   const billingAccountId = getBillingAccountId();
   if (billingAccountId) {
     try {

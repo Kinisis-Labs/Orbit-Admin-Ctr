@@ -159,6 +159,8 @@ jobs:
                 AZURE_SUB_SHARED_INFRA="${{ secrets.AZURE_SUB_SHARED_INFRA }}" \
                 AZURE_LOG_ANALYTICS_WORKSPACE_ID="${{ secrets.AZURE_LOG_ANALYTICS_WORKSPACE_ID }}" \
                 AZURE_BILLING_ACCOUNT_ID="${{ secrets.AZURE_BILLING_ACCOUNT_ID }}" \
+                BUDGET_AMOUNT__GRAILBABE="${{ secrets.BUDGET_AMOUNT__GRAILBABE }}" \
+                BUDGET_AMOUNT__KINISIS_LABS="${{ secrets.BUDGET_AMOUNT__KINISIS_LABS }}" \
                 GITHUB_TOKEN="${{ secrets.ORBIT_DEPLOY_ID }}" \
                 STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}"
             az containerapp ingress update \
