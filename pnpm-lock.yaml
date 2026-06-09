@@ -229,6 +229,9 @@ importers:
       pino-http:
         specifier: ^10.5.0
         version: 10.5.0
+      protobufjs:
+        specifier: ^7.0.0
+        version: 7.6.2
       stripe:
         specifier: ^22.2.0
         version: 22.2.0(@types/node@25.6.2)
