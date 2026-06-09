@@ -82,7 +82,7 @@ export const APPS: AppRecord[] = [
     androidPackage: "com.grailbabe.app",
     playAppId: "placeholder-update-when-live",
     iosBundle: "com.kinisislabs.grailbabe",
-    appleAppId: "6741234567",
+    appleAppId: "6775650384",
     appRepo: "GrailBabe",
     cpuThreshold: 75,
     memoryThreshold: 80,
