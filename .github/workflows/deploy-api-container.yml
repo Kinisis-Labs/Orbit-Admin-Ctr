@@ -82,6 +82,7 @@ jobs:
           allow-no-subscriptions: true
 
       - name: Configure GHCR pull credentials
+        if: ${{ secrets.GHCR_PAT != '' }}
         uses: azure/cli@v2
         with:
           azcliversion: latest
