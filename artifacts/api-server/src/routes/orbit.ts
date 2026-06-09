@@ -88,18 +88,18 @@ export const APPS: AppRecord[] = [
     memoryThreshold: 80,
   },
   {
-    id: "orbit",
-    name: "Orbit",
+    id: "kinisis-labs",
+    name: "Business Ops",
     environment: "prod",
     region: "eastus2",
-    resourceGroup: "rg-orbit-prod-eus2",
+    resourceGroup: "rg-kinisislabs-platform-shared-prod-eus2",
     status: "healthy",
     activeAlerts: 0,
     monthToDateCost: 0,
-    subscriptionId: process.env.AZURE_SUB_ORBIT ?? "a1f4-shared-platform",
-    description: "Kinisis admin center — Azure ops dashboard for internal staff.",
+    subscriptionId: process.env.AZURE_SUB_SHARED_INFRA ?? process.env.AZURE_SUB_KINISIS_LABS ?? "a1f4-shared-platform",
+    description: "Kinisis platform — Orbit admin center and kinisislabs.com, sharing the platform subscription (sub-sharedplatform-prod).",
     tags: {
-      workload: "Orbit",
+      workload: "Platform",
       environment: "prod",
       owner: "Ryan Gutridge",
       "cost-center": "CC-Platform",
@@ -110,27 +110,6 @@ export const APPS: AppRecord[] = [
     appRepo: "Orbit-Admin-Ctr",
     group: "Platform",
   },
-  {
-    id: "kinisis-labs",
-    name: "Kinisis Labs",
-    environment: "prod",
-    region: "eastus2",
-    resourceGroup: "rg-kinisislabs-web-prod-eus2",
-    status: "healthy",
-    activeAlerts: 0,
-    monthToDateCost: 0,
-    subscriptionId: process.env.AZURE_SUB_KINISIS_LABS ?? "a1f4-shared-platform",
-    description: "Public marketing site for Kinisis Labs (kinisislabs.com).",
-    tags: {
-      workload: "KinisisLabs",
-      environment: "prod",
-      owner: "Ryan Gutridge",
-      "cost-center": "CC-Platform",
-      criticality: "medium",
-    },
-    owners: ["Ryan Gutridge"],
-    userAuth: "none",
-  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -139,8 +118,8 @@ export const APPS: AppRecord[] = [
 // shares a subscription with others (query at resource-group scope only).
 // ---------------------------------------------------------------------------
 const APP_BILLING_SCOPE: Record<string, "rg" | "subscription"> = {
-  grailbabe: "subscription", // mg-GrailBabeProd — dedicated subscription 01390551
-  "kinisis-labs": "rg",      // shares sub-sharedplatf 893689ff with platform subscription
+  grailbabe: "subscription",    // mg-GrailBabeProd — dedicated subscription 01390551
+  "kinisis-labs": "subscription", // sub-sharedplatform-prod — owns the full platform sub (Orbit + kinisislabs.com)
 };
 
 export function billingScope(appId: string): "rg" | "subscription" {
@@ -578,8 +557,7 @@ function mockDailySeries(
 
   const baseByApp: Record<string, number> = {
     grailbabe: 52,
-    orbit: 18,
-    "kinisis-labs": 4,
+    "kinisis-labs": 22, // platform subscription: ~$18/d (Orbit infra) + ~$4/d (kinisislabs.com)
   };
   const base = baseByApp[appId] ?? 30;
 
@@ -956,8 +934,7 @@ router.get("/global/slos", async (_req, res) => {
 // Values are stable across requests so the UI doesn't flicker.
 const MOCK_APP_TRENDS: Record<string, string> = {
   "grailbabe": "+5.2%",
-  "orbit": "-2.1%",
-  "kinisis-labs": "+0.8%",
+  "kinisis-labs": "-1.3%", // blended platform sub trend (Orbit + kinisislabs.com)
 };
 
 /**

@@ -615,13 +615,6 @@ function LastUpdatedFallback({
       </span>
     );
   }
-  if (cooldownSource === "inventory") {
-    return (
-      <span className="italic opacity-70" title="Cooldown hours using the app's inventory baseline; no operator has saved a DB override yet">
-        Using inventory baseline
-      </span>
-    );
-  }
   if (cooldownSource === "default") {
     return (
       <span className="italic opacity-70" title="Cooldown hours using the built-in global default; no operator has saved a DB override yet">
