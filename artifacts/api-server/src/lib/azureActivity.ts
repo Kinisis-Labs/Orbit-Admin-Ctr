@@ -103,6 +103,8 @@ export type ActivityLogDiagnostic = {
   outcome: "not_configured" | "success" | "error";
   count: number;
   sampleActors: string[];
+  /** Populated when count=0: resource groups that DO have activity in this subscription (helps diagnose wrong RG name). */
+  activeResourceGroups?: string[];
   error?: string;
 };
 
@@ -133,7 +135,24 @@ export async function diagnoseActivityLog(
       if (count >= 20) break;
     }
 
-    return { appId, subscriptionId, resourceGroup, isAzureConfigured: true, outcome: "success", count, sampleActors };
+    if (count > 0) {
+      return { appId, subscriptionId, resourceGroup, isAzureConfigured: true, outcome: "success", count, sampleActors };
+    }
+
+    // count=0 — scan subscription-wide (no RG filter) to find which RGs actually have activity
+    const activeResourceGroups: string[] = [];
+    const subFilter = `eventTimestamp ge '${start}'`;
+    for await (const event of client.activityLogs.list(subFilter, {
+      select: "eventTimestamp,eventDataId,resourceGroupName",
+    })) {
+      const rg = event.resourceGroupName;
+      if (rg && !activeResourceGroups.includes(rg)) {
+        activeResourceGroups.push(rg);
+      }
+      if (activeResourceGroups.length >= 10) break;
+    }
+
+    return { appId, subscriptionId, resourceGroup, isAzureConfigured: true, outcome: "success", count, sampleActors, activeResourceGroups };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { appId, subscriptionId, resourceGroup, isAzureConfigured: true, outcome: "error", count: 0, sampleActors: [], error: msg.slice(0, 300) };
