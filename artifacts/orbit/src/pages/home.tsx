@@ -890,10 +890,17 @@ function BudgetSummaryWidget({
   const totalSourced = appsWithSource.length;
   const allLive = liveCount > 0 && liveCount === totalSourced;
   const someLive = liveCount > 0 && liveCount < totalSourced;
+  const liveAppNames = appsWithSource.filter((a) => a.costDataSource === "live").map((a) => a.name);
+  const estimatedAppNames = appsWithSource.filter((a) => a.costDataSource !== "live").map((a) => a.name);
   const costLiveBadge = allLive ? (
     <LiveBadge className="mt-1.5" />
   ) : someLive ? (
-    <LiveBadge label={`${liveCount}/${totalSourced} Live`} className="mt-1.5" />
+    <LiveBadge
+      label={`${liveCount}/${totalSourced} Live`}
+      className="mt-1.5"
+      liveApps={liveAppNames}
+      estimatedApps={estimatedAppNames}
+    />
   ) : null;
 
   const { data: globalHealth } = useGetGlobalHealth({
