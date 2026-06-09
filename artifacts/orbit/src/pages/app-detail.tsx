@@ -537,6 +537,7 @@ function OverviewCostTile({ appId, onGoToCost }: { appId: string; onGoToCost: ()
           <div className="text-[12px] text-muted-foreground font-medium">MTD spend</div>
           <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.monthToDate)}</div>
           <MomTrendBadge momChangePct={data.momChangePct ?? null} />
+          {data.dataSource === "live" && <LiveBadge />}
         </div>
 
         {/* Budget Cap */}
@@ -1185,9 +1186,9 @@ function CostTab({ appId }: { appId: string }) {
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">MTD Spend</div>
           <div className="text-xl font-semibold tabular-nums">{formatCurrency(data.monthToDate)}</div>
-          {data.dataSource && (
+          {data.dataSource === "live" && (
             <div className="mt-2">
-              <DataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} label="Azure Cost Management" />
+              <LiveBadge />
             </div>
           )}
         </div>
