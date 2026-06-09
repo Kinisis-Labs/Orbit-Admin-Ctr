@@ -99,6 +99,7 @@ function ViolationRow({
 }
 
 const UNDO_DURATION_MS = 4000;
+const UNDO_DURATION_SECS = Math.round(UNDO_DURATION_MS / 1000);
 
 export function ViolationLogPanel({ appId }: { appId?: string } = {}) {
   const { entries, unseenCount, prunedCount, dismissPruneNotice, markSeen, clear, clearByApp, removeById, restoreEntry } = useViolationLog();
@@ -111,21 +112,44 @@ export function ViolationLogPanel({ appId }: { appId?: string } = {}) {
     const entry = entries.find((e) => e.id === id);
     if (!entry) return;
     removeById(id);
-    const { dismiss } = toast({
-      description: "Violation dismissed.",
-      duration: UNDO_DURATION_MS,
-      action: (
+
+    let secsLeft = UNDO_DURATION_SECS;
+    let ticker: ReturnType<typeof setInterval>;
+
+    function makeAction(secs: number) {
+      return (
         <ToastAction
           altText="Undo dismiss"
           onClick={() => {
-            restoreEntry(entry);
+            restoreEntry(entry!);
             dismiss();
+            clearInterval(ticker);
           }}
         >
-          Undo
+          Undo ({secs}s)
         </ToastAction>
-      ),
+      );
+    }
+
+    const { dismiss, update, id: toastId } = toast({
+      description: "Violation dismissed.",
+      duration: UNDO_DURATION_MS,
+      action: makeAction(secsLeft),
     });
+
+    ticker = setInterval(() => {
+      secsLeft -= 1;
+      if (secsLeft <= 0) {
+        clearInterval(ticker);
+        return;
+      }
+      update({
+        id: toastId,
+        description: "Violation dismissed.",
+        duration: UNDO_DURATION_MS,
+        action: makeAction(secsLeft),
+      });
+    }, 1000);
   }
 
   return (
