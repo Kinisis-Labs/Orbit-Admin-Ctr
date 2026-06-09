@@ -104,23 +104,18 @@ export async function fetchNetworkEndpoints(
   app: AppRecord,
   { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<NetworkEndpoint[] | null> {
-  if (!isAzureConfigured()) return null;
-
-  if (!bypassCache) {
-    const entry = _networkCache.get(app.id);
-    if (entry && entry.expiresAt > Date.now()) {
-      return entry.result;
-    }
-  }
-
-  // Build the subscription list:
-  //   1. Start with the global list (AZURE_SUBSCRIPTION_IDS).
-  //   2. Add the app's own subscription if it is a valid GUID (guards against the
-  //      placeholder "a1f4-shared-platform" fallback in the APPS inventory — invalid
-  //      GUIDs would cause Azure Resource Graph to throw and return null for all apps).
-  //   3. Add AZURE_SUB_SHARED_INFRA if set and valid (covers shared-platform resources:
-  //      ca-orbit-prod-v2, afd-shared-prod, and shared VNets/Network Watchers).
-  //   Deduplicate so each sub is queried exactly once.
+  // Build the subscription list first — it may come from any combination of:
+  //   1. AZURE_SUBSCRIPTION_IDS (global comma-separated list)
+  //   2. The app's own subscriptionId env var (AZURE_SUB_GRAILBABE, AZURE_SUB_SHARED_INFRA, etc.)
+  //      — only included when it is a valid GUID (guards against placeholder fallbacks like
+  //        "a1f4-shared-platform" which would cause Resource Graph to throw).
+  //   3. AZURE_SUB_SHARED_INFRA — shared-platform subscription hosting Front Door, Container
+  //      Apps env, and shared VNets/Network Watchers; included in every app's query.
+  //   Deduplicated so each subscription is queried exactly once.
+  //
+  // NOTE: We intentionally do NOT gate on isAzureConfigured() here because that only checks
+  // AZURE_SUBSCRIPTION_IDS.  Users may configure only per-app subscription vars without setting
+  // the global list — in that case we should still attempt the query.
   const globalSubs = getSubscriptionIds();
   const sharedInfraSub = getSharedInfraSubscriptionId();
   const appSub = app.subscriptionId && isGuid(app.subscriptionId) ? app.subscriptionId : null;
@@ -132,6 +127,17 @@ export async function fetchNetworkEndpoints(
       ...(sharedInfraSub ? [sharedInfraSub] : []),
     ]),
   ];
+
+  // If no valid subscription IDs could be assembled from any source, Azure is not
+  // configured for this environment — return null so callers show the "not configured" state.
+  if (subscriptionIds.length === 0) return null;
+
+  if (!bypassCache) {
+    const entry = _networkCache.get(app.id);
+    if (entry && entry.expiresAt > Date.now()) {
+      return entry.result;
+    }
+  }
 
   // Query subscription-wide — shared resources (Front Door, Container Apps Envs) live
   // in different RGs from the compute RG.  Container Apps is the primary source of truth
@@ -148,6 +154,7 @@ export async function fetchNetworkEndpoints(
         'microsoft.network/publicipaddresses',
         'microsoft.network/loadbalancers',
         'microsoft.network/networkwatchers',
+        'microsoft.network/virtualnetworks',
         'microsoft.network/privatednszones',
         'microsoft.network/dnszones'
       )
@@ -233,6 +240,10 @@ export async function fetchNetworkEndpoints(
 
       if (type.includes("networkwatchers")) {
         return [{ name: `Network Watcher — ${resourceName}`, status, latencyMs: 0, packetLossPercent: 0, region: location }];
+      }
+
+      if (type.includes("virtualnetworks")) {
+        return [{ name: `VNet — ${resourceName}`, status, latencyMs: 0, packetLossPercent: 0, region: location }];
       }
 
       if (type.includes("dnszones") || type.includes("privatednszones")) {
