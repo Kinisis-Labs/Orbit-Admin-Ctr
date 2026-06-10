@@ -5,206 +5,189 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
 import { useScope } from "@/lib/scope-context";
+import { useToast } from "@/hooks/use-toast";
 import {
   DEFAULT_SPEND_THRESHOLD,
   SPEND_THRESHOLDS_STORAGE_KEY,
-  getSpendThreshold,
-  setSpendThreshold,
-  removeSpendThreshold,
-  clearSpendThresholds,
   DEFAULT_BUDGET_THRESHOLD,
   BUDGET_THRESHOLDS_STORAGE_KEY,
+  getSpendThreshold,
+  setSpendThreshold,
   getBudgetThreshold,
   setBudgetThreshold,
-  removeBudgetThreshold,
+  clearSpendThresholds,
   clearBudgetThresholds,
 } from "@/lib/spend-threshold";
 
 type Theme = "dark" | "light";
 type Density = "comfortable" | "compact";
 
+interface DraftState {
+  theme: Theme;
+  density: Density;
+  scope: string;
+  thresholds: Record<string, string>;
+  budgetThresholds: Record<string, string>;
+}
+
+function readSaved(apps: { id: string }[]): DraftState {
+  const theme = (localStorage.getItem("orbit-theme") === "light" ? "light" : "dark") as Theme;
+  const density = (localStorage.getItem("orbit-density") === "compact" ? "compact" : "comfortable") as Density;
+  const scope = localStorage.getItem("orbit-scope") ?? (apps[0]?.id ?? "global");
+  const thresholds: Record<string, string> = {};
+  const budgetThresholds: Record<string, string> = {};
+  for (const a of apps) {
+    thresholds[a.id] = String(getSpendThreshold(a.id));
+    budgetThresholds[a.id] = String(getBudgetThreshold(a.id));
+  }
+  return { theme, density, scope, thresholds, budgetThresholds };
+}
+
 export default function Preferences() {
   const { data: apps } = useApps();
-  const { scope, setScope } = useScope();
-  const [theme, setTheme] = useState<Theme>(() => (typeof window === "undefined" ? "dark" : (localStorage.getItem("orbit-theme") === "light" ? "light" : "dark")));
-  const [density, setDensity] = useState<Density>(() => (typeof window === "undefined" ? "comfortable" : (localStorage.getItem("orbit-density") === "compact" ? "compact" : "comfortable")));
-  const [thresholds, setThresholds] = useState<Record<string, string>>(() => {
-    if (typeof window === "undefined") return {};
-    const all: Record<string, string> = {};
-    for (const app of ([] as { id: string }[])) all[app.id] = String(getSpendThreshold(app.id));
-    return all;
-  });
-  const [budgetThresholds, setBudgetThresholds] = useState<Record<string, string>>(() => {
-    if (typeof window === "undefined") return {};
-    return {};
-  });
+  const { scope: liveScope, setScope } = useScope();
+  const { toast } = useToast();
 
-  const inputFocusedRef = useRef(false);
-  const pendingSpendSyncRef = useRef(false);
-  const pendingBudgetSyncRef = useRef(false);
+  const [draft, setDraft] = useState<DraftState>(() => ({
+    theme: typeof window === "undefined" ? "dark" : (localStorage.getItem("orbit-theme") === "light" ? "light" : "dark"),
+    density: typeof window === "undefined" ? "comfortable" : (localStorage.getItem("orbit-density") === "compact" ? "compact" : "comfortable"),
+    scope: liveScope,
+    thresholds: {},
+    budgetThresholds: {},
+  }));
 
-  const refreshSpendRef = useRef<() => void>(() => {});
-  const refreshBudgetRef = useRef<() => void>(() => {});
+  const [saved, setSaved] = useState<DraftState>(draft);
+  const initializedRef = useRef(false);
 
+  // Populate thresholds once apps load
   useEffect(() => {
-    if (!apps) return;
-    setThresholds((prev) => {
-      const next: Record<string, string> = {};
-      for (const app of apps) {
-        next[app.id] = prev[app.id] !== undefined ? prev[app.id] : String(getSpendThreshold(app.id));
-      }
-      return next;
-    });
-    setBudgetThresholds((prev) => {
-      const next: Record<string, string> = {};
-      for (const app of apps) {
-        next[app.id] = prev[app.id] !== undefined ? prev[app.id] : String(getBudgetThreshold(app.id));
-      }
-      return next;
-    });
+    if (!apps || initializedRef.current) return;
+    initializedRef.current = true;
+    const initial = readSaved(apps);
+    setDraft(initial);
+    setSaved(initial);
   }, [apps]);
 
-  useEffect(() => {
-    if (!apps) return;
-    const refreshSpend = () => {
-      setThresholds((prev) => {
-        const next: Record<string, string> = { ...prev };
-        for (const app of apps) next[app.id] = String(getSpendThreshold(app.id));
-        return next;
-      });
-    };
-    refreshSpendRef.current = refreshSpend;
-    const onSpendStorage = (e: StorageEvent) => {
-      if (e.key !== SPEND_THRESHOLDS_STORAGE_KEY) return;
-      if (inputFocusedRef.current) {
-        pendingSpendSyncRef.current = true;
-      } else {
-        refreshSpend();
-      }
-    };
-    window.addEventListener("orbit-spend-threshold-changed", refreshSpend);
-    window.addEventListener("storage", onSpendStorage);
-    return () => {
-      window.removeEventListener("orbit-spend-threshold-changed", refreshSpend);
-      window.removeEventListener("storage", onSpendStorage);
-    };
-  }, [apps]);
-
-  useEffect(() => {
-    if (!apps) return;
-    const refreshBudget = () => {
-      setBudgetThresholds((prev) => {
-        const next: Record<string, string> = { ...prev };
-        for (const app of apps) next[app.id] = String(getBudgetThreshold(app.id));
-        return next;
-      });
-    };
-    refreshBudgetRef.current = refreshBudget;
-    const onBudgetStorage = (e: StorageEvent) => {
-      if (e.key !== BUDGET_THRESHOLDS_STORAGE_KEY) return;
-      if (inputFocusedRef.current) {
-        pendingBudgetSyncRef.current = true;
-      } else {
-        refreshBudget();
-      }
-    };
-    window.addEventListener("orbit-budget-threshold-changed", refreshBudget);
-    window.addEventListener("storage", onBudgetStorage);
-    return () => {
-      window.removeEventListener("orbit-budget-threshold-changed", refreshBudget);
-      window.removeEventListener("storage", onBudgetStorage);
-    };
-  }, [apps]);
-
+  // Apply theme to DOM as a live preview (without saving to localStorage yet)
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") root.classList.add("dark"); else root.classList.remove("dark");
-    localStorage.setItem("orbit-theme", theme);
-  }, [theme]);
+    if (draft.theme === "dark") root.classList.add("dark");
+    else root.classList.remove("dark");
+  }, [draft.theme]);
 
-  useEffect(() => { localStorage.setItem("orbit-density", density); }, [density]);
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(saved);
 
-  const handleThresholdFocus = () => {
-    inputFocusedRef.current = true;
-  };
+  const handleSave = () => {
+    // Persist theme
+    localStorage.setItem("orbit-theme", draft.theme);
 
-  const flushPendingSyncs = () => {
-    setTimeout(() => {
-      if (inputFocusedRef.current) return;
-      if (pendingSpendSyncRef.current) {
-        pendingSpendSyncRef.current = false;
-        refreshSpendRef.current();
+    // Persist density
+    localStorage.setItem("orbit-density", draft.density);
+
+    // Persist scope
+    setScope(draft.scope);
+
+    // Persist spend thresholds
+    for (const [appId, raw] of Object.entries(draft.thresholds)) {
+      const parsed = parseInt(raw, 10);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        setSpendThreshold(appId, parsed);
       }
-      if (pendingBudgetSyncRef.current) {
-        pendingBudgetSyncRef.current = false;
-        refreshBudgetRef.current();
-      }
-    }, 0);
-  };
-
-  const handleThresholdChange = (appId: string, raw: string) => {
-    setThresholds((prev) => ({ ...prev, [appId]: raw }));
-    const parsed = parseInt(raw, 10);
-    if (!Number.isFinite(parsed) || parsed <= 0) return;
-    setSpendThreshold(appId, parsed);
+    }
     window.dispatchEvent(new Event("orbit-spend-threshold-changed"));
-  };
 
-  const handleThresholdBlur = (appId: string, raw: string) => {
-    const parsed = parseInt(raw, 10);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      removeSpendThreshold(appId);
-      setThresholds((prev) => ({ ...prev, [appId]: String(DEFAULT_SPEND_THRESHOLD) }));
-      window.dispatchEvent(new Event("orbit-spend-threshold-changed"));
+    // Persist budget thresholds
+    for (const [appId, raw] of Object.entries(draft.budgetThresholds)) {
+      const parsed = parseInt(raw, 10);
+      if (Number.isFinite(parsed) && parsed > 0 && parsed <= 100) {
+        setBudgetThreshold(appId, parsed);
+      }
     }
-    inputFocusedRef.current = false;
-    flushPendingSyncs();
-  };
-
-  const handleBudgetThresholdChange = (appId: string, raw: string) => {
-    setBudgetThresholds((prev) => ({ ...prev, [appId]: raw }));
-    const parsed = parseInt(raw, 10);
-    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 100) return;
-    setBudgetThreshold(appId, parsed);
     window.dispatchEvent(new Event("orbit-budget-threshold-changed"));
+
+    setSaved(draft);
+    toast({ title: "Preferences saved", duration: 2500 });
   };
 
-  const handleBudgetThresholdBlur = (appId: string, raw: string) => {
-    const parsed = parseInt(raw, 10);
-    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 100) {
-      removeBudgetThreshold(appId);
-      setBudgetThresholds((prev) => ({ ...prev, [appId]: String(DEFAULT_BUDGET_THRESHOLD) }));
-      window.dispatchEvent(new Event("orbit-budget-threshold-changed"));
-    }
-    inputFocusedRef.current = false;
-    flushPendingSyncs();
+  const handleDiscard = () => {
+    setDraft(saved);
+    // Restore theme to saved value
+    const root = document.documentElement;
+    if (saved.theme === "dark") root.classList.add("dark");
+    else root.classList.remove("dark");
   };
 
-  const reset = () => {
-    setTheme("dark"); setDensity("comfortable"); setScope("grailbabe");
-    localStorage.removeItem("orbit-nav-collapsed");
+  const handleReset = () => {
+    if (!apps) return;
     clearSpendThresholds();
     clearBudgetThresholds();
-    if (apps) {
-      const restored: Record<string, string> = {};
-      const budgetRestored: Record<string, string> = {};
-      for (const app of apps) {
-        restored[app.id] = String(DEFAULT_SPEND_THRESHOLD);
-        budgetRestored[app.id] = String(DEFAULT_BUDGET_THRESHOLD);
-      }
-      setThresholds(restored);
-      setBudgetThresholds(budgetRestored);
-      window.dispatchEvent(new Event("orbit-spend-threshold-changed"));
-      window.dispatchEvent(new Event("orbit-budget-threshold-changed"));
+    const thresholds: Record<string, string> = {};
+    const budgetThresholds: Record<string, string> = {};
+    for (const a of apps) {
+      thresholds[a.id] = String(DEFAULT_SPEND_THRESHOLD);
+      budgetThresholds[a.id] = String(DEFAULT_BUDGET_THRESHOLD);
     }
+    const defaults: DraftState = {
+      theme: "dark",
+      density: "comfortable",
+      scope: apps[0]?.id ?? "global",
+      thresholds,
+      budgetThresholds,
+    };
+    setDraft(defaults);
+    // Immediately persist reset (reset is destructive — no ambiguity)
+    localStorage.setItem("orbit-theme", defaults.theme);
+    localStorage.setItem("orbit-density", defaults.density);
+    setScope(defaults.scope);
+    window.dispatchEvent(new Event("orbit-spend-threshold-changed"));
+    window.dispatchEvent(new Event("orbit-budget-threshold-changed"));
+    setSaved(defaults);
+    localStorage.removeItem("orbit-nav-collapsed");
+    toast({ title: "Preferences reset to defaults", duration: 2500 });
   };
+
+  const set = <K extends keyof DraftState>(key: K, value: DraftState[K]) =>
+    setDraft((d) => ({ ...d, [key]: value }));
+
+  const setThreshold = (appId: string, raw: string) =>
+    setDraft((d) => ({ ...d, thresholds: { ...d.thresholds, [appId]: raw } }));
+
+  const setBudgetThresh = (appId: string, raw: string) =>
+    setDraft((d) => ({ ...d, budgetThresholds: { ...d.budgetThresholds, [appId]: raw } }));
 
   return (
     <div className="space-y-4 max-w-3xl">
-      <PageHeader title="Preferences" subtitle="Personal preferences for Orbit. These are stored in your browser." />
+      <PageHeader
+        title="Preferences"
+        subtitle="Personal preferences for Orbit. Stored in your browser."
+        right={
+          <div className="flex items-center gap-2">
+            {isDirty && (
+              <Button variant="ghost" size="sm" className="h-8 rounded-sm text-[13px]" onClick={handleDiscard}>
+                Discard
+              </Button>
+            )}
+            <Button
+              size="sm"
+              className="h-8 rounded-sm text-[13px]"
+              disabled={!isDirty}
+              onClick={handleSave}
+            >
+              Save changes
+            </Button>
+          </div>
+        }
+      />
+
+      {isDirty && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 text-[12px] text-amber-600 dark:text-amber-400 rounded-sm">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+          You have unsaved changes — click <span className="font-semibold mx-1">Save changes</span> to apply them.
+        </div>
+      )}
 
       <Row label="Theme" hint="Azure Portal dark and light themes.">
-        <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
+        <Select value={draft.theme} onValueChange={(v) => set("theme", v as Theme)}>
           <SelectTrigger className="h-8 w-[200px] rounded-sm text-[13px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="dark">Dark</SelectItem>
@@ -214,7 +197,7 @@ export default function Preferences() {
       </Row>
 
       <Row label="Table density" hint="Compact reduces row padding across all tables.">
-        <Select value={density} onValueChange={(v) => setDensity(v as Density)}>
+        <Select value={draft.density} onValueChange={(v) => set("density", v as Density)}>
           <SelectTrigger className="h-8 w-[200px] rounded-sm text-[13px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="comfortable">Comfortable</SelectItem>
@@ -224,7 +207,7 @@ export default function Preferences() {
       </Row>
 
       <Row label="Default scope" hint="Scope applied on every page load.">
-        <Select value={scope} onValueChange={setScope}>
+        <Select value={draft.scope} onValueChange={(v) => set("scope", v)}>
           <SelectTrigger className="h-8 w-[260px] rounded-sm text-[13px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             {apps?.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
@@ -248,10 +231,8 @@ export default function Preferences() {
                   type="number"
                   min={1}
                   max={999}
-                  value={thresholds[app.id] ?? String(DEFAULT_SPEND_THRESHOLD)}
-                  onChange={(e) => handleThresholdChange(app.id, e.target.value)}
-                  onFocus={handleThresholdFocus}
-                  onBlur={(e) => handleThresholdBlur(app.id, e.target.value)}
+                  value={draft.thresholds[app.id] ?? String(DEFAULT_SPEND_THRESHOLD)}
+                  onChange={(e) => setThreshold(app.id, e.target.value)}
                   className="h-8 w-[90px] rounded-sm text-[13px] text-right"
                 />
                 <span className="text-[13px] text-muted-foreground">%</span>
@@ -277,10 +258,8 @@ export default function Preferences() {
                   type="number"
                   min={1}
                   max={100}
-                  value={budgetThresholds[app.id] ?? String(DEFAULT_BUDGET_THRESHOLD)}
-                  onChange={(e) => handleBudgetThresholdChange(app.id, e.target.value)}
-                  onFocus={handleThresholdFocus}
-                  onBlur={(e) => handleBudgetThresholdBlur(app.id, e.target.value)}
+                  value={draft.budgetThresholds[app.id] ?? String(DEFAULT_BUDGET_THRESHOLD)}
+                  onChange={(e) => setBudgetThresh(app.id, e.target.value)}
                   className="h-8 w-[90px] rounded-sm text-[13px] text-right"
                 />
                 <span className="text-[13px] text-muted-foreground">%</span>
@@ -290,8 +269,25 @@ export default function Preferences() {
         </div>
       )}
 
-      <div className="pt-3 border-t border-border">
-        <Button variant="outline" size="sm" className="h-8 rounded-sm" onClick={reset}>Reset to defaults</Button>
+      <div className="pt-3 border-t border-border flex items-center justify-between">
+        <Button variant="outline" size="sm" className="h-8 rounded-sm text-[13px]" onClick={handleReset}>
+          Reset to defaults
+        </Button>
+        <div className="flex items-center gap-2">
+          {isDirty && (
+            <Button variant="ghost" size="sm" className="h-8 rounded-sm text-[13px]" onClick={handleDiscard}>
+              Discard
+            </Button>
+          )}
+          <Button
+            size="sm"
+            className="h-8 rounded-sm text-[13px]"
+            disabled={!isDirty}
+            onClick={handleSave}
+          >
+            Save changes
+          </Button>
+        </div>
       </div>
     </div>
   );
