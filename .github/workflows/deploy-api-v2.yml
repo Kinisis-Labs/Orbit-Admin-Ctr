@@ -208,13 +208,18 @@ jobs:
               --query "properties.template.containers[0].env" \
               -o json > /tmp/ca_env_current.json
 
-            # ── 2. Merge env vars in Python ───────────────────────────────
+            # ── 2. Merge env vars and call az via Python subprocess ──────
+            # Using Python subprocess (not shell variable expansion) so values with
+            # special characters (newlines in PEM keys, = in connection strings, etc.)
+            # are passed cleanly as individual args without any shell interpretation.
             python3 - << 'PYEOF'
-            import json, os
+            import json, os, subprocess, sys
+
             existing = {}
             for item in json.load(open("/tmp/ca_env_current.json")) or []:
                 if item.get("value") is not None:
                     existing[item["name"]] = item["value"]
+
             fixed = {
                 "NODE_ENV": "production",
                 "PORT": "80",
@@ -223,6 +228,7 @@ jobs:
                 "ENTRA_REDIRECT_URI": "https://orbit.kinisislabs.com/api/auth/callback",
                 "ENTRA_POST_LOGOUT_REDIRECT_URI": "https://orbit.kinisislabs.com/signed-out",
             }
+
             secret_map = [
                 ("DATABASE_URL",                         "V_DATABASE_URL"),
                 ("SESSION_SECRET",                       "V_SESSION_SECRET"),
@@ -252,38 +258,41 @@ jobs:
                 ("APP_CONFIGURATION_ENDPOINT",           "V_APP_CONFIGURATION_ENDPOINT"),
             ]
             from_secrets = {k: os.environ[env] for k, env in secret_map if os.environ.get(env)}
-            sub_g = from_secrets.get("AZURE_SUB_GRAILBABE",      existing.get("AZURE_SUB_GRAILBABE", ""))
-            sub_s = from_secrets.get("AZURE_SUB_SHAREDPLATFORM",  existing.get("AZURE_SUB_SHAREDPLATFORM", ""))
+
+            sub_g = from_secrets.get("AZURE_SUB_GRAILBABE",     existing.get("AZURE_SUB_GRAILBABE", ""))
+            sub_s = from_secrets.get("AZURE_SUB_SHAREDPLATFORM", existing.get("AZURE_SUB_SHAREDPLATFORM", ""))
             subs  = [s for s in [sub_g, sub_s] if s]
             if subs:
                 fixed["AZURE_SUBSCRIPTION_IDS"] = ",".join(subs)
+
             merged = {**existing, **fixed, **from_secrets}
-            with open("/tmp/ca_env_merged.txt", "w") as f:
-                for k, v in merged.items():
-                    f.write(f"{k}={v}\n")
+
             n_portal_only = len(set(existing) - set(fixed) - set(from_secrets))
             print(f"Env vars: {len(merged)} total  ({n_portal_only} Portal-only preserved, {len(from_secrets)} from secrets, {len(fixed)} fixed)")
+
+            # Call az containerapp update via subprocess so each KEY=VALUE is passed
+            # as a separate list element — no shell word-splitting or glob expansion,
+            # handles newlines in PEM keys and = in connection strings safely.
+            env_pairs = [f"{k}={v}" for k, v in merged.items()]
+            cmd = [
+                "az", "containerapp", "update",
+                "--name", "ca-orbit-prod-v2",
+                "--resource-group", "rg-kinisislabs-platform-shared-prod-eus2",
+                "--image", os.environ["NEW_IMAGE"],
+                "--output", "none",
+                "--set-env-vars",
+            ] + env_pairs
+
+            print(f"Running: az containerapp update ... --set-env-vars ({len(env_pairs)} vars)")
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.stdout:
+                print(result.stdout)
+            if result.stderr:
+                print(result.stderr, file=sys.stderr)
+            if result.returncode != 0:
+                sys.exit(result.returncode)
+            print("Container App updated ✓")
             PYEOF
-
-            # ── 3. Build --set-env-vars args and update image + env vars ──
-            # Read merged vars from file; quote each value to handle spaces/special chars.
-            # az containerapp update --set-env-vars replaces ALL env vars — that is
-            # intentional here because we pass the complete merged set.
-            ENV_ARGS=()
-            while IFS= read -r line || [[ -n "$line" ]]; do
-              KEY="${line%%=*}"
-              VAL="${line#*=}"
-              ENV_ARGS+=("${KEY}=${VAL}")
-            done < /tmp/ca_env_merged.txt
-
-            echo "Updating image and ${#ENV_ARGS[@]} env vars..."
-            az containerapp update \
-              --name ca-orbit-prod-v2 \
-              --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
-              --image "$NEW_IMAGE" \
-              --set-env-vars "${ENV_ARGS[@]}" \
-              --output none
-            echo "Container App updated ✓"
 
       - name: Wait for revision to be Running
         id: wait_revision
