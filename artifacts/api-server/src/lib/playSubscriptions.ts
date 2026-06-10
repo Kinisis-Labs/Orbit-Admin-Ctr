@@ -134,5 +134,5 @@ export async function getPlaySubscriptions(): Promise<PlaySubscriptionRow[]> {
       }
     }
   }
-  return [];
+  return playApps().map(placeholderRow);
 }

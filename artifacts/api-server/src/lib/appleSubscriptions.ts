@@ -128,5 +128,5 @@ export async function getAppleSubscriptions(): Promise<AppleSubscriptionRow[]> {
       }
     }
   }
-  return [];
+  return appStoreApps().map(placeholderRow);
 }
