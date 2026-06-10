@@ -1002,6 +1002,7 @@ export type TagComplianceResponseDataSource = typeof TagComplianceResponseDataSo
 export const TagComplianceResponseDataSource = {
   live: 'live',
   unavailable: 'unavailable',
+  error: 'error',
 } as const;
 
 export type TagComplianceEntryScope = typeof TagComplianceEntryScope[keyof typeof TagComplianceEntryScope];
@@ -1029,6 +1030,7 @@ export interface TagComplianceResponse {
   nonCompliantCount: number;
   entries: TagComplianceEntry[];
   dataSource: TagComplianceResponseDataSource;
+  errorMessage?: string | null;
 }
 
 /**

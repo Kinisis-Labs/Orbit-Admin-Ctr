@@ -12,4 +12,5 @@ export type TagComplianceResponseDataSource = typeof TagComplianceResponseDataSo
 export const TagComplianceResponseDataSource = {
   live: 'live',
   unavailable: 'unavailable',
+  error: 'error',
 } as const;

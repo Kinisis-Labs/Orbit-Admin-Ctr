@@ -1668,7 +1668,8 @@ components:
         entries:
           type: array
           items: { $ref: "#/components/schemas/TagComplianceEntry" }
-        dataSource: { type: string, enum: [live, unavailable] }
+        dataSource: { type: string, enum: [live, unavailable, error] }
+        errorMessage: { type: string, nullable: true }
     TagComplianceEntry:
       type: object
       required: [id, name, type, scope, subscriptionId, missingTags]

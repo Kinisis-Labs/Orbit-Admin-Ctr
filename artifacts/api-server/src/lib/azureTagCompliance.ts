@@ -36,7 +36,8 @@ export type TagComplianceResult = {
   totalScanned: number;
   nonCompliantCount: number;
   entries: TagComplianceEntry[];
-  dataSource: "live" | "unavailable";
+  dataSource: "live" | "unavailable" | "error";
+  errorMessage?: string;
 };
 
 const CACHE_TTL_MS = 15 * 60 * 1000;
@@ -144,7 +145,12 @@ export async function fetchTagCompliance(): Promise<TagComplianceResult> {
     );
     return data;
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     logger.error({ err }, "fetchTagCompliance error");
-    return UNAVAILABLE;
+    return {
+      ...UNAVAILABLE,
+      dataSource: "error",
+      errorMessage: msg,
+    };
   }
 }

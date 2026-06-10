@@ -816,7 +816,8 @@ export const GetTagComplianceResponse = zod.object({
   "resourceGroup": zod.string().nullish(),
   "missingTags": zod.array(zod.string())
 })),
-  "dataSource": zod.enum(['live', 'unavailable'])
+  "dataSource": zod.enum(['live', 'unavailable', 'error']),
+  "errorMessage": zod.string().nullish()
 })
 
 

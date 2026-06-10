@@ -297,6 +297,27 @@ function TagComplianceCard() {
     );
   }
 
+  if (data.dataSource === "error") {
+    return (
+      <div className="bg-card border border-border shadow-sm">
+        <div className="p-2 border-b border-border flex items-center gap-2">
+          <AlertTriangle className="h-3.5 w-3.5 text-destructive ml-2" />
+          <h2 className="text-sm font-semibold">Tag compliance</h2>
+          <span className="text-[11px] text-muted-foreground ml-1">Live scan across subscriptions → RGs → resources</span>
+        </div>
+        <Alert variant="destructive" className="m-3">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="text-sm space-y-1">
+            <p>Tag compliance scan failed — Azure returned an error.</p>
+            {data.errorMessage && (
+              <p className="font-mono text-xs break-all opacity-80">{data.errorMessage}</p>
+            )}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   const { totalScanned, nonCompliantCount, entries, scannedAt } = data;
   const grouped = groupBySubscription(
     [...entries].sort((a, b) => SCOPE_ORDER[a.scope] - SCOPE_ORDER[b.scope]),

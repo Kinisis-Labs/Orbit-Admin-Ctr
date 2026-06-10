@@ -14,4 +14,5 @@ export interface TagComplianceResponse {
   nonCompliantCount: number;
   entries: TagComplianceEntry[];
   dataSource: TagComplianceResponseDataSource;
+  errorMessage?: string | null;
 }
