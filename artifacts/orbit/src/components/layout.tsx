@@ -159,7 +159,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <nav className="flex flex-col gap-0.5 w-full px-1">
             <NavSection sectionKey="monitoring" label="Monitoring" navCollapsed={navCollapsed}>
               <NavItem href="/" icon={<Home className="h-[18px] w-[18px]" />} label="Home" active={location === "/"} collapsed={navCollapsed} />
-              <NavItem href="/" icon={<Cloud className="h-[18px] w-[18px]" />} label="App Services" active={location === "/"} collapsed={navCollapsed} />
+              <NavItem href="/apps" icon={<Cloud className="h-[18px] w-[18px]" />} label="App Services" active={location === "/apps"} collapsed={navCollapsed} />
               <NavItem href="/alerts" icon={<Bell className="h-[18px] w-[18px]" />} label="Alerts" active={location === "/alerts"} collapsed={navCollapsed} alertCount={overThresholdCount} unseenViolationCount={unseenViolationCount} infraViolations={infraViolations} />
               <NavItem href="/deployments" icon={<Rocket className="h-[18px] w-[18px]" />} label="Deployments" active={location === "/deployments"} collapsed={navCollapsed} />
               <NavItem href="/incidents" icon={<AlertOctagon className="h-[18px] w-[18px]" />} label="Incidents" active={location === "/incidents"} collapsed={navCollapsed} />

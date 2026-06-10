@@ -234,7 +234,9 @@ const AUTH_TYPES: { value: UserAuthType; label: string }[] = [
 
 export default function Home() {
   const { scope } = useScope();
-  const isGlobal = scope === "global";
+  const [location, navigate] = useLocation();
+  const isHomePage = location === "/";
+  const isGlobal = isHomePage || scope === "global";
   const { hasGroup } = useAuth();
   const canSeeCost = hasGroup(COST_READER_GROUP.id);
   const recentAlerts = useRecentBudgetAlerts(canSeeCost);
@@ -262,7 +264,6 @@ export default function Home() {
   }, [appCost?.byService]);
 
   const search = useSearch();
-  const [, navigate] = useLocation();
 
   const VALID_AUTH_TYPES: UserAuthType[] = ["clerk", "entra", "none"];
 
@@ -394,15 +395,11 @@ export default function Home() {
               : "Select an application"}
           </p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <AuthFilterPills
-            authCounts={authCounts}
-            authFilter={authFilter}
-            onToggle={toggleAuthFilter}
-            onClear={clearAuthFilter}
-          />
-          <ScopeSelect allowGlobal authFilter={authFilter} />
-        </div>
+        {!isHomePage && (
+          <div className="flex items-center gap-3 flex-wrap">
+            <ScopeSelect allowGlobal={false} />
+          </div>
+        )}
       </div>
 
       {isGlobal ? (
