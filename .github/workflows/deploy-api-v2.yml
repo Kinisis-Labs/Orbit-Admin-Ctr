@@ -112,23 +112,28 @@ jobs:
             done
             echo "Warning: timed out waiting for idle state — proceeding anyway"
 
-      - name: Configure GHCR pull credentials
+      - name: Remove GHCR pull credentials (package is public)
         continue-on-error: true
         uses: azure/cli@v2
-        env:
-          GHCR_PAT: ${{ secrets.GHCR_PAT }}
         with:
           azcliversion: latest
           inlineScript: |
-            if [ -z "$GHCR_PAT" ]; then
-              echo "GHCR_PAT not set — skipping registry credential update"
-            else
-              az containerapp registry set \
+            # The orbit-api GHCR package is public — anonymous pulls work.
+            # Removing any stored credential prevents a stale PAT from
+            # blocking image pulls on new revisions.
+            REGISTRIES=$(az containerapp registry list \
+              --name ca-orbit-prod-v2 \
+              --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
+              --query "[?server=='ghcr.io'].server" -o tsv 2>/dev/null || echo "")
+            if [ -n "$REGISTRIES" ]; then
+              echo "Removing stored ghcr.io registry credential..."
+              az containerapp registry remove \
                 --name ca-orbit-prod-v2 \
                 --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
-                --server ghcr.io \
-                --username "${{ github.repository_owner }}" \
-                --password "$GHCR_PAT"
+                --server ghcr.io
+              echo "Removed ✓"
+            else
+              echo "No ghcr.io registry credential configured — nothing to remove ✓"
             fi
 
       - name: Wait for registry update to settle
@@ -261,6 +266,12 @@ jobs:
             print('healthState:', p.get('healthState'))
             print('replicas:', json.dumps(p.get('replicas', []), indent=2))
             "
+            echo ""
+            echo "========== Registry credentials on CA =========="
+            az containerapp registry list \
+              --name ca-orbit-prod-v2 \
+              --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
+              --output json || echo "(registry list unavailable)"
             echo ""
             echo "========== Container App startup/system probes =========="
             az containerapp show \
