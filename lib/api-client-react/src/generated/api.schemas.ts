@@ -730,6 +730,38 @@ export interface StripeSyncResult {
   skips: StripeSyncSkip[];
 }
 
+/**
+ * Which store produced this result
+ */
+export type StoreSyncResultDataSource = typeof StoreSyncResultDataSource[keyof typeof StoreSyncResultDataSource];
+
+
+export const StoreSyncResultDataSource = {
+  app_store: 'app_store',
+  play_store: 'play_store',
+} as const;
+
+export interface StoreSyncResult {
+  /** Report month (YYYY-MM) */
+  month: string;
+  /** Workload app id */
+  appId: string;
+  /** Total rows examined in the report */
+  total: number;
+  /** Rows newly recorded as ledger entries */
+  ingested: number;
+  /** Rows skipped (non-revenue event, already recorded, non-USD, or missing order id) */
+  skipped: number;
+  /** Rows that failed to ingest due to an unexpected error */
+  errors: number;
+  /** Total gross revenue ingested this run (USD) */
+  totalGross: number;
+  /** Total store fee booked as expense this run (USD) */
+  totalFee: number;
+  /** Which store produced this result */
+  dataSource: StoreSyncResultDataSource;
+}
+
 export interface LedgerReport {
   currency: string;
   /** Net of asset balances (settlement position) */
@@ -1433,6 +1465,22 @@ export type GetAppAlertsParams = {
  * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
  */
 refresh?: RefreshParameter;
+};
+
+export type SyncAppStoreSalesParams = {
+/**
+ * Month in YYYY-MM format. Defaults to the previous calendar month.
+ * @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$
+ */
+month?: string;
+};
+
+export type SyncPlayStoreSalesParams = {
+/**
+ * Month in YYYY-MM format. Defaults to the previous calendar month.
+ * @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$
+ */
+month?: string;
 };
 
 export type ListGlobalAlertsParams = {

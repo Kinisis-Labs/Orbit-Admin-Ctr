@@ -76,7 +76,10 @@ import type {
   SetFeatureFlagBody,
   SlosResponse,
   StaffStatsResponse,
+  StoreSyncResult,
   StripeSyncResult,
+  SyncAppStoreSalesParams,
+  SyncPlayStoreSalesParams,
   TelemetryReport,
   UndismissAnomalyParams,
   UpdateAlertConfigBody,
@@ -1343,6 +1346,166 @@ export const useSyncStripeSales = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getSyncStripeSalesMutationOptions(options));
+    }
+
+export const getSyncAppStoreSalesUrl = (appId: string,
+    params?: SyncAppStoreSalesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/apps/${appId}/ledger/app-store/sync?${stringifiedParams}` : `/api/apps/${appId}/ledger/app-store/sync`
+}
+
+/**
+ * Fetches the App Store Connect SUBSCRIPTION_EVENT monthly report and records each renewal and new subscription as a balanced sale in the ledger, booking the actual Apple fee (customer price minus developer proceeds). Idempotent on the (subscriber-id, event-date, subscription-apple-id) triple. Requires APPLE_VENDOR_NUMBER in addition to the existing Apple API credentials.
+ * @summary Import Apple App Store subscription events into the app's ledger
+ */
+export const syncAppStoreSales = async (appId: string,
+    params?: SyncAppStoreSalesParams, options?: RequestInit): Promise<StoreSyncResult> => {
+
+  return customFetch<StoreSyncResult>(getSyncAppStoreSalesUrl(appId,params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSyncAppStoreSalesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncAppStoreSales>>, TError,{appId: string;params?: SyncAppStoreSalesParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncAppStoreSales>>, TError,{appId: string;params?: SyncAppStoreSalesParams}, TContext> => {
+
+const mutationKey = ['syncAppStoreSales'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncAppStoreSales>>, {appId: string;params?: SyncAppStoreSalesParams}> = (props) => {
+          const {appId,params} = props ?? {};
+
+          return  syncAppStoreSales(appId,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncAppStoreSalesMutationResult = NonNullable<Awaited<ReturnType<typeof syncAppStoreSales>>>
+
+    export type SyncAppStoreSalesMutationError = ErrorType<void>
+
+    /**
+ * @summary Import Apple App Store subscription events into the app's ledger
+ */
+export const useSyncAppStoreSales = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncAppStoreSales>>, TError,{appId: string;params?: SyncAppStoreSalesParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncAppStoreSales>>,
+        TError,
+        {appId: string;params?: SyncAppStoreSalesParams},
+        TContext
+      > => {
+      return useMutation(getSyncAppStoreSalesMutationOptions(options));
+    }
+
+export const getSyncPlayStoreSalesUrl = (appId: string,
+    params?: SyncPlayStoreSalesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/apps/${appId}/ledger/play-store/sync?${stringifiedParams}` : `/api/apps/${appId}/ledger/play-store/sync`
+}
+
+/**
+ * Fetches the Google Play earnings CSV from the configured GCS bucket and records each successful charge as a balanced sale in the ledger, booking the 15% Play fee reconstructed from the net merchant proceeds. Idempotent on the Google Play order number. Requires WIF credentials plus GOOGLE_PLAY_REPORTING_BUCKET.
+ * @summary Import Google Play earnings report into the app's ledger
+ */
+export const syncPlayStoreSales = async (appId: string,
+    params?: SyncPlayStoreSalesParams, options?: RequestInit): Promise<StoreSyncResult> => {
+
+  return customFetch<StoreSyncResult>(getSyncPlayStoreSalesUrl(appId,params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSyncPlayStoreSalesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncPlayStoreSales>>, TError,{appId: string;params?: SyncPlayStoreSalesParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncPlayStoreSales>>, TError,{appId: string;params?: SyncPlayStoreSalesParams}, TContext> => {
+
+const mutationKey = ['syncPlayStoreSales'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncPlayStoreSales>>, {appId: string;params?: SyncPlayStoreSalesParams}> = (props) => {
+          const {appId,params} = props ?? {};
+
+          return  syncPlayStoreSales(appId,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncPlayStoreSalesMutationResult = NonNullable<Awaited<ReturnType<typeof syncPlayStoreSales>>>
+
+    export type SyncPlayStoreSalesMutationError = ErrorType<void>
+
+    /**
+ * @summary Import Google Play earnings report into the app's ledger
+ */
+export const useSyncPlayStoreSales = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncPlayStoreSales>>, TError,{appId: string;params?: SyncPlayStoreSalesParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncPlayStoreSales>>,
+        TError,
+        {appId: string;params?: SyncPlayStoreSalesParams},
+        TContext
+      > => {
+      return useMutation(getSyncPlayStoreSalesMutationOptions(options));
     }
 
 export const getReconcileLedgerUrl = (appId: string,) => {

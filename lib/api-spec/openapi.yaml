@@ -310,6 +310,70 @@ paths:
           description: App not found
         "503":
           description: Stripe is not connected
+  /apps/{appId}/ledger/app-store/sync:
+    post:
+      operationId: syncAppStoreSales
+      tags: [ledger]
+      summary: Import Apple App Store subscription events into the app's ledger
+      description: >-
+        Fetches the App Store Connect SUBSCRIPTION_EVENT monthly report and records
+        each renewal and new subscription as a balanced sale in the ledger, booking
+        the actual Apple fee (customer price minus developer proceeds). Idempotent
+        on the (subscriber-id, event-date, subscription-apple-id) triple. Requires
+        APPLE_VENDOR_NUMBER in addition to the existing Apple API credentials.
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          description: Month in YYYY-MM format. Defaults to the previous calendar month.
+      responses:
+        "200":
+          description: Sync completed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StoreSyncResult" }
+        "400":
+          description: Bad request (invalid month or ledger chart of accounts not set up)
+        "404":
+          description: App not found
+        "503":
+          description: Apple App Store report credentials not configured (APPLE_VENDOR_NUMBER missing)
+  /apps/{appId}/ledger/play-store/sync:
+    post:
+      operationId: syncPlayStoreSales
+      tags: [ledger]
+      summary: Import Google Play earnings report into the app's ledger
+      description: >-
+        Fetches the Google Play earnings CSV from the configured GCS bucket and
+        records each successful charge as a balanced sale in the ledger, booking
+        the 15% Play fee reconstructed from the net merchant proceeds. Idempotent
+        on the Google Play order number. Requires WIF credentials plus
+        GOOGLE_PLAY_REPORTING_BUCKET.
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          description: Month in YYYY-MM format. Defaults to the previous calendar month.
+      responses:
+        "200":
+          description: Sync completed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StoreSyncResult" }
+        "400":
+          description: Bad request (invalid month or ledger chart of accounts not set up)
+        "404":
+          description: App not found
+        "503":
+          description: Google Play report credentials not configured (GOOGLE_PLAY_REPORTING_BUCKET or WIF vars missing)
   /apps/{appId}/ledger/reconcile:
     post:
       operationId: reconcileLedger
@@ -1419,6 +1483,22 @@ components:
           type: array
           description: Per-charge skip reasons, capped for readability.
           items: { $ref: "#/components/schemas/StripeSyncSkip" }
+    StoreSyncResult:
+      type: object
+      required: [month, appId, total, ingested, skipped, errors, totalGross, totalFee, dataSource]
+      properties:
+        month: { type: string, description: "Report month (YYYY-MM)" }
+        appId: { type: string, description: Workload app id }
+        total: { type: integer, description: Total rows examined in the report }
+        ingested: { type: integer, description: Rows newly recorded as ledger entries }
+        skipped: { type: integer, description: "Rows skipped (non-revenue event, already recorded, non-USD, or missing order id)" }
+        errors: { type: integer, description: Rows that failed to ingest due to an unexpected error }
+        totalGross: { type: number, description: Total gross revenue ingested this run (USD) }
+        totalFee: { type: number, description: Total store fee booked as expense this run (USD) }
+        dataSource:
+          type: string
+          enum: [app_store, play_store]
+          description: Which store produced this result
     LedgerReport:
       type: object
       required: [currency, totalBalance, accounts, reconciliation, transactions, revenue]

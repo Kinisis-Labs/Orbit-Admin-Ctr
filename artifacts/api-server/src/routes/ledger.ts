@@ -7,6 +7,8 @@ import {
   PostLedgerEntryBody,
   ReconcileLedgerResponse,
   SyncStripeSalesResponse,
+  SyncAppStoreSalesResponse,
+  SyncPlayStoreSalesResponse,
 } from "@workspace/api-zod";
 import { findApp } from "./orbit";
 import {
@@ -19,6 +21,14 @@ import {
 } from "../lib/ledger";
 import { isStripeConfigured } from "../lib/stripeClient";
 import { syncStripeSales } from "../lib/stripeSync";
+import {
+  isAppleReportConfigured,
+  ingestAppleReport,
+} from "../lib/appleReports";
+import {
+  isPlayReportConfigured,
+  ingestPlayReport,
+} from "../lib/playReports";
 
 // Live Stripe import is intentionally scoped to GrailBabe only.
 const STRIPE_SYNC_WORKLOAD = "grailbabe";
@@ -135,6 +145,91 @@ router.post("/apps/:appId/ledger/stripe/sync", async (req, res) => {
       return;
     }
     req.log.error({ err }, "failed to sync stripe sales");
+    res.status(500).json({ error: "Internal error" });
+  }
+});
+
+// Default month: the previous calendar month in YYYY-MM format.
+function defaultMonth(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 1);
+  return d.toISOString().slice(0, 7);
+}
+
+// Validate a YYYY-MM month string.
+function isValidMonth(s: string): boolean {
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
+}
+
+// Import Apple App Store SUBSCRIPTION_EVENT monthly report into the ledger.
+// Each renewal / new subscription is recorded as a balanced sale entry.
+// Idempotent: re-running the same month re-uses the externalRef uniqueness
+// constraint rather than creating duplicate entries.
+router.post("/apps/:appId/ledger/app-store/sync", async (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  if (!isAppleReportConfigured()) {
+    res.status(503).json({
+      error:
+        "Apple App Store report credentials not configured. " +
+        "Set APPLE_CONNECT_ISSUER_ID, APPLE_CONNECT_KEY_ID, " +
+        "APPLE_CONNECT_PRIVATE_KEY, and APPLE_VENDOR_NUMBER.",
+    });
+    return;
+  }
+  const month = (req.query.month as string | undefined) ?? defaultMonth();
+  if (!isValidMonth(month)) {
+    res.status(400).json({ error: "Invalid month; expected YYYY-MM" });
+    return;
+  }
+  try {
+    const result = await ingestAppleReport(app.id, month);
+    res.json(SyncAppStoreSalesResponse.parse(result));
+  } catch (err) {
+    if (err instanceof LedgerError) {
+      res.status(err.statusCode).json({ error: err.message });
+      return;
+    }
+    req.log.error({ err }, "failed to sync Apple App Store report");
+    res.status(500).json({ error: "Internal error" });
+  }
+});
+
+// Import Google Play earnings report from the configured GCS bucket into the
+// ledger. Gross is reconstructed from net proceeds (÷ 0.85) so the Play fee
+// is correctly booked as an expense. Idempotent on the Play order number.
+router.post("/apps/:appId/ledger/play-store/sync", async (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  if (!isPlayReportConfigured()) {
+    res.status(503).json({
+      error:
+        "Google Play report credentials not configured. " +
+        "Set GOOGLE_PLAY_SA_EMAIL, GOOGLE_PLAY_WIF_AUDIENCE, " +
+        "GOOGLE_PLAY_DEVELOPER_ID, and GOOGLE_PLAY_REPORTING_BUCKET.",
+    });
+    return;
+  }
+  const month = (req.query.month as string | undefined) ?? defaultMonth();
+  if (!isValidMonth(month)) {
+    res.status(400).json({ error: "Invalid month; expected YYYY-MM" });
+    return;
+  }
+  try {
+    const result = await ingestPlayReport(app.id, month);
+    res.json(SyncPlayStoreSalesResponse.parse(result));
+  } catch (err) {
+    if (err instanceof LedgerError) {
+      res.status(err.statusCode).json({ error: err.message });
+      return;
+    }
+    req.log.error({ err }, "failed to sync Google Play earnings report");
     res.status(500).json({ error: "Internal error" });
   }
 });

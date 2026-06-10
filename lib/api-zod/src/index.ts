@@ -21,4 +21,6 @@ export {
   ListDeploymentsResponse,
   SetFeatureFlagBody,
   ListClerkIdentitiesResponse,
+  SyncAppStoreSalesParams,
+  SyncPlayStoreSalesParams,
 } from "./generated/api";

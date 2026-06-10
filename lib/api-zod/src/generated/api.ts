@@ -480,6 +480,62 @@ export const SyncStripeSalesResponse = zod.object({
 
 
 /**
+ * Fetches the App Store Connect SUBSCRIPTION_EVENT monthly report and records each renewal and new subscription as a balanced sale in the ledger, booking the actual Apple fee (customer price minus developer proceeds). Idempotent on the (subscriber-id, event-date, subscription-apple-id) triple. Requires APPLE_VENDOR_NUMBER in addition to the existing Apple API credentials.
+ * @summary Import Apple App Store subscription events into the app's ledger
+ */
+export const SyncAppStoreSalesParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const syncAppStoreSalesQueryMonthRegExp = new RegExp('^[0-9]{4}-(0[1-9]|1[0-2])$');
+
+
+export const SyncAppStoreSalesQueryParams = zod.object({
+  "month": zod.coerce.string().regex(syncAppStoreSalesQueryMonthRegExp).optional().describe('Month in YYYY-MM format. Defaults to the previous calendar month.')
+})
+
+export const SyncAppStoreSalesResponse = zod.object({
+  "month": zod.string().describe('Report month (YYYY-MM)'),
+  "appId": zod.string().describe('Workload app id'),
+  "total": zod.number().describe('Total rows examined in the report'),
+  "ingested": zod.number().describe('Rows newly recorded as ledger entries'),
+  "skipped": zod.number().describe('Rows skipped (non-revenue event, already recorded, non-USD, or missing order id)'),
+  "errors": zod.number().describe('Rows that failed to ingest due to an unexpected error'),
+  "totalGross": zod.number().describe('Total gross revenue ingested this run (USD)'),
+  "totalFee": zod.number().describe('Total store fee booked as expense this run (USD)'),
+  "dataSource": zod.enum(['app_store', 'play_store']).describe('Which store produced this result')
+})
+
+
+/**
+ * Fetches the Google Play earnings CSV from the configured GCS bucket and records each successful charge as a balanced sale in the ledger, booking the 15% Play fee reconstructed from the net merchant proceeds. Idempotent on the Google Play order number. Requires WIF credentials plus GOOGLE_PLAY_REPORTING_BUCKET.
+ * @summary Import Google Play earnings report into the app's ledger
+ */
+export const SyncPlayStoreSalesParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const syncPlayStoreSalesQueryMonthRegExp = new RegExp('^[0-9]{4}-(0[1-9]|1[0-2])$');
+
+
+export const SyncPlayStoreSalesQueryParams = zod.object({
+  "month": zod.coerce.string().regex(syncPlayStoreSalesQueryMonthRegExp).optional().describe('Month in YYYY-MM format. Defaults to the previous calendar month.')
+})
+
+export const SyncPlayStoreSalesResponse = zod.object({
+  "month": zod.string().describe('Report month (YYYY-MM)'),
+  "appId": zod.string().describe('Workload app id'),
+  "total": zod.number().describe('Total rows examined in the report'),
+  "ingested": zod.number().describe('Rows newly recorded as ledger entries'),
+  "skipped": zod.number().describe('Rows skipped (non-revenue event, already recorded, non-USD, or missing order id)'),
+  "errors": zod.number().describe('Rows that failed to ingest due to an unexpected error'),
+  "totalGross": zod.number().describe('Total gross revenue ingested this run (USD)'),
+  "totalFee": zod.number().describe('Total store fee booked as expense this run (USD)'),
+  "dataSource": zod.enum(['app_store', 'play_store']).describe('Which store produced this result')
+})
+
+
+/**
  * @summary Run reconciliation for an app's ledger and persist the result
  */
 export const ReconcileLedgerParams = zod.object({
