@@ -9,7 +9,7 @@ function isGuid(s: string): boolean {
 }
 
 /**
- * Returns the shared-infra subscription ID from AZURE_SUB_SHARED_INFRA if it is set
+ * Returns the shared-platform subscription ID from AZURE_SUB_SHAREDPLATFORM if it is set
  * and is a valid GUID; otherwise returns null.
  *
  * Used to include the shared-platform subscription (which hosts the Orbit Container App
@@ -17,7 +17,7 @@ function isGuid(s: string): boolean {
  * in every network Resource Graph query regardless of which app is being queried.
  */
 export function getSharedInfraSubscriptionId(): string | null {
-  const val = process.env.AZURE_SUB_SHARED_INFRA;
+  const val = process.env.AZURE_SUB_SHAREDPLATFORM;
   if (val && isGuid(val)) return val;
   return null;
 }
@@ -115,10 +115,10 @@ export async function fetchNetworkEndpoints(
 ): Promise<NetworkEndpoint[] | null> {
   // Build the subscription list first — it may come from any combination of:
   //   1. AZURE_SUBSCRIPTION_IDS (global comma-separated list)
-  //   2. The app's own subscriptionId env var (AZURE_SUB_GRAILBABE, AZURE_SUB_SHARED_INFRA, etc.)
+  //   2. The app's own subscriptionId env var (AZURE_SUB_GRAILBABE, AZURE_SUB_SHAREDPLATFORM, etc.)
   //      — only included when it is a valid GUID (guards against placeholder fallbacks like
   //        "a1f4-shared-platform" which would cause Resource Graph to throw).
-  //   3. AZURE_SUB_SHARED_INFRA — shared-platform subscription hosting Front Door, Container
+  //   3. AZURE_SUB_SHAREDPLATFORM — shared-platform subscription hosting Front Door, Container
   //      Apps env, and shared VNets/Network Watchers; included in every app's query.
   //   Deduplicated so each subscription is queried exactly once.
   //

@@ -100,7 +100,7 @@ export const APPS: AppRecord[] = [
     status: "healthy",
     activeAlerts: 0,
     monthToDateCost: 0,
-    subscriptionId: process.env.AZURE_SUB_SHARED_INFRA || process.env.AZURE_SUB_KINISIS_LABS || "a1f4-shared-platform",
+    subscriptionId: process.env.AZURE_SUB_SHAREDPLATFORM || process.env.AZURE_SUB_KINISIS_LABS || "a1f4-shared-platform",
     subscriptionName: "Shared Platform Production",
     description: "Kinisis platform — Orbit admin center and kinisislabs.com, sharing the platform subscription (sub-sharedplatform-prod).",
     tags: {

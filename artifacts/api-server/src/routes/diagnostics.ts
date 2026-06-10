@@ -109,7 +109,7 @@ async function checkNetworkResourceGraph(): Promise<CheckResult> {
   }
 
   // Mirror the exact subscription-list logic used by fetchNetworkEndpoints so diagnostics
-  // reflect the real query: global subs + AZURE_SUB_SHARED_INFRA (if set and valid).
+  // reflect the real query: global subs + AZURE_SUB_SHAREDPLATFORM (if set and valid).
   const globalSubs = getSubscriptionIds();
   const sharedInfraSub = getSharedInfraSubscriptionId();
   const subs = [...new Set([...globalSubs, ...(sharedInfraSub ? [sharedInfraSub] : [])])];
@@ -145,13 +145,13 @@ async function checkNetworkResourceGraph(): Promise<CheckResult> {
     });
     const rows = normalizeResourceGraphRows(result.data);
     const subsDetail = `queried ${subs.length} subscription(s): ${subs.join(", ")}` +
-      (sharedInfraSub ? ` (includes AZURE_SUB_SHARED_INFRA)` : "");
+      (sharedInfraSub ? ` (includes AZURE_SUB_SHAREDPLATFORM)` : "");
     if (rows.length === 0) {
       return {
         status: "ok",
         detail: `Query succeeded but found 0 networking resources — ${subsDetail}. ` +
           `Verify that Container Apps / Front Door / Network Watchers exist in those subscriptions. ` +
-          `If shared-platform resources are missing, set AZURE_SUB_SHARED_INFRA to the sub-sharedplatform GUID.`,
+          `If shared-platform resources are missing, set AZURE_SUB_SHAREDPLATFORM to the sub-sharedplatform GUID.`,
       };
     }
     const summary = rows.map((r) => `${r["type"]}/${r["name"]} (${r["resourceGroup"]}, ${r["location"]})`).join("; ");
@@ -164,7 +164,7 @@ async function checkNetworkResourceGraph(): Promise<CheckResult> {
       "checkNetworkResourceGraph Resource Graph query failed",
     );
     const sharedInfraHint = sharedInfraSub && !globalSubs.includes(sharedInfraSub)
-      ? ` — note: ${sharedInfraSub} is the AZURE_SUB_SHARED_INFRA sub (sub-sharedplatform); grant Reader there too`
+      ? ` — note: ${sharedInfraSub} is the AZURE_SUB_SHAREDPLATFORM sub (sub-sharedplatform); grant Reader there too`
       : "";
     return {
       status: "error",
@@ -243,7 +243,7 @@ router.get("/diagnostics", requireAdmin, async (_req, res) => {
       AZURE_SUB_GRAILBABE: envVar("AZURE_SUB_GRAILBABE"),
       AZURE_SUB_ORBIT: envVar("AZURE_SUB_ORBIT"),
       AZURE_SUB_KINISIS_LABS: envVar("AZURE_SUB_KINISIS_LABS"),
-      AZURE_SUB_SHARED_INFRA: envVar("AZURE_SUB_SHARED_INFRA"),
+      AZURE_SUB_SHAREDPLATFORM: envVar("AZURE_SUB_SHAREDPLATFORM"),
       ENTRA_TENANT_ID: envVar("ENTRA_TENANT_ID"),
       ENTRA_CLIENT_ID: envVar("ENTRA_CLIENT_ID"),
       ENTRA_CLIENT_SECRET: envVar("ENTRA_CLIENT_SECRET"),
