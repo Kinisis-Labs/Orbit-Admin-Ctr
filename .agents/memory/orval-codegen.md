@@ -57,6 +57,23 @@ correct, grep `openapi.yaml` for duplicate property keys within the same object
 block before debugging anything else. YAML does not forbid duplicate keys at the
 spec level, so editors won't flag them.
 
+## Response-type barrel collision (TS2724 at re-export block)
+When a new operation is added to the spec and codegen runs, Orval emits both a
+Zod const AND a TS interface with the same `<Op>Response` name (e.g.
+`ListClerkIdentitiesResponse`). The double `export *` barrel in `index.ts`
+silently drops one of them, causing TS2724 ("has no exported member named …")
+when CI builds the lib. **Fix: add the symbol to the explicit re-export block
+in `lib/api-zod/src/index.ts`** (the block already contains
+`GetGlobalCostSummaryResponse`, `ListDeploymentsResponse`, etc.) so the Zod
+side wins.
+
+## Generated files are committed — push them after codegen
+`lib/api-zod/src/generated/` and `lib/api-client-react/src/generated/` are
+**tracked in git** (no `.gitignore`). Running codegen locally and not pushing
+the resulting files causes CI to see a stale generated `api.ts` and fail
+`typecheck:libs` with TS2724. After every `pnpm --filter @workspace/api-spec
+run codegen`, push the generated files alongside any spec or index changes.
+
 ## Misc
 - Never change OpenAPI `info.title` — it drives generated filenames.
 - `pnpm --filter @workspace/api-spec run codegen` also runs `typecheck:libs`;
