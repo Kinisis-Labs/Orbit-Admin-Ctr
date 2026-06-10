@@ -163,53 +163,142 @@ jobs:
             echo "Warning: timed out waiting for registry update to settle — proceeding anyway"
 
       - name: Roll Container App
+        # Strategy: GET current spec → merge env vars → PUT back via az rest.
+        # This preserves any env vars set directly in the Azure Portal (e.g. Apple
+        # credentials, one-off tuning vars) that are not managed by this workflow.
+        # Empty GitHub secrets are skipped — they never overwrite Portal-set values.
         uses: azure/cli@v2
+        env:
+          V_DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          V_SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          V_ENTRA_TENANT_ID: ${{ secrets.ENTRA_TENANT_ID }}
+          V_ENTRA_CLIENT_ID: ${{ secrets.ENTRA_CLIENT_ID }}
+          V_ENTRA_CLIENT_SECRET: ${{ secrets.ENTRA_CLIENT_SECRET }}
+          V_ENTRA_AUTHORIZED_GROUP_ID: ${{ secrets.ENTRA_AUTHORIZED_GROUP_ID }}
+          V_ENTRA_COST_READER_GROUP_ID: ${{ secrets.ENTRA_COST_READER_GROUP_ID }}
+          V_ENTRA_ADMIN_GROUP_ID: ${{ secrets.ENTRA_ADMIN_GROUP_ID }}
+          V_ENTRA_ENGINEER_GROUP_ID: ${{ secrets.ENTRA_ENGINEER_GROUP_ID }}
+          V_ENTRA_FINOPS_GROUP_ID: ${{ secrets.ENTRA_FINOPS_GROUP_ID }}
+          V_AZURE_MANAGED_IDENTITY_CLIENT_ID: ${{ secrets.AZURE_MANAGED_IDENTITY_CLIENT_ID }}
+          V_AZURE_SUB_GRAILBABE: ${{ secrets.AZURE_SUB_GRAILBABE }}
+          V_AZURE_SUB_ORBIT: ${{ secrets.AZURE_SUB_ORBIT }}
+          V_AZURE_SUB_KINISIS_LABS: ${{ secrets.AZURE_SUB_KINISIS_LABS }}
+          V_AZURE_SUB_SHARED_INFRA: ${{ secrets.AZURE_SUB_SHARED_INFRA }}
+          V_AZURE_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.AZURE_LOG_ANALYTICS_WORKSPACE_ID }}
+          V_AZURE_BILLING_ACCOUNT_ID: ${{ secrets.AZURE_BILLING_ACCOUNT_ID }}
+          V_BUDGET_AMOUNT__GRAILBABE: ${{ secrets.BUDGET_AMOUNT__GRAILBABE }}
+          V_BUDGET_AMOUNT__KINISIS_LABS: ${{ secrets.BUDGET_AMOUNT__KINISIS_LABS }}
+          V_CLERK_SECRET_KEY__GRAILBABE: ${{ secrets.CLERK_SECRET_KEY__GRAILBABE }}
+          V_ORBIT_DEPLOYMENT_ID: ${{ secrets.ORBIT_DEPLOYMENT_ID }}
+          V_STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          V_APPLICATIONINSIGHTS_CONNECTION_STRING: ${{ secrets.APPLICATIONINSIGHTS_CONNECTION_STRING }}
+          V_APP_CONFIGURATION_ENDPOINT: ${{ secrets.APP_CONFIGURATION_ENDPOINT }}
+          NEW_IMAGE: "${{ needs.build.outputs.image }}:${{ github.sha }}"
         with:
           azcliversion: latest
           inlineScript: |
-            az containerapp update \
+            set -euo pipefail
+
+            # ── 1. Fetch current Container App spec ───────────────────────
+            az containerapp show \
               --name ca-orbit-prod-v2 \
               --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
-              --image "${{ needs.build.outputs.image }}:${{ github.sha }}" \
-              --min-replicas 1 \
-              --set-env-vars \
-                NODE_ENV=production \
-                PORT=80 \
-                DATABASE_SSL=true \
-                SESSION_COOKIE_DOMAIN=.kinisislabs.com \
-                DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-                SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
-                ENTRA_TENANT_ID="${{ secrets.ENTRA_TENANT_ID }}" \
-                ENTRA_CLIENT_ID="${{ secrets.ENTRA_CLIENT_ID }}" \
-                ENTRA_CLIENT_SECRET="${{ secrets.ENTRA_CLIENT_SECRET }}" \
-                ENTRA_REDIRECT_URI=https://orbit.kinisislabs.com/api/auth/callback \
-                ENTRA_AUTHORIZED_GROUP_ID="${{ secrets.ENTRA_AUTHORIZED_GROUP_ID }}" \
-                ENTRA_COST_READER_GROUP_ID="${{ secrets.ENTRA_COST_READER_GROUP_ID }}" \
-                ENTRA_ADMIN_GROUP_ID="${{ secrets.ENTRA_ADMIN_GROUP_ID }}" \
-                ENTRA_ENGINEER_GROUP_ID="${{ secrets.ENTRA_ENGINEER_GROUP_ID }}" \
-                ENTRA_FINOPS_GROUP_ID="${{ secrets.ENTRA_FINOPS_GROUP_ID }}" \
-                ENTRA_POST_LOGOUT_REDIRECT_URI=https://orbit.kinisislabs.com/signed-out \
-                AZURE_SUBSCRIPTION_IDS="${{ secrets.AZURE_SUB_GRAILBABE }},${{ secrets.AZURE_SUB_SHARED_INFRA }}" \
-                AZURE_CLIENT_ID="${{ secrets.AZURE_MANAGED_IDENTITY_CLIENT_ID }}" \
-                AZURE_MANAGED_IDENTITY_CLIENT_ID="${{ secrets.AZURE_MANAGED_IDENTITY_CLIENT_ID }}" \
-                AZURE_TENANT_ID="${{ secrets.ENTRA_TENANT_ID }}" \
-                AZURE_SUB_GRAILBABE="${{ secrets.AZURE_SUB_GRAILBABE }}" \
-                AZURE_SUB_ORBIT="${{ secrets.AZURE_SUB_ORBIT }}" \
-                AZURE_SUB_KINISIS_LABS="${{ secrets.AZURE_SUB_KINISIS_LABS }}" \
-                AZURE_SUB_SHARED_INFRA="${{ secrets.AZURE_SUB_SHARED_INFRA }}" \
-                AZURE_LOG_ANALYTICS_WORKSPACE_ID="${{ secrets.AZURE_LOG_ANALYTICS_WORKSPACE_ID }}" \
-                AZURE_BILLING_ACCOUNT_ID="${{ secrets.AZURE_BILLING_ACCOUNT_ID }}" \
-                BUDGET_AMOUNT__GRAILBABE="${{ secrets.BUDGET_AMOUNT__GRAILBABE }}" \
-                BUDGET_AMOUNT__KINISIS_LABS="${{ secrets.BUDGET_AMOUNT__KINISIS_LABS }}" \
-                CLERK_SECRET_KEY__GRAILBABE="${{ secrets.CLERK_SECRET_KEY__GRAILBABE }}" \
-                GITHUB_TOKEN="${{ secrets.ORBIT_DEPLOYMENT_ID }}" \
-                STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
-                APPLICATIONINSIGHTS_CONNECTION_STRING="${{ secrets.APPLICATIONINSIGHTS_CONNECTION_STRING }}" \
-                APP_CONFIGURATION_ENDPOINT="${{ secrets.APP_CONFIGURATION_ENDPOINT }}"
-            az containerapp ingress update \
-              --name ca-orbit-prod-v2 \
-              --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
-              --target-port 80
+              -o json > /tmp/ca_current.json
+
+            # ── 2. Merge env vars and update image ────────────────────────
+            # Rules:
+            #   - Existing Portal-set vars are loaded as the base layer
+            #   - Fixed vars (no secret) always override
+            #   - Secret-backed vars override only when the secret is non-empty
+            #   - AZURE_SUBSCRIPTION_IDS is composed from available sub IDs
+            python3 - << 'PYEOF'
+            import json, os
+
+            spec = json.load(open("/tmp/ca_current.json"))
+            container = spec["properties"]["template"]["containers"][0]
+
+            # Existing env vars (preserve Portal-set values as the base)
+            existing = {}
+            for item in container.get("env", []):
+                if item.get("value") is not None:
+                    existing[item["name"]] = item["value"]
+
+            # Fixed managed vars (always applied — no secrets required)
+            fixed = {
+                "NODE_ENV": "production",
+                "PORT": "80",
+                "DATABASE_SSL": "true",
+                "SESSION_COOKIE_DOMAIN": ".kinisislabs.com",
+                "ENTRA_REDIRECT_URI": "https://orbit.kinisislabs.com/api/auth/callback",
+                "ENTRA_POST_LOGOUT_REDIRECT_URI": "https://orbit.kinisislabs.com/signed-out",
+            }
+
+            # Secret-backed managed vars — only applied when the secret is non-empty.
+            # Empty secret → var is skipped → existing Portal value is preserved.
+            secret_map = [
+                ("DATABASE_URL",                    "V_DATABASE_URL"),
+                ("SESSION_SECRET",                  "V_SESSION_SECRET"),
+                ("ENTRA_TENANT_ID",                 "V_ENTRA_TENANT_ID"),
+                ("ENTRA_CLIENT_ID",                 "V_ENTRA_CLIENT_ID"),
+                ("ENTRA_CLIENT_SECRET",             "V_ENTRA_CLIENT_SECRET"),
+                ("ENTRA_AUTHORIZED_GROUP_ID",       "V_ENTRA_AUTHORIZED_GROUP_ID"),
+                ("ENTRA_COST_READER_GROUP_ID",      "V_ENTRA_COST_READER_GROUP_ID"),
+                ("ENTRA_ADMIN_GROUP_ID",            "V_ENTRA_ADMIN_GROUP_ID"),
+                ("ENTRA_ENGINEER_GROUP_ID",         "V_ENTRA_ENGINEER_GROUP_ID"),
+                ("ENTRA_FINOPS_GROUP_ID",           "V_ENTRA_FINOPS_GROUP_ID"),
+                ("AZURE_CLIENT_ID",                 "V_AZURE_MANAGED_IDENTITY_CLIENT_ID"),
+                ("AZURE_MANAGED_IDENTITY_CLIENT_ID","V_AZURE_MANAGED_IDENTITY_CLIENT_ID"),
+                ("AZURE_TENANT_ID",                 "V_ENTRA_TENANT_ID"),
+                ("AZURE_SUB_GRAILBABE",             "V_AZURE_SUB_GRAILBABE"),
+                ("AZURE_SUB_ORBIT",                 "V_AZURE_SUB_ORBIT"),
+                ("AZURE_SUB_KINISIS_LABS",          "V_AZURE_SUB_KINISIS_LABS"),
+                ("AZURE_SUB_SHARED_INFRA",          "V_AZURE_SUB_SHARED_INFRA"),
+                ("AZURE_LOG_ANALYTICS_WORKSPACE_ID","V_AZURE_LOG_ANALYTICS_WORKSPACE_ID"),
+                ("AZURE_BILLING_ACCOUNT_ID",        "V_AZURE_BILLING_ACCOUNT_ID"),
+                ("BUDGET_AMOUNT__GRAILBABE",        "V_BUDGET_AMOUNT__GRAILBABE"),
+                ("BUDGET_AMOUNT__KINISIS_LABS",     "V_BUDGET_AMOUNT__KINISIS_LABS"),
+                ("CLERK_SECRET_KEY__GRAILBABE",     "V_CLERK_SECRET_KEY__GRAILBABE"),
+                ("GITHUB_TOKEN",                    "V_ORBIT_DEPLOYMENT_ID"),
+                ("STRIPE_SECRET_KEY",               "V_STRIPE_SECRET_KEY"),
+                ("APPLICATIONINSIGHTS_CONNECTION_STRING", "V_APPLICATIONINSIGHTS_CONNECTION_STRING"),
+                ("APP_CONFIGURATION_ENDPOINT",      "V_APP_CONFIGURATION_ENDPOINT"),
+            ]
+            from_secrets = {k: os.environ[env] for k, env in secret_map if os.environ.get(env)}
+
+            # Compose AZURE_SUBSCRIPTION_IDS from the sub IDs we know about.
+            # Use values that just came from secrets; fall back to existing Portal value.
+            sub_g = from_secrets.get("AZURE_SUB_GRAILBABE", existing.get("AZURE_SUB_GRAILBABE", ""))
+            sub_s = from_secrets.get("AZURE_SUB_SHARED_INFRA", existing.get("AZURE_SUB_SHARED_INFRA", ""))
+            subs  = [s for s in [sub_g, sub_s] if s]
+            if subs:
+                fixed["AZURE_SUBSCRIPTION_IDS"] = ",".join(subs)
+
+            # Final merge: existing (Portal base) → fixed → from_secrets (workflow wins)
+            merged = {**existing, **fixed, **from_secrets}
+
+            # Update container
+            container["image"] = os.environ["NEW_IMAGE"]
+            container["env"]   = [{"name": k, "value": v} for k, v in merged.items()]
+            spec["properties"]["template"]["revisionSuffix"] = ""  # let Azure assign
+
+            # Also enforce min-replicas = 1
+            scale = spec["properties"]["template"].setdefault("scale", {})
+            scale["minReplicas"] = 1
+
+            json.dump(spec, open("/tmp/ca_updated.json", "w"))
+
+            total = len(merged)
+            n_existing_only = len(set(existing) - set(fixed) - set(from_secrets))
+            print(f"Env vars: {total} total  ({n_existing_only} Portal-only preserved, {len(from_secrets)} from secrets, {len(fixed)} fixed)")
+            PYEOF
+
+            # ── 3. PUT the updated spec back via ARM REST API ─────────────
+            SUBSCRIPTION=$(az account show --query id -o tsv)
+            az rest \
+              --method PUT \
+              --url "https://management.azure.com/subscriptions/${SUBSCRIPTION}/resourceGroups/rg-kinisislabs-platform-shared-prod-eus2/providers/Microsoft.App/containerApps/ca-orbit-prod-v2?api-version=2024-03-01" \
+              --body @/tmp/ca_updated.json \
+              --headers "Content-Type=application/json"
 
       - name: Wait for revision to be Running
         id: wait_revision
