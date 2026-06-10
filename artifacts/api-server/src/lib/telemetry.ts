@@ -13,19 +13,29 @@ import appInsights from "applicationinsights";
 
 const cs = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
 
+let _started = false;
+
 if (cs) {
-  appInsights
-    .setup(cs)
-    .setAutoCollectRequests(true)
-    .setAutoCollectDependencies(true)
-    .setAutoCollectExceptions(true)
-    .setAutoCollectPerformance(true, true)
-    .setAutoCollectConsole(false)
-    .setUseDiskRetryCaching(false)
-    .start();
+  try {
+    appInsights
+      .setup(cs)
+      .setAutoCollectRequests(true)
+      .setAutoCollectDependencies(true)
+      .setAutoCollectExceptions(true)
+      .setAutoCollectPerformance(true, true)
+      .setAutoCollectConsole(false)
+      .setUseDiskRetryCaching(false)
+      .start();
+    _started = true;
+  } catch (err) {
+    // Write directly to stderr so this is visible even before the logger loads.
+    // A bad connection string must never crash the process.
+    process.stderr.write(
+      `[telemetry] Application Insights setup failed — telemetry disabled: ${String(err)}\n`,
+    );
+  }
 }
 
-/** The live client, or null when telemetry is not configured. */
-export const telemetryClient: appInsights.TelemetryClient | null = cs
-  ? appInsights.defaultClient
-  : null;
+/** The live client, or null when telemetry is not configured or failed to start. */
+export const telemetryClient: appInsights.TelemetryClient | null =
+  _started ? appInsights.defaultClient : null;

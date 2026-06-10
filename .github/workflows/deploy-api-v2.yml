@@ -198,7 +198,9 @@ jobs:
                 BUDGET_AMOUNT__KINISIS_LABS="${{ secrets.BUDGET_AMOUNT__KINISIS_LABS }}" \
                 CLERK_SECRET_KEY__GRAILBABE="${{ secrets.CLERK_SECRET_KEY__GRAILBABE }}" \
                 GITHUB_TOKEN="${{ secrets.ORBIT_DEPLOYMENT_ID }}" \
-                STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}"
+                STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
+                APPLICATIONINSIGHTS_CONNECTION_STRING="${{ secrets.APPLICATIONINSIGHTS_CONNECTION_STRING }}" \
+                APP_CONFIGURATION_ENDPOINT="${{ secrets.APP_CONFIGURATION_ENDPOINT }}"
             az containerapp ingress update \
               --name ca-orbit-prod-v2 \
               --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
