@@ -6,7 +6,7 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-const DEFAULT_ACCESS_CONTACT = "orbit-access@kinisislabs.com";
+const DEFAULT_ACCESS_CONTACT = "support@kinisislabs.com";
 
 /** Contact address for access-request emails. Configurable via ORBIT_ACCESS_CONTACT env var. */
 function getAccessContact(): string {

@@ -9,7 +9,7 @@ export type AuthMode = "entra";
  * auth-error path (DeniedNotice, AuthNotice) can read it even before the
  * full AuthContext.Provider is mounted.
  */
-export const AccessContactContext = createContext<string>("orbit-access@kinisislabs.com");
+export const AccessContactContext = createContext<string>("support@kinisislabs.com");
 
 export type AuthContextValue = {
   user: EntraUser;

@@ -218,7 +218,7 @@ const NOTICE_BTN_PRIMARY: React.CSSProperties = {
 const REQUEST_ACCESS_SUBJECT = "Request access to Orbit";
 const REQUEST_ACCESS_BODY =
   "Hi,\n\nI successfully signed in with my Microsoft account but do not have access to Orbit.\n\nPlease add me to the Orbit-Authorized-Users group.\n\nThanks";
-export const ORBIT_ACCESS_EMAIL = "orbit-access@kinisislabs.com";
+export const ORBIT_ACCESS_EMAIL = "support@kinisislabs.com";
 
 function DeniedNotice({ onSignOut }: { onSignOut: () => void }) {
   const accessContact = useContext(AccessContactContext);
