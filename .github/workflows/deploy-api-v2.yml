@@ -193,6 +193,8 @@ jobs:
           V_CLERK_SECRET_KEY__GRAILBABE: ${{ secrets.CLERK_SECRET_KEY__GRAILBABE }}
           V_ORBIT_DEPLOYMENT_ID: ${{ secrets.ORBIT_DEPLOYMENT_ID }}
           V_STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          V_OPENAI_API_KEY__GRAILBABE: ${{ secrets.OPENAI_API_KEY__GRAILBABE }}
+          V_REPLICATE_API_TOKEN__GRAILBABE: ${{ secrets.REPLICATE_API_TOKEN__GRAILBABE }}
           V_APPLICATIONINSIGHTS_CONNECTION_STRING: ${{ secrets.APPLICATIONINSIGHTS_CONNECTION_STRING }}
           V_APP_CONFIGURATION_ENDPOINT: ${{ secrets.APP_CONFIGURATION_ENDPOINT }}
           NEW_IMAGE: "${{ needs.build.outputs.image }}:${{ github.sha }}"
@@ -219,6 +221,10 @@ jobs:
             for item in json.load(open("/tmp/ca_env_current.json")) or []:
                 if item.get("value") is not None:
                     existing[item["name"]] = item["value"]
+                elif item.get("secretRef"):
+                    # Portal-managed secret reference — preserve as secretref:<name>
+                    # so --set-env-vars keeps it wired to the CA secret store.
+                    existing[item["name"]] = f"secretref:{item['secretRef']}"
 
             fixed = {
                 "NODE_ENV": "production",
@@ -254,6 +260,8 @@ jobs:
                 ("CLERK_SECRET_KEY__GRAILBABE",          "V_CLERK_SECRET_KEY__GRAILBABE"),
                 ("GITHUB_TOKEN",                         "V_ORBIT_DEPLOYMENT_ID"),
                 ("STRIPE_SECRET_KEY",                    "V_STRIPE_SECRET_KEY"),
+                ("OPENAI_API_KEY__GRAILBABE",            "V_OPENAI_API_KEY__GRAILBABE"),
+                ("REPLICATE_API_TOKEN__GRAILBABE",       "V_REPLICATE_API_TOKEN__GRAILBABE"),
                 ("APPLICATIONINSIGHTS_CONNECTION_STRING","V_APPLICATIONINSIGHTS_CONNECTION_STRING"),
                 ("APP_CONFIGURATION_ENDPOINT",           "V_APP_CONFIGURATION_ENDPOINT"),
             ]
