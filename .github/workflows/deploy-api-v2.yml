@@ -163,10 +163,12 @@ jobs:
             echo "Warning: timed out waiting for registry update to settle — proceeding anyway"
 
       - name: Roll Container App
-        # Strategy: GET current spec → merge env vars → PUT back via az rest.
-        # This preserves any env vars set directly in the Azure Portal (e.g. Apple
-        # credentials, one-off tuning vars) that are not managed by this workflow.
-        # Empty GitHub secrets are skipped — they never overwrite Portal-set values.
+        # Strategy: GET current env vars from CA → merge → pass ALL vars to
+        # az containerapp update --set-env-vars.  This preserves Portal-set vars
+        # (e.g. Apple credentials) because we read them first and include them in
+        # the merged set.  Empty GitHub secrets are skipped so they never overwrite
+        # a Portal value.  Using az containerapp update (not az rest PUT) avoids
+        # ARM API version incompatibilities with newer CA spec properties.
         uses: azure/cli@v2
         env:
           V_DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -199,112 +201,104 @@ jobs:
           inlineScript: |
             set -euo pipefail
 
-            # ── 1. Fetch current Container App spec ───────────────────────
+            # ── 1. Read current env vars from Container App ───────────────
             az containerapp show \
               --name ca-orbit-prod-v2 \
               --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
-              -o json > /tmp/ca_current.json
+              --query "properties.template.containers[0].env" \
+              -o json > /tmp/ca_env_current.json
 
-            # ── 2. Merge env vars and update image ────────────────────────
-            # Rules:
-            #   - Existing Portal-set vars are loaded as the base layer
-            #   - Fixed vars (no secret) always override
-            #   - Secret-backed vars override only when the secret is non-empty
-            #   - AZURE_SUBSCRIPTION_IDS is composed from available sub IDs
+            # ── 2. Merge env vars in Python ───────────────────────────────
             python3 - << 'PYEOF'
-            import json, os
+import json, os
 
-            spec = json.load(open("/tmp/ca_current.json"))
-            container = spec["properties"]["template"]["containers"][0]
+# Existing env vars (Portal-set values are the base layer)
+existing = {}
+for item in json.load(open("/tmp/ca_env_current.json")) or []:
+    if item.get("value") is not None:
+        existing[item["name"]] = item["value"]
 
-            # Existing env vars (preserve Portal-set values as the base)
-            existing = {}
-            for item in container.get("env", []):
-                if item.get("value") is not None:
-                    existing[item["name"]] = item["value"]
+# Fixed managed vars (always applied — no secrets required)
+fixed = {
+    "NODE_ENV": "production",
+    "PORT": "80",
+    "DATABASE_SSL": "true",
+    "SESSION_COOKIE_DOMAIN": ".kinisislabs.com",
+    "ENTRA_REDIRECT_URI": "https://orbit.kinisislabs.com/api/auth/callback",
+    "ENTRA_POST_LOGOUT_REDIRECT_URI": "https://orbit.kinisislabs.com/signed-out",
+}
 
-            # Fixed managed vars (always applied — no secrets required)
-            fixed = {
-                "NODE_ENV": "production",
-                "PORT": "80",
-                "DATABASE_SSL": "true",
-                "SESSION_COOKIE_DOMAIN": ".kinisislabs.com",
-                "ENTRA_REDIRECT_URI": "https://orbit.kinisislabs.com/api/auth/callback",
-                "ENTRA_POST_LOGOUT_REDIRECT_URI": "https://orbit.kinisislabs.com/signed-out",
-            }
+# Secret-backed vars — only applied when non-empty; empty → preserve Portal value.
+secret_map = [
+    ("DATABASE_URL",                         "V_DATABASE_URL"),
+    ("SESSION_SECRET",                       "V_SESSION_SECRET"),
+    ("ENTRA_TENANT_ID",                      "V_ENTRA_TENANT_ID"),
+    ("ENTRA_CLIENT_ID",                      "V_ENTRA_CLIENT_ID"),
+    ("ENTRA_CLIENT_SECRET",                  "V_ENTRA_CLIENT_SECRET"),
+    ("ENTRA_AUTHORIZED_GROUP_ID",            "V_ENTRA_AUTHORIZED_GROUP_ID"),
+    ("ENTRA_COST_READER_GROUP_ID",           "V_ENTRA_COST_READER_GROUP_ID"),
+    ("ENTRA_ADMIN_GROUP_ID",                 "V_ENTRA_ADMIN_GROUP_ID"),
+    ("ENTRA_ENGINEER_GROUP_ID",              "V_ENTRA_ENGINEER_GROUP_ID"),
+    ("ENTRA_FINOPS_GROUP_ID",                "V_ENTRA_FINOPS_GROUP_ID"),
+    ("AZURE_CLIENT_ID",                      "V_AZURE_MANAGED_IDENTITY_CLIENT_ID"),
+    ("AZURE_MANAGED_IDENTITY_CLIENT_ID",     "V_AZURE_MANAGED_IDENTITY_CLIENT_ID"),
+    ("AZURE_TENANT_ID",                      "V_ENTRA_TENANT_ID"),
+    ("AZURE_SUB_GRAILBABE",                  "V_AZURE_SUB_GRAILBABE"),
+    ("AZURE_SUB_ORBIT",                      "V_AZURE_SUB_ORBIT"),
+    ("AZURE_SUB_KINISIS_LABS",               "V_AZURE_SUB_KINISIS_LABS"),
+    ("AZURE_SUB_SHAREDPLATFORM",             "V_AZURE_SUB_SHAREDPLATFORM"),
+    ("AZURE_LOG_ANALYTICS_WORKSPACE_ID",     "V_AZURE_LOG_ANALYTICS_WORKSPACE_ID"),
+    ("AZURE_BILLING_ACCOUNT_ID",             "V_AZURE_BILLING_ACCOUNT_ID"),
+    ("BUDGET_AMOUNT__GRAILBABE",             "V_BUDGET_AMOUNT__GRAILBABE"),
+    ("BUDGET_AMOUNT__KINISIS_LABS",          "V_BUDGET_AMOUNT__KINISIS_LABS"),
+    ("CLERK_SECRET_KEY__GRAILBABE",          "V_CLERK_SECRET_KEY__GRAILBABE"),
+    ("GITHUB_TOKEN",                         "V_ORBIT_DEPLOYMENT_ID"),
+    ("STRIPE_SECRET_KEY",                    "V_STRIPE_SECRET_KEY"),
+    ("APPLICATIONINSIGHTS_CONNECTION_STRING","V_APPLICATIONINSIGHTS_CONNECTION_STRING"),
+    ("APP_CONFIGURATION_ENDPOINT",           "V_APP_CONFIGURATION_ENDPOINT"),
+]
+from_secrets = {k: os.environ[env] for k, env in secret_map if os.environ.get(env)}
 
-            # Secret-backed managed vars — only applied when the secret is non-empty.
-            # Empty secret → var is skipped → existing Portal value is preserved.
-            secret_map = [
-                ("DATABASE_URL",                    "V_DATABASE_URL"),
-                ("SESSION_SECRET",                  "V_SESSION_SECRET"),
-                ("ENTRA_TENANT_ID",                 "V_ENTRA_TENANT_ID"),
-                ("ENTRA_CLIENT_ID",                 "V_ENTRA_CLIENT_ID"),
-                ("ENTRA_CLIENT_SECRET",             "V_ENTRA_CLIENT_SECRET"),
-                ("ENTRA_AUTHORIZED_GROUP_ID",       "V_ENTRA_AUTHORIZED_GROUP_ID"),
-                ("ENTRA_COST_READER_GROUP_ID",      "V_ENTRA_COST_READER_GROUP_ID"),
-                ("ENTRA_ADMIN_GROUP_ID",            "V_ENTRA_ADMIN_GROUP_ID"),
-                ("ENTRA_ENGINEER_GROUP_ID",         "V_ENTRA_ENGINEER_GROUP_ID"),
-                ("ENTRA_FINOPS_GROUP_ID",           "V_ENTRA_FINOPS_GROUP_ID"),
-                ("AZURE_CLIENT_ID",                 "V_AZURE_MANAGED_IDENTITY_CLIENT_ID"),
-                ("AZURE_MANAGED_IDENTITY_CLIENT_ID","V_AZURE_MANAGED_IDENTITY_CLIENT_ID"),
-                ("AZURE_TENANT_ID",                 "V_ENTRA_TENANT_ID"),
-                ("AZURE_SUB_GRAILBABE",             "V_AZURE_SUB_GRAILBABE"),
-                ("AZURE_SUB_ORBIT",                 "V_AZURE_SUB_ORBIT"),
-                ("AZURE_SUB_KINISIS_LABS",          "V_AZURE_SUB_KINISIS_LABS"),
-                ("AZURE_SUB_SHAREDPLATFORM",         "V_AZURE_SUB_SHAREDPLATFORM"),
-                ("AZURE_LOG_ANALYTICS_WORKSPACE_ID","V_AZURE_LOG_ANALYTICS_WORKSPACE_ID"),
-                ("AZURE_BILLING_ACCOUNT_ID",        "V_AZURE_BILLING_ACCOUNT_ID"),
-                ("BUDGET_AMOUNT__GRAILBABE",        "V_BUDGET_AMOUNT__GRAILBABE"),
-                ("BUDGET_AMOUNT__KINISIS_LABS",     "V_BUDGET_AMOUNT__KINISIS_LABS"),
-                ("CLERK_SECRET_KEY__GRAILBABE",     "V_CLERK_SECRET_KEY__GRAILBABE"),
-                ("GITHUB_TOKEN",                    "V_ORBIT_DEPLOYMENT_ID"),
-                ("STRIPE_SECRET_KEY",               "V_STRIPE_SECRET_KEY"),
-                ("APPLICATIONINSIGHTS_CONNECTION_STRING", "V_APPLICATIONINSIGHTS_CONNECTION_STRING"),
-                ("APP_CONFIGURATION_ENDPOINT",      "V_APP_CONFIGURATION_ENDPOINT"),
-            ]
-            from_secrets = {k: os.environ[env] for k, env in secret_map if os.environ.get(env)}
+# Compose AZURE_SUBSCRIPTION_IDS from available sub IDs.
+sub_g = from_secrets.get("AZURE_SUB_GRAILBABE",     existing.get("AZURE_SUB_GRAILBABE", ""))
+sub_s = from_secrets.get("AZURE_SUB_SHAREDPLATFORM", existing.get("AZURE_SUB_SHAREDPLATFORM", ""))
+subs  = [s for s in [sub_g, sub_s] if s]
+if subs:
+    fixed["AZURE_SUBSCRIPTION_IDS"] = ",".join(subs)
 
-            # Compose AZURE_SUBSCRIPTION_IDS from the sub IDs we know about.
-            # Use values that just came from secrets; fall back to existing Portal value.
-            sub_g = from_secrets.get("AZURE_SUB_GRAILBABE", existing.get("AZURE_SUB_GRAILBABE", ""))
-            sub_s = from_secrets.get("AZURE_SUB_SHAREDPLATFORM", existing.get("AZURE_SUB_SHAREDPLATFORM", ""))
-            subs  = [s for s in [sub_g, sub_s] if s]
-            if subs:
-                fixed["AZURE_SUBSCRIPTION_IDS"] = ",".join(subs)
+# Final merge: existing (Portal base) → fixed → from_secrets (secrets win)
+merged = {**existing, **fixed, **from_secrets}
 
-            # Final merge: existing (Portal base) → fixed → from_secrets (workflow wins)
-            merged = {**existing, **fixed, **from_secrets}
+# Write as KEY=VALUE pairs, one per line (values must not contain newlines)
+with open("/tmp/ca_env_merged.txt", "w") as f:
+    for k, v in merged.items():
+        # Escape = in values; az containerapp update splits on first =
+        f.write(f"{k}={v}\n")
 
-            # Update container
-            container["image"] = os.environ["NEW_IMAGE"]
-            container["env"]   = [{"name": k, "value": v} for k, v in merged.items()]
-            spec["properties"]["template"]["revisionSuffix"] = ""  # let Azure assign
+total = len(merged)
+n_portal_only = len(set(existing) - set(fixed) - set(from_secrets))
+print(f"Env vars: {total} total  ({n_portal_only} Portal-only preserved, {len(from_secrets)} from secrets, {len(fixed)} fixed)")
+PYEOF
 
-            # Also enforce min-replicas = 1
-            scale = spec["properties"]["template"].setdefault("scale", {})
-            scale["minReplicas"] = 1
+            # ── 3. Build --set-env-vars args and update image + env vars ──
+            # Read merged vars from file; quote each value to handle spaces/special chars.
+            # az containerapp update --set-env-vars replaces ALL env vars — that is
+            # intentional here because we pass the complete merged set.
+            ENV_ARGS=()
+            while IFS= read -r line || [[ -n "$line" ]]; do
+              KEY="${line%%=*}"
+              VAL="${line#*=}"
+              ENV_ARGS+=("${KEY}=${VAL}")
+            done < /tmp/ca_env_merged.txt
 
-            # Strip properties added in newer API versions that api-version=2024-03-01 rejects.
-            config = spec["properties"].get("configuration", {})
-            for unsupported in ("identitySettings", "runtime"):
-                config.pop(unsupported, None)
-            spec["properties"]["configuration"] = config
-
-            json.dump(spec, open("/tmp/ca_updated.json", "w"))
-
-            total = len(merged)
-            n_existing_only = len(set(existing) - set(fixed) - set(from_secrets))
-            print(f"Env vars: {total} total  ({n_existing_only} Portal-only preserved, {len(from_secrets)} from secrets, {len(fixed)} fixed)")
-            PYEOF
-
-            # ── 3. PUT the updated spec back via ARM REST API ─────────────
-            SUBSCRIPTION=$(az account show --query id -o tsv)
-            az rest \
-              --method PUT \
-              --url "https://management.azure.com/subscriptions/${SUBSCRIPTION}/resourceGroups/rg-kinisislabs-platform-shared-prod-eus2/providers/Microsoft.App/containerApps/ca-orbit-prod-v2?api-version=2024-03-01" \
-              --body @/tmp/ca_updated.json \
-              --headers "Content-Type=application/json"
+            echo "Updating image and ${#ENV_ARGS[@]} env vars..."
+            az containerapp update \
+              --name ca-orbit-prod-v2 \
+              --resource-group rg-kinisislabs-platform-shared-prod-eus2 \
+              --image "$NEW_IMAGE" \
+              --set-env-vars "${ENV_ARGS[@]}" \
+              --output none
+            echo "Container App updated ✓"
 
       - name: Wait for revision to be Running
         id: wait_revision
