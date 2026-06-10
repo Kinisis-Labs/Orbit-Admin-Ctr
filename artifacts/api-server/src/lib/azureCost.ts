@@ -473,6 +473,58 @@ async function readCostSnapshot(appId: string): Promise<CostResult | null> {
  *
  * Use this in routes that need to surface the cost data source to the client.
  */
+export async function diagnoseCostForApp(
+  app: AppRecord,
+  scopeMode: "rg" | "subscription",
+): Promise<{
+  appId: string;
+  scopeMode: string;
+  subscriptionId: string | null;
+  subError: string | null;
+  queryScope: string | null;
+  costQuery: { ok: true; rowCount: number; columns: string[] } | { ok: false; error: string } | null;
+  snapshotAge: string | null;
+}> {
+  let subscriptionId: string | null = null;
+  let subError: string | null = null;
+  try {
+    subscriptionId = await resolveSubscriptionId(app);
+  } catch (e) {
+    subError = String(e);
+  }
+
+  const queryScope =
+    subscriptionId == null
+      ? null
+      : scopeMode === "subscription"
+        ? `/subscriptions/${subscriptionId}`
+        : `/subscriptions/${subscriptionId}/resourceGroups/${app.resourceGroup}`;
+
+  let costQuery: { ok: true; rowCount: number; columns: string[] } | { ok: false; error: string } | null = null;
+  if (queryScope) {
+    try {
+      const r = await getCostClient().query.usage(queryScope, {
+        type: "Usage",
+        timeframe: "MonthToDate",
+        dataset: {
+          granularity: "None",
+          aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } },
+        },
+      });
+      costQuery = { ok: true, rowCount: (r.rows ?? []).length, columns: (r.columns ?? []).map((c) => c.name ?? "") };
+    } catch (e: unknown) {
+      costQuery = { ok: false, error: String(e) };
+    }
+  }
+
+  const snapshot = await readCostSnapshot(app.id);
+  const snapshotAge = snapshot
+    ? `${Math.round((Date.now() - new Date(snapshot.dataAsOf).getTime()) / 60_000)} min ago`
+    : null;
+
+  return { appId: app.id, scopeMode, subscriptionId, subError, queryScope, costQuery, snapshotAge };
+}
+
 export async function fetchMonthToDateCostWithFallback(
   app: AppRecord,
   opts: { bypassCache?: boolean; billingScope?: "rg" | "subscription" } = {},

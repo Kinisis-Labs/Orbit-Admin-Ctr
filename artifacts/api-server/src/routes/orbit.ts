@@ -1080,6 +1080,17 @@ export default router;
 // ---------------------------------------------------------------------------
 export const debugRouter = Router();
 
+debugRouter.get("/debug/azure-cost", async (_req, res) => {
+  const { isAzureConfigured } = await import("../lib/azure.js");
+  const { diagnoseCostForApp } = await import("../lib/azureCost.js");
+
+  const results = await Promise.all(
+    APPS.map((app) => diagnoseCostForApp(app, billingScope(app.id))),
+  );
+
+  res.json({ isAzureConfigured: isAzureConfigured(), results });
+});
+
 debugRouter.get("/debug/azure-budgets", async (_req, res) => {
   const results = await Promise.all(
     APPS.map((app) => diagnoseBudgetsForApp(app, billingScope(app.id))),
