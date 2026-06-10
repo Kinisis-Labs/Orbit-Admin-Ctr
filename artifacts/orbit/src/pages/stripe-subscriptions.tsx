@@ -113,101 +113,99 @@ export default function StripeSubscriptions() {
       {notConfigured ? (
         <StripeNotConfigured />
       ) : (
-        <>
-          <StripeBanner isLive={isLive} dataUpdatedAt={dataUpdatedAt} dataAsOf={latestDataAsOf} dashboardUrl={scoped[0]?.stripeDashboardUrl} />
-
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-            <Tile title="Active" value={isLoading ? null : num(totals.active)} sub="Paying subscribers" />
-            <Tile title="Trialing" value={isLoading ? null : num(totals.trialing)} sub="In free trial" />
-            <Tile title="Canceled" value={isLoading ? null : num(totals.canceled)} sub="Subscription ended" />
-            <Tile title="Past due" value={isLoading ? null : num(totals.pastDue)} sub="Payment failed" />
-            <Tile title="MRR" value={isLoading ? null : usd(totals.mrr)} sub="Monthly recurring revenue" />
-            <Tile title="Revenue (30d)" value={isLoading ? null : usd(totals.revenue)} sub="Trailing 30 days" />
-          </div>
-
-          <div className="bg-card border border-border shadow-sm">
-            <div className="flex items-center justify-between p-2 border-b border-border">
-              <h2 className="text-sm font-semibold px-2">Subscriptions by application</h2>
-              <div className="flex items-center gap-1">
-                <CsvToolbar
-                  handleExport={handleExport}
-                  handleCopy={handleCopy}
-                  disabled={csvDisabled}
-                  copied={copied}
-                />
-              </div>
-            </div>
-            {isLoading ? (
-              <div className="p-4 space-y-2">
-                <Skeleton className="h-8" />
-                <Skeleton className="h-8" />
-              </div>
-            ) : (
-              <Table className="text-[13px]">
-                <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
-                    <TableHead className="h-8 font-semibold text-foreground">Env</TableHead>
-                    <TableHead className="h-8 font-semibold text-foreground text-right">Active</TableHead>
-                    <TableHead className="h-8 font-semibold text-foreground text-right">Trialing</TableHead>
-                    <TableHead className="h-8 font-semibold text-foreground text-right">Canceled</TableHead>
-                    <TableHead className="h-8 font-semibold text-foreground text-right">Past Due</TableHead>
-                    <TableHead className="h-8 font-semibold text-foreground text-right">MRR</TableHead>
-                    <TableHead className="h-8 font-semibold text-foreground text-right">Revenue (30d)</TableHead>
-                    <TableHead className="h-8 font-semibold text-foreground text-right">Active trend</TableHead>
-                    <TableHead className="h-8 font-semibold text-foreground text-right">Dashboard</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {scoped.map((r) => {
-                    const positive = r.activeTrendPct >= 0;
-                    return (
-                      <TableRow key={r.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
-                        <TableCell className="py-1 font-medium text-primary">{r.appName}</TableCell>
-                        <TableCell className="py-1 text-muted-foreground">{r.environment}</TableCell>
-                        <TableCell className="py-1 text-right tabular-nums">{num(r.activeSubscribers)}</TableCell>
-                        <TableCell className="py-1 text-right tabular-nums text-blue-500">{num(r.trialingSubscribers)}</TableCell>
-                        <TableCell className="py-1 text-right tabular-nums text-muted-foreground">{num(r.canceledSubscribers)}</TableCell>
-                        <TableCell className="py-1 text-right tabular-nums text-amber-500">{num(r.pastDueSubscribers)}</TableCell>
-                        <TableCell className="py-1 text-right tabular-nums">{usd(r.mrr)}</TableCell>
-                        <TableCell className="py-1 text-right tabular-nums">{usd(r.revenueLast30d)}</TableCell>
-                        <TableCell className="py-1 text-right tabular-nums">
-                          <span className={`inline-flex items-center gap-1 ${positive ? "text-emerald-500" : "text-destructive"}`}>
-                            {positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                            {positive ? "+" : ""}{r.activeTrendPct}%
-                          </span>
-                        </TableCell>
-                        <TableCell className="py-1 text-right">
-                          {r.stripeDashboardUrl ? (
-                            <a
-                              href={r.stripeDashboardUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="Open in Stripe Dashboard"
-                              className="text-primary hover:underline inline-flex items-center gap-1 text-[12px]"
-                            >
-                              Manage <ExternalLink className="h-3 w-3 shrink-0" />
-                            </a>
-                          ) : (
-                            <span className="text-muted-foreground text-[12px]">—</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {scoped.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={10} className="text-center py-6 text-muted-foreground">
-                        No Stripe apps in scope.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
-          </div>
-        </>
+        <StripeBanner isLive={isLive} dataUpdatedAt={dataUpdatedAt} dataAsOf={latestDataAsOf} dashboardUrl={scoped[0]?.stripeDashboardUrl} />
       )}
+
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+        <Tile title="Active" value={isLoading ? null : num(totals.active)} sub="Paying subscribers" />
+        <Tile title="Trialing" value={isLoading ? null : num(totals.trialing)} sub="In free trial" />
+        <Tile title="Canceled" value={isLoading ? null : num(totals.canceled)} sub="Subscription ended" />
+        <Tile title="Past due" value={isLoading ? null : num(totals.pastDue)} sub="Payment failed" />
+        <Tile title="MRR" value={isLoading ? null : usd(totals.mrr)} sub="Monthly recurring revenue" />
+        <Tile title="Revenue (30d)" value={isLoading ? null : usd(totals.revenue)} sub="Trailing 30 days" />
+      </div>
+
+      <div className="bg-card border border-border shadow-sm">
+        <div className="flex items-center justify-between p-2 border-b border-border">
+          <h2 className="text-sm font-semibold px-2">Subscriptions by application</h2>
+          <div className="flex items-center gap-1">
+            <CsvToolbar
+              handleExport={handleExport}
+              handleCopy={handleCopy}
+              disabled={csvDisabled}
+              copied={copied}
+            />
+          </div>
+        </div>
+        {isLoading ? (
+          <div className="p-4 space-y-2">
+            <Skeleton className="h-8" />
+            <Skeleton className="h-8" />
+          </div>
+        ) : (
+          <Table className="text-[13px]">
+            <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground">Env</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right">Active</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right">Trialing</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right">Canceled</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right">Past Due</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right">MRR</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right">Revenue (30d)</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right">Active trend</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right">Dashboard</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {scoped.map((r) => {
+                const positive = r.activeTrendPct >= 0;
+                return (
+                  <TableRow key={r.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                    <TableCell className="py-1 font-medium text-primary">{r.appName}</TableCell>
+                    <TableCell className="py-1 text-muted-foreground">{r.environment}</TableCell>
+                    <TableCell className="py-1 text-right tabular-nums">{num(r.activeSubscribers)}</TableCell>
+                    <TableCell className="py-1 text-right tabular-nums text-blue-500">{num(r.trialingSubscribers)}</TableCell>
+                    <TableCell className="py-1 text-right tabular-nums text-muted-foreground">{num(r.canceledSubscribers)}</TableCell>
+                    <TableCell className="py-1 text-right tabular-nums text-amber-500">{num(r.pastDueSubscribers)}</TableCell>
+                    <TableCell className="py-1 text-right tabular-nums">{usd(r.mrr)}</TableCell>
+                    <TableCell className="py-1 text-right tabular-nums">{usd(r.revenueLast30d)}</TableCell>
+                    <TableCell className="py-1 text-right tabular-nums">
+                      <span className={`inline-flex items-center gap-1 ${positive ? "text-emerald-500" : "text-destructive"}`}>
+                        {positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                        {positive ? "+" : ""}{r.activeTrendPct}%
+                      </span>
+                    </TableCell>
+                    <TableCell className="py-1 text-right">
+                      {r.stripeDashboardUrl ? (
+                        <a
+                          href={r.stripeDashboardUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Open in Stripe Dashboard"
+                          className="text-primary hover:underline inline-flex items-center gap-1 text-[12px]"
+                        >
+                          Manage <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground text-[12px]">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {scoped.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={10} className="text-center py-6 text-muted-foreground">
+                    {notConfigured ? "Connect Stripe to see subscription data." : "No Stripe apps in scope."}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }
