@@ -268,7 +268,7 @@ jobs:
             # Compose AZURE_SUBSCRIPTION_IDS from the sub IDs we know about.
             # Use values that just came from secrets; fall back to existing Portal value.
             sub_g = from_secrets.get("AZURE_SUB_GRAILBABE", existing.get("AZURE_SUB_GRAILBABE", ""))
-            sub_s = from_secrets.get("AZURE_SUB_SHARED_INFRA", existing.get("AZURE_SUB_SHARED_INFRA", ""))
+            sub_s = from_secrets.get("AZURE_SUB_SHAREDPLATFORM", existing.get("AZURE_SUB_SHAREDPLATFORM", ""))
             subs  = [s for s in [sub_g, sub_s] if s]
             if subs:
                 fixed["AZURE_SUBSCRIPTION_IDS"] = ",".join(subs)
@@ -284,6 +284,12 @@ jobs:
             # Also enforce min-replicas = 1
             scale = spec["properties"]["template"].setdefault("scale", {})
             scale["minReplicas"] = 1
+
+            # Strip properties added in newer API versions that api-version=2024-03-01 rejects.
+            config = spec["properties"].get("configuration", {})
+            for unsupported in ("identitySettings", "runtime"):
+                config.pop(unsupported, None)
+            spec["properties"]["configuration"] = config
 
             json.dump(spec, open("/tmp/ca_updated.json", "w"))
 
