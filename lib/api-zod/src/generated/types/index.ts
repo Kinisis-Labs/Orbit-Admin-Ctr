@@ -17,6 +17,7 @@ export * from './alertThresholdConfigLogEntry';
 export * from './anomalyDismissalsResponse';
 export * from './apiByName';
 export * from './apiUsage';
+export * from './apiUsageDataSource';
 export * from './appAlertConfig';
 export * from './appAlertConfigConsecutiveChecksSource';
 export * from './appAlertConfigCooldownSource';
