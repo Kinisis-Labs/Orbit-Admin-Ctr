@@ -110,9 +110,7 @@ export default function StripeSubscriptions() {
         }
       />
 
-      {notConfigured ? (
-        <StripeNotConfigured />
-      ) : (
+      {!notConfigured && (
         <StripeBanner isLive={isLive} dataUpdatedAt={dataUpdatedAt} dataAsOf={latestDataAsOf} dashboardUrl={scoped[0]?.stripeDashboardUrl} />
       )}
 
