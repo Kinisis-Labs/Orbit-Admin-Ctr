@@ -25,6 +25,7 @@ import { eq, desc, sql } from "drizzle-orm";
 import { requireEngineerOrAdmin, requireAuth } from "../middlewares/auth.js";
 import { fetchResourcesByResourceGroup, fetchResourceGroupTags, getResourcesFetchedAt } from "../lib/azureResources.js";
 import { fetchMonthToDateCostWithFallback, fetchLastMonthComparableCostTotal } from "../lib/azureCost.js";
+import { fetchThirdPartyUsage } from "../lib/thirdPartyUsage.js";
 import { fetchBudgetForAppWithFallback, diagnoseBudgetsForApp } from "../lib/azureBudgets.js";
 import { diagnoseActivityLog } from "../lib/azureActivity.js";
 import { fetchSubscriptionNames } from "../lib/azureSubscriptions.js";
@@ -602,7 +603,7 @@ router.get("/apps/:appId/cost", async (req, res) => {
   // 30-min (cost) or 1-hour (budget) snapshot.
   const bypassCache = req.query["refresh"] === "true";
   const scope = billingScope(app.id);
-  const [costWS, budgetWithSource, rev, priorMonthTotal] = await Promise.all([
+  const [costWS, budgetWithSource, rev, priorMonthTotal, thirdPartyUsage] = await Promise.all([
     fetchMonthToDateCostWithFallback(app, { bypassCache, billingScope: scope }),
     fetchBudgetForAppWithFallback(app, { bypassCache, budgetScope: scope }),
     syncAndReadRevenue(app),
@@ -611,6 +612,9 @@ router.get("/apps/:appId/cost", async (req, res) => {
     // month (e.g. May 1–8 when today is June 8). Returns null when Azure is
     // not yet configured.
     fetchLastMonthComparableCostTotal(app, { bypassCache, billingScope: scope }),
+    // Third-party API spend (OpenAI, Replicate). Live when env vars are set;
+    // falls back to deterministic placeholder values otherwise.
+    fetchThirdPartyUsage(app.id),
   ]);
   const liveCost = costWS?.result ?? null;
   const mtd = liveCost?.monthToDate ?? 0;
@@ -629,6 +633,12 @@ router.get("/apps/:appId/cost", async (req, res) => {
   // Management when configured; empty otherwise.
   const daily = liveCost?.daily ?? [];
 
+  // For apps that use third-party AI APIs (GrailBabe: OpenAI + Replicate),
+  // use the fetched usage; fall back to the internal mock for other apps.
+  const apiUsage = thirdPartyUsage.byApi.length > 0
+    ? thirdPartyUsage
+    : mockApiUsageForApp(app.id);
+
   const data = GetCostResponse.parse({
     currency: "USD",
     monthToDate: mtd,
@@ -636,7 +646,7 @@ router.get("/apps/:appId/cost", async (req, res) => {
     budget,
     daily,
     byService,
-    apiUsage: mockApiUsageForApp(app.id),
+    apiUsage,
     revenue: buildRevenueDto(rev),
     dataSource: costWS?.source ?? "mock",
     ...(liveCost ? { dataAsOf: liveCost.dataAsOf } : {}),

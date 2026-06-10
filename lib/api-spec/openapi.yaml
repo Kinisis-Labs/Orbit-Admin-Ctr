@@ -1351,14 +1351,15 @@ components:
     ApiUsage:
       type: object
       required: [totalCalls, costPerMillion, cost, byApi]
-      description: API consumption (API Management + gateway egress) included in monthToDate.
+      description: Third-party API spend (OpenAI, Replicate, etc.) for the current month.
       properties:
         totalCalls: { type: integer, description: Month-to-date API call count }
         costPerMillion: { type: number, description: Blended unit price per million calls }
         cost: { type: number, description: Month-to-date API usage cost }
+        dataSource: { type: string, enum: [live, placeholder], description: "live = fetched from provider billing API; placeholder = deterministic fallback (provider credentials not set)." }
         byApi:
           type: array
-          description: Cost breakdown by individual API name (operation / endpoint).
+          description: Cost breakdown by individual API provider.
           items: { $ref: "#/components/schemas/ApiByName" }
     CostReport:
       type: object

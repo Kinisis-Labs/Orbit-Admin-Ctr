@@ -261,12 +261,13 @@ export const GetCostResponse = zod.object({
   "totalCalls": zod.number().describe('Month-to-date API call count'),
   "costPerMillion": zod.number().describe('Blended unit price per million calls'),
   "cost": zod.number().describe('Month-to-date API usage cost'),
+  "dataSource": zod.enum(['live', 'placeholder']).optional().describe('live = fetched from provider billing API; placeholder = deterministic fallback (provider credentials not set).'),
   "byApi": zod.array(zod.object({
   "name": zod.string().describe('Logical API operation or endpoint name'),
   "totalCalls": zod.number(),
   "cost": zod.number()
-})).describe('Cost breakdown by individual API name (operation \/ endpoint).')
-}).describe('API consumption (API Management + gateway egress) included in monthToDate.'),
+})).describe('Cost breakdown by individual API provider.')
+}).describe('Third-party API spend (OpenAI, Replicate, etc.) for the current month.'),
   "revenue": zod.object({
   "currency": zod.string(),
   "total": zod.number().describe('Month-to-date revenue across all configured sources'),

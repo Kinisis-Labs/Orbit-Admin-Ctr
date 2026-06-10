@@ -1233,7 +1233,14 @@ function AppCost() {
           subLabel={!isLoading && data?.dataAsOf ? `as of ${fmtRelativeTime(data.dataAsOf)}` : undefined}
         />
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-          <div className="text-[12px] text-muted-foreground font-medium mb-1">API usage (MTD)</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[12px] text-muted-foreground font-medium">API usage (MTD)</div>
+            {!isLoading && data?.apiUsage.dataSource && (
+              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${data.apiUsage.dataSource === "live" ? "bg-green-500/15 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                {data.apiUsage.dataSource === "live" ? "live" : "est"}
+              </span>
+            )}
+          </div>
           {isLoading || !data ? <Skeleton className="h-7 w-20 mt-1" /> : (
             <>
               <div className="text-xl font-semibold text-foreground mt-1 tabular-nums">{fmt(data.apiUsage.cost, data.currency)}</div>
@@ -1478,8 +1485,17 @@ function AppCost() {
         </Panel>
 
         <Panel
-          title="Cost by API Name"
-          rightHeader={data ? <span className="text-[11px] text-muted-foreground pr-2">{fmt(data.apiUsage.cost, data.currency)} @ {fmt(data.apiUsage.costPerMillion, data.currency)}/M calls</span> : null}
+          title="Third-party API costs"
+          rightHeader={data ? (
+            <div className="flex items-center gap-2 pr-2">
+              {data.apiUsage.dataSource && (
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${data.apiUsage.dataSource === "live" ? "bg-green-500/15 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                  {data.apiUsage.dataSource === "live" ? "live" : "est"}
+                </span>
+              )}
+              <span className="text-[11px] text-muted-foreground">{fmt(data.apiUsage.cost, data.currency)} @ {fmt(data.apiUsage.costPerMillion, data.currency)}/M calls</span>
+            </div>
+          ) : null}
           toolbar={
             <div className="flex items-center gap-1">
               <CsvToolbar

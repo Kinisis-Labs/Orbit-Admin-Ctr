@@ -6,9 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ApiByName } from './apiByName';
+import type { ApiUsageDataSource } from './apiUsageDataSource';
 
 /**
- * API consumption (API Management + gateway egress) included in monthToDate.
+ * Third-party API spend (OpenAI, Replicate, etc.) for the current month.
  */
 export interface ApiUsage {
   /** Month-to-date API call count */
@@ -17,6 +18,8 @@ export interface ApiUsage {
   costPerMillion: number;
   /** Month-to-date API usage cost */
   cost: number;
-  /** Cost breakdown by individual API name (operation / endpoint). */
+  /** live = fetched from provider billing API; placeholder = deterministic fallback (provider credentials not set). */
+  dataSource?: ApiUsageDataSource;
+  /** Cost breakdown by individual API provider. */
   byApi: ApiByName[];
 }
