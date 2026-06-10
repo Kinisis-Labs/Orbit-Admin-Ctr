@@ -23,10 +23,10 @@ const TONE: Record<EndpointStatus, "ok" | "warn" | "bad" | "muted"> = {
 };
 
 const STATUS_COLOR: Record<EndpointStatus, string> = {
-  healthy: "#10b981",
-  degraded: "#f59e0b",
-  unhealthy: "#ef4444",
-  unknown: "#64748b",
+  healthy: "#8b5cf6",
+  degraded: "#eab308",
+  unhealthy: "#a21caf",
+  unknown: "#c4b5fd",
 };
 
 const STATUS_ORDER: EndpointStatus[] = ["unhealthy", "degraded", "unknown", "healthy"];
@@ -100,59 +100,106 @@ export default function NetworkPage() {
       {/* Charts row */}
       {!isEmpty && (
         <div className="grid grid-cols-3 gap-4">
-          {/* Status donut */}
-          <div className="bg-card border border-border shadow-sm p-4 flex flex-col">
-            <h2 className="text-sm font-semibold mb-3">Endpoint status</h2>
-            {isLoading ? (
-              <div className="flex-1 flex items-center justify-center"><Skeleton className="h-36 w-36 rounded-full" /></div>
-            ) : (
-              <div className="flex flex-col items-center gap-3">
-                <ResponsiveContainer width="100%" height={180}>
-                  <PieChart>
-                    <Pie
-                      data={statusPie}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={52}
-                      outerRadius={82}
-                      paddingAngle={statusPie.length > 1 ? 3 : 0}
-                      dataKey="value"
-                      strokeWidth={0}
-                    >
-                      {statusPie.map((entry) => (
-                        <Cell key={entry.name} fill={STATUS_COLOR[entry.name as EndpointStatus]} />
+          {/* Left column: status donut + packet loss */}
+          <div className="flex flex-col gap-4">
+            {/* Status donut */}
+            <div className="bg-card border border-border shadow-sm p-4 flex flex-col">
+              <h2 className="text-sm font-semibold mb-3">Endpoint status</h2>
+              {isLoading ? (
+                <div className="flex-1 flex items-center justify-center"><Skeleton className="h-36 w-36 rounded-full" /></div>
+              ) : (
+                <div className="flex flex-col items-center gap-3">
+                  <ResponsiveContainer width="100%" height={180}>
+                    <PieChart>
+                      <Pie
+                        data={statusPie}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={52}
+                        outerRadius={82}
+                        paddingAngle={statusPie.length > 1 ? 3 : 0}
+                        dataKey="value"
+                        strokeWidth={0}
+                      >
+                        {statusPie.map((entry) => (
+                          <Cell key={entry.name} fill={STATUS_COLOR[entry.name as EndpointStatus]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const d = payload[0];
+                          return (
+                            <div className="bg-popover border border-border rounded px-2 py-1 text-[12px] shadow-md">
+                              <span className="font-medium capitalize">{d.name}</span>
+                              <span className="ml-2 text-muted-foreground">{d.value} endpoint{(d.value as number) !== 1 ? "s" : ""}</span>
+                            </div>
+                          );
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center">
+                    {(["healthy", "degraded", "unhealthy", "unknown"] as EndpointStatus[])
+                      .filter((s) => eps.some((e) => e.status === s))
+                      .map((s) => (
+                        <div key={s} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <span className="h-2 w-2 rounded-full shrink-0" style={{ background: STATUS_COLOR[s] }} />
+                          <span className="capitalize">{s}</span>
+                          <span className="font-semibold text-foreground">{eps.filter((e) => e.status === s).length}</span>
+                        </div>
                       ))}
-                    </Pie>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Packet loss — horizontal bar, same style as latency */}
+            <div className="bg-card border border-border shadow-sm p-4 flex flex-col flex-1">
+              <h2 className="text-sm font-semibold mb-3">Packet loss <span className="text-[11px] text-muted-foreground font-normal ml-1">% · sorted descending</span></h2>
+              {isLoading ? (
+                <div className="space-y-2"><Skeleton className="h-6 w-full" /><Skeleton className="h-6 w-4/5" /></div>
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.max(120, lossData.length * 36)}>
+                  <BarChart data={lossData} layout="vertical" margin={{ left: 0, right: 24, top: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.06)" />
+                    <XAxis
+                      type="number"
+                      tick={{ fontSize: 11, fill: "#64748b" }}
+                      tickFormatter={(v) => `${v}%`}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="label"
+                      width={100}
+                      tick={{ fontSize: 11, fill: "#94a3b8" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
                     <Tooltip
+                      cursor={{ fill: "rgba(255,255,255,0.04)" }}
                       content={({ active, payload }) => {
                         if (!active || !payload?.length) return null;
-                        const d = payload[0];
+                        const d = payload[0].payload;
                         return (
                           <div className="bg-popover border border-border rounded px-2 py-1 text-[12px] shadow-md">
-                            <span className="font-medium capitalize">{d.name}</span>
-                            <span className="ml-2 text-muted-foreground">{d.value} endpoint{(d.value as number) !== 1 ? "s" : ""}</span>
+                            <span className="font-medium">{d.label}</span>
+                            <span className="ml-2 text-muted-foreground">{d.loss}% loss</span>
                           </div>
                         );
                       }}
                     />
-                  </PieChart>
+                    <Bar dataKey="loss" radius={[0, 3, 3, 0]} maxBarSize={22}>
+                      {lossData.map((entry, idx) => (
+                        <Cell key={idx} fill={entry.fill} fillOpacity={0.85} />
+                      ))}
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
-                {/* Legend */}
-                <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center">
-                  {(["healthy", "degraded", "unhealthy", "unknown"] as EndpointStatus[])
-                    .filter((s) => eps.some((e) => e.status === s))
-                    .map((s) => (
-                      <div key={s} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                        <span className="h-2 w-2 rounded-full shrink-0" style={{ background: STATUS_COLOR[s] }} />
-                        <span className="capitalize">{s}</span>
-                        <span className="font-semibold text-foreground">
-                          {eps.filter((e) => e.status === s).length}
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Latency bar chart */}
@@ -205,54 +252,6 @@ export default function NetworkPage() {
               </ResponsiveContainer>
             )}
           </div>
-        </div>
-      )}
-
-      {/* Packet loss chart */}
-      {!isEmpty && (
-        <div className="bg-card border border-border shadow-sm p-4">
-          <h2 className="text-sm font-semibold mb-3">Packet loss by endpoint <span className="text-[11px] text-muted-foreground font-normal ml-1">% · green &lt;0.1% · amber &lt;0.5% · red ≥0.5%</span></h2>
-          {isLoading ? (
-            <Skeleton className="h-28 w-full" />
-          ) : (
-            <ResponsiveContainer width="100%" height={120}>
-              <BarChart data={lossData} margin={{ left: 0, right: 16, top: 4, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 11, fill: "#94a3b8" }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval={0}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: "#64748b" }}
-                  tickFormatter={(v) => `${v}%`}
-                  axisLine={false}
-                  tickLine={false}
-                  width={36}
-                />
-                <Tooltip
-                  cursor={{ fill: "rgba(255,255,255,0.04)" }}
-                  content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null;
-                    const d = payload[0].payload;
-                    return (
-                      <div className="bg-popover border border-border rounded px-2 py-1 text-[12px] shadow-md">
-                        <span className="font-medium">{d.label}</span>
-                        <span className="ml-2 text-muted-foreground">{d.loss}% loss</span>
-                      </div>
-                    );
-                  }}
-                />
-                <Bar dataKey="loss" radius={[3, 3, 0, 0]} maxBarSize={40}>
-                  {lossData.map((entry, idx) => (
-                    <Cell key={idx} fill={entry.fill} fillOpacity={0.85} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
         </div>
       )}
 
