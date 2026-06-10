@@ -19,6 +19,7 @@ import {
   UserAuthType,
   getListAppsQueryKey,
 } from "@workspace/api-client-react";
+import type { BrowserTelemetry as BT } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
@@ -1134,12 +1135,262 @@ function TelemetryTab({ appId }: { appId: string }) {
         </div>
       </div>
 
+      {data.browserTelemetry && (
+        <BrowserTelemetryPanel bt={data.browserTelemetry} appInsightsResourceId={data.appInsightsResourceId} />
+      )}
+
       <InfraAlertHistory appId={appId} />
     </div>
     </>
   );
 }
 
+function buildBrowserLogsUrl(resourceId: string): string {
+  const kql = `browserTimings\n| where timestamp >= ago(24h)\n| order by timestamp desc\n| limit 100`;
+  const encoded = encodeURIComponent(kql);
+  const encodedId = encodeURIComponent(resourceId);
+  return `https://portal.azure.com/#blade/Microsoft_Azure_Monitoring_Logs/LogsBlade/resourceId/${encodedId}/source/LogsBlade.AnalyticsShareLinkToQuery/query/${encoded}/timespan/P1D`;
+}
+
+function KpiSparkline({
+  points,
+  gradientId,
+  colorVar,
+  formatter,
+}: {
+  points: Array<{ timestamp: string; value: number }>;
+  gradientId: string;
+  colorVar: string;
+  formatter: (v: number) => [string, string];
+}) {
+  if (!points || points.length < 2) return null;
+  const color = `hsl(var(${colorVar}))`;
+  return (
+    <div className="h-10 w-full mt-1">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={points} margin={{ top: 2, right: 0, bottom: 2, left: 0 }}>
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+              <stop offset="95%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <Tooltip
+            contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: 2, fontSize: 11, padding: "3px 7px" }}
+            labelFormatter={(v) => format(new Date(v as string), "HH:mm")}
+            formatter={(v: number) => formatter(v)}
+            cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
+          />
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke={color}
+            strokeWidth={1.5}
+            fill={`url(#${gradientId})`}
+            dot={false}
+            isAnimationActive={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function PageViewsSparkline({ points }: { points: Array<{ timestamp: string; value: number }> }) {
+  return (
+    <KpiSparkline
+      points={points}
+      gradientId="pv-spark-fill"
+      colorVar="--chart-2"
+      formatter={(v) => [v.toLocaleString(), "views"]}
+    />
+  );
+}
+
+function BrowserTelemetryPanel({ bt, appInsightsResourceId }: { bt: BT; appInsightsResourceId?: string }) {
+  const hasSlowPages = bt.topSlowPages.length > 0;
+  const hasFailingUrls = bt.topFailingUrls.length > 0;
+  const noData = !bt.pageLoadP95IsReal && bt.browserExceptionsPerHour === 0 && bt.pageViewsPerHour === 0;
+  const pageViewsSeries = bt.series?.find((s) => s.name === "Browser page views / hour");
+  const excSeries = bt.series?.find((s) => s.name === "Browser exceptions / hour");
+  const pageLoadSeries = bt.series?.find((s) => s.name === "Browser page load P95 (ms)");
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground font-medium">Browser / client-side (last 1 h)</span>
+        {appInsightsResourceId && (
+          <a
+            href={buildBrowserLogsUrl(appInsightsResourceId)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Open in App Insights
+          </a>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Page Load P95</div>
+          {bt.pageLoadP95IsReal ? (
+            <div className={`text-xl font-semibold tabular-nums ${bt.pageLoadP95Ms >= 5000 ? "text-destructive" : bt.pageLoadP95Ms >= 2500 ? "text-amber-500" : ""}`}>
+              {bt.pageLoadP95Ms >= 1000 ? `${(bt.pageLoadP95Ms / 1000).toFixed(1)}s` : `${bt.pageLoadP95Ms}ms`}
+            </div>
+          ) : (
+            <div className="text-xl font-semibold tabular-nums text-muted-foreground">—</div>
+          )}
+          {pageLoadSeries && pageLoadSeries.points.length >= 2 ? (
+            <KpiSparkline
+              points={pageLoadSeries.points}
+              gradientId="pl-spark-fill"
+              colorVar="--chart-3"
+              formatter={(v) => [v >= 1000 ? `${(v / 1000).toFixed(1)}s` : `${v}ms`, "p95"]}
+            />
+          ) : (
+            <div className="text-[10px] text-muted-foreground mt-0.5">p95 latency</div>
+          )}
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Browser Exceptions</div>
+          <div className={`text-xl font-semibold tabular-nums ${bt.browserExceptionsPerHour > 0 ? "text-destructive" : ""}`}>
+            {bt.browserExceptionsPerHour > 0 ? bt.browserExceptionsPerHour.toLocaleString() : "0"}
+          </div>
+          {excSeries && excSeries.points.length >= 2 ? (
+            <KpiSparkline
+              points={excSeries.points}
+              gradientId="exc-spark-fill"
+              colorVar="--chart-5"
+              formatter={(v) => [v.toLocaleString(), "/h"]}
+            />
+          ) : (
+            <div className="text-[10px] text-muted-foreground mt-0.5">per hour</div>
+          )}
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Page Views</div>
+          <div className="text-xl font-semibold tabular-nums">{bt.pageViewsPerHour.toLocaleString()}</div>
+          {pageViewsSeries && pageViewsSeries.points.length >= 2 ? (
+            <PageViewsSparkline points={pageViewsSeries.points} />
+          ) : (
+            <div className="text-[10px] text-muted-foreground mt-0.5">per hour</div>
+          )}
+        </div>
+        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">Failing AJAX Targets</div>
+          <div className={`text-xl font-semibold tabular-nums ${bt.topFailingUrls.length > 0 ? "text-destructive" : ""}`}>
+            {bt.topFailingUrls.length > 0 ? bt.topFailingUrls.reduce((s, u) => s + u.failureCount, 0).toLocaleString() : "0"}
+          </div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">failures (24 h)</div>
+        </div>
+      </div>
+
+      {noData && (
+        <div className="flex items-center gap-2 rounded-sm border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          <Info className="h-3.5 w-3.5 shrink-0" />
+          No browser telemetry data yet — the App Insights SDK initializes on first page load after configuration.
+        </div>
+      )}
+
+      {bt.series && bt.series.length > 0 && bt.series.some((s) => s.points.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {bt.series.filter((s) => s.points.length > 0).map((s, i) => (
+            <div key={i} className="bg-card border border-border shadow-sm flex flex-col">
+              <div className="p-3 border-b border-border bg-card">
+                <h2 className="text-sm font-semibold">{s.name} <span className="text-muted-foreground font-normal">({s.unit})</span></h2>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Last 24 h · hourly bins</p>
+              </div>
+              <div className="p-4 h-44">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={s.points} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="timestamp" tickFormatter={(v) => format(new Date(v), "HH:mm")} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '2px', fontSize: '12px' }}
+                      labelFormatter={(v) => format(new Date(v), "HH:mm")}
+                    />
+                    <Line type="monotone" dataKey="value" stroke={i === 0 ? "hsl(var(--chart-2))" : "hsl(var(--destructive))"} strokeWidth={1.5} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(hasSlowPages || hasFailingUrls) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {hasSlowPages && (
+            <div className="bg-card border border-border shadow-sm flex flex-col">
+              <div className="p-3 border-b border-border bg-card">
+                <h2 className="text-sm font-semibold">Slowest pages (P95, last 24 h)</h2>
+              </div>
+              <Table className="text-[12px]">
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-b border-border/50">
+                    <TableHead className="py-1.5 text-[11px]">Page</TableHead>
+                    <TableHead className="py-1.5 text-[11px] text-right">P95</TableHead>
+                    <TableHead className="py-1.5 text-[11px] text-right">Views</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {bt.topSlowPages.map((page, i) => (
+                    <TableRow key={i} className="hover:bg-muted/40 border-b border-border/50">
+                      <TableCell className="py-2 font-mono text-xs break-all max-w-[180px] truncate" title={page.name}>
+                        {page.name || "—"}
+                      </TableCell>
+                      <TableCell className={`py-2 text-right tabular-nums ${page.p95Ms >= 5000 ? "text-destructive" : page.p95Ms >= 2500 ? "text-amber-500" : ""}`}>
+                        {page.p95Ms >= 1000 ? `${(page.p95Ms / 1000).toFixed(1)}s` : `${page.p95Ms}ms`}
+                      </TableCell>
+                      <TableCell className="py-2 text-right tabular-nums text-muted-foreground">
+                        {page.count.toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {hasFailingUrls && (
+            <div className="bg-card border border-border shadow-sm flex flex-col">
+              <div className="p-3 border-b border-border bg-card">
+                <h2 className="text-sm font-semibold">Top failing AJAX targets (last 24 h)</h2>
+              </div>
+              <Table className="text-[12px]">
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-b border-border/50">
+                    <TableHead className="py-1.5 text-[11px]">URL / Host</TableHead>
+                    <TableHead className="py-1.5 text-[11px] text-right">Failures</TableHead>
+                    <TableHead className="py-1.5 text-[11px] text-right">Fail %</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {bt.topFailingUrls.map((entry, i) => (
+                    <TableRow key={i} className="hover:bg-muted/40 border-b border-border/50">
+                      <TableCell className="py-2 font-mono text-xs break-all max-w-[200px] truncate text-destructive" title={entry.url}>
+                        {entry.url || "—"}
+                      </TableCell>
+                      <TableCell className="py-2 text-right tabular-nums text-destructive font-medium">
+                        {entry.failureCount.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="py-2 text-right tabular-nums text-muted-foreground">
+                        {entry.failureRate.toFixed(1)}%
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function CostTab({ appId }: { appId: string }) {
   const { data, isLoading, isFetching, queryKey } = useAppCost(appId);

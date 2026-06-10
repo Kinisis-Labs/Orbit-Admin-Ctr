@@ -147,6 +147,35 @@ const METRIC_QUERIES: Record<
     | summarize value = avg(value) / (1024.0 * 1024.0) by bin(timestamp, 1h)
     | order by timestamp asc
   `,
+  // P95 browser page-load time per hour (ms) from the browserTimings table.
+  // totalDuration includes network + server + DOM processing time as tracked by
+  // the App Insights browser SDK.
+  browser_page_load_p95: (resourceId, hours) => `
+    browserTimings
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(${hours}h)
+    | summarize value = percentile(totalDuration, 95) by bin(timestamp, 1h)
+    | order by timestamp asc
+  `,
+  // Browser-side JS exception count per hour (exceptions where client_Type = Browser).
+  browser_exception_rate: (resourceId, hours) => `
+    exceptions
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(${hours}h)
+    | where client_Type == "Browser"
+    | summarize value = count() by bin(timestamp, 1h)
+    | order by timestamp asc
+  `,
+  // Browser page views per hour from the pageViews table, scoped by _ResourceId.
+  // Each row in pageViews represents a single page navigation tracked by the
+  // App Insights browser SDK; counting by hourly bin gives a traffic volume trend.
+  browser_page_views: (resourceId, hours) => `
+    pageViews
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(${hours}h)
+    | summarize value = count() by bin(timestamp, 1h)
+    | order by timestamp asc
+  `,
 };
 
 // Cache resolved App Insights resource IDs per app to avoid repeated Resource
@@ -436,6 +465,228 @@ export async function fetchTopExceptions(
   } catch {
     return null;
   }
+}
+
+export type BrowserTelemetrySummary = {
+  pageLoadP95Ms: number;
+  pageLoadP95IsReal: boolean;
+  browserExceptionsPerHour: number;
+  pageViewsPerHour: number;
+  topSlowPages: Array<{ name: string; p95Ms: number; count: number }>;
+  topFailingUrls: Array<{ url: string; failureCount: number; failureRate: number }>;
+};
+
+// Cache: appId → { result, fetchedAt, expiresAt }
+type BrowserTelemetryCacheEntry = {
+  result: BrowserTelemetrySummary;
+  fetchedAt: number;
+  expiresAt: number;
+};
+/** @internal Exported for unit tests only — do not use in production code. */
+export const _browserTelemetryCache = new Map<string, BrowserTelemetryCacheEntry>();
+
+/**
+ * Fetch client-side (browser) telemetry from App Insights via Log Analytics KQL.
+ *
+ * Queries three tables scoped to the app's App Insights component:
+ *  - `browserTimings`     — P95 page-load time (last 1 h + top slow pages last 24 h)
+ *  - `exceptions`         — browser-side exceptions (last 1 h)
+ *  - `pageViews`          — page-view count (last 1 h)
+ *  - `dependencies`       — AJAX calls that failed (last 24 h, top failing URLs)
+ *
+ * All queries run in parallel. Each is fault-tolerant: if one fails the others
+ * still contribute to the result. Returns null when Monitor is not configured or
+ * no App Insights component is found. The result is cached for METRICS_CACHE_TTL_MS.
+ */
+export async function fetchBrowserTelemetry(
+  app: AppRecord,
+  { bypassCache = false }: { bypassCache?: boolean } = {},
+): Promise<BrowserTelemetrySummary | null> {
+  if (bypassCache) {
+    _browserTelemetryCache.delete(app.id);
+  }
+
+  if (!isMonitorConfigured()) return null;
+
+  if (!bypassCache) {
+    const entry = _browserTelemetryCache.get(app.id);
+    if (entry && entry.expiresAt > Date.now()) {
+      return entry.result;
+    }
+  }
+
+  const resourceId = await resolveAppInsightsResourceId(app, { bypassCache });
+  if (!resourceId) return null;
+
+  const workspaceId = getLogAnalyticsWorkspaceId()!;
+
+  const kqlPageLoadP95 = `
+    browserTimings
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(1h)
+    | summarize p95 = percentile(totalDuration, 95)
+  `;
+
+  const kqlBrowserExceptions = `
+    exceptions
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(1h)
+    | where client_Type == "Browser"
+    | count
+  `;
+
+  const kqlPageViews = `
+    pageViews
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(1h)
+    | count
+  `;
+
+  const kqlTopSlowPages = `
+    browserTimings
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(24h)
+    | summarize p95Ms = percentile(totalDuration, 95), count = count() by name
+    | top 5 by p95Ms desc
+    | project name, p95Ms, count
+  `;
+
+  const kqlTopFailingUrls = `
+    dependencies
+    | where _ResourceId =~ '${resourceId}'
+    | where timestamp >= ago(24h)
+    | where client_Type == "Browser"
+    | where success == false
+    | summarize failureCount = count() by target
+    | join kind=leftouter (
+        dependencies
+        | where _ResourceId =~ '${resourceId}'
+        | where timestamp >= ago(24h)
+        | where client_Type == "Browser"
+        | summarize total = count() by target
+      ) on target
+    | extend failureRate = round(100.0 * failureCount / (total + 0.0), 2)
+    | top 5 by failureCount desc
+    | project url = target, failureCount, failureRate
+  `;
+
+  const runQuery = async (kql: string, duration: string) => {
+    try {
+      return await getLogsClient().queryWorkspace(workspaceId, kql, { duration });
+    } catch {
+      return null;
+    }
+  };
+
+  const [resP95, resExc, resPv, resSlowPages, resFailingUrls] = await Promise.all([
+    runQuery(kqlPageLoadP95, "PT1H"),
+    runQuery(kqlBrowserExceptions, "PT1H"),
+    runQuery(kqlPageViews, "PT1H"),
+    runQuery(kqlTopSlowPages, "PT24H"),
+    runQuery(kqlTopFailingUrls, "PT24H"),
+  ]);
+
+  // --- Parse page load P95 ---
+  let pageLoadP95Ms = 0;
+  let pageLoadP95IsReal = false;
+  if (resP95?.status === "Success") {
+    const table = resP95.tables?.[0];
+    if (table) {
+      const cols = table.columnDescriptors as Array<{ name?: string }>;
+      const idx = cols.findIndex((c) => c.name === "p95");
+      const rows = table.rows as unknown[][];
+      if (idx !== -1 && rows.length > 0) {
+        const val = Number(rows[0]?.[idx]);
+        if (isFinite(val) && val > 0) {
+          pageLoadP95Ms = Number(val.toFixed(0));
+          pageLoadP95IsReal = true;
+        }
+      }
+    }
+  }
+
+  // --- Parse browser exceptions per hour ---
+  let browserExceptionsPerHour = 0;
+  if (resExc?.status === "Success") {
+    const table = resExc.tables?.[0];
+    if (table) {
+      const rows = table.rows as unknown[][];
+      if (rows.length > 0) {
+        const val = Number(rows[0]?.[0]);
+        if (isFinite(val)) browserExceptionsPerHour = val;
+      }
+    }
+  }
+
+  // --- Parse page views per hour ---
+  let pageViewsPerHour = 0;
+  if (resPv?.status === "Success") {
+    const table = resPv.tables?.[0];
+    if (table) {
+      const rows = table.rows as unknown[][];
+      if (rows.length > 0) {
+        const val = Number(rows[0]?.[0]);
+        if (isFinite(val)) pageViewsPerHour = val;
+      }
+    }
+  }
+
+  // --- Parse top slow pages ---
+  const topSlowPages: BrowserTelemetrySummary["topSlowPages"] = [];
+  if (resSlowPages?.status === "Success") {
+    const table = resSlowPages.tables?.[0];
+    if (table) {
+      const cols = table.columnDescriptors as Array<{ name?: string }>;
+      const nameIdx = cols.findIndex((c) => c.name === "name");
+      const p95Idx = cols.findIndex((c) => c.name === "p95Ms");
+      const cntIdx = cols.findIndex((c) => c.name === "count");
+      for (const row of table.rows as unknown[][]) {
+        if (nameIdx === -1 || p95Idx === -1 || cntIdx === -1) break;
+        topSlowPages.push({
+          name: String(row[nameIdx] ?? ""),
+          p95Ms: Number(Number(row[p95Idx] ?? 0).toFixed(0)),
+          count: Number(row[cntIdx] ?? 0),
+        });
+      }
+    }
+  }
+
+  // --- Parse top failing URLs ---
+  const topFailingUrls: BrowserTelemetrySummary["topFailingUrls"] = [];
+  if (resFailingUrls?.status === "Success") {
+    const table = resFailingUrls.tables?.[0];
+    if (table) {
+      const cols = table.columnDescriptors as Array<{ name?: string }>;
+      const urlIdx = cols.findIndex((c) => c.name === "url");
+      const fcIdx = cols.findIndex((c) => c.name === "failureCount");
+      const frIdx = cols.findIndex((c) => c.name === "failureRate");
+      for (const row of table.rows as unknown[][]) {
+        if (urlIdx === -1 || fcIdx === -1 || frIdx === -1) break;
+        topFailingUrls.push({
+          url: String(row[urlIdx] ?? ""),
+          failureCount: Number(row[fcIdx] ?? 0),
+          failureRate: Number(Number(row[frIdx] ?? 0).toFixed(2)),
+        });
+      }
+    }
+  }
+
+  const summary: BrowserTelemetrySummary = {
+    pageLoadP95Ms,
+    pageLoadP95IsReal,
+    browserExceptionsPerHour,
+    pageViewsPerHour,
+    topSlowPages,
+    topFailingUrls,
+  };
+
+  _browserTelemetryCache.set(app.id, {
+    result: summary,
+    fetchedAt: Date.now(),
+    expiresAt: Date.now() + METRICS_CACHE_TTL_MS,
+  });
+
+  return summary;
 }
 
 // Cache: app id → { result, fetchedAt, expiresAt }

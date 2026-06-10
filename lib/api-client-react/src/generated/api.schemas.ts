@@ -824,6 +824,41 @@ export interface TopError {
   lastSeen: string;
 }
 
+export type BrowserTelemetryTopSlowPagesItem = {
+  /** Page name / URL path as tracked by the App Insights SDK. */
+  name: string;
+  /** P95 load time in milliseconds. */
+  p95Ms: number;
+  /** Number of page views sampled. */
+  count: number;
+};
+
+export type BrowserTelemetryTopFailingUrlsItem = {
+  /** Dependency target URL or host. */
+  url: string;
+  /** Number of failed requests. */
+  failureCount: number;
+  /** Failure rate as a percentage of total calls to this URL. */
+  failureRate: number;
+};
+
+export interface BrowserTelemetry {
+  /** P95 browser page-load time in milliseconds over the last hour (from the App Insights browserTimings table). Zero when no data is available. */
+  pageLoadP95Ms: number;
+  /** True when pageLoadP95Ms came from a real KQL percentile query. False when there was no browserTimings data (value will be 0). */
+  pageLoadP95IsReal: boolean;
+  /** Number of browser-side JS exceptions recorded in the last hour (exceptions table where client_Type = Browser). */
+  browserExceptionsPerHour: number;
+  /** Number of page views recorded in the last hour (pageViews table). */
+  pageViewsPerHour: number;
+  /** Top 5 slowest pages by P95 load time over the last 24 hours. */
+  topSlowPages: BrowserTelemetryTopSlowPagesItem[];
+  /** Top 5 browser AJAX/fetch dependency targets with the most failures over the last 24 hours. */
+  topFailingUrls: BrowserTelemetryTopFailingUrlsItem[];
+  /** 24-hour hourly time-series for browser metrics. Contains 'Browser page load P95 (ms)' and 'Browser exceptions / hour'. Present only when Monitor is configured. */
+  series?: MetricSeries[];
+}
+
 export interface TelemetryReport {
   requestsPerMin: number;
   p95LatencyMs: number;
@@ -843,6 +878,8 @@ export interface TelemetryReport {
   cachedAt?: string;
   /** Azure resource ID of the Application Insights component for this app. Present only when the resource has been resolved via Resource Graph. Used by the frontend to construct Azure Portal deep-links. */
   appInsightsResourceId?: string;
+  /** Client-side (browser) telemetry from App Insights. Present only when Monitor is configured and an App Insights component is found. */
+  browserTelemetry?: BrowserTelemetry;
 }
 
 export type AlertSource = typeof AlertSource[keyof typeof AlertSource];

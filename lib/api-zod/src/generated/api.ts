@@ -314,7 +314,31 @@ export const GetTelemetryResponse = zod.object({
 })),
   "dataSource": zod.enum(['live', 'mock']).describe('Indicates whether telemetry comes from live Azure Monitor \/ Application Insights or built-in mock values.'),
   "cachedAt": zod.string().datetime({"offset":true}).optional().describe('Timestamp of when telemetry data was last fetched from Azure Monitor \/ Application Insights. Only present when dataSource is live.'),
-  "appInsightsResourceId": zod.string().optional().describe('Azure resource ID of the Application Insights component for this app. Present only when the resource has been resolved via Resource Graph. Used by the frontend to construct Azure Portal deep-links.')
+  "appInsightsResourceId": zod.string().optional().describe('Azure resource ID of the Application Insights component for this app. Present only when the resource has been resolved via Resource Graph. Used by the frontend to construct Azure Portal deep-links.'),
+  "browserTelemetry": zod.object({
+  "pageLoadP95Ms": zod.number().describe('P95 browser page-load time in milliseconds over the last hour (from the App Insights browserTimings table). Zero when no data is available.'),
+  "pageLoadP95IsReal": zod.boolean().describe('True when pageLoadP95Ms came from a real KQL percentile query. False when there was no browserTimings data (value will be 0).'),
+  "browserExceptionsPerHour": zod.number().describe('Number of browser-side JS exceptions recorded in the last hour (exceptions table where client_Type = Browser).'),
+  "pageViewsPerHour": zod.number().describe('Number of page views recorded in the last hour (pageViews table).'),
+  "topSlowPages": zod.array(zod.object({
+  "name": zod.string().describe('Page name \/ URL path as tracked by the App Insights SDK.'),
+  "p95Ms": zod.number().describe('P95 load time in milliseconds.'),
+  "count": zod.number().describe('Number of page views sampled.')
+})).describe('Top 5 slowest pages by P95 load time over the last 24 hours.'),
+  "topFailingUrls": zod.array(zod.object({
+  "url": zod.string().describe('Dependency target URL or host.'),
+  "failureCount": zod.number().describe('Number of failed requests.'),
+  "failureRate": zod.number().describe('Failure rate as a percentage of total calls to this URL.')
+})).describe('Top 5 browser AJAX\/fetch dependency targets with the most failures over the last 24 hours.'),
+  "series": zod.array(zod.object({
+  "name": zod.string(),
+  "unit": zod.string(),
+  "points": zod.array(zod.object({
+  "timestamp": zod.string().datetime({"offset":true}),
+  "value": zod.number()
+}))
+})).optional().describe('24-hour hourly time-series for browser metrics. Contains \'Browser page load P95 (ms)\' and \'Browser exceptions \/ hour\'. Present only when Monitor is configured.')
+}).optional().describe('Client-side (browser) telemetry from App Insights. Present only when Monitor is configured and an App Insights component is found.')
 })
 
 

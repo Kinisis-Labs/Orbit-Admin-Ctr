@@ -5,6 +5,7 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { BrowserTelemetry } from './browserTelemetry';
 import type { MetricSeries } from './metricSeries';
 import type { TelemetryReportDataSource } from './telemetryReportDataSource';
 import type { TopError } from './topError';
@@ -28,4 +29,6 @@ export interface TelemetryReport {
   cachedAt?: string;
   /** Azure resource ID of the Application Insights component for this app. Present only when the resource has been resolved via Resource Graph. Used by the frontend to construct Azure Portal deep-links. */
   appInsightsResourceId?: string;
+  /** Client-side (browser) telemetry from App Insights. Present only when Monitor is configured and an App Insights component is found. */
+  browserTelemetry?: BrowserTelemetry;
 }

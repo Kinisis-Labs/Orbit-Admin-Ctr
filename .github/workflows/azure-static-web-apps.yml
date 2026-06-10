@@ -43,6 +43,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter @workspace/orbit run build
+        env:
+          VITE_APPINSIGHTS_CONNECTION_STRING: ${{ secrets.VITE_APPINSIGHTS_CONNECTION_STRING }}
 
       - name: Login to Azure
         uses: azure/login@v2

@@ -1,7 +1,9 @@
+import "./lib/appInsights";
 import { createRoot } from "react-dom/client";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import App from "./App";
 import "./index.css";
+import { trackException } from "./lib/appInsights";
 
 class RootErrorBoundary extends Component<
   { children: ReactNode },
@@ -18,6 +20,10 @@ class RootErrorBoundary extends Component<
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("[Orbit] Uncaught render error:", error, info.componentStack);
+    trackException(error, {
+      componentStack: info.componentStack ?? "",
+      source: "RootErrorBoundary",
+    });
   }
 
   render() {

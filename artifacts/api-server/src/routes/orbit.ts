@@ -32,6 +32,7 @@ import {
   fetchAppMetrics,
   fetchAppTimeSeries,
   fetchTopExceptions,
+  fetchBrowserTelemetry,
   isMonitorConfigured,
   getLogAnalyticsWorkspaceId,
   resolveAppInsightsResourceId,
@@ -654,7 +655,7 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
   }
   const bypassCache = req.query["refresh"] === "true";
 
-  const [liveMetrics, liveRpmSeries, liveLatenSeries, liveErrSeries, liveCpuSeries, liveMemSeries, liveTopExceptions] =
+  const [liveMetrics, liveRpmSeries, liveLatenSeries, liveErrSeries, liveCpuSeries, liveMemSeries, liveTopExceptions, liveBrowserTelemetry, liveBrowserLoadSeries, liveBrowserExcSeries, liveBrowserPageViewSeries] =
     await Promise.all([
       fetchAppMetrics(app, { bypassCache }),
       fetchAppTimeSeries(app, "requests_per_min", 24, { bypassCache }),
@@ -663,6 +664,10 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
       fetchAppTimeSeries(app, "cpu_pct", 24, { bypassCache }),
       fetchAppTimeSeries(app, "memory_pct", 24, { bypassCache }),
       fetchTopExceptions(app, { hours: 24, limit: 5, bypassCache }),
+      fetchBrowserTelemetry(app, { bypassCache }),
+      fetchAppTimeSeries(app, "browser_page_load_p95", 24, { bypassCache }),
+      fetchAppTimeSeries(app, "browser_exception_rate", 24, { bypassCache }),
+      fetchAppTimeSeries(app, "browser_page_views", 24, { bypassCache }),
     ]);
 
   // Resolve App Insights resource ID for deep-link construction on the frontend.
@@ -698,6 +703,16 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
     dataSource: isLive ? "live" : "mock",
     ...(telemetryCachedAt ? { cachedAt: telemetryCachedAt } : {}),
     ...(appInsightsResourceId ? { appInsightsResourceId } : {}),
+    ...(liveBrowserTelemetry ? {
+      browserTelemetry: {
+        ...liveBrowserTelemetry,
+        series: [
+          { name: "Browser page load P95 (ms)", unit: "ms", points: liveBrowserLoadSeries ?? [] },
+          { name: "Browser exceptions / hour", unit: "/h", points: liveBrowserExcSeries ?? [] },
+          { name: "Browser page views / hour", unit: "/h", points: liveBrowserPageViewSeries ?? [] },
+        ],
+      },
+    } : {}),
   });
   res.json(data);
 });

@@ -81,5 +81,8 @@
     "vitest": "^4.1.8",
     "wouter": "^3.3.5",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "@microsoft/applicationinsights-web": "^3.4.1"
   }
 }
