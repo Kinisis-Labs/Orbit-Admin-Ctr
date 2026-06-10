@@ -210,75 +210,60 @@ jobs:
 
             # ── 2. Merge env vars in Python ───────────────────────────────
             python3 - << 'PYEOF'
-import json, os
-
-# Existing env vars (Portal-set values are the base layer)
-existing = {}
-for item in json.load(open("/tmp/ca_env_current.json")) or []:
-    if item.get("value") is not None:
-        existing[item["name"]] = item["value"]
-
-# Fixed managed vars (always applied — no secrets required)
-fixed = {
-    "NODE_ENV": "production",
-    "PORT": "80",
-    "DATABASE_SSL": "true",
-    "SESSION_COOKIE_DOMAIN": ".kinisislabs.com",
-    "ENTRA_REDIRECT_URI": "https://orbit.kinisislabs.com/api/auth/callback",
-    "ENTRA_POST_LOGOUT_REDIRECT_URI": "https://orbit.kinisislabs.com/signed-out",
-}
-
-# Secret-backed vars — only applied when non-empty; empty → preserve Portal value.
-secret_map = [
-    ("DATABASE_URL",                         "V_DATABASE_URL"),
-    ("SESSION_SECRET",                       "V_SESSION_SECRET"),
-    ("ENTRA_TENANT_ID",                      "V_ENTRA_TENANT_ID"),
-    ("ENTRA_CLIENT_ID",                      "V_ENTRA_CLIENT_ID"),
-    ("ENTRA_CLIENT_SECRET",                  "V_ENTRA_CLIENT_SECRET"),
-    ("ENTRA_AUTHORIZED_GROUP_ID",            "V_ENTRA_AUTHORIZED_GROUP_ID"),
-    ("ENTRA_COST_READER_GROUP_ID",           "V_ENTRA_COST_READER_GROUP_ID"),
-    ("ENTRA_ADMIN_GROUP_ID",                 "V_ENTRA_ADMIN_GROUP_ID"),
-    ("ENTRA_ENGINEER_GROUP_ID",              "V_ENTRA_ENGINEER_GROUP_ID"),
-    ("ENTRA_FINOPS_GROUP_ID",                "V_ENTRA_FINOPS_GROUP_ID"),
-    ("AZURE_CLIENT_ID",                      "V_AZURE_MANAGED_IDENTITY_CLIENT_ID"),
-    ("AZURE_MANAGED_IDENTITY_CLIENT_ID",     "V_AZURE_MANAGED_IDENTITY_CLIENT_ID"),
-    ("AZURE_TENANT_ID",                      "V_ENTRA_TENANT_ID"),
-    ("AZURE_SUB_GRAILBABE",                  "V_AZURE_SUB_GRAILBABE"),
-    ("AZURE_SUB_ORBIT",                      "V_AZURE_SUB_ORBIT"),
-    ("AZURE_SUB_KINISIS_LABS",               "V_AZURE_SUB_KINISIS_LABS"),
-    ("AZURE_SUB_SHAREDPLATFORM",             "V_AZURE_SUB_SHAREDPLATFORM"),
-    ("AZURE_LOG_ANALYTICS_WORKSPACE_ID",     "V_AZURE_LOG_ANALYTICS_WORKSPACE_ID"),
-    ("AZURE_BILLING_ACCOUNT_ID",             "V_AZURE_BILLING_ACCOUNT_ID"),
-    ("BUDGET_AMOUNT__GRAILBABE",             "V_BUDGET_AMOUNT__GRAILBABE"),
-    ("BUDGET_AMOUNT__KINISIS_LABS",          "V_BUDGET_AMOUNT__KINISIS_LABS"),
-    ("CLERK_SECRET_KEY__GRAILBABE",          "V_CLERK_SECRET_KEY__GRAILBABE"),
-    ("GITHUB_TOKEN",                         "V_ORBIT_DEPLOYMENT_ID"),
-    ("STRIPE_SECRET_KEY",                    "V_STRIPE_SECRET_KEY"),
-    ("APPLICATIONINSIGHTS_CONNECTION_STRING","V_APPLICATIONINSIGHTS_CONNECTION_STRING"),
-    ("APP_CONFIGURATION_ENDPOINT",           "V_APP_CONFIGURATION_ENDPOINT"),
-]
-from_secrets = {k: os.environ[env] for k, env in secret_map if os.environ.get(env)}
-
-# Compose AZURE_SUBSCRIPTION_IDS from available sub IDs.
-sub_g = from_secrets.get("AZURE_SUB_GRAILBABE",     existing.get("AZURE_SUB_GRAILBABE", ""))
-sub_s = from_secrets.get("AZURE_SUB_SHAREDPLATFORM", existing.get("AZURE_SUB_SHAREDPLATFORM", ""))
-subs  = [s for s in [sub_g, sub_s] if s]
-if subs:
-    fixed["AZURE_SUBSCRIPTION_IDS"] = ",".join(subs)
-
-# Final merge: existing (Portal base) → fixed → from_secrets (secrets win)
-merged = {**existing, **fixed, **from_secrets}
-
-# Write as KEY=VALUE pairs, one per line (values must not contain newlines)
-with open("/tmp/ca_env_merged.txt", "w") as f:
-    for k, v in merged.items():
-        # Escape = in values; az containerapp update splits on first =
-        f.write(f"{k}={v}\n")
-
-total = len(merged)
-n_portal_only = len(set(existing) - set(fixed) - set(from_secrets))
-print(f"Env vars: {total} total  ({n_portal_only} Portal-only preserved, {len(from_secrets)} from secrets, {len(fixed)} fixed)")
-PYEOF
+            import json, os
+            existing = {}
+            for item in json.load(open("/tmp/ca_env_current.json")) or []:
+                if item.get("value") is not None:
+                    existing[item["name"]] = item["value"]
+            fixed = {
+                "NODE_ENV": "production",
+                "PORT": "80",
+                "DATABASE_SSL": "true",
+                "SESSION_COOKIE_DOMAIN": ".kinisislabs.com",
+                "ENTRA_REDIRECT_URI": "https://orbit.kinisislabs.com/api/auth/callback",
+                "ENTRA_POST_LOGOUT_REDIRECT_URI": "https://orbit.kinisislabs.com/signed-out",
+            }
+            secret_map = [
+                ("DATABASE_URL",                         "V_DATABASE_URL"),
+                ("SESSION_SECRET",                       "V_SESSION_SECRET"),
+                ("ENTRA_TENANT_ID",                      "V_ENTRA_TENANT_ID"),
+                ("ENTRA_CLIENT_ID",                      "V_ENTRA_CLIENT_ID"),
+                ("ENTRA_CLIENT_SECRET",                  "V_ENTRA_CLIENT_SECRET"),
+                ("ENTRA_AUTHORIZED_GROUP_ID",            "V_ENTRA_AUTHORIZED_GROUP_ID"),
+                ("ENTRA_COST_READER_GROUP_ID",           "V_ENTRA_COST_READER_GROUP_ID"),
+                ("ENTRA_ADMIN_GROUP_ID",                 "V_ENTRA_ADMIN_GROUP_ID"),
+                ("ENTRA_ENGINEER_GROUP_ID",              "V_ENTRA_ENGINEER_GROUP_ID"),
+                ("ENTRA_FINOPS_GROUP_ID",                "V_ENTRA_FINOPS_GROUP_ID"),
+                ("AZURE_CLIENT_ID",                      "V_AZURE_MANAGED_IDENTITY_CLIENT_ID"),
+                ("AZURE_MANAGED_IDENTITY_CLIENT_ID",     "V_AZURE_MANAGED_IDENTITY_CLIENT_ID"),
+                ("AZURE_TENANT_ID",                      "V_ENTRA_TENANT_ID"),
+                ("AZURE_SUB_GRAILBABE",                  "V_AZURE_SUB_GRAILBABE"),
+                ("AZURE_SUB_ORBIT",                      "V_AZURE_SUB_ORBIT"),
+                ("AZURE_SUB_KINISIS_LABS",               "V_AZURE_SUB_KINISIS_LABS"),
+                ("AZURE_SUB_SHAREDPLATFORM",             "V_AZURE_SUB_SHAREDPLATFORM"),
+                ("AZURE_LOG_ANALYTICS_WORKSPACE_ID",     "V_AZURE_LOG_ANALYTICS_WORKSPACE_ID"),
+                ("AZURE_BILLING_ACCOUNT_ID",             "V_AZURE_BILLING_ACCOUNT_ID"),
+                ("BUDGET_AMOUNT__GRAILBABE",             "V_BUDGET_AMOUNT__GRAILBABE"),
+                ("BUDGET_AMOUNT__KINISIS_LABS",          "V_BUDGET_AMOUNT__KINISIS_LABS"),
+                ("CLERK_SECRET_KEY__GRAILBABE",          "V_CLERK_SECRET_KEY__GRAILBABE"),
+                ("GITHUB_TOKEN",                         "V_ORBIT_DEPLOYMENT_ID"),
+                ("STRIPE_SECRET_KEY",                    "V_STRIPE_SECRET_KEY"),
+                ("APPLICATIONINSIGHTS_CONNECTION_STRING","V_APPLICATIONINSIGHTS_CONNECTION_STRING"),
+                ("APP_CONFIGURATION_ENDPOINT",           "V_APP_CONFIGURATION_ENDPOINT"),
+            ]
+            from_secrets = {k: os.environ[env] for k, env in secret_map if os.environ.get(env)}
+            sub_g = from_secrets.get("AZURE_SUB_GRAILBABE",      existing.get("AZURE_SUB_GRAILBABE", ""))
+            sub_s = from_secrets.get("AZURE_SUB_SHAREDPLATFORM",  existing.get("AZURE_SUB_SHAREDPLATFORM", ""))
+            subs  = [s for s in [sub_g, sub_s] if s]
+            if subs:
+                fixed["AZURE_SUBSCRIPTION_IDS"] = ",".join(subs)
+            merged = {**existing, **fixed, **from_secrets}
+            with open("/tmp/ca_env_merged.txt", "w") as f:
+                for k, v in merged.items():
+                    f.write(f"{k}={v}\n")
+            n_portal_only = len(set(existing) - set(fixed) - set(from_secrets))
+            print(f"Env vars: {len(merged)} total  ({n_portal_only} Portal-only preserved, {len(from_secrets)} from secrets, {len(fixed)} fixed)")
+            PYEOF
 
             # ── 3. Build --set-env-vars args and update image + env vars ──
             # Read merged vars from file; quote each value to handle spaces/special chars.
