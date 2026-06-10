@@ -4,12 +4,13 @@ import {
   getAppConfigFeatureFlag,
   setAppConfigFeatureFlag,
 } from "../lib/appConfig.js";
+import { getDbFeatureFlag, setDbFeatureFlag } from "../lib/featureFlagsDb.js";
 import { requireAuth, requireAdmin } from "../middlewares/auth.js";
 import { logger } from "../lib/logger.js";
 
 const router: IRouter = Router();
 
-type FlagConfigStore = "live" | "mock";
+type FlagConfigStore = "live" | "db" | "mock";
 
 interface FeatureFlagDef {
   name: string;
@@ -38,12 +39,20 @@ const KNOWN_FLAGS: FeatureFlagDef[] = [
 
 const KNOWN_FLAG_NAMES = new Set(KNOWN_FLAGS.map((f) => f.name));
 
+function getConfigStore(): FlagConfigStore {
+  if (isAppConfigConfigured()) return "live";
+  return "db";
+}
+
 // GET /admin/feature-flags — list all known flags with current state (requireAdmin)
 router.get("/admin/feature-flags", requireAuth, requireAdmin, async (_req, res) => {
-  const configStore: FlagConfigStore = isAppConfigConfigured() ? "live" : "mock";
+  const configStore = getConfigStore();
   const rows = await Promise.all(
     KNOWN_FLAGS.map(async (def) => {
-      const enabled = await getAppConfigFeatureFlag(def.name);
+      const enabled =
+        configStore === "live"
+          ? await getAppConfigFeatureFlag(def.name)
+          : await getDbFeatureFlag(def.name);
       return { ...def, enabled, configStore };
     }),
   );
@@ -71,25 +80,28 @@ router.put("/admin/feature-flags/:flagName", requireAuth, requireAdmin, async (r
   }
 
   const { enabled } = body as { enabled: boolean };
+  const configStore = getConfigStore();
 
-  if (!isAppConfigConfigured()) {
-    res.status(503).json({
-      error: "Feature flag writes require APP_CONFIGURATION_ENDPOINT to be set",
-      configStore: "mock",
-    });
-    return;
-  }
-
-  try {
-    await setAppConfigFeatureFlag(flagName, enabled);
-  } catch (err) {
-    logger.error({ err, flagName, enabled }, "Failed to write feature flag to App Configuration");
-    res.status(502).json({ error: "Failed to write to App Configuration store" });
-    return;
+  if (configStore === "live") {
+    try {
+      await setAppConfigFeatureFlag(flagName, enabled);
+    } catch (err) {
+      logger.error({ err, flagName, enabled }, "Failed to write feature flag to App Configuration");
+      res.status(502).json({ error: "Failed to write to App Configuration store" });
+      return;
+    }
+  } else {
+    try {
+      await setDbFeatureFlag(flagName, enabled);
+    } catch (err) {
+      logger.error({ err, flagName, enabled }, "Failed to write feature flag to database");
+      res.status(502).json({ error: "Failed to write to database" });
+      return;
+    }
   }
 
   const def = KNOWN_FLAGS.find((f) => f.name === flagName)!;
-  res.json({ ...def, enabled, configStore: "live" as FlagConfigStore });
+  res.json({ ...def, enabled, configStore });
 });
 
 export default router;

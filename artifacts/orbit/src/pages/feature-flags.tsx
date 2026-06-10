@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ToggleLeft, ToggleRight, Info, ShieldCheck } from "lucide-react";
+import { ToggleLeft, ToggleRight, Info, ShieldCheck, Database } from "lucide-react";
 import { RequireGroup } from "@/components/access-denied";
 import { ADMIN_GROUP } from "@/lib/auth-groups";
 import { toast } from "@/hooks/use-toast";
@@ -10,7 +10,7 @@ interface FeatureFlag {
   label: string;
   description: string;
   enabled: boolean;
-  configStore: "live" | "mock";
+  configStore: "live" | "db" | "mock";
 }
 
 async function fetchFeatureFlags(): Promise<FeatureFlag[]> {
@@ -33,15 +33,15 @@ async function updateFeatureFlag(flagName: string, enabled: boolean): Promise<Fe
   return res.json() as Promise<FeatureFlag>;
 }
 
-function MockStoreBanner() {
+function DbStoreBanner() {
   return (
-    <div className="flex items-start gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[13px] mb-4">
-      <Info className="h-4 w-4 mt-0.5 shrink-0" />
+    <div className="flex items-start gap-3 px-4 py-3 bg-blue-500/10 border border-blue-500/30 text-blue-300 text-[13px] mb-4">
+      <Database className="h-4 w-4 mt-0.5 shrink-0" />
       <div>
-        <span className="font-semibold">Dev / mock mode — </span>
-        App Configuration is not configured (<span className="font-mono">APP_CONFIGURATION_ENDPOINT</span>{" "}
-        unset). Flags are shown as enabled because the safe fallback keeps all surfaces visible. Toggles
-        are disabled until a live store is connected.
+        <span className="font-semibold">Database store — </span>
+        Flags are persisted in Postgres. Connect{" "}
+        <span className="font-mono">APP_CONFIGURATION_ENDPOINT</span> in production to switch to
+        Azure App Configuration.
       </div>
     </div>
   );
@@ -57,6 +57,7 @@ function FlagRow({
   toggling: boolean;
 }) {
   const isMock = flag.configStore === "mock";
+  const isDisabled = isMock || toggling;
 
   return (
     <div className="flex items-start justify-between gap-6 px-4 py-4 border-b border-border last:border-b-0">
@@ -66,6 +67,17 @@ function FlagRow({
           <span className="font-mono text-[11px] text-muted-foreground bg-muted/40 px-1.5 py-0.5 border border-border">
             {flag.name}
           </span>
+          {flag.configStore === "db" && (
+            <span className="text-[10px] font-medium px-1.5 py-0.5 border border-blue-500/40 bg-blue-500/10 text-blue-400 flex items-center gap-1">
+              <Database className="h-2.5 w-2.5" />
+              postgres
+            </span>
+          )}
+          {flag.configStore === "live" && (
+            <span className="text-[10px] font-medium px-1.5 py-0.5 border border-emerald-500/40 bg-emerald-500/10 text-emerald-400">
+              azure
+            </span>
+          )}
           {isMock && (
             <span className="text-[10px] font-medium px-1.5 py-0.5 border border-amber-500/40 bg-amber-500/10 text-amber-400">
               mock
@@ -77,7 +89,7 @@ function FlagRow({
 
       <button
         type="button"
-        disabled={isMock || toggling}
+        disabled={isDisabled}
         onClick={() => onToggle(flag.name, !flag.enabled)}
         title={
           isMock
@@ -87,7 +99,7 @@ function FlagRow({
             : `Enable ${flag.label}`
         }
         className={`shrink-0 flex items-center gap-2 px-3 py-1.5 border rounded-sm text-[12px] font-medium transition-colors
-          ${isMock || toggling ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+          ${isDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
           ${
             flag.enabled
               ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
@@ -157,7 +169,7 @@ function FeatureFlagsPanel() {
     mutation.mutate({ name, enabled });
   };
 
-  const isMockStore = flags?.length ? flags[0].configStore === "mock" : false;
+  const configStore = flags?.length ? flags[0].configStore : null;
 
   return (
     <div className="space-y-4 max-w-3xl">
@@ -165,8 +177,8 @@ function FeatureFlagsPanel() {
         <div>
           <h1 className="text-[16px] font-semibold text-foreground">Feature flags</h1>
           <p className="text-[13px] text-muted-foreground mt-0.5">
-            Toggle Orbit surfaces on and off. Changes are written immediately to the Azure App
-            Configuration store and take effect on the next request to the affected endpoint.
+            Toggle Orbit surfaces on and off. Changes take effect on the next request to the affected
+            endpoint.
           </p>
         </div>
         <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 border border-blue-500/30 bg-blue-500/10 text-blue-400 text-[11px] font-medium">
@@ -175,7 +187,7 @@ function FeatureFlagsPanel() {
         </div>
       </div>
 
-      {isMockStore && <MockStoreBanner />}
+      {configStore === "db" && <DbStoreBanner />}
 
       {isLoading && (
         <div className="bg-card border border-border shadow-sm px-4 py-8 text-center text-[13px] text-muted-foreground">
