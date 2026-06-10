@@ -54,7 +54,7 @@ jobs:
     name: DB migrations (self-hosted / VNet)
     runs-on: self-hosted
     needs: build
-    if: ${{ inputs.skip_migrate != true }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_migrate != true }}
     environment: OrbitProduction
     steps:
       - uses: actions/checkout@v4
