@@ -1237,7 +1237,7 @@ components:
         revenueLast30d: { type: number, description: Revenue from paid invoices over the trailing 30 days }
         currency: { type: string }
         activeTrendPct: { type: number, description: Active-subscriber change vs the prior period }
-        dataSource: { type: string, enum: [placeholder, live, cached] }
+        dataSource: { type: string, enum: [live, cached] }
         dataAsOf: { type: string, format: date-time, description: "Timestamp of when subscription data was last fetched from Stripe. Only present when dataSource is live." }
         stripeDashboardUrl: { type: string, description: Direct link to Stripe Dashboard subscriptions page }
     AppleSubscriptionRow:

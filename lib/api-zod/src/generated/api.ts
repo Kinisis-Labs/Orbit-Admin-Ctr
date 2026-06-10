@@ -723,7 +723,7 @@ export const ListStripeSubscriptionsResponseItem = zod.object({
   "revenueLast30d": zod.number().describe('Revenue from paid invoices over the trailing 30 days'),
   "currency": zod.string(),
   "activeTrendPct": zod.number().describe('Active-subscriber change vs the prior period'),
-  "dataSource": zod.enum(['placeholder', 'live', 'cached']),
+  "dataSource": zod.enum(['live', 'cached']),
   "dataAsOf": zod.string().datetime({"offset":true}).optional().describe('Timestamp of when subscription data was last fetched from Stripe. Only present when dataSource is live.'),
   "stripeDashboardUrl": zod.string().optional().describe('Direct link to Stripe Dashboard subscriptions page')
 })

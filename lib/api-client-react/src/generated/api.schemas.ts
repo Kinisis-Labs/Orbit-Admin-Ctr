@@ -313,7 +313,6 @@ export type StripeSubscriptionRowDataSource = typeof StripeSubscriptionRowDataSo
 
 
 export const StripeSubscriptionRowDataSource = {
-  placeholder: 'placeholder',
   live: 'live',
   cached: 'cached',
 } as const;

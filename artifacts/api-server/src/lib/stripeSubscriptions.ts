@@ -14,41 +14,12 @@ export interface StripeSubscriptionRow {
   revenueLast30d: number;
   currency: string;
   activeTrendPct: number;
-  dataSource: "placeholder" | "live" | "cached";
+  dataSource: "live" | "cached";
   dataAsOf?: string;
   stripeDashboardUrl?: string;
 }
 
-// Deterministic placeholder generator so the surface looks reasonable
-// without live credentials. Same seed pattern as Apple/Play.
-function placeholderFor(appId: string): StripeSubscriptionRow {
-  const hash = [...appId].reduce((acc, ch) => acc * 31 + ch.charCodeAt(0), 7);
-  const active = 40 + (Math.abs(hash) % 120);
-  const trialing = 5 + (Math.abs(hash * 13) % 20);
-  const canceled = 3 + (Math.abs(hash * 7) % 15);
-  const pastDue = Math.abs(hash * 3) % 8;
-  const mrr = active * (4.99 + (Math.abs(hash) % 10));
-  const revenue30d = mrr * (0.85 + (Math.abs(hash) % 30) / 100);
-  const trend = ((Math.abs(hash) % 20) - 7) * 0.5;
-  const app = APPS.find((a) => a.id === appId);
-  return {
-    appId,
-    appName: app?.name ?? appId,
-    environment: "production",
-    activeSubscribers: active,
-    trialingSubscribers: trialing,
-    canceledSubscribers: canceled,
-    pastDueSubscribers: pastDue,
-    mrr: Math.round(mrr * 100) / 100,
-    revenueLast30d: Math.round(revenue30d * 100) / 100,
-    currency: "USD",
-    activeTrendPct: Math.round(trend * 10) / 10,
-    dataSource: "placeholder",
-  };
-}
-
 // Normalises a Stripe subscription amount to monthly USD cents.
-// Stripe prices can be weekly / monthly / yearly etc.
 function toMonthlyCents(amount: number, interval: string, intervalCount: number): number {
   switch (interval) {
     case "day":   return (amount / intervalCount) * 30;
@@ -59,7 +30,7 @@ function toMonthlyCents(amount: number, interval: string, intervalCount: number)
   }
 }
 
-// Fetch live Stripe subscription metrics. Only called when isStripeConfigured().
+// Fetch live Stripe subscription metrics for a single app.
 async function fetchLiveStripeSubscriptions(appId: string): Promise<StripeSubscriptionRow> {
   const stripe = getStripeClient();
   const app = APPS.find((a) => a.id === appId);
@@ -71,7 +42,6 @@ async function fetchLiveStripeSubscriptions(appId: string): Promise<StripeSubscr
   let pastDueSubscribers = 0;
   let mrrCents = 0;
 
-  // Count current subscriptions by status.
   for await (const sub of stripe.subscriptions.list({ limit: 100, status: "all", expand: ["data.items.data.price"] })) {
     switch (sub.status) {
       case "active":
@@ -99,16 +69,11 @@ async function fetchLiveStripeSubscriptions(appId: string): Promise<StripeSubscr
     }
   }
 
-  // Revenue last 30 days from succeeded invoices paid in the window.
   const since = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
   let revenue30dCents = 0;
   for await (const inv of stripe.invoices.list({ limit: 100, status: "paid", created: { gte: since } })) {
     revenue30dCents += inv.amount_paid ?? 0;
   }
-
-  const mrr = Math.round(mrrCents) / 100;
-  const revenueLast30d = Math.round(revenue30dCents) / 100;
-  const activeTrendPct = 0; // trend requires historical snapshot — deferred
 
   return {
     appId,
@@ -118,10 +83,10 @@ async function fetchLiveStripeSubscriptions(appId: string): Promise<StripeSubscr
     trialingSubscribers,
     canceledSubscribers,
     pastDueSubscribers,
-    mrr,
-    revenueLast30d,
+    mrr: Math.round(mrrCents) / 100,
+    revenueLast30d: Math.round(revenue30dCents) / 100,
     currency: "USD",
-    activeTrendPct,
+    activeTrendPct: 0, // trend requires historical snapshot — deferred
     dataSource: "live",
     dataAsOf: new Date().toISOString(),
     stripeDashboardUrl: "https://dashboard.stripe.com/subscriptions",
@@ -129,24 +94,19 @@ async function fetchLiveStripeSubscriptions(appId: string): Promise<StripeSubscr
 }
 
 // stripeApps returns the app IDs that should appear on this surface.
-// Currently scoped to GrailBabe (prod) only, mirroring the Stripe sync policy.
 function stripeApps(): string[] {
   return APPS.filter((a) => a.environment === "prod" && a.id === "grailbabe").map((a) => a.id);
 }
 
 export async function getStripeSubscriptions(): Promise<StripeSubscriptionRow[]> {
-  const appIds = stripeApps();
-  if (!isStripeConfigured()) {
-    return appIds.map(placeholderFor);
-  }
+  if (!isStripeConfigured()) return [];
 
   const results: StripeSubscriptionRow[] = [];
-  for (const appId of appIds) {
+  for (const appId of stripeApps()) {
     try {
       results.push(await fetchLiveStripeSubscriptions(appId));
     } catch (err) {
-      logger.warn({ err, appId }, "stripe-subscriptions: falling back to placeholder");
-      results.push(placeholderFor(appId));
+      logger.error({ err, appId }, "stripe-subscriptions: live fetch failed");
     }
   }
   return results;

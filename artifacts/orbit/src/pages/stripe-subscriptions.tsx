@@ -3,7 +3,7 @@ import { useListStripeSubscriptions } from "@workspace/api-client-react";
 import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingDown, TrendingUp, ExternalLink, Clock, PowerOff, CreditCard } from "lucide-react";
+import { TrendingDown, TrendingUp, ExternalLink, Clock, PowerOff, CreditCard, KeyRound } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
@@ -45,6 +45,8 @@ export default function StripeSubscriptions() {
   const rows = useMemo(() => data ?? [], [data]);
   const scoped = scope === "global" ? rows : rows.filter((r) => r.appId === scope);
 
+  const notConfigured = !isLoading && rows.length === 0;
+
   const totals = scoped.reduce(
     (acc, r) => ({
       active: acc.active + r.activeSubscribers,
@@ -57,7 +59,6 @@ export default function StripeSubscriptions() {
     { active: 0, trialing: 0, canceled: 0, pastDue: 0, mrr: 0, revenue: 0 },
   );
 
-  const isPlaceholder = scoped.some((r) => r.dataSource === "placeholder");
   const isLive = scoped.some((r) => r.dataSource === "live");
   const isCached = scoped.some((r) => r.dataSource === "cached");
   const badgeDataSource =
@@ -67,8 +68,6 @@ export default function StripeSubscriptions() {
       ? "live"
       : isCached
       ? "cached"
-      : isPlaceholder
-      ? "placeholder"
       : undefined;
 
   const latestDataAsOf = useMemo(() => {
@@ -102,117 +101,123 @@ export default function StripeSubscriptions() {
         subtitle="Stripe web subscription financials and subscriber states per Kinisis app."
         right={
           <div className="flex items-center gap-2">
-            <DataSourceBadge dataSource={badgeDataSource} dataAsOf={latestDataAsOf} label="Stripe" />
+            {!notConfigured && (
+              <DataSourceBadge dataSource={badgeDataSource} dataAsOf={latestDataAsOf} label="Stripe" />
+            )}
             <AdminAccessBadge />
             <ScopeSelect />
           </div>
         }
       />
 
-      <StripeBanner placeholder={isPlaceholder} isLive={isLive} dataUpdatedAt={dataUpdatedAt} dataAsOf={latestDataAsOf} dashboardUrl={scoped[0]?.stripeDashboardUrl} />
+      {notConfigured ? (
+        <StripeNotConfigured />
+      ) : (
+        <>
+          <StripeBanner isLive={isLive} dataUpdatedAt={dataUpdatedAt} dataAsOf={latestDataAsOf} dashboardUrl={scoped[0]?.stripeDashboardUrl} />
 
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-        <Tile title="Active" value={isLoading ? null : num(totals.active)} sub="Paying subscribers" />
-        <Tile title="Trialing" value={isLoading ? null : num(totals.trialing)} sub="In free trial" />
-        <Tile title="Canceled" value={isLoading ? null : num(totals.canceled)} sub="Subscription ended" />
-        <Tile title="Past due" value={isLoading ? null : num(totals.pastDue)} sub="Payment failed" />
-        <Tile title="MRR" value={isLoading ? null : usd(totals.mrr)} sub="Monthly recurring revenue" />
-        <Tile title="Revenue (30d)" value={isLoading ? null : usd(totals.revenue)} sub="Trailing 30 days" />
-      </div>
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+            <Tile title="Active" value={isLoading ? null : num(totals.active)} sub="Paying subscribers" />
+            <Tile title="Trialing" value={isLoading ? null : num(totals.trialing)} sub="In free trial" />
+            <Tile title="Canceled" value={isLoading ? null : num(totals.canceled)} sub="Subscription ended" />
+            <Tile title="Past due" value={isLoading ? null : num(totals.pastDue)} sub="Payment failed" />
+            <Tile title="MRR" value={isLoading ? null : usd(totals.mrr)} sub="Monthly recurring revenue" />
+            <Tile title="Revenue (30d)" value={isLoading ? null : usd(totals.revenue)} sub="Trailing 30 days" />
+          </div>
 
-      <div className="bg-card border border-border shadow-sm">
-        <div className="flex items-center justify-between p-2 border-b border-border">
-          <h2 className="text-sm font-semibold px-2">Subscriptions by application</h2>
-          <div className="flex items-center gap-1">
-            <CsvToolbar
-              handleExport={handleExport}
-              handleCopy={handleCopy}
-              disabled={csvDisabled}
-              copied={copied}
-            />
-          </div>
-        </div>
-        {isLoading ? (
-          <div className="p-4 space-y-2">
-            <Skeleton className="h-8" />
-            <Skeleton className="h-8" />
-          </div>
-        ) : (
-          <Table className="text-[13px]">
-            <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground">Env</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground text-right">Active</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground text-right">Trialing</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground text-right">Canceled</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground text-right">Past Due</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground text-right">MRR</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground text-right">Revenue (30d)</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground text-right">Active trend</TableHead>
-                <TableHead className="h-8 font-semibold text-foreground text-right">Dashboard</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {scoped.map((r) => {
-                const positive = r.activeTrendPct >= 0;
-                return (
-                  <TableRow key={r.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
-                    <TableCell className="py-1 font-medium text-primary">{r.appName}</TableCell>
-                    <TableCell className="py-1 text-muted-foreground">{r.environment}</TableCell>
-                    <TableCell className="py-1 text-right tabular-nums">{num(r.activeSubscribers)}</TableCell>
-                    <TableCell className="py-1 text-right tabular-nums text-blue-500">{num(r.trialingSubscribers)}</TableCell>
-                    <TableCell className="py-1 text-right tabular-nums text-muted-foreground">{num(r.canceledSubscribers)}</TableCell>
-                    <TableCell className="py-1 text-right tabular-nums text-amber-500">{num(r.pastDueSubscribers)}</TableCell>
-                    <TableCell className="py-1 text-right tabular-nums">{usd(r.mrr)}</TableCell>
-                    <TableCell className="py-1 text-right tabular-nums">{usd(r.revenueLast30d)}</TableCell>
-                    <TableCell className="py-1 text-right tabular-nums">
-                      <span className={`inline-flex items-center gap-1 ${positive ? "text-emerald-500" : "text-destructive"}`}>
-                        {positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                        {positive ? "+" : ""}{r.activeTrendPct}%
-                      </span>
-                    </TableCell>
-                    <TableCell className="py-1 text-right">
-                      {r.stripeDashboardUrl ? (
-                        <a
-                          href={r.stripeDashboardUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          title="Open in Stripe Dashboard"
-                          className="text-primary hover:underline inline-flex items-center gap-1 text-[12px]"
-                        >
-                          Manage <ExternalLink className="h-3 w-3 shrink-0" />
-                        </a>
-                      ) : (
-                        <span className="text-muted-foreground text-[12px]">—</span>
-                      )}
-                    </TableCell>
+          <div className="bg-card border border-border shadow-sm">
+            <div className="flex items-center justify-between p-2 border-b border-border">
+              <h2 className="text-sm font-semibold px-2">Subscriptions by application</h2>
+              <div className="flex items-center gap-1">
+                <CsvToolbar
+                  handleExport={handleExport}
+                  handleCopy={handleCopy}
+                  disabled={csvDisabled}
+                  copied={copied}
+                />
+              </div>
+            </div>
+            {isLoading ? (
+              <div className="p-4 space-y-2">
+                <Skeleton className="h-8" />
+                <Skeleton className="h-8" />
+              </div>
+            ) : (
+              <Table className="text-[13px]">
+                <TableHeader className="bg-muted/50 hover:bg-muted/50 border-b border-border">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
+                    <TableHead className="h-8 font-semibold text-foreground">Env</TableHead>
+                    <TableHead className="h-8 font-semibold text-foreground text-right">Active</TableHead>
+                    <TableHead className="h-8 font-semibold text-foreground text-right">Trialing</TableHead>
+                    <TableHead className="h-8 font-semibold text-foreground text-right">Canceled</TableHead>
+                    <TableHead className="h-8 font-semibold text-foreground text-right">Past Due</TableHead>
+                    <TableHead className="h-8 font-semibold text-foreground text-right">MRR</TableHead>
+                    <TableHead className="h-8 font-semibold text-foreground text-right">Revenue (30d)</TableHead>
+                    <TableHead className="h-8 font-semibold text-foreground text-right">Active trend</TableHead>
+                    <TableHead className="h-8 font-semibold text-foreground text-right">Dashboard</TableHead>
                   </TableRow>
-                );
-              })}
-              {scoped.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-center py-6 text-muted-foreground">
-                    No Stripe apps in scope.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+                </TableHeader>
+                <TableBody>
+                  {scoped.map((r) => {
+                    const positive = r.activeTrendPct >= 0;
+                    return (
+                      <TableRow key={r.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
+                        <TableCell className="py-1 font-medium text-primary">{r.appName}</TableCell>
+                        <TableCell className="py-1 text-muted-foreground">{r.environment}</TableCell>
+                        <TableCell className="py-1 text-right tabular-nums">{num(r.activeSubscribers)}</TableCell>
+                        <TableCell className="py-1 text-right tabular-nums text-blue-500">{num(r.trialingSubscribers)}</TableCell>
+                        <TableCell className="py-1 text-right tabular-nums text-muted-foreground">{num(r.canceledSubscribers)}</TableCell>
+                        <TableCell className="py-1 text-right tabular-nums text-amber-500">{num(r.pastDueSubscribers)}</TableCell>
+                        <TableCell className="py-1 text-right tabular-nums">{usd(r.mrr)}</TableCell>
+                        <TableCell className="py-1 text-right tabular-nums">{usd(r.revenueLast30d)}</TableCell>
+                        <TableCell className="py-1 text-right tabular-nums">
+                          <span className={`inline-flex items-center gap-1 ${positive ? "text-emerald-500" : "text-destructive"}`}>
+                            {positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                            {positive ? "+" : ""}{r.activeTrendPct}%
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-1 text-right">
+                          {r.stripeDashboardUrl ? (
+                            <a
+                              href={r.stripeDashboardUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Open in Stripe Dashboard"
+                              className="text-primary hover:underline inline-flex items-center gap-1 text-[12px]"
+                            >
+                              Manage <ExternalLink className="h-3 w-3 shrink-0" />
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground text-[12px]">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {scoped.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-6 text-muted-foreground">
+                        No Stripe apps in scope.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 function StripeBanner({
-  placeholder,
   isLive,
   dataUpdatedAt,
   dataAsOf,
   dashboardUrl,
 }: {
-  placeholder: boolean;
   isLive: boolean;
   dataUpdatedAt: number;
   dataAsOf?: string;
@@ -231,7 +236,7 @@ function StripeBanner({
     }
     if (dataUpdatedAt) {
       const time = new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-      return { text: `${placeholder ? "Generated" : "Fetched"} at ${time}` };
+      return { text: `Fetched at ${time}` };
     }
     return null;
   })();
@@ -243,7 +248,7 @@ function StripeBanner({
       </div>
       <div className="flex-1 text-[12px] text-muted-foreground">
         <span className="inline-flex items-center gap-2">
-          <span className="text-foreground font-semibold">{placeholder ? "Placeholder data." : "Stripe-sourced."}</span>
+          <span className="text-foreground font-semibold">Stripe-sourced.</span>
           {isLive && (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -251,16 +256,7 @@ function StripeBanner({
             </span>
           )}
         </span>{" "}
-        {placeholder ? (
-          <>
-            These figures are representative placeholders. The real feed activates automatically once{" "}
-            <span className="font-mono text-foreground">STRIPE_SECRET_KEY</span> is set on the Container App.
-            Active, trialing, canceled, and past-due counts will reflect live Stripe subscription states;
-            MRR is computed from active subscription prices and revenue from paid invoices.
-          </>
-        ) : (
-          <>Subscriber states and revenue are pulled live from the Stripe API for each tracked Kinisis app.</>
-        )}
+        Subscriber states and revenue are pulled live from the Stripe API for each tracked Kinisis app.
         {timestampLabel && (
           <span className="inline-flex items-center gap-1 ml-2 text-muted-foreground/70">
             <Clock className="h-3 w-3" />
@@ -279,6 +275,25 @@ function StripeBanner({
           Open Stripe Dashboard <ExternalLink className="h-3 w-3" />
         </a>
       )}
+    </div>
+  );
+}
+
+function StripeNotConfigured() {
+  return (
+    <div className="bg-card border border-border shadow-sm p-4 flex items-start gap-4">
+      <div className="shrink-0 h-10 w-10 rounded-sm bg-muted text-muted-foreground flex items-center justify-center">
+        <KeyRound className="h-5 w-5" />
+      </div>
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-foreground">Stripe not configured</div>
+        <p className="text-[13px] text-muted-foreground mt-1">
+          Set{" "}
+          <code className="text-xs bg-muted px-1 rounded font-mono">STRIPE_SECRET_KEY</code> on the
+          Container App to enable live subscription data. Once set, subscriber states, MRR, and
+          trailing revenue will be pulled directly from the Stripe API — no redeploy required.
+        </p>
+      </div>
     </div>
   );
 }
