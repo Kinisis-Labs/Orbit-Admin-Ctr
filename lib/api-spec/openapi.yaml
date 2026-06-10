@@ -570,6 +570,17 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/LogLine" }
+  /global/tag-compliance:
+    get:
+      operationId: getTagCompliance
+      tags: [global]
+      summary: Tag compliance scan across all monitored subscriptions, resource groups, and resources.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TagComplianceResponse" }
   /global/service-health:
     get:
       operationId: listServiceHealth
@@ -1647,6 +1658,30 @@ components:
         appId: { type: string }
         level: { type: string, enum: [INFO, WARN, ERROR] }
         message: { type: string }
+    TagComplianceResponse:
+      type: object
+      required: [scannedAt, totalScanned, nonCompliantCount, entries, dataSource]
+      properties:
+        scannedAt: { type: string, format: date-time }
+        totalScanned: { type: integer }
+        nonCompliantCount: { type: integer }
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/TagComplianceEntry" }
+        dataSource: { type: string, enum: [live, unavailable] }
+    TagComplianceEntry:
+      type: object
+      required: [id, name, type, scope, subscriptionId, missingTags]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string }
+        scope: { type: string, enum: [subscription, resource-group, resource] }
+        subscriptionId: { type: string }
+        resourceGroup: { type: string, nullable: true }
+        missingTags:
+          type: array
+          items: { type: string }
     ServiceHealthResponse:
       type: object
       required: [events, liveEnabled, dataSource]

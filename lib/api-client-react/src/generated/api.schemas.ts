@@ -996,6 +996,41 @@ export interface LogLine {
   message: string;
 }
 
+export type TagComplianceResponseDataSource = typeof TagComplianceResponseDataSource[keyof typeof TagComplianceResponseDataSource];
+
+
+export const TagComplianceResponseDataSource = {
+  live: 'live',
+  unavailable: 'unavailable',
+} as const;
+
+export type TagComplianceEntryScope = typeof TagComplianceEntryScope[keyof typeof TagComplianceEntryScope];
+
+
+export const TagComplianceEntryScope = {
+  subscription: 'subscription',
+  'resource-group': 'resource-group',
+  resource: 'resource',
+} as const;
+
+export interface TagComplianceEntry {
+  id: string;
+  name: string;
+  type: string;
+  scope: TagComplianceEntryScope;
+  subscriptionId: string;
+  resourceGroup?: string | null;
+  missingTags: string[];
+}
+
+export interface TagComplianceResponse {
+  scannedAt: string;
+  totalScanned: number;
+  nonCompliantCount: number;
+  entries: TagComplianceEntry[];
+  dataSource: TagComplianceResponseDataSource;
+}
+
 /**
  * Indicates whether events come from live Azure Service Health or mock data.
  */

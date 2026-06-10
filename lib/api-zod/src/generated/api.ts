@@ -801,6 +801,26 @@ export const QueryLogsResponse = zod.array(QueryLogsResponseItem)
 
 
 /**
+ * @summary Tag compliance scan across all monitored subscriptions, resource groups, and resources.
+ */
+export const GetTagComplianceResponse = zod.object({
+  "scannedAt": zod.string().datetime({"offset":true}),
+  "totalScanned": zod.number(),
+  "nonCompliantCount": zod.number(),
+  "entries": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "type": zod.string(),
+  "scope": zod.enum(['subscription', 'resource-group', 'resource']),
+  "subscriptionId": zod.string(),
+  "resourceGroup": zod.string().nullish(),
+  "missingTags": zod.array(zod.string())
+})),
+  "dataSource": zod.enum(['live', 'unavailable'])
+})
+
+
+/**
  * @summary Azure Service Health events for all monitored subscriptions.
  */
 export const ListServiceHealthResponse = zod.object({

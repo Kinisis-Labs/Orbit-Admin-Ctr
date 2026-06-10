@@ -14,6 +14,7 @@ import alertsConfigRouter from "./alertsConfig";
 import anomalyDismissalsRouter from "./anomalyDismissals";
 import alertSseRouter from "./alertSse";
 import featureFlagsRouter from "./featureFlags";
+import tagComplianceRouter from "./tagCompliance";
 import { requireAuth, requireCostReader } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -46,5 +47,7 @@ router.use(requireAuth, anomalyDismissalsRouter);
 router.use(requireAuth, alertSseRouter);
 // Feature flag admin — requireAdmin is enforced inside the router on each route.
 router.use(featureFlagsRouter);
+// Tag compliance scan — requireAuth only (operational, not financial).
+router.use(requireAuth, tagComplianceRouter);
 
 export default router;

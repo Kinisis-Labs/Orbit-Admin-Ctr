@@ -81,6 +81,7 @@ import type {
   StripeSyncResult,
   SyncAppStoreSalesParams,
   SyncPlayStoreSalesParams,
+  TagComplianceResponse,
   TelemetryReport,
   UndismissAnomalyParams,
   UpdateAlertConfigBody,
@@ -2517,6 +2518,83 @@ export function useQueryLogs<TData = Awaited<ReturnType<typeof queryLogs>>, TErr
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getQueryLogsQueryOptions(appId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetTagComplianceUrl = () => {
+
+
+
+
+  return `/api/global/tag-compliance`
+}
+
+/**
+ * @summary Tag compliance scan across all monitored subscriptions, resource groups, and resources.
+ */
+export const getTagCompliance = async ( options?: RequestInit): Promise<TagComplianceResponse> => {
+
+  return customFetch<TagComplianceResponse>(getGetTagComplianceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTagComplianceQueryKey = () => {
+    return [
+    `/api/global/tag-compliance`
+    ] as const;
+    }
+
+
+export const getGetTagComplianceQueryOptions = <TData = Awaited<ReturnType<typeof getTagCompliance>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTagCompliance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTagComplianceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTagCompliance>>> = ({ signal }) => getTagCompliance({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTagCompliance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTagComplianceQueryResult = NonNullable<Awaited<ReturnType<typeof getTagCompliance>>>
+export type GetTagComplianceQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Tag compliance scan across all monitored subscriptions, resource groups, and resources.
+ */
+
+export function useGetTagCompliance<TData = Awaited<ReturnType<typeof getTagCompliance>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTagCompliance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTagComplianceQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
