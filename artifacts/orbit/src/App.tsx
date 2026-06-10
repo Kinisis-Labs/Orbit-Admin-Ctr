@@ -27,6 +27,7 @@ import Access from "@/pages/access";
 import Users from "@/pages/users";
 import Preferences from "@/pages/preferences";
 import FeatureFlags from "@/pages/feature-flags";
+import Resources from "@/pages/resources";
 import NotFound from "@/pages/not-found";
 import SignedOut from "@/pages/signed-out";
 
@@ -59,6 +60,7 @@ function Router() {
         <Route path="/cost"><Gated><Cost /></Gated></Route>
         <Route path="/play-subscriptions"><Gated><PlaySubscriptions /></Gated></Route>
         <Route path="/apple-subscriptions"><Gated><AppleSubscriptions /></Gated></Route>
+        <Route path="/resources" component={Resources} />
         <Route path="/subscriptions" component={Subscriptions} />
         <Route path="/tags" component={Tags} />
         <Route path="/access" component={Access} />

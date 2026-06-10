@@ -208,8 +208,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </NavSection>
 
             <NavSection sectionKey="resources" label="Resources" navCollapsed={navCollapsed}>
-              <NavItem href="/" icon={<LayoutDashboard className="h-[18px] w-[18px]" />} label="All resources" active={false} collapsed={navCollapsed} />
-              <NavItem href="/" icon={<Cloud className="h-[18px] w-[18px]" />} label="App Services" active={location.startsWith("/apps/")} collapsed={navCollapsed} />
+              <NavItem href="/resources" icon={<LayoutDashboard className="h-[18px] w-[18px]" />} label="All resources" active={location === "/resources"} collapsed={navCollapsed} />
+              <NavItem href="/" icon={<Cloud className="h-[18px] w-[18px]" />} label="App Services" active={location === "/"} collapsed={navCollapsed} />
             </NavSection>
 
             <NavSection sectionKey="settings" label="Settings" navCollapsed={navCollapsed}>
