@@ -393,6 +393,7 @@ router.get("/auth/callback", async (req, res, next) => {
       accessToken: tokens.access_token,
       tokenExpiresAt: Date.now() + (tokens.expires_in ?? 3600) * 1000,
       refreshToken: tokens.refresh_token,
+      idToken: tokens.id_token,
       groupsLastChecked: Date.now(),
     };
     const returnTo = safeReturnTo(oidc.returnTo);
@@ -407,9 +408,11 @@ router.get("/auth/callback", async (req, res, next) => {
 router.post("/auth/logout", async (req, res, next) => {
   try {
     const cfg = getEntraConfig();
-    // Capture UPN before the session is destroyed — used as logout_hint so
-    // Entra skips the "pick an account to sign out" screen and redirects
-    // directly to the post-logout page.
+    // Capture id_token and UPN before the session is destroyed.
+    // id_token_hint is the most reliable way to skip the Entra account picker
+    // on logout — it proves which session to end. logout_hint (UPN) is kept as
+    // a belt-and-suspenders fallback for sessions that pre-date this change.
+    const idToken = req.session.user?.idToken;
     const upn = req.session.user?.userPrincipalName;
     req.session.destroy(() => {
       res.clearCookie("orbit.sid");
@@ -419,7 +422,7 @@ router.post("/auth/logout", async (req, res, next) => {
             const config = await getOidcConfiguration(cfg);
             const url = client.buildEndSessionUrl(config, {
               post_logout_redirect_uri: cfg.postLogoutRedirectUri,
-              ...(upn ? { logout_hint: upn } : {}),
+              ...(idToken ? { id_token_hint: idToken } : upn ? { logout_hint: upn } : {}),
             });
             res.json({ redirect: url.href });
             return;

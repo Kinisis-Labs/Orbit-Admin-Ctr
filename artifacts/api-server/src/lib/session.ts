@@ -39,6 +39,12 @@ export interface SessionUser {
    * Populated at sign-in and updated whenever /auth/me triggers a re-check.
    */
   groupsLastChecked?: number;
+  /**
+   * The raw ID token issued by Entra at sign-in. Stored server-side only.
+   * Passed as id_token_hint to the Entra end_session endpoint so the account
+   * picker is skipped entirely on logout (more reliable than logout_hint alone).
+   */
+  idToken?: string;
 }
 
 declare module "express-session" {
