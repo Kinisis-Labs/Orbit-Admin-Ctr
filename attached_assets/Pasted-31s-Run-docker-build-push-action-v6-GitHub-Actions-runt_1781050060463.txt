@@ -1,0 +1,200 @@
+31s
+Run docker/build-push-action@v6
+GitHub Actions runtime token ACs
+Docker info
+Proxy configuration
+Buildx version
+Builder info
+/usr/bin/docker buildx build --file artifacts/api-server/Dockerfile --iidfile /home/runner/work/_temp/docker-actions-toolkit-5qDWaN/build-iidfile-32139a5b49.txt --tag ghcr.io/kinisis-labs/orbit-api:latest --tag ghcr.io/kinisis-labs/orbit-api:0c40ab1e065324eec1dfdb04c77f89c432591e65 --metadata-file /home/runner/work/_temp/docker-actions-toolkit-5qDWaN/build-metadata-b41d3fec98.json --push .
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile:
+#1 transferring dockerfile: 1.03kB done
+#1 DONE 0.2s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#2 ...
+
+#3 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#2 DONE 1.2s
+
+#4 docker-image://docker.io/docker/dockerfile:1@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89
+#4 resolve docker.io/docker/dockerfile:1@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89 0.0s done
+#4 sha256:1a998cca4d41cfecafb1989342c5e7378bc992589af7d47510c4b854bebfc7d7 1.33kB / 1.33kB done
+#4 sha256:50ba52cd6a2c01eaf1a9efbedc7c75b5da5e3965c1586001c722980487a73fd7 0B / 14.36MB 0.1s
+#4 sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89 9.08kB / 9.08kB done
+#4 sha256:e82bbc85c3cb06cf2a5a27b058208b43984448acbcd6a832cd1491933d4376dd 1.13kB / 1.13kB done
+#4 sha256:50ba52cd6a2c01eaf1a9efbedc7c75b5da5e3965c1586001c722980487a73fd7 14.16MB / 14.36MB 0.2s
+#4 sha256:50ba52cd6a2c01eaf1a9efbedc7c75b5da5e3965c1586001c722980487a73fd7 14.36MB / 14.36MB 0.3s done
+#4 extracting sha256:50ba52cd6a2c01eaf1a9efbedc7c75b5da5e3965c1586001c722980487a73fd7 0.1s done
+#4 DONE 0.4s
+
+#5 [internal] load metadata for docker.io/library/node:24-slim
+#5 ...
+
+#6 [auth] library/node:pull token for registry-1.docker.io
+#6 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/node:24-slim
+#5 DONE 1.0s
+
+#7 [internal] load .dockerignore
+#7 transferring context: 334B done
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 2.26MB 0.0s done
+#8 DONE 0.0s
+
+#9 [build 1/6] FROM docker.io/library/node:24-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf
+#9 resolve docker.io/library/node:24-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf done
+#9 sha256:f5706f589c481bda9b55971f35e4577b614631171b9b554beec3bac50e91a53a 6.83kB / 6.83kB done
+#9 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 0B / 28.23MB 0.1s
+#9 sha256:9bea510bd805f72c63e2d093c23fca1da9b02127c4849c121b6117a45d4d2ba7 0B / 3.31kB 0.1s
+#9 sha256:e008f534e95cab9dfc584b72c1beb5ccd5b4e7b6b73973a6fd6791f0d8e2ac29 0B / 50.09MB 0.1s
+#9 sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf 5.20kB / 5.20kB done
+#9 sha256:cbd8bcbdfd0d148205c9449dff3ca3c9c94d73f393a0e03ef1c8d3846c5038bf 1.93kB / 1.93kB done
+#9 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 14.68MB / 28.23MB 0.2s
+#9 sha256:9bea510bd805f72c63e2d093c23fca1da9b02127c4849c121b6117a45d4d2ba7 3.31kB / 3.31kB 0.2s done
+#9 sha256:b2b95943836ce3dea08d21af828b011a0645bdca70cd53536131ccd295ef3def 0B / 1.71MB 0.2s
+#9 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 28.23MB / 28.23MB 0.3s
+#9 sha256:e008f534e95cab9dfc584b72c1beb5ccd5b4e7b6b73973a6fd6791f0d8e2ac29 7.34MB / 50.09MB 0.3s
+#9 sha256:b2b95943836ce3dea08d21af828b011a0645bdca70cd53536131ccd295ef3def 1.71MB / 1.71MB 0.3s
+#9 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 28.23MB / 28.23MB 0.3s done
+#9 sha256:e008f534e95cab9dfc584b72c1beb5ccd5b4e7b6b73973a6fd6791f0d8e2ac29 50.09MB / 50.09MB 0.4s
+#9 sha256:b2b95943836ce3dea08d21af828b011a0645bdca70cd53536131ccd295ef3def 1.71MB / 1.71MB 0.3s done
+#9 extracting sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 0.1s
+#9 sha256:06d464f614a98416f8f326dcd40292b0a96bf6a56a6fba9e2f98ed770cdacf11 0B / 449B 0.4s
+#9 sha256:06d464f614a98416f8f326dcd40292b0a96bf6a56a6fba9e2f98ed770cdacf11 449B / 449B 0.5s
+#9 sha256:e008f534e95cab9dfc584b72c1beb5ccd5b4e7b6b73973a6fd6791f0d8e2ac29 50.09MB / 50.09MB 0.6s done
+#9 sha256:06d464f614a98416f8f326dcd40292b0a96bf6a56a6fba9e2f98ed770cdacf11 449B / 449B 0.6s done
+#9 extracting sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 0.6s done
+#9 extracting sha256:9bea510bd805f72c63e2d093c23fca1da9b02127c4849c121b6117a45d4d2ba7
+#9 extracting sha256:9bea510bd805f72c63e2d093c23fca1da9b02127c4849c121b6117a45d4d2ba7 done
+#9 extracting sha256:e008f534e95cab9dfc584b72c1beb5ccd5b4e7b6b73973a6fd6791f0d8e2ac29
+#9 extracting sha256:e008f534e95cab9dfc584b72c1beb5ccd5b4e7b6b73973a6fd6791f0d8e2ac29 0.8s done
+#9 extracting sha256:b2b95943836ce3dea08d21af828b011a0645bdca70cd53536131ccd295ef3def
+#9 extracting sha256:b2b95943836ce3dea08d21af828b011a0645bdca70cd53536131ccd295ef3def 0.1s done
+#9 extracting sha256:06d464f614a98416f8f326dcd40292b0a96bf6a56a6fba9e2f98ed770cdacf11
+#9 extracting sha256:06d464f614a98416f8f326dcd40292b0a96bf6a56a6fba9e2f98ed770cdacf11 done
+#9 DONE 5.1s
+
+#10 [runtime 2/3] WORKDIR /app
+#10 DONE 0.0s
+
+#11 [build 2/6] RUN corepack enable
+#11 DONE 0.4s
+
+#12 [build 3/6] WORKDIR /repo
+#12 DONE 0.0s
+
+#13 [build 4/6] COPY . .
+#13 DONE 0.2s
+
+#14 [build 5/6] RUN pnpm install --frozen-lockfile
+#14 0.144 ! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-10.26.1.tgz
+#14 0.893 Scope: all 8 workspace projects
+#14 0.933 Lockfile is up to date, resolution step is skipped
+#14 0.961 Progress: resolved 1, reused 0, downloaded 0, added 0
+#14 1.012 Packages: +748
+#14 1.012 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#14 1.238 
+#14 1.238    ╭──────────────────────────────────────────────╮
+#14 1.238    │                                              │
+#14 1.238    │     Update available! 10.26.1 → 11.5.2.      │
+#14 1.238    │     Changelog: https://pnpm.io/v/11.5.2      │
+#14 1.238    │   To update, run: corepack use pnpm@11.5.2   │
+#14 1.238    │                                              │
+#14 1.238    ╰──────────────────────────────────────────────╯
+#14 1.238 
+#14 1.962 Progress: resolved 748, reused 0, downloaded 48, added 30
+#14 2.961 Progress: resolved 748, reused 0, downloaded 237, added 237
+#14 3.961 Progress: resolved 748, reused 0, downloaded 418, added 415
+#14 4.961 Progress: resolved 748, reused 0, downloaded 580, added 576
+#14 5.962 Progress: resolved 748, reused 0, downloaded 632, added 596
+#14 6.963 Progress: resolved 748, reused 0, downloaded 650, added 600
+#14 7.909 Progress: resolved 748, reused 0, downloaded 748, added 748, done
+#14 8.219 .../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+#14 8.362 .../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+#14 8.549 
+#14 8.549 devDependencies:
+#14 8.549 + prettier 3.8.3
+#14 8.549 + typescript 5.9.3
+#14 8.549 
+#14 8.555 . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+#14 8.570 . preinstall: Done
+#14 8.638 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+#14 8.638 │                                                                              │
+#14 8.638 │   Ignored build scripts: protobufjs@7.6.2, protobufjs@8.0.1.                 │
+#14 8.638 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+#14 8.638 │   to run scripts.                                                            │
+#14 8.638 │                                                                              │
+#14 8.638 ╰──────────────────────────────────────────────────────────────────────────────╯
+#14 8.643 Done in 7.9s using pnpm v10.26.1
+#14 DONE 13.4s
+
+#15 [build 6/6] RUN pnpm --filter @workspace/api-server run build
+#15 0.261 
+#15 0.261 > @workspace/api-server@0.0.0 build /repo/artifacts/api-server
+#15 0.261 > node ./build.mjs
+#15 0.261 
+#15 0.743 ✘ [ERROR] No matching export in "../../lib/api-zod/src/index.ts" for import "ListClerkIdentitiesResponse"
+#15 0.743 
+#15 0.743     src/routes/users.ts:2:89:
+#15 0.743       2 │ ...ntSummaryResponse, ListClerkIdentitiesResponse } from "@workspac...
+#15 0.743         ╵                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#15 0.743 
+#15 0.784 1 error
+#15 0.785 
+#15 0.785   dist/pino-worker.mjs               153.4kb
+#15 0.785   dist/pino-file.mjs                 142.0kb
+#15 0.785   dist/pino-pretty.mjs               114.6kb
+#15 0.785   dist/thread-stream-worker.mjs        7.3kb
+#15 0.785   dist/pino-worker.mjs.map           256.9kb
+#15 0.785   dist/pino-file.mjs.map             229.0kb
+#15 0.785   dist/pino-pretty.mjs.map           204.0kb
+#15 0.785   dist/thread-stream-worker.mjs.map   12.0kb
+#15 0.785 
+#15 0.785 ⚡ Done in 488ms
+#15 0.787 Error: Build failed with 1 error:
+#15 0.787 src/routes/users.ts:2:89: ERROR: No matching export in "../../lib/api-zod/src/index.ts" for import "ListClerkIdentitiesResponse"
+#15 0.787     at failureErrorWithLog (/repo/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:1467:15)
+#15 0.787     at /repo/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:926:25
+#15 0.787     at /repo/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:1345:9
+#15 0.787     at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+#15 0.787   errors: [Getter/Setter],
+#15 0.787   warnings: [Getter/Setter]
+#15 0.787 }
+#15 0.809 /repo/artifacts/api-server:
+#15 0.809  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 build: `node ./build.mjs`
+#15 0.809 Exit status 1
+#15 ERROR: process "/bin/sh -c pnpm --filter @workspace/api-server run build" did not complete successfully: exit code: 1
+------
+ > [build 6/6] RUN pnpm --filter @workspace/api-server run build:
+0.787     at failureErrorWithLog (/repo/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:1467:15)
+0.787     at /repo/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:926:25
+0.787     at /repo/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:1345:9
+0.787     at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+0.787   errors: [Getter/Setter],
+0.787   warnings: [Getter/Setter]
+0.787 }
+0.809 /repo/artifacts/api-server:
+0.809  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 build: `node ./build.mjs`
+0.809 Exit status 1
+------
+Dockerfile:17
+--------------------
+  15 |     COPY . .
+  16 |     RUN pnpm install --frozen-lockfile
+  17 | >>> RUN pnpm --filter @workspace/api-server run build
+  18 |     
+  19 |     # ---- Runtime stage --------------------------------------------------------
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c pnpm --filter @workspace/api-server run build" did not complete successfully: exit code: 1
+Reference
+Check build summary support
+Error: buildx failed with: ERROR: failed to build: failed to solve: process "/bin/sh -c pnpm --filter @workspace/api-server run build" did not complete successfully: exit code: 1

@@ -20,4 +20,5 @@ export {
   GetGlobalCostSummaryResponse,
   ListDeploymentsResponse,
   SetFeatureFlagBody,
+  ListClerkIdentitiesResponse,
 } from "./generated/api";
