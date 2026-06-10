@@ -504,6 +504,21 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/AppleSubscriptionRow" }
+  /stripe/subscriptions:
+    get:
+      operationId: listStripeSubscriptions
+      tags: [subscriptions]
+      summary: Per-app Stripe subscription states + revenue (placeholder until STRIPE_SECRET_KEY is configured)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StripeSubscriptionRow" }
+        "404":
+          description: Surface disabled via feature flag
   /apps/{appId}/deployments:
     get:
       operationId: listDeployments
@@ -1196,6 +1211,24 @@ components:
         activeTrendPct: { type: number, description: Active-subscriber change vs the prior period }
         dataSource: { type: string, enum: [placeholder, live, cached] }
         dataAsOf: { type: string, format: date-time, description: "Timestamp of when subscription data was last fetched from Google Play. Only present when dataSource is live or cached." }
+    StripeSubscriptionRow:
+      type: object
+      required: [appId, appName, environment, activeSubscribers, trialingSubscribers, canceledSubscribers, pastDueSubscribers, mrr, revenueLast30d, currency, activeTrendPct, dataSource]
+      properties:
+        appId: { type: string }
+        appName: { type: string }
+        environment: { type: string }
+        activeSubscribers: { type: integer, description: Currently active (non-trialing) subscriptions }
+        trialingSubscribers: { type: integer, description: Subscriptions currently in a free trial }
+        canceledSubscribers: { type: integer, description: Canceled subscriptions }
+        pastDueSubscribers: { type: integer, description: Subscriptions with a failed payment }
+        mrr: { type: number, description: Monthly recurring revenue from active subscriptions }
+        revenueLast30d: { type: number, description: Revenue from paid invoices over the trailing 30 days }
+        currency: { type: string }
+        activeTrendPct: { type: number, description: Active-subscriber change vs the prior period }
+        dataSource: { type: string, enum: [placeholder, live, cached] }
+        dataAsOf: { type: string, format: date-time, description: "Timestamp of when subscription data was last fetched from Stripe. Only present when dataSource is live." }
+        stripeDashboardUrl: { type: string, description: Direct link to Stripe Dashboard subscriptions page }
     AppleSubscriptionRow:
       type: object
       required: [appId, appName, environment, bundleId, activeSubscribers, canceledSubscribers, expiredSubscribers, mrr, revenueLast30d, currency, activeTrendPct, dataSource]

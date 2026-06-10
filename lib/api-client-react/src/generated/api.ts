@@ -77,6 +77,7 @@ import type {
   SlosResponse,
   StaffStatsResponse,
   StoreSyncResult,
+  StripeSubscriptionRow,
   StripeSyncResult,
   SyncAppStoreSalesParams,
   SyncPlayStoreSalesParams,
@@ -2196,6 +2197,83 @@ export function useListAppleSubscriptions<TData = Awaited<ReturnType<typeof list
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListAppleSubscriptionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListStripeSubscriptionsUrl = () => {
+
+
+
+
+  return `/api/stripe/subscriptions`
+}
+
+/**
+ * @summary Per-app Stripe subscription states + revenue (placeholder until STRIPE_SECRET_KEY is configured)
+ */
+export const listStripeSubscriptions = async ( options?: RequestInit): Promise<StripeSubscriptionRow[]> => {
+
+  return customFetch<StripeSubscriptionRow[]>(getListStripeSubscriptionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStripeSubscriptionsQueryKey = () => {
+    return [
+    `/api/stripe/subscriptions`
+    ] as const;
+    }
+
+
+export const getListStripeSubscriptionsQueryOptions = <TData = Awaited<ReturnType<typeof listStripeSubscriptions>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStripeSubscriptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStripeSubscriptionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStripeSubscriptions>>> = ({ signal }) => listStripeSubscriptions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStripeSubscriptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListStripeSubscriptionsQueryResult = NonNullable<Awaited<ReturnType<typeof listStripeSubscriptions>>>
+export type ListStripeSubscriptionsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Per-app Stripe subscription states + revenue (placeholder until STRIPE_SECRET_KEY is configured)
+ */
+
+export function useListStripeSubscriptions<TData = Awaited<ReturnType<typeof listStripeSubscriptions>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStripeSubscriptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListStripeSubscriptionsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

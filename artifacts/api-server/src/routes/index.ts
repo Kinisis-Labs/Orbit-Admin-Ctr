@@ -7,6 +7,7 @@ import ledgerRouter from "./ledger";
 import usersRouter from "./users";
 import playSubscriptionsRouter from "./playSubscriptions";
 import appleSubscriptionsRouter from "./appleSubscriptions";
+import stripeSubscriptionsRouter from "./stripeSubscriptions";
 import budgetAlertLogRouter from "./budgetAlertLog";
 import infraAlertLogRouter from "./infraAlertLog";
 import alertsConfigRouter from "./alertsConfig";
@@ -33,6 +34,7 @@ router.use(requireAuth, usersRouter);
 // not just UI gating. No-op in mock mode so the dev preview keeps working.
 router.use(requireAuth, requireCostReader, playSubscriptionsRouter);
 router.use(requireAuth, requireCostReader, appleSubscriptionsRouter);
+router.use(requireAuth, requireCostReader, stripeSubscriptionsRouter);
 router.use(requireAuth, requireCostReader, budgetAlertLogRouter);
 // Infra pressure alerts are operational (not financial) — gated by requireAuth only.
 router.use(requireAuth, infraAlertLogRouter);

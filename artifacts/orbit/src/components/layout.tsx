@@ -6,7 +6,7 @@ import {
   Cloud, Search, Settings as SettingsIcon, Home, Bell, DollarSign, LayoutDashboard,
   ChevronRight, Menu, Sun, Moon, Lock, Rocket, AlertOctagon, Activity,
   HeartPulse, Network, FileText, ShieldAlert, Users, Layers, Tags, SlidersHorizontal, UserCheck, Smartphone,
-  ChevronDown, ToggleLeft, RefreshCw,
+  ChevronDown, ToggleLeft, RefreshCw, CreditCard,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -33,8 +33,9 @@ const ROUTE_LABELS: Record<string, string> = {
   "/service-health": "Service health",
   "/users": "Users & activity",
   "/cost": "Cost Management",
-  "/play-subscriptions": "Play subscriptions",
-  "/apple-subscriptions": "App Store subscriptions",
+  "/play-subscriptions": "Google Subscriptions",
+  "/apple-subscriptions": "Apple Subscriptions",
+  "/stripe-subscriptions": "Stripe Subscriptions",
   "/subscriptions": "Subscriptions",
   "/tags": "Tags",
   "/access": "Identity & access",
@@ -185,7 +186,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <NavItem
                 href="/play-subscriptions"
                 icon={<Smartphone className="h-[18px] w-[18px]" />}
-                label="Play subscriptions"
+                label="Google Subscriptions"
                 active={location === "/play-subscriptions"}
                 collapsed={navCollapsed}
                 trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
@@ -194,8 +195,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <NavItem
                 href="/apple-subscriptions"
                 icon={<Smartphone className="h-[18px] w-[18px]" />}
-                label="App Store subscriptions"
+                label="Apple Subscriptions"
                 active={location === "/apple-subscriptions"}
+                collapsed={navCollapsed}
+                trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
+                trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}
+              />
+              <NavItem
+                href="/stripe-subscriptions"
+                icon={<CreditCard className="h-[18px] w-[18px]" />}
+                label="Stripe Subscriptions"
+                active={location === "/stripe-subscriptions"}
                 collapsed={navCollapsed}
                 trailingIcon={!canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined}
                 trailingTitle={!canSeeCost ? `Restricted to members of ${COST_READER_GROUP.displayName}` : undefined}

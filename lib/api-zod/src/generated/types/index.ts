@@ -131,6 +131,8 @@ export * from './staffStatsResponseDataSource';
 export * from './status';
 export * from './storeSyncResult';
 export * from './storeSyncResultDataSource';
+export * from './stripeSubscriptionRow';
+export * from './stripeSubscriptionRowDataSource';
 export * from './stripeSyncResult';
 export * from './stripeSyncSkip';
 export * from './syncAppStoreSalesParams';

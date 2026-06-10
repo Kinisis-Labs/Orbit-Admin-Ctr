@@ -709,6 +709,28 @@ export const ListAppleSubscriptionsResponse = zod.array(ListAppleSubscriptionsRe
 
 
 /**
+ * @summary Per-app Stripe subscription states + revenue (placeholder until STRIPE_SECRET_KEY is configured)
+ */
+export const ListStripeSubscriptionsResponseItem = zod.object({
+  "appId": zod.string(),
+  "appName": zod.string(),
+  "environment": zod.string(),
+  "activeSubscribers": zod.number().describe('Currently active (non-trialing) subscriptions'),
+  "trialingSubscribers": zod.number().describe('Subscriptions currently in a free trial'),
+  "canceledSubscribers": zod.number().describe('Canceled subscriptions'),
+  "pastDueSubscribers": zod.number().describe('Subscriptions with a failed payment'),
+  "mrr": zod.number().describe('Monthly recurring revenue from active subscriptions'),
+  "revenueLast30d": zod.number().describe('Revenue from paid invoices over the trailing 30 days'),
+  "currency": zod.string(),
+  "activeTrendPct": zod.number().describe('Active-subscriber change vs the prior period'),
+  "dataSource": zod.enum(['placeholder', 'live', 'cached']),
+  "dataAsOf": zod.string().datetime({"offset":true}).optional().describe('Timestamp of when subscription data was last fetched from Stripe. Only present when dataSource is live.'),
+  "stripeDashboardUrl": zod.string().optional().describe('Direct link to Stripe Dashboard subscriptions page')
+})
+export const ListStripeSubscriptionsResponse = zod.array(ListStripeSubscriptionsResponseItem)
+
+
+/**
  * @summary GitHub Actions workflow runs for this app (last 50 runs). Returns empty deployments array when GITHUB_TOKEN is absent.
  */
 export const ListDeploymentsParams = zod.object({

@@ -309,6 +309,41 @@ export interface PlaySubscriptionRow {
   dataAsOf?: string;
 }
 
+export type StripeSubscriptionRowDataSource = typeof StripeSubscriptionRowDataSource[keyof typeof StripeSubscriptionRowDataSource];
+
+
+export const StripeSubscriptionRowDataSource = {
+  placeholder: 'placeholder',
+  live: 'live',
+  cached: 'cached',
+} as const;
+
+export interface StripeSubscriptionRow {
+  appId: string;
+  appName: string;
+  environment: string;
+  /** Currently active (non-trialing) subscriptions */
+  activeSubscribers: number;
+  /** Subscriptions currently in a free trial */
+  trialingSubscribers: number;
+  /** Canceled subscriptions */
+  canceledSubscribers: number;
+  /** Subscriptions with a failed payment */
+  pastDueSubscribers: number;
+  /** Monthly recurring revenue from active subscriptions */
+  mrr: number;
+  /** Revenue from paid invoices over the trailing 30 days */
+  revenueLast30d: number;
+  currency: string;
+  /** Active-subscriber change vs the prior period */
+  activeTrendPct: number;
+  dataSource: StripeSubscriptionRowDataSource;
+  /** Timestamp of when subscription data was last fetched from Stripe. Only present when dataSource is live. */
+  dataAsOf?: string;
+  /** Direct link to Stripe Dashboard subscriptions page */
+  stripeDashboardUrl?: string;
+}
+
 export type AppleSubscriptionRowDataSource = typeof AppleSubscriptionRowDataSource[keyof typeof AppleSubscriptionRowDataSource];
 
 

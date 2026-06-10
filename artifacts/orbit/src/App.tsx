@@ -22,6 +22,7 @@ import ServiceHealth from "@/pages/service-health";
 import Subscriptions from "@/pages/subscriptions";
 import PlaySubscriptions from "@/pages/play-subscriptions";
 import AppleSubscriptions from "@/pages/apple-subscriptions";
+import StripeSubscriptions from "@/pages/stripe-subscriptions";
 import StoreReports from "@/pages/store-reports";
 import Tags from "@/pages/tags";
 import Access from "@/pages/access";
@@ -61,6 +62,7 @@ function Router() {
         <Route path="/cost"><Gated><Cost /></Gated></Route>
         <Route path="/play-subscriptions"><Gated><PlaySubscriptions /></Gated></Route>
         <Route path="/apple-subscriptions"><Gated><AppleSubscriptions /></Gated></Route>
+        <Route path="/stripe-subscriptions"><Gated><StripeSubscriptions /></Gated></Route>
         <Route path="/store-reports"><Gated><StoreReports /></Gated></Route>
         <Route path="/resources" component={Resources} />
         <Route path="/subscriptions" component={Subscriptions} />
