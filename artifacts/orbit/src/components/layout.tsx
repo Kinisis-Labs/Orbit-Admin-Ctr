@@ -10,6 +10,13 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/lib/auth";
 import { ADMIN_GROUP, COST_READER_GROUP } from "@/lib/auth-groups";
@@ -143,9 +150,38 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-300 hover:text-white hover:bg-white/10 rounded-sm">
             <Bell className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-300 hover:text-white hover:bg-white/10 rounded-sm">
-            <SettingsIcon className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Settings"
+                title="Settings"
+                className="h-8 w-8 text-gray-300 hover:text-white hover:bg-white/10 rounded-sm data-[state=open]:bg-white/10 data-[state=open]:text-white"
+              >
+                <SettingsIcon className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={6} className="w-48 rounded-sm">
+              <DropdownMenuItem asChild className="text-[13px] cursor-pointer">
+                <Link href="/preferences">
+                  <SlidersHorizontal className="h-3.5 w-3.5 mr-2" />
+                  Preferences
+                </Link>
+              </DropdownMenuItem>
+              {isAdmin && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="text-[13px] cursor-pointer">
+                    <Link href="/admin/feature-flags">
+                      <ToggleLeft className="h-3.5 w-3.5 mr-2" />
+                      Feature flags
+                    </Link>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <UserMenu />
         </div>
       </header>
@@ -231,18 +267,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <NavItem href="/resources" icon={<LayoutDashboard className="h-[18px] w-[18px]" />} label="All resources" active={location === "/resources"} collapsed={navCollapsed} />
             </NavSection>
 
-            <NavSection sectionKey="settings" label="Settings" navCollapsed={navCollapsed}>
-              <NavItem href="/preferences" icon={<SlidersHorizontal className="h-[18px] w-[18px]" />} label="Preferences" active={location === "/preferences"} collapsed={navCollapsed} />
-              {isAdmin && (
-                <NavItem
-                  href="/admin/feature-flags"
-                  icon={<ToggleLeft className="h-[18px] w-[18px]" />}
-                  label="Feature flags"
-                  active={location === "/admin/feature-flags"}
-                  collapsed={navCollapsed}
-                />
-              )}
-            </NavSection>
           </nav>
         </aside>
 
