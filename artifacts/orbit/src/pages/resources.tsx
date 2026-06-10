@@ -259,11 +259,16 @@ function NetworkSection({
   );
 
   const latencyData = allEndpoints.map((ep) => ({
-    name: ep.name.length > 20 ? `${ep.name.slice(0, 18)}…` : ep.name,
+    name: ep.name,
     latency: ep.latencyMs,
     appName: ep.appName,
     status: ep.status,
   }));
+
+  const yAxisWidth = Math.min(
+    240,
+    Math.max(140, ...latencyData.map((d) => d.name.length * 7)),
+  );
 
   return (
     <div className="bg-card border border-border shadow-sm">
@@ -289,7 +294,7 @@ function NetworkSection({
               <BarChart data={latencyData} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }} barSize={14}>
                 <CartesianGrid strokeDasharray="2 2" horizontal={false} stroke="hsl(var(--border))" />
                 <XAxis type="number" fontSize={11} tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `${v}ms`} />
-                <YAxis type="category" dataKey="name" fontSize={11} tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" width={110} />
+                <YAxis type="category" dataKey="name" fontSize={11} tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" width={yAxisWidth} />
                 <Tooltip
                   contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "2px", fontSize: "12px" }}
                   formatter={(v: number) => [`${v} ms`, "Latency"]}

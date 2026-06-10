@@ -256,7 +256,11 @@ export async function fetchNetworkEndpoints(
       }
 
       if (type.includes("dnszones") || type.includes("privatednszones")) {
-        return [{ name: `DNS — ${resourceName}`, status, latencyMs: 1, packetLossPercent: 0, region: location }];
+        // DNS zones have no operationalState; existence == operational.
+        // Treat any non-failed provisioningState (including empty) as healthy.
+        const dnsStatus: NetworkEndpoint["status"] = provisioningState.toLowerCase() === "failed" ? "unhealthy" : "healthy";
+        const zoneLabel = type.includes("privatednszones") ? `Private DNS — ${resourceName}` : `DNS — ${resourceName}`;
+        return [{ name: zoneLabel, status: dnsStatus, latencyMs: 1, packetLossPercent: 0, region: location }];
       }
 
       return [{ name: resourceName, status, latencyMs: 0, packetLossPercent: 0, region: location }];
