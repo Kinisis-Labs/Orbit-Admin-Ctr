@@ -80,14 +80,14 @@
   --card-foreground: 0 0% 7%;        /* near-black */
   --card-border: 210 14% 83%;
 
-  --sidebar: 202 92% 14%;            /* #042E42 deep navy */
-  --sidebar-foreground: 188 27% 92%; /* #E5EFF0 off white */
-  --sidebar-border: 202 62% 20%;
-  --sidebar-primary: 113 64% 57%;    /* #60D94D brand green */
-  --sidebar-primary-foreground: 202 92% 8%;
-  --sidebar-accent: 202 62% 22%;
-  --sidebar-accent-foreground: 188 27% 92%;
-  --sidebar-ring: 113 64% 57%;
+  --sidebar: 210 17% 93%;            /* light gray — matches card */
+  --sidebar-foreground: 0 0% 7%;     /* near-black */
+  --sidebar-border: 210 14% 83%;
+  --sidebar-primary: 113 64% 45%;    /* brand green, darkened for contrast on light bg */
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 210 17% 86%;
+  --sidebar-accent-foreground: 0 0% 7%;
+  --sidebar-ring: 113 64% 45%;
 
   --popover: 0 0% 100%;
   --popover-foreground: 202 92% 10%;
