@@ -21,11 +21,14 @@ export default function Users() {
   const { data: staffData, isLoading: staffLoading } = useGetStaffStats();
   const { data: eventsData, isLoading: eventsLoading } = useListClerkEventSummary();
 
-  const isSpecificClerkApp = scope !== "global" && scope !== BUSINESS_OPS_ID;
-  const showEntra = scope === BUSINESS_OPS_ID;
+  const isGlobal = scope === "global";
+  const isBusinessOps = scope === BUSINESS_OPS_ID;
+  const isSpecificClerkApp = !isGlobal && !isBusinessOps;
+  const showEntra = isBusinessOps || isGlobal;
+  const showClerk = !isBusinessOps;
 
   const activity = useMemo(() => data ?? [], [data]);
-  const scopedActivity = activity.filter((a) => a.appId === scope);
+  const scopedActivity = isGlobal ? activity : activity.filter((a) => a.appId === scope);
 
   const totals = scopedActivity.reduce(
     (acc, r) => ({
@@ -66,7 +69,7 @@ export default function Users() {
 
       <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
 
-      {/* ── Orbit staff (Entra ID) — only shown for Business Ops scope ── */}
+      {/* ── Orbit staff (Entra ID) — shown for Business Ops and global ── */}
       {showEntra && (
         <div className="bg-card border border-border shadow-sm">
           <div className="flex items-center gap-3 p-3 border-b border-border">
@@ -117,10 +120,10 @@ export default function Users() {
         </div>
       )}
 
-      {/* ── Consumer end-user engagement (Clerk) ──────────────────── */}
-      <ClerkBanner dataUpdatedAt={dataUpdatedAt} />
+      {/* ── Consumer end-user engagement (Clerk) — hidden for Business Ops ── */}
+      {showClerk && <ClerkBanner dataUpdatedAt={dataUpdatedAt} />}
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+      {showClerk && <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <Tile title="Total members" value={isLoading ? null : fmt(totals.members)} sub="Across scoped applications" />
         <Tile title="DAU" value={isLoading ? null : fmt(totals.dau)} sub="Active in the last 24h" />
         <Tile title="WAU" value={isLoading ? null : fmt(totals.wau)} sub="Active in the last 7 days" />
@@ -130,9 +133,9 @@ export default function Users() {
           value={isLoading ? null : `${stickiness.toFixed(1)}%`}
           sub={stickiness >= 20 ? "Healthy (≥20%)" : "Below target"}
         />
-      </div>
+      </div>}
 
-      <div className="bg-card border border-border shadow-sm">
+      {showClerk && <div className="bg-card border border-border shadow-sm">
         <div className="flex items-center justify-between p-2 border-b border-border">
           <h2 className="text-sm font-semibold px-2">Engagement by application</h2>
           <button
@@ -195,10 +198,10 @@ export default function Users() {
             </TableBody>
           </Table>
         )}
-      </div>
+      </div>}
 
       {/* ── Account event log (Clerk lifecycle events) ─────────────── */}
-      <ClerkEventLog data={eventsData ?? []} isLoading={eventsLoading} scope={scope} />
+      {showClerk && <ClerkEventLog data={eventsData ?? []} isLoading={eventsLoading} scope={scope} isGlobal={isGlobal} />}
 
       {/* ── Individual user identities — only for a specific Clerk app ── */}
       {isSpecificClerkApp && <ClerkIdentityTable appId={scope} />}
@@ -305,12 +308,28 @@ function ClerkEventLog({
   data,
   isLoading,
   scope,
+  isGlobal,
 }: {
   data: import("@workspace/api-client-react").ClerkEventSummaryRow[];
   isLoading: boolean;
   scope: string;
+  isGlobal: boolean;
 }) {
-  const row = data.find((r) => r.appId === scope);
+  const row = isGlobal
+    ? data.reduce<import("@workspace/api-client-react").ClerkEventSummaryRow | null>((acc, r) => {
+        if (!acc) return r;
+        return {
+          ...acc,
+          signups7d: acc.signups7d + r.signups7d,
+          signups30d: acc.signups30d + r.signups30d,
+          updates7d: acc.updates7d + r.updates7d,
+          updates30d: acc.updates30d + r.updates30d,
+          deletions7d: acc.deletions7d + r.deletions7d,
+          deletions30d: acc.deletions30d + r.deletions30d,
+          daily: [],
+        };
+      }, null)
+    : data.find((r) => r.appId === scope);
   const hasAny = row
     ? row.signups30d + row.updates30d + row.deletions30d > 0
     : false;
