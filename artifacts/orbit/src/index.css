@@ -130,7 +130,7 @@
 .dark {
   /* Brand-native dark — deep navy as base, green as primary action */
   --background: 202 92% 8%;          /* very deep navy, near #021e2b */
-  --foreground: 188 27% 92%;         /* #E5EFF0 off white */
+  --foreground: 202 92% 10%;         /* deep navy — matches card-foreground on light tiles */
   --border: 202 50% 18%;
 
   --card: 196 27% 79%;               /* #B8D4DB light blue gray — same as light mode */
