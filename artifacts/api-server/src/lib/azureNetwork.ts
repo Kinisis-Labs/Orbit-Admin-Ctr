@@ -148,9 +148,20 @@ export async function fetchNetworkEndpoints(
     }
   }
 
-  // Query subscription-wide — shared resources (Front Door, Container Apps Envs) live
-  // in different RGs from the compute RG.  Container Apps is the primary source of truth
-  // here since these deployments use managed networking (no customer-owned VNets).
+  // Determine which resource groups belong to this app.
+  // For apps that own their entire subscription (no shared RGs) we include all RGs
+  // in that subscription.  For apps with a dedicated RG we scope to that RG only.
+  // The app's own resourceGroup is always included; sharedInfra resources (Front Door,
+  // Container Apps Envs in other RGs) are only surfaced for apps that own the shared
+  // platform subscription so they are attributed to Business Ops, not GrailBabe.
+  const appOwnsSharedPlatformSub =
+    sharedInfraSub !== null && appSub === sharedInfraSub;
+
+  // Build the KQL resourceGroup filter — case-insensitive contains list.
+  const rgFilter = appOwnsSharedPlatformSub
+    ? "" // no RG filter — show all RGs in the shared-platform sub
+    : `| where resourceGroup =~ '${app.resourceGroup}'`;
+
   const query = `
     resources
     | where type in~ (
@@ -167,6 +178,7 @@ export async function fetchNetworkEndpoints(
         'microsoft.network/privatednszones',
         'microsoft.network/dnszones'
       )
+    ${rgFilter}
     | project
         id,
         name,
