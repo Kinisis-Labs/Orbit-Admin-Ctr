@@ -76,9 +76,9 @@
   --foreground: 202 92% 10%;         /* deep navy text */
   --border: 196 27% 82%;             /* light blue gray border */
 
-  --card: 222 31% 11%;
-  --card-foreground: 218 26% 96%;
-  --card-border: 219 23% 19%;
+  --card: 210 17% 93%;               /* light gray */
+  --card-foreground: 0 0% 7%;        /* near-black */
+  --card-border: 210 14% 83%;
 
   --sidebar: 202 92% 14%;            /* #042E42 deep navy */
   --sidebar-foreground: 188 27% 92%; /* #E5EFF0 off white */
