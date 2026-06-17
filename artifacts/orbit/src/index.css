@@ -76,9 +76,9 @@
   --foreground: 202 92% 10%;         /* deep navy text */
   --border: 196 27% 82%;             /* light blue gray border */
 
-  --card: 196 27% 79%;             /* #B8D4DB light blue gray — brand card/panel color */
-  --card-foreground: 202 92% 10%;
-  --card-border: 196 27% 70%;
+  --card: 204 65% 33%;             /* #1D648B slate blue */
+  --card-foreground: 188 27% 92%;  /* #E5EFF0 off white */
+  --card-border: 204 65% 26%;
 
   --sidebar: 202 92% 14%;            /* #042E42 deep navy */
   --sidebar-foreground: 188 27% 92%; /* #E5EFF0 off white */
@@ -133,9 +133,9 @@
   --foreground: 188 27% 92%;         /* #E5EFF0 off white */
   --border: 202 50% 18%;
 
-  --card: 202 75% 12%;               /* dark navy card, lighter than bg */
-  --card-foreground: 188 27% 92%;
-  --card-border: 202 50% 18%;
+  --card: 204 65% 33%;               /* #1D648B slate blue */
+  --card-foreground: 188 27% 92%;    /* #E5EFF0 off white */
+  --card-border: 204 65% 26%;
 
   --sidebar: 202 92% 6%;             /* deepest navy, frames chrome */
   --sidebar-foreground: 188 27% 92%;
