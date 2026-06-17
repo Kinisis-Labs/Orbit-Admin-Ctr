@@ -1,6 +1,6 @@
 # Orbit — Live Data Setup Guide
 
-This document lists every environment variable required to activate each live data source. When any variable is absent the corresponding route falls back to an empty result or a mock/mock-flagged response so the Replit dev preview continues to work. **Production (`NODE_ENV=production`) fails closed on Entra only.**
+This document lists every environment variable required to activate each live data source. When any variable is absent the corresponding route falls back to an empty result or a mock/mock-flagged response so local development continues to work. **Production (`NODE_ENV=production`) fails closed on Entra only.**
 
 ---
 
@@ -12,7 +12,7 @@ Required for real sign-in. Without these the app runs in mock/open mode.
 |---|---|
 | `ENTRA_TENANT_ID` | Bare tenant GUID (no prefix, no whitespace) |
 | `ENTRA_CLIENT_ID` | App registration client ID |
-| `ENTRA_CLIENT_SECRET` | Client secret (secret, use Replit Secrets) |
+| `ENTRA_CLIENT_SECRET` | Client secret (set in your local .env or Azure App Settings) |
 | `ENTRA_REDIRECT_URI` | OAuth callback URL (`https://<domain>/api/auth/callback`) |
 | `ENTRA_AUTHORIZED_GROUP_ID` | Object ID of `Orbit-Authorized-Users` Entra group |
 | `ENTRA_COST_READER_GROUP_ID` | Object ID of `Orbit-Cost-Readers` Entra group |
@@ -66,7 +66,7 @@ Live Stripe charges are synced into the ledger at most once every 15 minutes and
 
 | Variable | Description |
 |---|---|
-| `STRIPE_SECRET_KEY` | Stripe secret key (use Replit Secrets) |
+| `STRIPE_SECRET_KEY` | Stripe secret key (set in your local .env or Azure App Settings) |
 
 When absent, revenue in the cost report reads existing ledger entries (zero at startup).
 

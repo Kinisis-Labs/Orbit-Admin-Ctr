@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"name": "KinisisLabWeb.code-workspace",
+			"path": "../../KINSISLABSWEB/KinisisLabWeb/KinisisLabWeb.code-workspace"
+		}
+	],
+	"settings": {
+		"git.ignoreLimitWarning": true
+	}
+}
