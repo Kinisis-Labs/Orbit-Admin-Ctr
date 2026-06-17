@@ -166,7 +166,10 @@ export default function Deployments() {
   }
 
   const deployments = useMemo(
-    () => deploymentQueries.flatMap((q) => q.data?.deployments ?? []),
+    () =>
+      deploymentQueries
+        .flatMap((q) => q.data?.deployments ?? [])
+        .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [deploymentQueries.map((q) => q.dataUpdatedAt).join(",")],
   );
