@@ -182,8 +182,7 @@ async function checkCostManagementAccess(): Promise<Record<string, CheckResult>>
 
   const appSubs: Array<{ label: string; subId: string }> = [
     { label: "grailbabe", subId: process.env.AZURE_SUB_GRAILBABE ?? "" },
-    { label: "orbit", subId: process.env.AZURE_SUB_ORBIT ?? "" },
-    { label: "kinisis-labs", subId: process.env.AZURE_SUB_KINISIS_LABS ?? "" },
+    { label: "kinisis-labs", subId: process.env.AZURE_SUB_SHAREDPLATFORM ?? process.env.AZURE_SUB_KINISIS_LABS ?? "" },
   ].filter((a) => isGuid(a.subId));
 
   const client = new CostManagementClient(getAzureCredential());
@@ -240,7 +239,6 @@ router.get("/diagnostics", requireAdmin, async (_req, res) => {
       AZURE_TENANT_ID: envVar("AZURE_TENANT_ID"),
       AZURE_LOG_ANALYTICS_WORKSPACE_ID: envVar("AZURE_LOG_ANALYTICS_WORKSPACE_ID"),
       AZURE_SUB_GRAILBABE: envVar("AZURE_SUB_GRAILBABE"),
-      AZURE_SUB_ORBIT: envVar("AZURE_SUB_ORBIT"),
       AZURE_SUB_KINISIS_LABS: envVar("AZURE_SUB_KINISIS_LABS"),
       AZURE_SUB_SHAREDPLATFORM: envVar("AZURE_SUB_SHAREDPLATFORM"),
       ENTRA_TENANT_ID: envVar("ENTRA_TENANT_ID"),
