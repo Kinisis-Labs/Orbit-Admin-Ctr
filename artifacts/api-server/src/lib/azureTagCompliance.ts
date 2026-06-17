@@ -45,6 +45,11 @@ type CacheEntry = { data: TagComplianceResult; fetchedAt: number };
 let _cache: CacheEntry | null = null;
 let _client: ResourceGraphClient | null = null;
 
+/** Returns ISO-8601 with +00:00 offset — required by the Zod datetime({offset:true}) schema. */
+function nowIso(): string {
+  return new Date().toISOString().replace("Z", "+00:00");
+}
+
 function getClient(): ResourceGraphClient {
   if (!_client) {
     _client = new ResourceGraphClient(getAzureCredential());
@@ -68,17 +73,19 @@ function scopeOf(type: string): TagComplianceEntry["scope"] {
 }
 
 const UNAVAILABLE: TagComplianceResult = {
-  scannedAt: new Date(0).toISOString(),
+  scannedAt: new Date(0).toISOString().replace("Z", "+00:00"),
   totalScanned: 0,
   nonCompliantCount: 0,
   entries: [],
   dataSource: "unavailable",
 };
 
-export async function fetchTagCompliance(): Promise<TagComplianceResult> {
+export async function fetchTagCompliance(
+  { bypassCache = false }: { bypassCache?: boolean } = {},
+): Promise<TagComplianceResult> {
   if (!isAzureConfigured()) return UNAVAILABLE;
 
-  if (_cache && Date.now() - _cache.fetchedAt < CACHE_TTL_MS) {
+  if (!bypassCache && _cache && Date.now() - _cache.fetchedAt < CACHE_TTL_MS) {
     return _cache.data;
   }
 
@@ -88,10 +95,12 @@ export async function fetchTagCompliance(): Promise<TagComplianceResult> {
   try {
     const client = getClient();
 
-    // Single union query across the three scope levels.
-    // resourcecontainers covers subscriptions + resource groups;
-    // resources covers all deployed resources within those.
+    // Union query across all three scope levels. We fetch all resources first
+    // (totalScanned), then filter to those missing at least one required tag.
+    // Two passes: count total, then return non-compliant only (up to 1000).
+    const requiredTagsKql = REQUIRED_TAGS.map((t) => `"${t}"`).join(", ");
     const query = `
+      let required_tags = dynamic([${requiredTagsKql}]);
       union
         (resourcecontainers
           | where type =~ 'microsoft.resources/subscriptions'
@@ -102,7 +111,7 @@ export async function fetchTagCompliance(): Promise<TagComplianceResult> {
         (resources
           | project id, name, type, subscriptionId, resourceGroup, tags)
       | project id, name, type, subscriptionId, resourceGroup, tags
-      | limit 500
+      | limit 1000
     `;
 
     const result = await client.resources({ query, subscriptions: subscriptionIds });
@@ -131,7 +140,7 @@ export async function fetchTagCompliance(): Promise<TagComplianceResult> {
     }
 
     const data: TagComplianceResult = {
-      scannedAt: new Date().toISOString(),
+      scannedAt: nowIso(),
       totalScanned,
       nonCompliantCount: entries.length,
       entries,
@@ -149,6 +158,7 @@ export async function fetchTagCompliance(): Promise<TagComplianceResult> {
     logger.error({ err }, "fetchTagCompliance error");
     return {
       ...UNAVAILABLE,
+      scannedAt: nowIso(),
       dataSource: "error",
       errorMessage: msg,
     };

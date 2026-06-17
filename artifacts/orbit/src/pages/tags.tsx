@@ -6,8 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PageHeader } from "@/components/page-header";
-import { Tag, AlertTriangle, CheckCircle2, Info, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { Tag, AlertTriangle, CheckCircle2, Info, ChevronRight, RefreshCw } from "lucide-react";
+import { useState, Fragment } from "react";
 import { cn } from "@/lib/utils";
 
 const KNOWN_TAGS = ["workload", "environment", "owner", "cost-center", "criticality"] as const;
@@ -185,14 +185,14 @@ function SubscriptionGroup({ group }: { group: GroupedSub }) {
           {group.subEntries.map((e) => <ComplianceRow key={e.id} entry={e} indent={0} />)}
           {group.rgEntries.map((e) => <ComplianceRow key={e.id} entry={e} indent={0} />)}
           {[...group.rgs.entries()].map(([rg, resources]) => (
-            <>
-              <TableRow key={`rg-${rg}`} className="border-b border-border/30 bg-muted/10">
+            <Fragment key={`rg-${rg}`}>
+              <TableRow className="border-b border-border/30 bg-muted/10">
                 <TableCell colSpan={4} className="py-1 pl-8">
                   <span className="text-[10px] text-muted-foreground/70 font-mono">{rg}</span>
                 </TableCell>
               </TableRow>
               {resources.map((e) => <ComplianceRow key={e.id} entry={e} indent={2} />)}
-            </>
+            </Fragment>
           ))}
         </>
       )}
@@ -259,7 +259,14 @@ function ComplianceSummary({
 }
 
 function TagComplianceCard() {
-  const { data, isLoading } = useGetTagCompliance();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { data, isLoading, refetch } = useGetTagCompliance();
+
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    await refetch();
+    setIsRefreshing(false);
+  }
 
   if (isLoading) {
     return (
@@ -330,14 +337,26 @@ function TagComplianceCard() {
         <h2 className="text-sm font-semibold">Tag compliance</h2>
         <span className="text-[11px] text-muted-foreground ml-1">Live scan · {totalScanned} resources</span>
         {nonCompliantCount === 0 ? (
-          <span className="ml-auto flex items-center gap-1 text-[11px] text-green-500">
+          <span className="flex items-center gap-1 text-[11px] text-green-500">
             <CheckCircle2 className="h-3.5 w-3.5" /> All compliant
           </span>
         ) : (
-          <Badge variant="destructive" className="ml-auto text-[10px] px-1.5">
+          <Badge variant="destructive" className="text-[10px] px-1.5">
             {nonCompliantCount} missing tags
           </Badge>
         )}
+        <button
+          type="button"
+          onClick={() => void handleRefresh()}
+          disabled={isRefreshing || isLoading}
+          aria-label="Refresh tag compliance scan"
+          title="Re-scan now (bypasses 15-min cache)"
+          className={`ml-auto flex items-center justify-center rounded p-1 transition-colors ${
+            isRefreshing ? "cursor-not-allowed text-primary opacity-60" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+          }`}
+        >
+          <RefreshCw className={`h-3.5 w-3.5${isRefreshing ? " animate-spin" : ""}`} />
+        </button>
       </div>
 
       {nonCompliantCount === 0 ? (

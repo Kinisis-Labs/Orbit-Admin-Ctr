@@ -9,8 +9,9 @@ const router: IRouter = Router();
 // entry missing at least one of the five required Kinisis tag keys.
 // Config-gated: returns dataSource:"unavailable" when AZURE_SUBSCRIPTION_IDS
 // is not set so the frontend can show a setup prompt instead of empty data.
-router.get("/global/tag-compliance", async (_req, res) => {
-  const result = await fetchTagCompliance();
+router.get("/global/tag-compliance", async (req, res) => {
+  const bypassCache = req.query["refresh"] === "true";
+  const result = await fetchTagCompliance({ bypassCache });
   res.json(GetTagComplianceResponse.parse(result));
 });
 
