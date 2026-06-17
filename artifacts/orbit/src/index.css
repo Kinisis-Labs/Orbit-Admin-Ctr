@@ -76,9 +76,9 @@
   --foreground: 202 92% 10%;         /* deep navy text */
   --border: 196 27% 82%;             /* light blue gray border */
 
-  --card: 204 65% 33%;             /* #1D648B slate blue */
-  --card-foreground: 188 27% 92%;  /* #E5EFF0 off white */
-  --card-border: 204 65% 26%;
+  --card: 188 27% 92%;             /* #E5EFF0 off white */
+  --card-foreground: 180 53% 21%;  /* #185353 deep teal */
+  --card-border: 196 27% 80%;
 
   --sidebar: 202 92% 14%;            /* #042E42 deep navy */
   --sidebar-foreground: 188 27% 92%; /* #E5EFF0 off white */
@@ -133,9 +133,9 @@
   --foreground: 188 27% 92%;         /* #E5EFF0 off white */
   --border: 202 50% 18%;
 
-  --card: 204 65% 33%;               /* #1D648B slate blue */
-  --card-foreground: 188 27% 92%;    /* #E5EFF0 off white */
-  --card-border: 204 65% 26%;
+  --card: 188 27% 92%;               /* #E5EFF0 off white */
+  --card-foreground: 180 53% 21%;    /* #185353 deep teal */
+  --card-border: 196 27% 78%;
 
   --sidebar: 202 92% 6%;             /* deepest navy, frames chrome */
   --sidebar-foreground: 188 27% 92%;
@@ -195,6 +195,10 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground text-[13px] leading-tight;
+  }
+
+  h1, h2 {
+    color: hsl(113 64% 57%); /* #60D94D brand green */
   }
 }
 
