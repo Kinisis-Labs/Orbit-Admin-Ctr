@@ -48,6 +48,8 @@ const ROUTE_LABELS: Record<string, string> = {
   "/access": "Identity & access",
   "/preferences": "Preferences",
   "/admin/feature-flags": "Feature flags",
+  "/resources": "All resources",
+  "/apps": "App Services",
 };
 
 function getInitialTheme(): Theme {

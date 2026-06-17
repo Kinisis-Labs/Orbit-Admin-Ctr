@@ -22,8 +22,8 @@ const router: IRouter = Router();
 // Public: health + the auth handshake endpoints.
 router.use(healthRouter);
 router.use(authRouter);
-// Public diagnostic endpoint — no auth required (internal tooling, read-only Azure diagnostics).
-router.use(debugRouter);
+// Debug diagnostic endpoints — auth-gated so raw Azure data is not publicly accessible.
+router.use(requireAuth, debugRouter);
 // Diagnostics: admin gate is applied inside diagnosticsRouter on its specific route.
 router.use(requireAuth, diagnosticsRouter);
 

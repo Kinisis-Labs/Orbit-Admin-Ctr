@@ -22,7 +22,7 @@ type AuthError = "denied" | "error" | "expired" | "unavailable" | "revoked";
 
 function parseAuthError(): AuthError | null {
   const v = new URLSearchParams(window.location.search).get("auth");
-  return v === "denied" || v === "error" || v === "expired" ? v : null;
+  return v === "denied" || v === "error" || v === "expired" || v === "revoked" ? v : null;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

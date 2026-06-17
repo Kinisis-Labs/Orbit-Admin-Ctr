@@ -79,7 +79,6 @@ function checkSubscriptionConfig(): Record<string, string> {
 
   const appVars: Array<{ appId: string; envKey: string }> = [
     { appId: "grailbabe", envKey: "AZURE_SUB_GRAILBABE" },
-    { appId: "orbit", envKey: "AZURE_SUB_ORBIT" },
     { appId: "kinisis-labs", envKey: "AZURE_SUB_KINISIS_LABS" },
   ];
 

@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { useListAppleSubscriptions, useListPlaySubscriptions } from "@workspace/api-client-react";
+import {
+  useListAppleSubscriptions,
+  useListPlaySubscriptions,
+  useSyncAppStoreSales,
+  useSyncPlayStoreSales,
+  type StoreSyncResult,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,79 +20,13 @@ function prevMonth(): string {
   return d.toISOString().slice(0, 7); // YYYY-MM
 }
 
-type SyncResult = {
-  month: string;
-  appId: string;
-  total: number;
-  ingested: number;
-  skipped: number;
-  errors: number;
-  totalGross: number;
-  totalFee: number;
-  dataSource: "app_store" | "play_store";
-};
-
 type SyncState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "success"; result: SyncResult }
+  | { status: "success"; result: StoreSyncResult }
   | { status: "error"; message: string };
 
-function useSyncState() {
-  const [states, setStates] = useState<Record<string, SyncState>>({});
-
-  function getState(key: string): SyncState {
-    return states[key] ?? { status: "idle" };
-  }
-
-  async function triggerSync(
-    appId: string,
-    store: "app-store" | "play-store",
-    month: string,
-  ) {
-    const key = `${store}:${appId}`;
-    setStates((s) => ({ ...s, [key]: { status: "loading" } }));
-    try {
-      const res = await fetch(
-        `/api/apps/${encodeURIComponent(appId)}/ledger/${store}/sync?month=${month}`,
-        { method: "POST" },
-      );
-      if (res.status === 503) {
-        const body = await res.json().catch(() => ({ error: "Not configured" }));
-        setStates((s) => ({
-          ...s,
-          [key]: { status: "error", message: (body as { error?: string }).error ?? "Not configured" },
-        }));
-        return;
-      }
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: res.statusText }));
-        setStates((s) => ({
-          ...s,
-          [key]: {
-            status: "error",
-            message: (body as { error?: string }).error ?? res.statusText,
-          },
-        }));
-        return;
-      }
-      const result = (await res.json()) as SyncResult;
-      setStates((s) => ({ ...s, [key]: { status: "success", result } }));
-    } catch (err) {
-      setStates((s) => ({
-        ...s,
-        [key]: {
-          status: "error",
-          message: err instanceof Error ? err.message : "Network error",
-        },
-      }));
-    }
-  }
-
-  return { getState, triggerSync };
-}
-
-function ResultBadge({ result }: { result: SyncResult }) {
+function ResultBadge({ result }: { result: StoreSyncResult }) {
   return (
     <div className="flex flex-wrap gap-2 mt-2">
       <Badge variant="secondary" className="gap-1">
@@ -169,13 +109,43 @@ function AppSyncRow({
 
 export default function StoreReports() {
   const [month, setMonth] = useState(prevMonth);
-  const { getState, triggerSync } = useSyncState();
+  const [syncStates, setSyncStates] = useState<Record<string, SyncState>>({});
 
   const { data: appleData } = useListAppleSubscriptions();
   const { data: playData } = useListPlaySubscriptions();
 
+  const appStoreMutation = useSyncAppStoreSales();
+  const playStoreMutation = useSyncPlayStoreSales();
+
   const appleApps = appleData ?? [];
   const playApps = playData ?? [];
+
+  function getState(key: string): SyncState {
+    return syncStates[key] ?? { status: "idle" };
+  }
+
+  function triggerSync(appId: string, store: "app-store" | "play-store", syncMonth: string) {
+    const key = `${store}:${appId}`;
+    setSyncStates((s) => ({ ...s, [key]: { status: "loading" } }));
+    const mutation = store === "app-store" ? appStoreMutation : playStoreMutation;
+    mutation.mutate(
+      { appId, params: { month: syncMonth } },
+      {
+        onSuccess: (result: StoreSyncResult) => {
+          setSyncStates((s) => ({ ...s, [key]: { status: "success", result } }));
+        },
+        onError: (err: unknown) => {
+          setSyncStates((s) => ({
+            ...s,
+            [key]: {
+              status: "error",
+              message: err instanceof Error ? (err as Error).message : "Sync failed",
+            },
+          }));
+        },
+      },
+    );
+  }
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">

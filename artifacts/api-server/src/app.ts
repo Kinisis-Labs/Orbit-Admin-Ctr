@@ -47,7 +47,26 @@ app.use(
     },
   }),
 );
-app.use(cors());
+// Derive the allowed origin from ENTRA_REDIRECT_URI (e.g. https://orbit.kinisislabs.com/api/auth/callback)
+// so cross-origin requests are only accepted from the app's own domain in production.
+// In dev (Entra not configured) fall back to permissive mode so the Vite dev server works.
+const allowedOrigin = (() => {
+  const redirectUri = process.env.ENTRA_REDIRECT_URI;
+  if (!redirectUri) return true; // dev / mock mode — allow all
+  try {
+    const { origin } = new URL(redirectUri);
+    return origin;
+  } catch {
+    return true;
+  }
+})();
+
+app.use(
+  cors({
+    origin: allowedOrigin,
+    credentials: true,
+  }),
+);
 
 // Clerk webhooks need the raw request body for Svix signature verification, so
 // they must be mounted BEFORE the global JSON body parser consumes the stream.
