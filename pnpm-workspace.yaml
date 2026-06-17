@@ -68,7 +68,6 @@ onlyBuiltDependencies:
 
 overrides:
   # replit uses linux-x64 only, we can exclude all other platforms
-  "esbuild>@esbuild/darwin-arm64": "-"
   "esbuild>@esbuild/darwin-x64": "-"
   "esbuild>@esbuild/freebsd-arm64": "-"
   "esbuild>@esbuild/freebsd-x64": "-"
@@ -150,3 +149,6 @@ overrides:
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
   esbuild: "0.27.3"
+
+allowBuilds:
+  esbuild: true
