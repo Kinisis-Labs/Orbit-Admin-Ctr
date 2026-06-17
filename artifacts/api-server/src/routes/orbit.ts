@@ -1049,6 +1049,17 @@ router.get("/global/cost-summary", async (_req, res) => {
   }));
 });
 
+// --- global: Azure Service Health ---
+router.get("/global/service-health", async (_req, res) => {
+  const events = await fetchServiceHealth();
+  const liveEnabled = isAzureConfigured();
+  res.json(ListServiceHealthResponse.parse({
+    events,
+    liveEnabled,
+    dataSource: liveEnabled ? "live" : "mock",
+  }));
+});
+
 // --- global: network endpoints ---
 // Aggregates endpoint health across all apps from Azure Resource Graph.
 router.get("/global/endpoints", async (_req, res) => {
