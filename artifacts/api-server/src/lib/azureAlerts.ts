@@ -130,9 +130,10 @@ export async function fetchActiveAlerts(
 
     const alerts = rows.map((row, i) => {
       const sev = String(row["severity"] ?? "Sev4").replace(/sev/i, "");
-      const firedAt = String(
+      const firedAtRaw = String(
         row["firedDateTime"] ?? new Date().toISOString(),
       );
+      const firedAt = firedAtRaw.replace(/Z$/, "+00:00");
       const title = String(row["name"] ?? `Alert ${i + 1}`);
       const description = String(row["description"] ?? "");
 

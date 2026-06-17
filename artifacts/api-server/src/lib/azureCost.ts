@@ -401,7 +401,7 @@ export async function fetchMonthToDateCost(
       monthToDate: Number(grandTotal.toFixed(2)),
       byService,
       daily,
-      dataAsOf: new Date().toISOString(),
+      dataAsOf: new Date().toISOString().replace(/Z$/, "+00:00"),
     };
     _costCache.set(app.id, { result: costResult, expiresAt: Date.now() + COST_CACHE_TTL_MS });
     return costResult;
@@ -455,7 +455,7 @@ async function readCostSnapshot(appId: string): Promise<CostResult | null> {
       monthToDate: Number(row.monthToDate),
       byService: row.byService as CostByService[],
       daily: [],
-      dataAsOf: row.dataAsOf.toISOString(),
+      dataAsOf: row.dataAsOf.toISOString().replace(/Z$/, "+00:00"),
     };
   } catch (err) {
     logger.warn({ err, appId }, "cost snapshot read failed (non-fatal)");

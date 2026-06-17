@@ -301,7 +301,7 @@ router.get("/apps/:appId/thresholds", async (req, res) => {
       cpuThreshold,
       memoryThreshold,
       updatedBy: row?.updatedBy ?? "system",
-      updatedAt: row?.updatedAt?.toISOString() ?? undefined,
+      updatedAt: row?.updatedAt ? toOffsetIso(row.updatedAt.toISOString()) : undefined,
     }),
   );
 });
@@ -364,7 +364,7 @@ router.put("/apps/:appId/thresholds", requireEngineerOrAdmin, async (req, res) =
       cpuThreshold,
       memoryThreshold,
       updatedBy,
-      updatedAt: now.toISOString(),
+      updatedAt: toOffsetIso(now.toISOString()),
     }),
   );
 });
@@ -405,7 +405,7 @@ router.get("/apps/:appId/thresholds/log", requireEngineerOrAdmin, async (req, re
         oldMemoryThreshold: r.oldMemoryThreshold !== null ? parseFloat(r.oldMemoryThreshold) : null,
         newMemoryThreshold: parseFloat(r.newMemoryThreshold),
         changedBy: r.changedBy,
-        changedAt: r.changedAt.toISOString(),
+        changedAt: toOffsetIso(r.changedAt.toISOString()),
       })),
       total,
     }),
@@ -953,7 +953,7 @@ router.get("/global/slos", async (_req, res) => {
   res.json(ListSlosResponse.parse({
     rows,
     dataSource: slosDataSource,
-    ...(slosDataSource === "live" ? { dataAsOf: new Date().toISOString() } : {}),
+    ...(slosDataSource === "live" ? { dataAsOf: toOffsetIso(new Date().toISOString()) } : {}),
   }));
 });
 
@@ -1096,7 +1096,7 @@ router.get("/global/endpoints", async (_req, res) => {
     endpoints: rows,
     liveEnabled: true,
     dataSource,
-    ...(anyLive ? { dataAsOf: new Date().toISOString() } : {}),
+    ...(anyLive ? { dataAsOf: toOffsetIso(new Date().toISOString()) } : {}),
   }));
 });
 

@@ -88,7 +88,7 @@ async function fetchLiveStripeSubscriptions(appId: string): Promise<StripeSubscr
     currency: "USD",
     activeTrendPct: 0, // trend requires historical snapshot — deferred
     dataSource: "live",
-    dataAsOf: new Date().toISOString(),
+    dataAsOf: new Date().toISOString().replace(/Z$/, "+00:00"),
     stripeDashboardUrl: "https://dashboard.stripe.com/subscriptions",
   };
 }
