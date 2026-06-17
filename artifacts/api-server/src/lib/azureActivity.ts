@@ -43,11 +43,12 @@ export async function fetchActivityLog(
   appId: string,
   resourceGroup: string,
   subscriptionId: string,
+  { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<ActivityLogEntry[]> {
   if (!isAzureConfigured()) return [];
 
   const cached = _cache.get(appId);
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+  if (!bypassCache && cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
     return cached.data;
   }
 

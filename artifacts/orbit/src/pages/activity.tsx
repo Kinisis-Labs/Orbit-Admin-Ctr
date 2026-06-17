@@ -123,9 +123,9 @@ export default function ActivityLog() {
           ) : allEmpty ? (
             <div className="p-8 text-center space-y-3">
               <ScrollText className="h-8 w-8 mx-auto text-muted-foreground/40" />
-              <div className="text-[14px] font-semibold text-foreground">No activity in the last 7 days</div>
+              <div className="text-[14px] font-semibold text-foreground">No activity in the last 30 days</div>
               <div className="text-[12px] text-muted-foreground max-w-md mx-auto">
-                No Azure Activity Log entries found for {isGlobal ? "any tracked application" : "this application"} in the past 7 days.
+                No Azure Activity Log entries found for {isGlobal ? "any tracked application" : "this application"} in the past 30 days.
               </div>
             </div>
           ) : (

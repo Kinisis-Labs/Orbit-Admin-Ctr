@@ -826,7 +826,8 @@ router.get("/apps/:appId/activity", async (req, res) => {
     res.status(404).json({ error: "App not found" });
     return;
   }
-  const entries = await fetchActivityLog(app.id, app.resourceGroup, app.subscriptionId);
+  const bypassCache = req.query["refresh"] === "true";
+  const entries = await fetchActivityLog(app.id, app.resourceGroup, app.subscriptionId, { bypassCache });
   const data = ListActivityLogResponse.parse(entries);
   res.json(data);
 });
