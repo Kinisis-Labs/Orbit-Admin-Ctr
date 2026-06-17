@@ -246,10 +246,18 @@ export async function resolveAppInsightsResourceId(
 
   // Include the app's own subscription so App Insights is found even when
   // an app lives in a dedicated sub not listed in AZURE_SUBSCRIPTION_IDS.
-  const globalSubs = getSubscriptionIds();
-  const subscriptionIds = app.subscriptionId
-    ? [...new Set([...globalSubs, app.subscriptionId])]
+  // Filter to valid GUIDs only — placeholder strings (e.g. "a1f4-shared-platform")
+  // cause Resource Graph to reject the entire request with a 400 error.
+  const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const globalSubs = getSubscriptionIds().filter((s) => GUID_RE.test(s));
+  const appSub = app.subscriptionId && GUID_RE.test(app.subscriptionId) ? app.subscriptionId : null;
+  const subscriptionIds = appSub
+    ? [...new Set([...globalSubs, appSub])]
     : globalSubs;
+  if (subscriptionIds.length === 0) {
+    _appInsightsIdCache.set(app.id, { id: null, expiresAt: Date.now() + APP_INSIGHTS_NULL_TTL_MS });
+    return null;
+  }
   const rg = app.resourceGroup.toLowerCase();
 
   const query = `
