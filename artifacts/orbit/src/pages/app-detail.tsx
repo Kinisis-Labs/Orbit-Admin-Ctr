@@ -1048,6 +1048,19 @@ function TelemetryTab({ appId }: { appId: string }) {
             <h2 className="text-sm font-semibold">Application Metrics</h2>
           </div>
           <div className="p-4 space-y-6">
+            {data.series.length === 0 && (
+              <div className="flex flex-col items-center justify-center gap-3 py-12 text-center border border-dashed border-border rounded-sm bg-muted/20">
+                <BarChart2 className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />
+                <div className="space-y-1">
+                  <p className="text-[13px] font-medium text-muted-foreground">No metric series available</p>
+                  <p className="text-[11px] text-muted-foreground/70">
+                    {data.dataSource === "live"
+                      ? "Log Analytics returned no data for this app in the last 24 hours."
+                      : "Configure AZURE_LOG_ANALYTICS_WORKSPACE_ID to enable live metric charts."}
+                  </p>
+                </div>
+              </div>
+            )}
             {data.series.map((s, i) => (
               <div key={i} className="h-56">
                 <h4 className="text-xs font-semibold mb-2 text-foreground">{s.name} ({s.unit})</h4>

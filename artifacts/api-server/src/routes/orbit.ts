@@ -53,6 +53,11 @@ import { LogsQueryClient } from "@azure/monitor-query";
 
 const router: IRouter = Router();
 
+/** Convert a Z-suffix ISO string to +00:00 offset format required by Zod datetime({offset:true}). */
+function toOffsetIso(iso: string): string {
+  return iso.endsWith("Z") ? iso.slice(0, -1) + "+00:00" : iso;
+}
+
 type Status = "healthy" | "degraded" | "unhealthy" | "unknown";
 
 // AppRecord derives its full shape from the OpenAPI contract (GetAppResponse)
@@ -429,7 +434,7 @@ router.get("/apps/:appId/infrastructure", async (req, res) => {
   ] : [];
   const series = seriesAll.filter((s) => s.points.length > 0);
   const resourcesFetchedAt = getResourcesFetchedAt(app.id);
-  const infraCachedAt = liveResources && resourcesFetchedAt ? new Date(resourcesFetchedAt).toISOString() : undefined;
+  const infraCachedAt = liveResources && resourcesFetchedAt ? toOffsetIso(new Date(resourcesFetchedAt).toISOString()) : undefined;
   // Only mark dataSource "live" when we actually have live metric series — if
   // resources are fetched but Log Analytics is unconfigured, series is empty
   // and we want the generic "no data" UI (not the "Log Analytics returned nothing" message).
@@ -693,7 +698,9 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
   const isLive = Boolean(liveMetrics || liveCpuSeries || liveMemSeries || liveTopExceptions);
 
   const metricsFetchedAt = getMetricsFetchedAt(app.id);
-  const telemetryCachedAt = isLive && metricsFetchedAt ? new Date(metricsFetchedAt).toISOString() : undefined;
+  const telemetryCachedAt = isLive && metricsFetchedAt ? toOffsetIso(new Date(metricsFetchedAt).toISOString()) : undefined;
+  const fixPoints = (pts: { timestamp: string; value: number }[] | null) =>
+    (pts ?? []).map((p) => ({ ...p, timestamp: toOffsetIso(p.timestamp) }));
   const data = GetTelemetryResponse.parse({
     requestsPerMin: liveMetrics?.requestsPerMin ?? 0,
     p95LatencyMs: liveMetrics?.p95LatencyMs ?? 0,
@@ -703,13 +710,13 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
     cpuPercent: liveCpuPct,
     memoryPercent: liveMemPct,
     series: isLive ? [
-      { name: "Requests / min", unit: "rpm", points: liveRpmSeries ?? [] },
-      { name: "P95 latency (ms)", unit: "ms", points: liveLatenSeries ?? [] },
-      { name: "Error rate (%)", unit: "%", points: liveErrSeries ?? [] },
-      { name: "CPU %", unit: "%", points: liveCpuSeries ?? [] },
-      { name: "Memory %", unit: "%", points: liveMemSeries ?? [] },
+      { name: "Requests / min", unit: "rpm", points: fixPoints(liveRpmSeries) },
+      { name: "P95 latency (ms)", unit: "ms", points: fixPoints(liveLatenSeries) },
+      { name: "Error rate (%)", unit: "%", points: fixPoints(liveErrSeries) },
+      { name: "CPU %", unit: "%", points: fixPoints(liveCpuSeries) },
+      { name: "Memory %", unit: "%", points: fixPoints(liveMemSeries) },
     ] : [],
-    topErrors: liveTopExceptions ?? [],
+    topErrors: (liveTopExceptions ?? []).map((e) => ({ ...e, lastSeen: toOffsetIso(e.lastSeen) })),
     dataSource: isLive ? "live" : "mock",
     ...(telemetryCachedAt ? { cachedAt: telemetryCachedAt } : {}),
     ...(appInsightsResourceId ? { appInsightsResourceId } : {}),
@@ -717,9 +724,9 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
       browserTelemetry: {
         ...liveBrowserTelemetry,
         series: [
-          { name: "Browser page load P95 (ms)", unit: "ms", points: liveBrowserLoadSeries ?? [] },
-          { name: "Browser exceptions / hour", unit: "/h", points: liveBrowserExcSeries ?? [] },
-          { name: "Browser page views / hour", unit: "/h", points: liveBrowserPageViewSeries ?? [] },
+          { name: "Browser page load P95 (ms)", unit: "ms", points: fixPoints(liveBrowserLoadSeries) },
+          { name: "Browser exceptions / hour", unit: "/h", points: fixPoints(liveBrowserExcSeries) },
+          { name: "Browser page views / hour", unit: "/h", points: fixPoints(liveBrowserPageViewSeries) },
         ],
       },
     } : {}),
