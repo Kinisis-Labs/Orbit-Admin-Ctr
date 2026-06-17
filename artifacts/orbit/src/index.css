@@ -130,12 +130,12 @@
 .dark {
   /* Brand-native dark — deep navy as base, green as primary action */
   --background: 202 92% 8%;          /* very deep navy, near #021e2b */
-  --foreground: 202 92% 10%;         /* deep navy — matches card-foreground on light tiles */
+  --foreground: 188 27% 92%;         /* #E5EFF0 off white */
   --border: 202 50% 18%;
 
-  --card: 196 27% 79%;               /* #B8D4DB light blue gray — same as light mode */
-  --card-foreground: 202 92% 10%;    /* deep navy text for contrast on light card */
-  --card-border: 196 27% 68%;
+  --card: 202 75% 12%;               /* dark navy card, lighter than bg */
+  --card-foreground: 188 27% 92%;
+  --card-border: 202 50% 18%;
 
   --sidebar: 202 92% 6%;             /* deepest navy, frames chrome */
   --sidebar-foreground: 188 27% 92%;
@@ -146,9 +146,9 @@
   --sidebar-accent-foreground: 188 27% 92%;
   --sidebar-ring: 113 64% 57%;
 
-  --popover: 196 27% 79%;
-  --popover-foreground: 202 92% 10%;
-  --popover-border: 196 27% 68%;
+  --popover: 202 75% 12%;
+  --popover-foreground: 188 27% 92%;
+  --popover-border: 202 50% 18%;
 
   --primary: 113 64% 57%;            /* #60D94D brand green */
   --primary-foreground: 202 92% 6%;
