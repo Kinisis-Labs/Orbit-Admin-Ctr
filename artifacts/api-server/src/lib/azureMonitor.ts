@@ -255,10 +255,13 @@ export async function resolveAppInsightsResourceId(
     ? [...new Set([...globalSubs, appSub])]
     : globalSubs;
   if (subscriptionIds.length === 0) {
+    console.warn(`[azureMonitor] resolveAppInsightsResourceId(${app.id}): no valid subscription GUIDs available — skipping Resource Graph lookup`);
     _appInsightsIdCache.set(app.id, { id: null, expiresAt: Date.now() + APP_INSIGHTS_NULL_TTL_MS });
     return null;
   }
   const rg = app.resourceGroup.toLowerCase();
+
+  console.log(`[azureMonitor] resolveAppInsightsResourceId(${app.id}): querying RG=${rg} in subs=[${subscriptionIds.join(",")}]`);
 
   const query = `
     resources
@@ -275,10 +278,12 @@ export async function resolveAppInsightsResourceId(
     });
     const rows = normalizeResourceGraphRows(result.data);
     const id = rows.length === 0 ? null : String(rows[0]?.["id"] ?? "");
+    console.log(`[azureMonitor] resolveAppInsightsResourceId(${app.id}): result=${id ?? "(not found)"}`);
     const ttl = id !== null ? APP_INSIGHTS_ID_TTL_MS : APP_INSIGHTS_NULL_TTL_MS;
     _appInsightsIdCache.set(app.id, { id, expiresAt: Date.now() + ttl });
     return id;
-  } catch {
+  } catch (err) {
+    console.error(`[azureMonitor] resolveAppInsightsResourceId(${app.id}): Resource Graph threw`, err);
     _appInsightsIdCache.set(app.id, { id: null, expiresAt: Date.now() + APP_INSIGHTS_NULL_TTL_MS });
     return null;
   }
