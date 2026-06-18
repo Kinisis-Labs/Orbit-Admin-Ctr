@@ -21,10 +21,7 @@ const STORAGE_KEY = "orbit-scope";
 const DEFAULT_SCOPE = "global";
 
 export function ScopeProvider({ children }: { children: React.ReactNode }) {
-  const [scope, setScopeState] = useState<string>(() => {
-    if (typeof window === "undefined") return DEFAULT_SCOPE;
-    return window.localStorage.getItem(STORAGE_KEY) ?? DEFAULT_SCOPE;
-  });
+  const [scope, setScopeState] = useState<string>(DEFAULT_SCOPE);
 
   const setScope = useCallback((v: string) => {
     setScopeState(v);
