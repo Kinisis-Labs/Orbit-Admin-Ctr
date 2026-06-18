@@ -77,7 +77,7 @@ export const APPS: AppRecord[] = [
     activeAlerts: 0,
     monthToDateCost: 0,
     subscriptionId: process.env.AZURE_SUB_GRAILBABE || "",
-    subscriptionName: "GrailBabe Production",
+    subscriptionName: "sub-GrailBabe-Prod",
     description: "Consumer marketplace for limited-edition collectibles.",
     tags: {
       workload: "GrailBabeProd",
