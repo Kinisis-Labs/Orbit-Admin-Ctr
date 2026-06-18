@@ -235,8 +235,7 @@ const AUTH_TYPES: { value: UserAuthType; label: string }[] = [
 export default function Home() {
   const { scope } = useScope();
   const [location, navigate] = useLocation();
-  const isHomePage = location === "/";
-  const isGlobal = isHomePage || scope === "global";
+  const isGlobal = scope === "global";
   const { hasGroup } = useAuth();
   const canSeeCost = hasGroup(COST_READER_GROUP.id);
   const recentAlerts = useRecentBudgetAlerts(canSeeCost);
