@@ -311,14 +311,24 @@ function TagComplianceCard() {
           <AlertTriangle className="h-3.5 w-3.5 text-destructive ml-2" />
           <h2 className="text-sm font-semibold">Tag compliance</h2>
           <span className="text-[11px] text-muted-foreground ml-1">Live scan across subscriptions → RGs → resources</span>
+          <button
+            type="button"
+            onClick={() => void handleRefresh()}
+            disabled={isRefreshing}
+            aria-label="Retry tag compliance scan"
+            title="Retry scan"
+            className={`ml-auto flex items-center justify-center rounded p-1 transition-colors ${
+              isRefreshing ? "cursor-not-allowed text-primary opacity-60" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            }`}
+          >
+            <RefreshCw className={`h-3.5 w-3.5${isRefreshing ? " animate-spin" : ""}`} />
+          </button>
         </div>
         <Alert variant="destructive" className="m-3">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="text-sm space-y-1">
-            <p>Tag compliance scan failed — Azure returned an error.</p>
-            {data.errorMessage && (
-              <p className="font-mono text-xs break-all opacity-80">{data.errorMessage}</p>
-            )}
+            <p>{data.errorMessage ?? "Tag compliance scan failed — Azure returned an error."}</p>
+            <p className="text-xs opacity-70">Check the API server logs for the full error detail. Use the refresh button to retry.</p>
           </AlertDescription>
         </Alert>
       </div>

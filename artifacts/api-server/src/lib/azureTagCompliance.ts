@@ -154,13 +154,32 @@ export async function fetchTagCompliance(
     );
     return data;
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
     logger.error({ err }, "fetchTagCompliance error");
+    // Extract a clean message from Azure SDK errors — the raw message contains
+    // internal timestamps and correlationIds that are not useful to display.
+    let cleanMsg = "Azure Resource Graph query failed.";
+    if (err && typeof err === "object") {
+      const e = err as Record<string, unknown>;
+      // Azure SDK errors surface the code in e.code or e.statusCode
+      if (typeof e["code"] === "string") {
+        if (e["code"] === "AuthorizationFailed" || e["code"] === "403") {
+          cleanMsg = "Authorization failed — the managed identity does not have Reader access to one or more subscriptions.";
+        } else if (e["code"] === "LinkedAuthorizationFailed") {
+          cleanMsg = "Authorization failed — insufficient permissions on a linked subscription.";
+        } else if (e["code"] === "InvalidSubscriptionId" || e["code"] === "SubscriptionNotFound") {
+          cleanMsg = "One or more subscription IDs in AZURE_SUBSCRIPTION_IDS are invalid or not accessible.";
+        } else if (e["code"] === "TooManyRequests" || String(e["statusCode"]) === "429") {
+          cleanMsg = "Azure Resource Graph is throttled — please retry in a few minutes.";
+        } else if (typeof e["code"] === "string") {
+          cleanMsg = `Azure error: ${e["code"]}.`;
+        }
+      }
+    }
     return {
       ...UNAVAILABLE,
       scannedAt: nowIso(),
       dataSource: "error",
-      errorMessage: msg,
+      errorMessage: cleanMsg,
     };
   }
 }
