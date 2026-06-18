@@ -233,6 +233,17 @@ export async function resolveAppInsightsResourceId(
   app: AppRecord,
   { bypassCache = false }: { bypassCache?: boolean } = {},
 ): Promise<string | null> {
+  // Allow an explicit override via env var so callers don't need Resource Graph
+  // when App Insights lives in a different RG than the compute resource group.
+  // Set AZURE_APPINSIGHTS_RESOURCE_ID_GRAILBABE (or _KINISIS_LABS, etc.) to the
+  // full ARM resource ID of the Application Insights component.
+  const envKey = `AZURE_APPINSIGHTS_RESOURCE_ID_${app.id.toUpperCase().replace(/-/g, "_")}`;
+  const envOverride = process.env[envKey]?.trim() || null;
+  if (envOverride) {
+    _appInsightsIdCache.set(app.id, { id: envOverride, expiresAt: Date.now() + APP_INSIGHTS_ID_TTL_MS });
+    return envOverride;
+  }
+
   if (bypassCache) {
     _appInsightsIdCache.delete(app.id);
   } else {
@@ -333,6 +344,8 @@ export async function fetchMetricTimeSeries(
 
   const workspaceId = getLogAnalyticsWorkspaceId()!;
 
+  console.log(`[azureMonitor] fetchMetricTimeSeries: metric=${metricName} resourceId=${resourceId} workspace=${workspaceId}`);
+
   try {
     const result = await getLogsClient().queryWorkspace(
       workspaceId,
@@ -340,7 +353,10 @@ export async function fetchMetricTimeSeries(
       { duration: `PT${hours}H` },
     );
 
-    if (result.status !== "Success") return null;
+    if (result.status !== "Success") {
+      console.warn(`[azureMonitor] fetchMetricTimeSeries: non-Success status=${result.status} metric=${metricName}`);
+      return null;
+    }
     const table = result.tables?.[0];
     if (!table) return null;
 
