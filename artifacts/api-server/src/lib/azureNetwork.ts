@@ -148,19 +148,10 @@ export async function fetchNetworkEndpoints(
     }
   }
 
-  // Determine which resource groups belong to this app.
-  // For apps that own their entire subscription (no shared RGs) we include all RGs
-  // in that subscription.  For apps with a dedicated RG we scope to that RG only.
-  // The app's own resourceGroup is always included; sharedInfra resources (Front Door,
-  // Container Apps Envs in other RGs) are only surfaced for apps that own the shared
-  // platform subscription so they are attributed to Business Ops, not GrailBabe.
-  const appOwnsSharedPlatformSub =
-    sharedInfraSub !== null && appSub === sharedInfraSub;
-
-  // Build the KQL resourceGroup filter — case-insensitive contains list.
-  const rgFilter = appOwnsSharedPlatformSub
-    ? "" // no RG filter — show all RGs in the shared-platform sub
-    : `| where resourceGroup =~ '${app.resourceGroup}'`;
+  // Always scope the query to the app's own resource group so that resources in
+  // other RGs (e.g. vnet-grailbabe-prod in a shared subscription) are never
+  // mis-attributed to a different application.
+  const rgFilter = `| where resourceGroup =~ '${app.resourceGroup}'`;
 
   const query = `
     resources
