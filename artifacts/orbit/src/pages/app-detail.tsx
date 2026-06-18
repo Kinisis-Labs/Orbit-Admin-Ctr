@@ -1048,7 +1048,7 @@ function TelemetryTab({ appId }: { appId: string }) {
             <h2 className="text-sm font-semibold">Application Metrics</h2>
           </div>
           <div className="p-4 space-y-6">
-            {data.series.length === 0 && (
+            {(data.series.length === 0 || data.series.every((s) => s.points.length === 0)) && (
               <div className="flex flex-col items-center justify-center gap-3 py-12 text-center border border-dashed border-border rounded-sm bg-muted/20">
                 <BarChart2 className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />
                 <div className="space-y-1">
