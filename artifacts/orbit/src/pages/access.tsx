@@ -26,6 +26,10 @@ const ORBIT_GROUPS: GroupDef[] = [
       "Manage Entra group simulation",
       "View audit log",
       "All FinOps surfaces (implicit cost-reader access): Cost Management, per-app Cost & Ledger tabs, Play Subscriptions, App Store Subscriptions",
+      "Edit alert thresholds (CPU / memory SLOs)",
+      "Acknowledge budget alerts",
+      "Trigger refresh / start / restart actions (implicit engineer access)",
+      "All features available to Orbit-Engineers and Orbit-Cost-Readers",
     ],
   },
   {

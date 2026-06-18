@@ -1,5 +1,7 @@
 import { ResourceGraphClient } from "@azure/arm-resourcegraph";
+import { LogsQueryClient } from "@azure/monitor-query";
 import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
+import { getLogAnalyticsWorkspaceId } from "./azureMonitor.js";
 import { logger } from "./logger.js";
 import type { AppRecord } from "../routes/orbit.js";
 
@@ -277,5 +279,57 @@ export async function fetchNetworkEndpoints(
       "fetchNetworkEndpoints Resource Graph query failed",
     );
     return null;
+  }
+}
+
+let _logsClient: LogsQueryClient | null = null;
+function getLogsClient(): LogsQueryClient {
+  if (!_logsClient) _logsClient = new LogsQueryClient(getAzureCredential());
+  return _logsClient;
+}
+
+/**
+ * Query the Log Analytics workspace for the latest Connection Monitor packet
+ * loss per test (NWConnectionMonitorTestResult table, last 5 minutes).
+ *
+ * Returns a map of lowercase testName → avgPacketLossPercent.
+ * Returns an empty map when Log Analytics is not configured or on any error.
+ *
+ * Connection Monitor emits one row per probe interval (default 60 s); we take
+ * the average over the last 5 minutes to smooth transient spikes.
+ */
+export async function fetchConnectionMonitorPacketLoss(
+  app: AppRecord,
+): Promise<Map<string, number>> {
+  const workspaceId = getLogAnalyticsWorkspaceId();
+  if (!isAzureConfigured() || !workspaceId) return new Map();
+
+  const kql = `
+    NWConnectionMonitorTestResult
+    | where TimeGenerated >= ago(5m)
+    | where SourceResourceId =~ '${app.resourceGroup}' or DestinationResourceId =~ '${app.resourceGroup}' or TestGroupName contains '${app.id}'
+    | summarize avgLoss = avg(LossPercent) by TestName
+    | project TestName, avgLoss
+  `;
+
+  try {
+    const result = await getLogsClient().queryWorkspace(workspaceId, kql, {
+      startTime: new Date(Date.now() - 5 * 60 * 1000),
+      endTime: new Date(),
+    });
+
+    const lossMap = new Map<string, number>();
+    if (result.status === "Success" && result.tables.length > 0) {
+      for (const row of result.tables[0].rows) {
+        const testName = String(row[0] ?? "").toLowerCase();
+        const loss = Number(row[1] ?? 0);
+        if (testName) lossMap.set(testName, Math.round(loss * 10) / 10);
+      }
+    }
+    logger.info({ appId: app.id, tests: lossMap.size }, "fetchConnectionMonitorPacketLoss complete");
+    return lossMap;
+  } catch (err: unknown) {
+    logger.warn({ err, appId: app.id }, "fetchConnectionMonitorPacketLoss failed (non-fatal)");
+    return new Map();
   }
 }

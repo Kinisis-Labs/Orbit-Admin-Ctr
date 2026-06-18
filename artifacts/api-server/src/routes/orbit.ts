@@ -41,7 +41,7 @@ import {
 } from "../lib/azureMonitor.js";
 import { isAzureConfigured } from "../lib/azure.js";
 import { fetchActiveAlerts } from "../lib/azureAlerts.js";
-import { fetchNetworkEndpoints } from "../lib/azureNetwork.js";
+import { fetchNetworkEndpoints, fetchConnectionMonitorPacketLoss } from "../lib/azureNetwork.js";
 import { fetchDeployments } from "../lib/github.js";
 import { fetchActivityLog } from "../lib/azureActivity.js";
 import { fetchServiceHealth } from "../lib/azureServiceHealth.js";
@@ -453,12 +453,22 @@ router.get("/apps/:appId/network", async (req, res) => {
   const bypassAll = req.query["refresh"] === "true";
   const bypassEndpoints = bypassAll || req.query["refreshEndpoints"] === "true";
   const bypassThroughput = bypassAll || req.query["refreshThroughput"] === "true";
-  const [liveEndpoints, liveIngressSeries, liveEgressSeries] = await Promise.all([
+  const [liveEndpoints, packetLossMap, liveIngressSeries, liveEgressSeries] = await Promise.all([
     fetchNetworkEndpoints(app, { bypassCache: bypassEndpoints }),
+    fetchConnectionMonitorPacketLoss(app),
     fetchAppTimeSeries(app, "network_ingress_mbps", 24, { bypassCache: bypassThroughput }),
     fetchAppTimeSeries(app, "network_egress_mbps", 24, { bypassCache: bypassThroughput }),
   ]);
-  const endpoints = liveEndpoints ?? [];
+  const endpoints = (liveEndpoints ?? []).map((ep) => {
+    if (packetLossMap.size === 0) return ep;
+    const epKey = ep.name.toLowerCase();
+    for (const [testName, loss] of packetLossMap) {
+      if (epKey.includes(testName) || testName.includes(epKey)) {
+        return { ...ep, packetLossPercent: loss };
+      }
+    }
+    return ep;
+  });
   const throughputAll: { name: string; unit: string; points: { timestamp: string; value: number }[] }[] =
     liveIngressSeries || liveEgressSeries
       ? [
