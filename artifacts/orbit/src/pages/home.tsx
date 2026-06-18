@@ -395,11 +395,9 @@ export default function Home() {
               : "Select an application"}
           </p>
         </div>
-        {!isHomePage && (
-          <div className="flex items-center gap-3 flex-wrap">
-            <ScopeSelect allowGlobal={false} />
-          </div>
-        )}
+        <div className="flex items-center gap-3 flex-wrap">
+          <ScopeSelect allowGlobal={true} />
+        </div>
       </div>
 
       {isGlobal ? (
