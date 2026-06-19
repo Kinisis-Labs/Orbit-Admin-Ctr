@@ -72,8 +72,13 @@ function parseTags(raw: unknown): Record<string, unknown> | null {
 
 function missingTagsFor(tags: Record<string, unknown> | null | undefined): string[] {
   if (!tags) return [...REQUIRED_TAGS];
+  // Build a lowercase key → value map so tag key matching is case-insensitive.
+  // Azure tag names are case-insensitive ("environment" == "Environment").
+  const lower = new Map<string, unknown>(
+    Object.entries(tags).map(([k, v]) => [k.toLowerCase(), v]),
+  );
   return REQUIRED_TAGS.filter((t) => {
-    const v = tags[t];
+    const v = lower.get(t.toLowerCase());
     return v === undefined || v === null || String(v).trim() === "";
   });
 }
