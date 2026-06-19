@@ -126,6 +126,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Menu className="h-5 w-5 text-gray-300 hover:text-white" />
           </button>
           <Link href="/" className="flex items-center gap-2">
+            <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-indigo-500 to-cyan-400 shadow-[0_0_10px_rgba(124,58,237,0.5)]">
+              <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true">
+                <ellipse cx="10" cy="10" rx="8" ry="3.5" stroke="white" strokeWidth="1.5" strokeOpacity="0.9" />
+                <ellipse cx="10" cy="10" rx="8" ry="3.5" stroke="white" strokeWidth="1.5" strokeOpacity="0.9" transform="rotate(60 10 10)" />
+                <ellipse cx="10" cy="10" rx="8" ry="3.5" stroke="white" strokeWidth="1.5" strokeOpacity="0.9" transform="rotate(120 10 10)" />
+                <circle cx="10" cy="10" r="2" fill="white" />
+              </svg>
+            </span>
             <span className="font-semibold text-[14px] tracking-[0.18em] uppercase">O.R.B.I.T.</span>
           </Link>
 
