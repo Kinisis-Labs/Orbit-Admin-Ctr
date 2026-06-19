@@ -663,14 +663,15 @@ export async function fetchCostByCostCategoryTag({
     }
   }
 
-  // --- Subscription scope: query cost by ResourceGroupName, then map each RG to its
-  // CostCategory tag via Resource Graph. This avoids the Azure Cost Management TagKey
-  // grouping limitation where Container App / managed-RG charges don't inherit tags.
+  // --- Subscription scope: two-step resource-level attribution ---
+  // Step A: query cost grouped by ResourceId from Cost Management.
+  // Step B: look up each ResourceId's CostCategory tag from Resource Graph.
+  // This gives per-resource accuracy rather than per-RG approximation.
   await Promise.all(
     subscriptionIds.map(async (subId) => {
       const scope = `/subscriptions/${subId}`;
       try {
-        // Step 1: cost grouped by ResourceGroupName
+        // Step A: cost grouped by ResourceId
         const result = await getCostClient().query.usage(scope, {
           type: "Usage",
           timeframe: "Custom",
@@ -678,7 +679,7 @@ export async function fetchCostByCostCategoryTag({
           dataset: {
             granularity: "None",
             aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } },
-            grouping: [{ type: "Dimension", name: "ResourceGroupName" }],
+            grouping: [{ type: "Dimension", name: "ResourceId" }],
           },
         });
         const columns = (result.columns ?? []).map((c: { name?: string | null }) =>
@@ -686,59 +687,83 @@ export async function fetchCostByCostCategoryTag({
         );
         const rows = (result.rows ?? []) as unknown[][];
         const costIdx = columns.findIndex((c: string) => c.toLowerCase().includes("cost"));
-        const rgIdx = columns.findIndex(
-          (c: string) => c.toLowerCase().includes("resourcegroup") || c.toLowerCase() === "resourcegroupname",
+        const idIdx = columns.findIndex(
+          (c: string) => c.toLowerCase() === "resourceid" || c.toLowerCase().includes("resourceid"),
         );
         logger.info(
           { subId, columns, rowCount: rows.length, firstRow: rows[0] ?? null },
-          "CostCategory by-RG query result",
+          "CostCategory by-ResourceId query result",
         );
         if (costIdx === -1 || rows.length === 0) return;
 
-        // Step 2: fetch CostCategory tag for each unique RG from Resource Graph
-        const rgNames = [...new Set(rows.map((r) => String(r[rgIdx] ?? "").toLowerCase()))].filter(Boolean);
-        const rgTagMap = new Map<string, string>(); // rgName.toLowerCase() → CostCategory
-        if (rgNames.length > 0) {
+        // Step B: fetch CostCategory tag for all resource IDs from Resource Graph
+        // Resource Graph uses lowercase IDs; Cost Management may use mixed case.
+        const resourceIds = [
+          ...new Set(
+            rows
+              .map((r) => String(r[idIdx] ?? "").toLowerCase())
+              .filter((id) => id.startsWith("/subscriptions/")),
+          ),
+        ];
+
+        const resourceTagMap = new Map<string, string>(); // resourceId.toLowerCase() → CostCategory
+        if (resourceIds.length > 0) {
           try {
-            const rgList = rgNames.map((n) => `'${n}'`).join(", ");
-            const query = `
-              resourcecontainers
-              | where type =~ 'microsoft.resources/subscriptions/resourcegroups'
-              | where tolower(name) in (${rgList})
-              | project name, tags
-            `;
-            const graphResult = await getGraphClient().resources({
-              query,
-              subscriptions: [subId],
-            });
-            const graphRows = normalizeResourceGraphRows(graphResult.data);
-            for (const row of graphRows) {
-              const rg = String(row["name"] ?? "").toLowerCase();
-              const tags = row["tags"];
-              const tagObj: Record<string, unknown> =
-                tags && typeof tags === "object"
-                  ? (tags as Record<string, unknown>)
-                  : typeof tags === "string"
-                    ? (() => { try { return JSON.parse(tags) as Record<string, unknown>; } catch { return {}; } })()
-                    : {};
-              const cat = String(tagObj["CostCategory"] ?? "").trim();
-              if (cat) rgTagMap.set(rg, cat);
+            // Resource Graph supports up to 1000 results; batch if needed
+            const BATCH = 200;
+            for (let i = 0; i < resourceIds.length; i += BATCH) {
+              const batch = resourceIds.slice(i, i + BATCH);
+              const idList = batch.map((id) => `'${id}'`).join(", ");
+              const query = `
+                resources
+                | where tolower(id) in (${idList})
+                | project id, tags
+              `;
+              const graphResult = await getGraphClient().resources({
+                query,
+                subscriptions: [subId],
+              });
+              const graphRows = normalizeResourceGraphRows(graphResult.data);
+              for (const row of graphRows) {
+                const rid = String(row["id"] ?? "").toLowerCase();
+                const tags = row["tags"];
+                const tagObj: Record<string, unknown> =
+                  tags && typeof tags === "object"
+                    ? (tags as Record<string, unknown>)
+                    : typeof tags === "string"
+                      ? (() => {
+                          try {
+                            return JSON.parse(tags) as Record<string, unknown>;
+                          } catch {
+                            return {};
+                          }
+                        })()
+                      : {};
+                const cat = String(tagObj["CostCategory"] ?? "").trim();
+                if (cat) resourceTagMap.set(rid, cat);
+              }
             }
-            logger.info({ subId, rgTagMap: Object.fromEntries(rgTagMap) }, "RG→CostCategory tag map");
+            logger.info(
+              { subId, taggedCount: resourceTagMap.size, totalResources: resourceIds.length },
+              "Resource→CostCategory tag map built",
+            );
           } catch (err) {
-            logger.warn({ err, subId }, "Resource Graph RG tag lookup failed — falling back to Untagged");
+            logger.warn(
+              { err, subId },
+              "Resource Graph tag lookup failed — costs will be Untagged",
+            );
           }
         }
 
-        // Step 3: accumulate costs into catMap using the RG→CostCategory mapping
+        // Step C: accumulate costs using resource tag, fall back to RG tag map (from RG tags)
         for (const row of rows) {
           const amount = Number(row[costIdx] ?? 0);
-          const rg = rgIdx !== -1 ? String(row[rgIdx] ?? "").toLowerCase() : "";
-          const cat = rgTagMap.get(rg) ?? "Untagged";
+          const rid = idIdx !== -1 ? String(row[idIdx] ?? "").toLowerCase() : "";
+          const cat = resourceTagMap.get(rid) ?? "Untagged";
           catMap.set(cat, (catMap.get(cat) ?? 0) + amount);
         }
       } catch (err) {
-        logger.warn({ err, subId }, "CostCategory by-RG query failed for subscription");
+        logger.warn({ err, subId }, "CostCategory by-ResourceId query failed for subscription");
       }
     }),
   );
