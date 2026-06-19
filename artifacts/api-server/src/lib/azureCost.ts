@@ -663,11 +663,14 @@ export async function fetchCostByCostCategoryTag({
     }
   }
 
-  // --- Subscription scope: Azure resources tagged with CostCategory ---
+  // --- Subscription scope: query cost by ResourceGroupName, then map each RG to its
+  // CostCategory tag via Resource Graph. This avoids the Azure Cost Management TagKey
+  // grouping limitation where Container App / managed-RG charges don't inherit tags.
   await Promise.all(
     subscriptionIds.map(async (subId) => {
       const scope = `/subscriptions/${subId}`;
       try {
+        // Step 1: cost grouped by ResourceGroupName
         const result = await getCostClient().query.usage(scope, {
           type: "Usage",
           timeframe: "Custom",
@@ -675,20 +678,67 @@ export async function fetchCostByCostCategoryTag({
           dataset: {
             granularity: "None",
             aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } },
-            grouping: [{ type: "TagKey", name: "CostCategory" }],
+            grouping: [{ type: "Dimension", name: "ResourceGroupName" }],
           },
         });
         const columns = (result.columns ?? []).map((c: { name?: string | null }) =>
           String(c.name ?? ""),
         );
         const rows = (result.rows ?? []) as unknown[][];
+        const costIdx = columns.findIndex((c: string) => c.toLowerCase().includes("cost"));
+        const rgIdx = columns.findIndex(
+          (c: string) => c.toLowerCase().includes("resourcegroup") || c.toLowerCase() === "resourcegroupname",
+        );
         logger.info(
           { subId, columns, rowCount: rows.length, firstRow: rows[0] ?? null },
-          "CostCategory tag grouping query result",
+          "CostCategory by-RG query result",
         );
-        accumulateRows(columns, rows, "CostCategory", `subscription:${subId}`);
+        if (costIdx === -1 || rows.length === 0) return;
+
+        // Step 2: fetch CostCategory tag for each unique RG from Resource Graph
+        const rgNames = [...new Set(rows.map((r) => String(r[rgIdx] ?? "").toLowerCase()))].filter(Boolean);
+        const rgTagMap = new Map<string, string>(); // rgName.toLowerCase() → CostCategory
+        if (rgNames.length > 0) {
+          try {
+            const rgList = rgNames.map((n) => `'${n}'`).join(", ");
+            const query = `
+              resourcecontainers
+              | where type =~ 'microsoft.resources/subscriptions/resourcegroups'
+              | where tolower(name) in (${rgList})
+              | project name, tags
+            `;
+            const graphResult = await getGraphClient().resources({
+              query,
+              subscriptions: [subId],
+            });
+            const graphRows = normalizeResourceGraphRows(graphResult.data);
+            for (const row of graphRows) {
+              const rg = String(row["name"] ?? "").toLowerCase();
+              const tags = row["tags"];
+              const tagObj: Record<string, unknown> =
+                tags && typeof tags === "object"
+                  ? (tags as Record<string, unknown>)
+                  : typeof tags === "string"
+                    ? (() => { try { return JSON.parse(tags) as Record<string, unknown>; } catch { return {}; } })()
+                    : {};
+              const cat = String(tagObj["CostCategory"] ?? "").trim();
+              if (cat) rgTagMap.set(rg, cat);
+            }
+            logger.info({ subId, rgTagMap: Object.fromEntries(rgTagMap) }, "RG→CostCategory tag map");
+          } catch (err) {
+            logger.warn({ err, subId }, "Resource Graph RG tag lookup failed — falling back to Untagged");
+          }
+        }
+
+        // Step 3: accumulate costs into catMap using the RG→CostCategory mapping
+        for (const row of rows) {
+          const amount = Number(row[costIdx] ?? 0);
+          const rg = rgIdx !== -1 ? String(row[rgIdx] ?? "").toLowerCase() : "";
+          const cat = rgTagMap.get(rg) ?? "Untagged";
+          catMap.set(cat, (catMap.get(cat) ?? 0) + amount);
+        }
       } catch (err) {
-        logger.warn({ err, subId }, "CostCategory tag grouping query failed for subscription");
+        logger.warn({ err, subId }, "CostCategory by-RG query failed for subscription");
       }
     }),
   );
