@@ -682,6 +682,10 @@ export async function fetchCostByCostCategoryTag({
           String(c.name ?? ""),
         );
         const rows = (result.rows ?? []) as unknown[][];
+        logger.info(
+          { subId, columns, rowCount: rows.length, firstRow: rows[0] ?? null },
+          "CostCategory tag grouping query result",
+        );
         accumulateRows(columns, rows, "CostCategory", `subscription:${subId}`);
       } catch (err) {
         logger.warn({ err, subId }, "CostCategory tag grouping query failed for subscription");
