@@ -546,6 +546,25 @@ export interface Revenue {
   bySource: RevenueBySource[];
 }
 
+export interface OpsCostCategoryTotal {
+  category: "website-ops" | "network-ops" | "m365-licenses";
+  totalMonthly: number;
+  items: {
+    id: string;
+    name: string;
+    amountMonthly: number;
+    billingCycle: string;
+    active: boolean;
+    effectiveFrom?: string;
+  }[];
+}
+
+export interface OpsCostSummary {
+  /** Total monthly operational cost across all categories */
+  totalMonthly: number;
+  byCategory: OpsCostCategoryTotal[];
+}
+
 export interface CostReport {
   currency: string;
   monthToDate: number;
@@ -563,6 +582,8 @@ export interface CostReport {
   budgetDataSource?: CostReportBudgetDataSource;
   /** Month-over-month percentage change: (MTD this month − same-day-of-month last month) / same-day-of-month last month × 100. Positive = higher spend than last month at this point, negative = lower. Null when insufficient history. */
   momChangePct?: number | null;
+  /** Non-Azure operational cost breakdown (M365 licenses, website ops, network ops). Only present for the kinisis-labs (Business Ops) app. */
+  opsCosts?: OpsCostSummary;
 }
 
 export type LedgerAccountType = (typeof LedgerAccountType)[keyof typeof LedgerAccountType];
