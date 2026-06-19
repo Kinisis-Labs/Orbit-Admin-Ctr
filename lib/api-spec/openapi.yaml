@@ -1839,7 +1839,7 @@ components:
         message: { type: string }
     TagComplianceResponse:
       type: object
-      required: [scannedAt, totalScanned, nonCompliantCount, entries, dataSource]
+      required: [scannedAt, totalScanned, nonCompliantCount, entries, dataSource, applicationTagCounts]
       properties:
         scannedAt: { type: string, format: date-time }
         totalScanned: { type: integer }
@@ -1847,6 +1847,10 @@ components:
         entries:
           type: array
           items: { $ref: "#/components/schemas/TagComplianceEntry" }
+        applicationTagCounts:
+          type: object
+          additionalProperties: { type: integer }
+          description: Application tag value to resource count across ALL scanned resources
         dataSource: { type: string, enum: [live, unavailable, error] }
         errorMessage: { type: string, nullable: true }
     TagComplianceEntry:
@@ -1862,6 +1866,10 @@ components:
         missingTags:
           type: array
           items: { type: string }
+        tags:
+          type: object
+          additionalProperties: { type: string }
+          nullable: true
     ServiceHealthResponse:
       type: object
       required: [events, liveEnabled, dataSource]
