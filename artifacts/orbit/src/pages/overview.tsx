@@ -167,11 +167,34 @@ function CostSection({ canSeeCost }: { canSeeCost: boolean }) {
     null;
   const dataSource = data?.dataSource;
 
-  // Group MTD spend by CostCategory tag — uses byApp list + app tags
+  // Group MTD spend by CostCategory tag.
+  // Prefer data.byCategory (resource-level Azure tag grouping) when available (live/cached).
+  // Fall back to app-tag lookup for mock mode.
   const { data: apps } = useApps();
 
   const categorySpend = useMemo(() => {
-    if (!data?.byApp || !apps) return [];
+    if (!data) return [];
+
+    // Live path: server already grouped by CostCategory tag across all resources.
+    if (data.byCategory && data.byCategory.length > 0) {
+      const map = new Map<string, number>(
+        data.byCategory.map((c) => [c.category, Number(c.monthToDate)]),
+      );
+      const ordered: { name: string; value: number }[] = COST_CATEGORY_ORDER.map((c) => ({
+        name: c,
+        value: map.get(c) ?? 0,
+      }));
+      const knownSet = new Set([...COST_CATEGORY_ORDER, "Untagged"]);
+      for (const { category, monthToDate } of data.byCategory) {
+        if (!knownSet.has(category)) ordered.push({ name: category, value: Number(monthToDate) });
+      }
+      const untagged = map.get("Untagged");
+      if (untagged) ordered.push({ name: "Untagged", value: untagged });
+      return ordered.sort((a, b) => b.value - a.value);
+    }
+
+    // Fallback: group by app-level CostCategory tag (mock mode).
+    if (!data.byApp || !apps) return COST_CATEGORY_ORDER.map((c) => ({ name: c, value: 0 }));
     const map = new Map<string, number>();
     for (const item of data.byApp) {
       const app = apps.find((a) => a.id === item.appId);
@@ -179,18 +202,11 @@ function CostSection({ canSeeCost }: { canSeeCost: boolean }) {
       const cat = appTags?.["CostCategory"] ?? appTags?.["costCategory"] ?? "Untagged";
       map.set(cat, (map.get(cat) ?? 0) + (item.monthToDate ?? 0));
     }
-    const ordered = COST_CATEGORY_ORDER.map((c) => ({
-      name: c,
-      value: map.get(c) ?? 0,
-    }));
+    const ordered = COST_CATEGORY_ORDER.map((c) => ({ name: c, value: map.get(c) ?? 0 }));
     const untagged = map.get("Untagged");
     if (untagged) ordered.push({ name: "Untagged", value: untagged });
-    const knownSet = new Set([...COST_CATEGORY_ORDER, "Untagged"]);
-    for (const [name, value] of map) {
-      if (!knownSet.has(name)) ordered.push({ name, value });
-    }
     return ordered.sort((a, b) => b.value - a.value);
-  }, [data?.byApp, apps]);
+  }, [data, apps]);
 
   const totalCategorised = categorySpend
     .filter((c) => c.name !== "Untagged")

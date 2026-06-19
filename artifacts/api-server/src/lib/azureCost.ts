@@ -525,6 +525,75 @@ export async function diagnoseCostForApp(
   return { appId: app.id, scopeMode, subscriptionId, subError, queryScope, costQuery, snapshotAge };
 }
 
+/**
+ * Query Azure Cost Management grouped by the `CostCategory` tag across all configured
+ * subscriptions. Returns an array of { category, monthToDate } sorted by spend desc.
+ * Returns null when Azure is not configured or on any error.
+ *
+ * Results are cached for 30 minutes (same TTL as per-app cost).
+ */
+let _categoryCacheEntry: { result: { category: string; monthToDate: number }[]; expiresAt: number } | null = null;
+
+export async function fetchCostByCostCategoryTag(
+  { bypassCache = false }: { bypassCache?: boolean } = {},
+): Promise<{ category: string; monthToDate: number }[] | null> {
+  if (!isAzureConfigured()) return null;
+
+  if (!bypassCache && _categoryCacheEntry && _categoryCacheEntry.expiresAt > Date.now()) {
+    return _categoryCacheEntry.result;
+  }
+
+  const subscriptionIds = getSubscriptionIds();
+  if (subscriptionIds.length === 0) return null;
+
+  const start = monthStart();
+  const end = today();
+
+  // Accumulate results across all subscriptions (may have multiple or one).
+  const catMap = new Map<string, number>();
+
+  await Promise.all(
+    subscriptionIds.map(async (subId) => {
+      const scope = `/subscriptions/${subId}`;
+      try {
+        const result = await getCostClient().query.usage(scope, {
+          type: "Usage",
+          timeframe: "Custom",
+          timePeriod: { from: new Date(start), to: new Date(end) },
+          dataset: {
+            granularity: "None",
+            aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } },
+            grouping: [{ type: "TagKey", name: "CostCategory" }],
+          },
+        });
+
+        const columns: string[] = (result.columns ?? []).map((c) => String(c.name ?? ""));
+        const rows = (result.rows ?? []) as unknown[][];
+        const costIdx = columns.findIndex((c) => c.toLowerCase().includes("cost"));
+        const tagIdx = columns.findIndex((c) => c.toLowerCase().includes("costcategory") || c.toLowerCase() === "tag");
+        if (costIdx === -1) return;
+
+        for (const row of rows) {
+          const amount = Number(row[costIdx] ?? 0);
+          const cat = tagIdx !== -1 ? String(row[tagIdx] ?? "Untagged") || "Untagged" : "Untagged";
+          catMap.set(cat, (catMap.get(cat) ?? 0) + amount);
+        }
+      } catch (err) {
+        logger.warn({ err, subId }, "CostCategory tag grouping query failed for subscription");
+      }
+    }),
+  );
+
+  if (catMap.size === 0) return null;
+
+  const result = [...catMap.entries()]
+    .map(([category, total]) => ({ category, monthToDate: Number(total.toFixed(2)) }))
+    .sort((a, b) => b.monthToDate - a.monthToDate);
+
+  _categoryCacheEntry = { result, expiresAt: Date.now() + COST_CACHE_TTL_MS };
+  return result;
+}
+
 export async function fetchMonthToDateCostWithFallback(
   app: AppRecord,
   opts: { bypassCache?: boolean; billingScope?: "rg" | "subscription" } = {},
