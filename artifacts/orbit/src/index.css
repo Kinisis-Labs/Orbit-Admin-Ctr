@@ -44,6 +44,7 @@
   --color-chart-3: hsl(var(--chart-3));
   --color-chart-4: hsl(var(--chart-4));
   --color-chart-5: hsl(var(--chart-5));
+  --color-chart-6: hsl(var(--chart-6));
 
   --color-sidebar: hsl(var(--sidebar));
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
@@ -60,132 +61,167 @@
   --font-serif: var(--app-font-serif);
   --font-mono: var(--app-font-mono);
 
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: calc(var(--radius) - 1px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
 }
 
-/* Application Brand Guide palette:
-   Deep Navy #042E42, Brand Green #60D94D, Slate Blue #1D648B,
-   Deep Teal #185353, Off White #E5EFF0, Light Blue Gray #B8D4DB */
+/* ─── O.R.B.I.T. Dark Theme Design System ─────────────────────────────────
+   Primary:   #7C3AED / #6366F1 (purple-indigo)
+   Accent:    #10B981 (emerald), #F59E0B (amber), #06B6D4 (cyan)
+   Danger:    #EF4444
+   BG:        #081220 (page), #111827 (card), #0B172A (sidebar), #081220 (topbar)
+   Text:      #E5E7EB (primary), #9CA3AF (secondary), #6B7280 (muted)
+   Border:    #1F2937
+   Font:      Inter
+   Radius:    8px base
+─────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  /* Light mode — off-white background, deep navy text, brand green primary */
-  --background: 188 27% 95%;         /* near-white tinted toward #E5EFF0 */
-  --foreground: 202 92% 10%;         /* deep navy text */
-  --border: 196 27% 82%;             /* light blue gray border */
+  /* Light mode — desaturated version of the dark palette for readability */
+  --background: 220 26% 96%;
+  --foreground: 222 47% 11%;
+  --border: 220 13% 83%;
 
-  --card: 210 17% 93%;               /* light gray */
-  --card-foreground: 0 0% 7%;        /* near-black */
-  --card-border: 210 14% 83%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --card-border: 220 13% 88%;
 
-  --sidebar: 210 17% 93%;            /* light gray — matches card */
-  --sidebar-foreground: 0 0% 7%;     /* near-black */
-  --sidebar-border: 210 14% 83%;
-  --sidebar-primary: 113 64% 45%;    /* brand green, darkened for contrast on light bg */
+  --sidebar: 222 47% 11%;
+  --sidebar-foreground: 213 27% 84%;
+  --sidebar-border: 220 30% 18%;
+  --sidebar-primary: 258 89% 66%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 210 17% 86%;
-  --sidebar-accent-foreground: 0 0% 7%;
-  --sidebar-ring: 113 64% 45%;
+  --sidebar-accent: 220 30% 20%;
+  --sidebar-accent-foreground: 213 27% 84%;
+  --sidebar-ring: 258 89% 66%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 202 92% 10%;
-  --popover-border: 196 27% 84%;
+  --popover-foreground: 222 47% 11%;
+  --popover-border: 220 13% 83%;
 
-  --primary: 113 64% 45%;            /* brand green, darkened slightly for contrast */
+  --primary: 258 89% 58%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 196 27% 88%;          /* light blue gray panels */
-  --secondary-foreground: 202 92% 14%;
+  --secondary: 220 14% 90%;
+  --secondary-foreground: 222 47% 20%;
 
-  --muted: 196 27% 91%;
-  --muted-foreground: 204 30% 38%;
+  --muted: 220 14% 93%;
+  --muted-foreground: 220 9% 46%;
 
-  --accent: 204 65% 33%;             /* #1D648B slate blue */
+  --accent: 160 84% 39%;
   --accent-foreground: 0 0% 100%;
-
-  --destructive: 0 84% 45%;
-  --destructive-foreground: 0 0% 100%;
-
-  --input: 196 27% 84%;
-  --ring: 113 64% 45%;
-
-  --chart-1: 113 64% 45%;            /* brand green */
-  --chart-2: 204 65% 33%;            /* slate blue */
-  --chart-3: 180 53% 30%;            /* deep teal */
-  --chart-4: 35 95% 50%;             /* amber (status) */
-  --chart-5: 0 84% 55%;              /* red (status) */
-
-  --app-font-sans: 'Geist', 'Inter', 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
-  --app-font-serif: 'Cormorant Garamond', Georgia, serif;
-  --app-font-mono: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
-  --radius: 0.75rem;                  /* 12px — brand button radius */
-
-  --shadow-sm: 0 1px 2px 0 rgba(4, 46, 66, 0.06);
-  --shadow: 0 1px 3px 0 rgba(4, 46, 66, 0.1), 0 1px 2px 0 rgba(4, 46, 66, 0.06);
-  --shadow-md: 0 4px 8px -1px rgba(4, 46, 66, 0.12), 0 2px 4px -1px rgba(4, 46, 66, 0.07);
-}
-
-.dark {
-  /* Brand-native dark — deep navy as base, green as primary action */
-  --background: 202 92% 8%;          /* very deep navy, near #021e2b */
-  --foreground: 188 27% 92%;         /* #E5EFF0 off white */
-  --border: 202 50% 18%;
-
-  --card: 222 31% 11%;
-  --card-foreground: 218 26% 96%;
-  --card-border: 219 23% 19%;
-
-  --sidebar: 202 92% 6%;             /* deepest navy, frames chrome */
-  --sidebar-foreground: 188 27% 92%;
-  --sidebar-border: 202 50% 16%;
-  --sidebar-primary: 113 64% 57%;    /* #60D94D brand green */
-  --sidebar-primary-foreground: 202 92% 6%;
-  --sidebar-accent: 202 62% 15%;
-  --sidebar-accent-foreground: 188 27% 92%;
-  --sidebar-ring: 113 64% 57%;
-
-  --popover: 202 75% 12%;
-  --popover-foreground: 188 27% 92%;
-  --popover-border: 202 50% 18%;
-
-  --primary: 113 64% 57%;            /* #60D94D brand green */
-  --primary-foreground: 202 92% 6%;
-
-  --secondary: 202 62% 16%;
-  --secondary-foreground: 188 27% 92%;
-
-  --muted: 202 62% 13%;
-  --muted-foreground: 196 27% 60%;   /* muted light blue gray */
-
-  --accent: 180 53% 37%;             /* #185353 deep teal, brightened for dark mode */
-  --accent-foreground: 188 27% 92%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 202 50% 18%;
-  --ring: 113 64% 57%;
+  --input: 220 13% 83%;
+  --ring: 258 89% 58%;
 
-  --chart-1: 113 64% 57%;            /* brand green */
-  --chart-2: 204 65% 55%;            /* slate blue brightened */
-  --chart-3: 180 53% 45%;            /* deep teal brightened */
-  --chart-4: 35 95% 60%;             /* amber */
-  --chart-5: 0 84% 65%;              /* red */
+  --chart-1: 258 89% 66%;
+  --chart-2: 197 100% 43%;
+  --chart-3: 160 84% 39%;
+  --chart-4: 38 92% 50%;
+  --chart-5: 0 84% 60%;
+  --chart-6: 270 67% 67%;
+
+  --app-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --app-font-serif: Georgia, serif;
+  --app-font-mono: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+  --radius: 0.5rem;
+
+  --shadow-sm: 0 1px 2px 0 rgba(8, 18, 32, 0.08);
+  --shadow: 0 1px 3px 0 rgba(8, 18, 32, 0.12), 0 1px 2px 0 rgba(8, 18, 32, 0.08);
+  --shadow-md: 0 4px 12px -1px rgba(8, 18, 32, 0.2), 0 2px 6px -1px rgba(8, 18, 32, 0.1);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.25);
 }
 
-/* Hero surface — deep navy with a subtle green-teal glow at the top.
-   Used on page-level hero areas in both light and dark modes. */
-.kinisis-hero {
+.dark {
+  /* ── Page & Chrome ───────────────────────────── */
+  --background: 220 47% 8%;          /* #081220 */
+  --foreground: 213 27% 92%;         /* #E5E7EB */
+  --border: 220 30% 17%;             /* #1F2937 */
+
+  /* ── Cards ───────────────────────────────────── */
+  --card: 222 47% 11%;               /* #111827 */
+  --card-foreground: 213 27% 92%;
+  --card-border: 220 30% 17%;
+
+  /* ── Sidebar ─────────────────────────────────── */
+  --sidebar: 220 55% 10%;            /* #0B172A */
+  --sidebar-foreground: 213 27% 84%;
+  --sidebar-border: 220 30% 15%;
+  --sidebar-primary: 258 89% 66%;    /* #7C3AED / violet */
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 30% 16%;
+  --sidebar-accent-foreground: 213 27% 92%;
+  --sidebar-ring: 258 89% 66%;
+
+  /* ── Popovers / Dropdowns ────────────────────── */
+  --popover: 222 47% 11%;
+  --popover-foreground: 213 27% 92%;
+  --popover-border: 220 30% 17%;
+
+  /* ── Primary — Purple-Indigo ─────────────────── */
+  --primary: 258 89% 66%;            /* #7C3AED */
+  --primary-foreground: 0 0% 100%;
+
+  /* ── Secondary ───────────────────────────────── */
+  --secondary: 220 30% 16%;
+  --secondary-foreground: 213 27% 84%;
+
+  /* ── Muted ───────────────────────────────────── */
+  --muted: 220 30% 13%;
+  --muted-foreground: 220 9% 55%;    /* #6B7280 → #9CA3AF */
+
+  /* ── Accent — Emerald ────────────────────────── */
+  --accent: 160 84% 39%;             /* #10B981 */
+  --accent-foreground: 0 0% 100%;
+
+  /* ── Destructive — Red ───────────────────────── */
+  --destructive: 0 84% 60%;          /* #EF4444 */
+  --destructive-foreground: 0 0% 100%;
+
+  /* ── Form ────────────────────────────────────── */
+  --input: 220 30% 17%;
+  --ring: 258 89% 66%;
+
+  /* ── Chart palette (matches style guide) ─────── */
+  --chart-1: 258 89% 66%;            /* #7C3AED violet */
+  --chart-2: 197 100% 43%;           /* #06B6D4 cyan */
+  --chart-3: 160 84% 39%;            /* #10B981 emerald */
+  --chart-4: 38 92% 50%;             /* #F59E0B amber */
+  --chart-5: 0 84% 60%;              /* #EF4444 red */
+  --chart-6: 270 67% 67%;            /* #8B5CF6 purple */
+
+  --app-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --app-font-serif: Georgia, serif;
+  --app-font-mono: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+  --radius: 0.5rem;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px -1px rgba(0, 0, 0, 0.5), 0 2px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+}
+
+/* Soft inner shadow on cards (dark mode) */
+.dark .bg-card,
+.dark [class*="bg-card"] {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Soft accent glow on primary buttons */
+.dark .orbit-glow-primary {
+  box-shadow: 0 0 16px rgba(124, 58, 237, 0.45);
+}
+
+/* Page hero — purple glow emanating from top */
+.orbit-hero {
   background:
-    radial-gradient(120% 70% at 50% 0%, hsl(180 53% 21% / 0.45) 0%, transparent 60%),
-    linear-gradient(180deg, hsl(202 92% 8%) 0%, hsl(202 92% 6%) 100%);
-}
-
-/* Cards are light blue gray in both modes — no dark overlay needed */
-.dark .bg-card {
-  background-color: hsl(var(--card));
+    radial-gradient(120% 60% at 50% 0%, hsl(258 89% 30% / 0.4) 0%, transparent 65%),
+    hsl(var(--background));
 }
 
 @layer base {

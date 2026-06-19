@@ -114,7 +114,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <InfraViolationContext.Provider value={{ activeViolations }}>
     <div className="h-screen flex flex-col bg-background text-foreground font-sans overflow-hidden">
       {/* Top Header */}
-      <header className="h-12 bg-[#001429] text-white flex items-center px-4 shrink-0 justify-between select-none">
+      <header className="h-12 bg-sidebar text-sidebar-foreground border-b border-sidebar-border flex items-center px-4 shrink-0 justify-between select-none">
         <div className="flex items-center gap-4">
           <button
             type="button"
