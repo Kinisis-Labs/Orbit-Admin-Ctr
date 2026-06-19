@@ -25,8 +25,15 @@ import {
 import { db, appThresholdsTable, appThresholdsLogTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
 import { requireEngineerOrAdmin, requireAuth } from "../middlewares/auth.js";
-import { fetchResourcesByResourceGroup, fetchResourceGroupTags, getResourcesFetchedAt } from "../lib/azureResources.js";
-import { fetchMonthToDateCostWithFallback, fetchLastMonthComparableCostTotal } from "../lib/azureCost.js";
+import {
+  fetchResourcesByResourceGroup,
+  fetchResourceGroupTags,
+  getResourcesFetchedAt,
+} from "../lib/azureResources.js";
+import {
+  fetchMonthToDateCostWithFallback,
+  fetchLastMonthComparableCostTotal,
+} from "../lib/azureCost.js";
 import { fetchThirdPartyUsage } from "../lib/thirdPartyUsage.js";
 import {
   fetchOpsCostSummary,
@@ -119,9 +126,11 @@ export const APPS: AppRecord[] = [
     status: "healthy",
     activeAlerts: 0,
     monthToDateCost: 0,
-    subscriptionId: process.env.AZURE_SUB_SHAREDPLATFORM || process.env.AZURE_SUB_KINISIS_LABS || "",
+    subscriptionId:
+      process.env.AZURE_SUB_SHAREDPLATFORM || process.env.AZURE_SUB_KINISIS_LABS || "",
     subscriptionName: "Shared Platform Production",
-    description: "Kinisis platform — Orbit admin center and kinisislabs.com, sharing the platform subscription (sub-sharedplatform-prod).",
+    description:
+      "Kinisis platform — Orbit admin center and kinisislabs.com, sharing the platform subscription (sub-sharedplatform-prod).",
     tags: {
       CostCategory: "BusinessOps",
       Application: "KinisisLabsPlatform",
@@ -147,7 +156,7 @@ export const APPS: AppRecord[] = [
 // shares a subscription with others (query at resource-group scope only).
 // ---------------------------------------------------------------------------
 const APP_BILLING_SCOPE: Record<string, "rg" | "subscription"> = {
-  grailbabe: "subscription",    // mg-GrailBabeProd — dedicated subscription 01390551
+  grailbabe: "subscription", // mg-GrailBabeProd — dedicated subscription 01390551
   "kinisis-labs": "subscription", // sub-sharedplatform-prod — owns the full platform sub (Orbit + kinisislabs.com)
 };
 
@@ -168,7 +177,6 @@ if (!_appsValidation.success) {
       JSON.stringify(formatted, null, 2),
   );
 }
-
 
 export function findApp(id: string): AppRecord | undefined {
   return APPS.find((a) => a.id === id);
@@ -192,7 +200,6 @@ export function appStoreApps(): AppRecord[] {
   return APPS.filter((a) => Boolean(a.iosBundle));
 }
 
-
 // --- /apps ---
 router.get("/apps", async (req, res) => {
   const bypassCache = req.query["refresh"] === "true";
@@ -202,8 +209,16 @@ router.get("/apps", async (req, res) => {
   // reflect the latest data instead of serving from the in-process cache.
   const [alertResults, costWithSourceResults, budgetWithSourceResults] = await Promise.all([
     Promise.all(APPS.map((a) => fetchActiveAlerts(a, {}))),
-    Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, { bypassCache, billingScope: billingScope(a.id) }))),
-    Promise.all(APPS.map((a) => fetchBudgetForAppWithFallback(a, { bypassCache, budgetScope: billingScope(a.id) }))),
+    Promise.all(
+      APPS.map((a) =>
+        fetchMonthToDateCostWithFallback(a, { bypassCache, billingScope: billingScope(a.id) }),
+      ),
+    ),
+    Promise.all(
+      APPS.map((a) =>
+        fetchBudgetForAppWithFallback(a, { bypassCache, budgetScope: billingScope(a.id) }),
+      ),
+    ),
   ]);
 
   // Resolve subscription names from Azure once (cached; returns empty map in mock mode).
@@ -272,7 +287,9 @@ router.get("/apps/:appId", async (req, res) => {
  * Load all DB threshold overrides in one query and return a Map<appId, {cpu, mem}>.
  * Numeric columns come back as strings from pg; parse them here.
  */
-async function loadThresholdOverrides(): Promise<Map<string, { cpuThreshold: number; memoryThreshold: number }>> {
+async function loadThresholdOverrides(): Promise<
+  Map<string, { cpuThreshold: number; memoryThreshold: number }>
+> {
   const rows = await db.select().from(appThresholdsTable);
   const map = new Map<string, { cpuThreshold: number; memoryThreshold: number }>();
   for (const r of rows) {
@@ -291,10 +308,14 @@ async function loadThresholdOverrides(): Promise<Map<string, { cpuThreshold: num
  *   3. APPS inventory baseline (app.cpuThreshold / app.memoryThreshold)
  *   4. Global env var / hardcoded default (resolveEnvCpuThreshold fallback)
  */
-function resolveThresholds(app: AppRecord, override?: { cpuThreshold: number; memoryThreshold: number }) {
+function resolveThresholds(
+  app: AppRecord,
+  override?: { cpuThreshold: number; memoryThreshold: number },
+) {
   return {
     cpuThreshold: override?.cpuThreshold ?? resolveEnvCpuThreshold(app.id, app.cpuThreshold),
-    memoryThreshold: override?.memoryThreshold ?? resolveEnvMemoryThreshold(app.id, app.memoryThreshold),
+    memoryThreshold:
+      override?.memoryThreshold ?? resolveEnvMemoryThreshold(app.id, app.memoryThreshold),
   };
 }
 
@@ -309,7 +330,10 @@ router.get("/apps/:appId/thresholds", async (req, res) => {
     .from(appThresholdsTable)
     .where(eq(appThresholdsTable.appId, app.id));
   const override = row
-    ? { cpuThreshold: parseFloat(row.cpuThreshold), memoryThreshold: parseFloat(row.memoryThreshold) }
+    ? {
+        cpuThreshold: parseFloat(row.cpuThreshold),
+        memoryThreshold: parseFloat(row.memoryThreshold),
+      }
     : undefined;
   const { cpuThreshold, memoryThreshold } = resolveThresholds(app, override);
   res.json(
@@ -444,19 +468,29 @@ router.get("/apps/:appId/infrastructure", async (req, res) => {
     fetchAppTimeSeries(app, "disk_iops", 24, { bypassCache }),
   ]);
   const resources = liveResources ?? [];
-  const seriesAll = liveResources ? [
-    { name: "CPU %", unit: "%", points: liveCpuSeries ?? [] },
-    { name: "Memory %", unit: "%", points: liveMemSeries ?? [] },
-    { name: "Disk IOPS", unit: "ops/s", points: liveDiskIopsSeries ?? [] },
-  ] : [];
+  const seriesAll = liveResources
+    ? [
+        { name: "CPU %", unit: "%", points: liveCpuSeries ?? [] },
+        { name: "Memory %", unit: "%", points: liveMemSeries ?? [] },
+        { name: "Disk IOPS", unit: "ops/s", points: liveDiskIopsSeries ?? [] },
+      ]
+    : [];
   const series = seriesAll.filter((s) => s.points.length > 0);
   const resourcesFetchedAt = getResourcesFetchedAt(app.id);
-  const infraCachedAt = liveResources && resourcesFetchedAt ? toOffsetIso(new Date(resourcesFetchedAt).toISOString()) : undefined;
+  const infraCachedAt =
+    liveResources && resourcesFetchedAt
+      ? toOffsetIso(new Date(resourcesFetchedAt).toISOString())
+      : undefined;
   // Only mark dataSource "live" when we actually have live metric series — if
   // resources are fetched but Log Analytics is unconfigured, series is empty
   // and we want the generic "no data" UI (not the "Log Analytics returned nothing" message).
   const metricsDataSource = series.length > 0 ? "live" : "mock";
-  const data = GetInfrastructureResponse.parse({ resources, series, dataSource: metricsDataSource, ...(infraCachedAt ? { cachedAt: infraCachedAt } : {}) });
+  const data = GetInfrastructureResponse.parse({
+    resources,
+    series,
+    dataSource: metricsDataSource,
+    ...(infraCachedAt ? { cachedAt: infraCachedAt } : {}),
+  });
   res.json(data);
 });
 
@@ -486,7 +520,11 @@ router.get("/apps/:appId/network", async (req, res) => {
     }
     return ep;
   });
-  const throughputAll: { name: string; unit: string; points: { timestamp: string; value: number }[] }[] =
+  const throughputAll: {
+    name: string;
+    unit: string;
+    points: { timestamp: string; value: number }[];
+  }[] =
     liveIngressSeries || liveEgressSeries
       ? [
           { name: "Ingress", unit: "MB/s", points: liveIngressSeries ?? [] },
@@ -494,7 +532,7 @@ router.get("/apps/:appId/network", async (req, res) => {
         ]
       : [];
   const throughput = throughputAll.filter((s) => s.points.length > 0);
-  const dataSource = (liveIngressSeries !== null || liveEgressSeries !== null) ? "live" : "mock";
+  const dataSource = liveIngressSeries !== null || liveEgressSeries !== null ? "live" : "mock";
   const endpointsDataSource = liveEndpoints !== null ? "live" : "mock";
   const data = GetNetworkResponse.parse({ endpoints, throughput, dataSource, endpointsDataSource });
   res.json(data);
@@ -519,28 +557,28 @@ function mockApiUsageForApp(appId: string): {
 } {
   if (appId === "grailbabe") {
     const byApi = [
-      { name: "GET /v1/products",          totalCalls: 68_400, cost: 0.72 },
-      { name: "GET /v1/search",             totalCalls: 42_300, cost: 0.44 },
-      { name: "GET /v1/users/{id}",         totalCalls: 28_500, cost: 0.30 },
-      { name: "POST /v1/orders",            totalCalls: 19_800, cost: 0.21 },
-      { name: "POST /v1/media/upload",      totalCalls:  9_200, cost: 0.10 },
-      { name: "POST /v1/notifications",     totalCalls:  8_100, cost: 0.07 },
+      { name: "GET /v1/products", totalCalls: 68_400, cost: 0.72 },
+      { name: "GET /v1/search", totalCalls: 42_300, cost: 0.44 },
+      { name: "GET /v1/users/{id}", totalCalls: 28_500, cost: 0.3 },
+      { name: "POST /v1/orders", totalCalls: 19_800, cost: 0.21 },
+      { name: "POST /v1/media/upload", totalCalls: 9_200, cost: 0.1 },
+      { name: "POST /v1/notifications", totalCalls: 8_100, cost: 0.07 },
     ];
     const totalCalls = byApi.reduce((s, r) => s + r.totalCalls, 0);
-    const cost       = Number(byApi.reduce((s, r) => s + r.cost, 0).toFixed(2));
+    const cost = Number(byApi.reduce((s, r) => s + r.cost, 0).toFixed(2));
     const costPerMillion = Number((cost / (totalCalls / 1_000_000)).toFixed(2));
     return { totalCalls, costPerMillion, cost, byApi };
   }
 
   if (appId === "kinisis-labs") {
     const byApi = [
-      { name: "GET /api/apps",                    totalCalls: 3_420, cost: 0.12 },
+      { name: "GET /api/apps", totalCalls: 3_420, cost: 0.12 },
       { name: "POST /api/webhooks/clerk/{appId}", totalCalls: 2_380, cost: 0.08 },
-      { name: "GET /api/apps/{id}/cost",          totalCalls: 2_140, cost: 0.07 },
-      { name: "GET /api/auth/me",                 totalCalls: 1_290, cost: 0.04 },
+      { name: "GET /api/apps/{id}/cost", totalCalls: 2_140, cost: 0.07 },
+      { name: "GET /api/auth/me", totalCalls: 1_290, cost: 0.04 },
     ];
     const totalCalls = byApi.reduce((s, r) => s + r.totalCalls, 0);
-    const cost       = Number(byApi.reduce((s, r) => s + r.cost, 0).toFixed(2));
+    const cost = Number(byApi.reduce((s, r) => s + r.cost, 0).toFixed(2));
     const costPerMillion = Number((cost / (totalCalls / 1_000_000)).toFixed(2));
     return { totalCalls, costPerMillion, cost, byApi };
   }
@@ -571,7 +609,9 @@ const _stripeSyncTs = new Map<string, number>();
  * or before the app goes live), so revenue shows as $0 rather than stale mock
  * figures.
  */
-async function syncAndReadRevenue(app: AppRecord): Promise<{ stripe: number; appStore: number; playStore: number }> {
+async function syncAndReadRevenue(
+  app: AppRecord,
+): Promise<{ stripe: number; appStore: number; playStore: number }> {
   if (isStripeConfigured() && STRIPE_SYNC_APPS.has(app.id)) {
     const lastSync = _stripeSyncTs.get(app.id) ?? 0;
     if (Date.now() - lastSync > STRIPE_SYNC_TTL_MS) {
@@ -604,10 +644,7 @@ async function syncAndReadRevenue(app: AppRecord): Promise<{ stripe: number; app
  * @param priorMonthTotal  Prior month comparable cost (May 1–N if today is
  *                         June N), fetched from Azure; null when unavailable.
  */
-function computeMomChangePct(
-  mtd: number,
-  priorMonthTotal: number | null = null,
-): number | null {
+function computeMomChangePct(mtd: number, priorMonthTotal: number | null = null): number | null {
   if (mtd <= 0) return null;
   if (priorMonthTotal === null || priorMonthTotal <= 0) return null;
   const pct = ((mtd - priorMonthTotal) / priorMonthTotal) * 100;
@@ -616,9 +653,21 @@ function computeMomChangePct(
 
 function buildRevenueDto(r: { stripe: number; appStore: number; playStore: number }) {
   const bySource = [
-    { source: "stripe" as const, label: REVENUE_SOURCE_LABELS.stripe, amount: Number(r.stripe.toFixed(2)) },
-    { source: "app_store" as const, label: REVENUE_SOURCE_LABELS.app_store, amount: Number(r.appStore.toFixed(2)) },
-    { source: "play_store" as const, label: REVENUE_SOURCE_LABELS.play_store, amount: Number(r.playStore.toFixed(2)) },
+    {
+      source: "stripe" as const,
+      label: REVENUE_SOURCE_LABELS.stripe,
+      amount: Number(r.stripe.toFixed(2)),
+    },
+    {
+      source: "app_store" as const,
+      label: REVENUE_SOURCE_LABELS.app_store,
+      amount: Number(r.appStore.toFixed(2)),
+    },
+    {
+      source: "play_store" as const,
+      label: REVENUE_SOURCE_LABELS.play_store,
+      amount: Number(r.playStore.toFixed(2)),
+    },
   ];
   const total = Number((r.stripe + r.appStore + r.playStore).toFixed(2));
   return { currency: "USD", total, bySource };
@@ -635,29 +684,34 @@ router.get("/apps/:appId/cost", async (req, res) => {
   // 30-min (cost) or 1-hour (budget) snapshot.
   const bypassCache = req.query["refresh"] === "true";
   const scope = billingScope(app.id);
-  const [costWS, budgetWithSource, rev, priorMonthTotal, thirdPartyUsage, opsCosts] = await Promise.all([
-    fetchMonthToDateCostWithFallback(app, { bypassCache, billingScope: scope }),
-    fetchBudgetForAppWithFallback(app, { bypassCache, budgetScope: scope }),
-    syncAndReadRevenue(app),
-    // Fetch the prior month's comparable MTD cost for the MoM calculation.
-    // Queries Cost Management for the same elapsed day-of-month window last
-    // month (e.g. May 1–8 when today is June 8). Returns null when Azure is
-    // not yet configured.
-    fetchLastMonthComparableCostTotal(app, { bypassCache, billingScope: scope }),
-    // Third-party API spend (OpenAI, Replicate). Live when env vars are set;
-    // falls back to deterministic placeholder values otherwise.
-    fetchThirdPartyUsage(app.id),
-    // Non-Azure operational costs (website ops, network ops, M365 licenses).
-    // Only populated for the Business Ops app; returns an empty summary for others.
-    app.id === "kinisis-labs" ? fetchOpsCostSummary(app.id) : Promise.resolve(null),
-  ]);
+  const [costWS, budgetWithSource, rev, priorMonthTotal, thirdPartyUsage, opsCosts] =
+    await Promise.all([
+      fetchMonthToDateCostWithFallback(app, { bypassCache, billingScope: scope }),
+      fetchBudgetForAppWithFallback(app, { bypassCache, budgetScope: scope }),
+      syncAndReadRevenue(app),
+      // Fetch the prior month's comparable MTD cost for the MoM calculation.
+      // Queries Cost Management for the same elapsed day-of-month window last
+      // month (e.g. May 1–8 when today is June 8). Returns null when Azure is
+      // not yet configured.
+      fetchLastMonthComparableCostTotal(app, { bypassCache, billingScope: scope }),
+      // Third-party API spend (OpenAI, Replicate). Live when env vars are set;
+      // falls back to deterministic placeholder values otherwise.
+      fetchThirdPartyUsage(app.id),
+      // Non-Azure operational costs (website ops, network ops, M365 licenses).
+      // Only populated for the Business Ops app; returns an empty summary for others.
+      app.id === "kinisis-labs" ? fetchOpsCostSummary(app.id) : Promise.resolve(null),
+    ]);
   const liveCost = costWS?.result ?? null;
   const mtd = liveCost?.monthToDate ?? 0;
   const byService = liveCost?.byService ?? [];
   const hasBudget = budgetWithSource?.result.hasBudget ?? false;
   const budget = hasBudget ? (budgetWithSource?.result.amount ?? 0) : 0;
   const forecast = budgetWithSource?.result.forecastAmount ?? 0;
-  const budgetDataSource = budgetWithSource ? (hasBudget ? budgetWithSource.source : "estimated") : "estimated";
+  const budgetDataSource = budgetWithSource
+    ? hasBudget
+      ? budgetWithSource.source
+      : "estimated"
+    : "estimated";
 
   // Month-over-month percentage change: compares current MTD against the
   // prior month's comparable cost. Returns null when either figure is zero
@@ -670,9 +724,7 @@ router.get("/apps/:appId/cost", async (req, res) => {
 
   // For apps that use third-party AI APIs (GrailBabe: OpenAI + Replicate),
   // use the fetched usage; fall back to the internal mock for other apps.
-  const apiUsage = thirdPartyUsage.byApi.length > 0
-    ? thirdPartyUsage
-    : mockApiUsageForApp(app.id);
+  const apiUsage = thirdPartyUsage.byApi.length > 0 ? thirdPartyUsage : mockApiUsageForApp(app.id);
 
   const data = GetCostResponse.parse({
     currency: "USD",
@@ -714,7 +766,10 @@ router.post("/apps/:appId/ops-costs", requireEngineerOrAdmin, async (req, res) =
     res.status(400).json({ error: "Invalid request body", details: parsed.error.flatten() });
     return;
   }
-  const item = await createOpsCostItem(app.id, parsed.data as Parameters<typeof createOpsCostItem>[1]);
+  const item = await createOpsCostItem(
+    app.id,
+    parsed.data as Parameters<typeof createOpsCostItem>[1],
+  );
   res.status(201).json(item);
 });
 
@@ -729,7 +784,11 @@ router.patch("/apps/:appId/ops-costs/:itemId", requireEngineerOrAdmin, async (re
     res.status(400).json({ error: "Invalid request body", details: parsed.error.flatten() });
     return;
   }
-  const item = await updateOpsCostItem(app.id, req.params.itemId as string, parsed.data as Parameters<typeof updateOpsCostItem>[2]);
+  const item = await updateOpsCostItem(
+    app.id,
+    req.params.itemId as string,
+    parsed.data as Parameters<typeof updateOpsCostItem>[2],
+  );
   if (!item) {
     res.status(404).json({ error: "Item not found" });
     return;
@@ -760,20 +819,31 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
   }
   const bypassCache = req.query["refresh"] === "true";
 
-  const [liveMetrics, liveRpmSeries, liveLatenSeries, liveErrSeries, liveCpuSeries, liveMemSeries, liveTopExceptions, liveBrowserTelemetry, liveBrowserLoadSeries, liveBrowserExcSeries, liveBrowserPageViewSeries] =
-    await Promise.all([
-      fetchAppMetrics(app, { bypassCache }),
-      fetchAppTimeSeries(app, "requests_per_min", 24, { bypassCache }),
-      fetchAppTimeSeries(app, "p95_latency_ms", 24, { bypassCache }),
-      fetchAppTimeSeries(app, "error_rate_pct", 24, { bypassCache }),
-      fetchAppTimeSeries(app, "cpu_pct", 24, { bypassCache }),
-      fetchAppTimeSeries(app, "memory_pct", 24, { bypassCache }),
-      fetchTopExceptions(app, { hours: 24, limit: 5, bypassCache }),
-      fetchBrowserTelemetry(app, { bypassCache }),
-      fetchAppTimeSeries(app, "browser_page_load_p95", 24, { bypassCache }),
-      fetchAppTimeSeries(app, "browser_exception_rate", 24, { bypassCache }),
-      fetchAppTimeSeries(app, "browser_page_views", 24, { bypassCache }),
-    ]);
+  const [
+    liveMetrics,
+    liveRpmSeries,
+    liveLatenSeries,
+    liveErrSeries,
+    liveCpuSeries,
+    liveMemSeries,
+    liveTopExceptions,
+    liveBrowserTelemetry,
+    liveBrowserLoadSeries,
+    liveBrowserExcSeries,
+    liveBrowserPageViewSeries,
+  ] = await Promise.all([
+    fetchAppMetrics(app, { bypassCache }),
+    fetchAppTimeSeries(app, "requests_per_min", 24, { bypassCache }),
+    fetchAppTimeSeries(app, "p95_latency_ms", 24, { bypassCache }),
+    fetchAppTimeSeries(app, "error_rate_pct", 24, { bypassCache }),
+    fetchAppTimeSeries(app, "cpu_pct", 24, { bypassCache }),
+    fetchAppTimeSeries(app, "memory_pct", 24, { bypassCache }),
+    fetchTopExceptions(app, { hours: 24, limit: 5, bypassCache }),
+    fetchBrowserTelemetry(app, { bypassCache }),
+    fetchAppTimeSeries(app, "browser_page_load_p95", 24, { bypassCache }),
+    fetchAppTimeSeries(app, "browser_exception_rate", 24, { bypassCache }),
+    fetchAppTimeSeries(app, "browser_page_views", 24, { bypassCache }),
+  ]);
 
   // Resolve App Insights resource ID for deep-link construction on the frontend.
   // Uses the in-process cache populated by the parallel fetches above, so this
@@ -788,7 +858,8 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
   const isLive = Boolean(liveMetrics || liveCpuSeries || liveMemSeries || liveTopExceptions);
 
   const metricsFetchedAt = getMetricsFetchedAt(app.id);
-  const telemetryCachedAt = isLive && metricsFetchedAt ? toOffsetIso(new Date(metricsFetchedAt).toISOString()) : undefined;
+  const telemetryCachedAt =
+    isLive && metricsFetchedAt ? toOffsetIso(new Date(metricsFetchedAt).toISOString()) : undefined;
   const fixPoints = (pts: { timestamp: string; value: number }[] | null) =>
     (pts ?? []).map((p) => ({ ...p, timestamp: toOffsetIso(p.timestamp) }));
   const data = GetTelemetryResponse.parse({
@@ -799,27 +870,43 @@ router.get("/apps/:appId/telemetry", async (req, res) => {
     availabilityPercent: liveMetrics?.availabilityPercent ?? 0,
     cpuPercent: liveCpuPct,
     memoryPercent: liveMemPct,
-    series: isLive ? [
-      { name: "Requests / min", unit: "rpm", points: fixPoints(liveRpmSeries) },
-      { name: "P95 latency (ms)", unit: "ms", points: fixPoints(liveLatenSeries) },
-      { name: "Error rate (%)", unit: "%", points: fixPoints(liveErrSeries) },
-      { name: "CPU %", unit: "%", points: fixPoints(liveCpuSeries) },
-      { name: "Memory %", unit: "%", points: fixPoints(liveMemSeries) },
-    ] : [],
+    series: isLive
+      ? [
+          { name: "Requests / min", unit: "rpm", points: fixPoints(liveRpmSeries) },
+          { name: "P95 latency (ms)", unit: "ms", points: fixPoints(liveLatenSeries) },
+          { name: "Error rate (%)", unit: "%", points: fixPoints(liveErrSeries) },
+          { name: "CPU %", unit: "%", points: fixPoints(liveCpuSeries) },
+          { name: "Memory %", unit: "%", points: fixPoints(liveMemSeries) },
+        ]
+      : [],
     topErrors: (liveTopExceptions ?? []).map((e) => ({ ...e, lastSeen: toOffsetIso(e.lastSeen) })),
     dataSource: isLive ? "live" : "mock",
     ...(telemetryCachedAt ? { cachedAt: telemetryCachedAt } : {}),
     ...(appInsightsResourceId ? { appInsightsResourceId } : {}),
-    ...(liveBrowserTelemetry ? {
-      browserTelemetry: {
-        ...liveBrowserTelemetry,
-        series: [
-          { name: "Browser page load P95 (ms)", unit: "ms", points: fixPoints(liveBrowserLoadSeries) },
-          { name: "Browser exceptions / hour", unit: "/h", points: fixPoints(liveBrowserExcSeries) },
-          { name: "Browser page views / hour", unit: "/h", points: fixPoints(liveBrowserPageViewSeries) },
-        ],
-      },
-    } : {}),
+    ...(liveBrowserTelemetry
+      ? {
+          browserTelemetry: {
+            ...liveBrowserTelemetry,
+            series: [
+              {
+                name: "Browser page load P95 (ms)",
+                unit: "ms",
+                points: fixPoints(liveBrowserLoadSeries),
+              },
+              {
+                name: "Browser exceptions / hour",
+                unit: "/h",
+                points: fixPoints(liveBrowserExcSeries),
+              },
+              {
+                name: "Browser page views / hour",
+                unit: "/h",
+                points: fixPoints(liveBrowserPageViewSeries),
+              },
+            ],
+          },
+        }
+      : {}),
   });
   res.json(data);
 });
@@ -840,8 +927,12 @@ router.get("/apps/:appId/alerts", async (req, res) => {
 // --- global ---
 router.get("/global/health", async (_req, res) => {
   const [costResults, lastMonthResults] = await Promise.all([
-    Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, { billingScope: billingScope(a.id) }))),
-    Promise.all(APPS.map((a) => fetchLastMonthComparableCostTotal(a, { billingScope: billingScope(a.id) }))),
+    Promise.all(
+      APPS.map((a) => fetchMonthToDateCostWithFallback(a, { billingScope: billingScope(a.id) })),
+    ),
+    Promise.all(
+      APPS.map((a) => fetchLastMonthComparableCostTotal(a, { billingScope: billingScope(a.id) })),
+    ),
   ]);
 
   const totals = APPS.reduce(
@@ -862,8 +953,8 @@ router.get("/global/health", async (_req, res) => {
   const costDataSource: "live" | "cached" | "mock" = sources.every((s) => s === "live")
     ? "live"
     : sources.some((s) => s === "live" || s === "cached")
-    ? "cached"
-    : "mock";
+      ? "cached"
+      : "mock";
 
   // Compute MoM trend only when Azure Cost Management returned live/cached data.
   // Omit (undefined) for mock so the frontend knows not to render the badge.
@@ -875,7 +966,9 @@ router.get("/global/health", async (_req, res) => {
       return sum + v;
     }, 0);
     if (lastMonthTotal !== null && lastMonthTotal > 0.01) {
-      momTrendPct = Number((((monthToDateCost - lastMonthTotal) / lastMonthTotal) * 100).toFixed(1));
+      momTrendPct = Number(
+        (((monthToDateCost - lastMonthTotal) / lastMonthTotal) * 100).toFixed(1),
+      );
     }
   }
 
@@ -924,7 +1017,9 @@ router.get("/apps/:appId/activity", async (req, res) => {
     return;
   }
   const bypassCache = req.query["refresh"] === "true";
-  const entries = await fetchActivityLog(app.id, app.resourceGroup, app.subscriptionId, { bypassCache });
+  const entries = await fetchActivityLog(app.id, app.resourceGroup, app.subscriptionId, {
+    bypassCache,
+  });
   const data = ListActivityLogResponse.parse(entries);
   res.json(data);
 });
@@ -955,7 +1050,13 @@ router.get("/apps/:appId/logs", async (req, res) => {
     const logsClient = new LogsQueryClient(credential);
     const result = await logsClient.queryWorkspace(workspaceId, kql, { duration: "P7D" });
 
-    const lines: Array<{ id: string; timestamp: string; appId: string; level: string; message: string }> = [];
+    const lines: Array<{
+      id: string;
+      timestamp: string;
+      appId: string;
+      level: string;
+      message: string;
+    }> = [];
     if (result.status === "Success" && result.tables.length > 0) {
       const table = result.tables[0]!;
       const cols = table.columnDescriptors.map((c) => c.name ?? "");
@@ -968,7 +1069,13 @@ router.get("/apps/:appId/logs", async (req, res) => {
         const msg = msgIdx >= 0 ? String(row[msgIdx] ?? "") : JSON.stringify(row);
         const lvlRaw = lvlIdx >= 0 ? String(row[lvlIdx] ?? "").toUpperCase() : "INFO";
         const level = ["ERROR", "WARN", "INFO"].includes(lvlRaw) ? lvlRaw : "INFO";
-        lines.push({ id: `${app.id}-log-${lines.length}`, timestamp: ts, appId: app.id, level, message: msg });
+        lines.push({
+          id: `${app.id}-log-${lines.length}`,
+          timestamp: ts,
+          appId: app.id,
+          level,
+          message: msg,
+        });
       }
     }
     res.json(QueryLogsResponse.parse(lines));
@@ -993,12 +1100,13 @@ router.get("/global/service-health", async (_req, res) => {
 // Derives SLO snapshot from Azure Monitor metrics for each app.
 
 router.get("/global/slos", async (_req, res) => {
-  const [metricsResults, cpuSeriesResults, memSeriesResults, thresholdOverrides] = await Promise.all([
-    Promise.all(APPS.map((a) => fetchAppMetrics(a, {}))),
-    Promise.all(APPS.map((a) => fetchAppTimeSeries(a, "cpu_pct", 24))),
-    Promise.all(APPS.map((a) => fetchAppTimeSeries(a, "memory_pct", 24))),
-    loadThresholdOverrides(),
-  ]);
+  const [metricsResults, cpuSeriesResults, memSeriesResults, thresholdOverrides] =
+    await Promise.all([
+      Promise.all(APPS.map((a) => fetchAppMetrics(a, {}))),
+      Promise.all(APPS.map((a) => fetchAppTimeSeries(a, "cpu_pct", 24))),
+      Promise.all(APPS.map((a) => fetchAppTimeSeries(a, "memory_pct", 24))),
+      loadThresholdOverrides(),
+    ]);
 
   const rows = APPS.flatMap((app, i) => {
     const m = metricsResults[i];
@@ -1017,34 +1125,41 @@ router.get("/global/slos", async (_req, res) => {
     const cpuPct = lastCpuPoint !== undefined ? Number(lastCpuPoint.value.toFixed(1)) : 0;
     const memoryPct = lastMemPoint !== undefined ? Number(lastMemPoint.value.toFixed(1)) : 0;
 
-    const { cpuThreshold, memoryThreshold } = resolveThresholds(app, thresholdOverrides.get(app.id));
+    const { cpuThreshold, memoryThreshold } = resolveThresholds(
+      app,
+      thresholdOverrides.get(app.id),
+    );
 
-    return [{
-      appId: app.id,
-      appName: app.name,
-      environment: app.environment,
-      uptimePct: Number(m.availabilityPercent.toFixed(4)),
-      errorBudgetRemainingPct,
-      p95LatencyMs: Number(m.p95LatencyMs.toFixed(0)),
-      p95LatencyIsReal: m.p95LatencyIsReal,
-      p95TargetMs,
-      errorRatePct: Number(m.errorRatePercent.toFixed(4)),
-      errorTargetPct,
-      cpuPct,
-      cpuThreshold,
-      memoryPct,
-      memoryThreshold,
-      cpuSeries,
-      memorySeries: memSeries,
-    }];
+    return [
+      {
+        appId: app.id,
+        appName: app.name,
+        environment: app.environment,
+        uptimePct: Number(m.availabilityPercent.toFixed(4)),
+        errorBudgetRemainingPct,
+        p95LatencyMs: Number(m.p95LatencyMs.toFixed(0)),
+        p95LatencyIsReal: m.p95LatencyIsReal,
+        p95TargetMs,
+        errorRatePct: Number(m.errorRatePercent.toFixed(4)),
+        errorTargetPct,
+        cpuPct,
+        cpuThreshold,
+        memoryPct,
+        memoryThreshold,
+        cpuSeries,
+        memorySeries: memSeries,
+      },
+    ];
   });
 
   const slosDataSource = isMonitorConfigured() ? "live" : "mock";
-  res.json(ListSlosResponse.parse({
-    rows,
-    dataSource: slosDataSource,
-    ...(slosDataSource === "live" ? { dataAsOf: toOffsetIso(new Date().toISOString()) } : {}),
-  }));
+  res.json(
+    ListSlosResponse.parse({
+      rows,
+      dataSource: slosDataSource,
+      ...(slosDataSource === "live" ? { dataAsOf: toOffsetIso(new Date().toISOString()) } : {}),
+    }),
+  );
 });
 
 // --- global: cost summary ---
@@ -1054,7 +1169,9 @@ router.get("/global/slos", async (_req, res) => {
  * When at least one service has a trend, compute the spend-weighted average.
  * Falls back to null when no service trends are available (e.g. first week of month).
  */
-function deriveTrendFromServices(byService: Array<{ service: string; amount: number; trend?: string | null }>): string | null {
+function deriveTrendFromServices(
+  byService: Array<{ service: string; amount: number; trend?: string | null }>,
+): string | null {
   let totalAmount = 0;
   let weightedPct = 0;
   let hasAny = false;
@@ -1137,25 +1254,29 @@ router.get("/global/cost-summary", async (_req, res) => {
     }
   }
 
-  res.json(GetGlobalCostSummaryResponse.parse({
-    total: Number(total.toFixed(2)),
-    currency: "USD",
-    byApp,
-    dataSource: overallSource,
-    ...(latestDataAsOf ? { dataAsOf: latestDataAsOf } : {}),
-    ...(globalWowTrend !== null ? { wowTrend: globalWowTrend } : {}),
-  }));
+  res.json(
+    GetGlobalCostSummaryResponse.parse({
+      total: Number(total.toFixed(2)),
+      currency: "USD",
+      byApp,
+      dataSource: overallSource,
+      ...(latestDataAsOf ? { dataAsOf: latestDataAsOf } : {}),
+      ...(globalWowTrend !== null ? { wowTrend: globalWowTrend } : {}),
+    }),
+  );
 });
 
 // --- global: Azure Service Health ---
 router.get("/global/service-health", async (_req, res) => {
   const events = await fetchServiceHealth();
   const liveEnabled = isAzureConfigured();
-  res.json(ListServiceHealthResponse.parse({
-    events,
-    liveEnabled,
-    dataSource: liveEnabled ? "live" : "mock",
-  }));
+  res.json(
+    ListServiceHealthResponse.parse({
+      events,
+      liveEnabled,
+      dataSource: liveEnabled ? "live" : "mock",
+    }),
+  );
 });
 
 // --- global: network endpoints ---
@@ -1182,12 +1303,14 @@ router.get("/global/endpoints", async (_req, res) => {
   const anyLive = endpointResults.some((r) => r !== null && r.length > 0);
   const dataSource = anyLive ? "live" : "mock";
 
-  res.json(ListGlobalEndpointsResponse.parse({
-    endpoints: rows,
-    liveEnabled: true,
-    dataSource,
-    ...(anyLive ? { dataAsOf: toOffsetIso(new Date().toISOString()) } : {}),
-  }));
+  res.json(
+    ListGlobalEndpointsResponse.parse({
+      endpoints: rows,
+      liveEnabled: true,
+      dataSource,
+      ...(anyLive ? { dataAsOf: toOffsetIso(new Date().toISOString()) } : {}),
+    }),
+  );
 });
 
 export default router;
@@ -1226,16 +1349,26 @@ debugRouter.get("/debug/azure-activity", async (_req, res) => {
 
 debugRouter.get("/debug/azure-network", async (_req, res) => {
   const { getSubscriptionIds, isAzureConfigured } = await import("../lib/azure.js");
-  const { getSharedInfraSubscriptionId, fetchNetworkEndpoints } = await import("../lib/azureNetwork.js");
+  const { getSharedInfraSubscriptionId, fetchNetworkEndpoints } =
+    await import("../lib/azureNetwork.js");
 
   const isConfigured = isAzureConfigured();
   const globalSubs = getSubscriptionIds();
   const sharedInfraSub = getSharedInfraSubscriptionId();
 
   const perApp = APPS.map((app) => {
-    const appSub = app.subscriptionId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(app.subscriptionId)
-      ? app.subscriptionId : null;
-    const subscriptionIds = [...new Set([...globalSubs, ...(appSub ? [appSub] : []), ...(sharedInfraSub ? [sharedInfraSub] : [])])];
+    const appSub =
+      app.subscriptionId &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(app.subscriptionId)
+        ? app.subscriptionId
+        : null;
+    const subscriptionIds = [
+      ...new Set([
+        ...globalSubs,
+        ...(appSub ? [appSub] : []),
+        ...(sharedInfraSub ? [sharedInfraSub] : []),
+      ]),
+    ];
     return { appId: app.id, appSub, subscriptionIds };
   });
 
