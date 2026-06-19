@@ -14,11 +14,7 @@ import { logger } from "./logger.js";
  * Config-gated: returns unavailable sentinel when AZURE_SUBSCRIPTION_IDS is not set.
  */
 
-export const REQUIRED_TAGS = [
-  "CostCategory",
-  "Application",
-  "Environment",
-] as const;
+export const REQUIRED_TAGS = ["CostCategory", "Application", "Environment"] as const;
 
 export type TagComplianceEntry = {
   id: string;
@@ -56,6 +52,24 @@ function getClient(): ResourceGraphClient {
   return _client;
 }
 
+/**
+ * Parse tags from a Resource Graph row — handles both object and JSON-string formats.
+ * Returns null when the resource has no tags object at all (system/extension resources).
+ */
+function parseTags(raw: unknown): Record<string, unknown> | null {
+  if (!raw) return null;
+  if (typeof raw === "object") return raw as Record<string, unknown>;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>;
+    } catch {
+      // not JSON
+    }
+  }
+  return null;
+}
+
 function missingTagsFor(tags: Record<string, unknown> | null | undefined): string[] {
   if (!tags) return [...REQUIRED_TAGS];
   return REQUIRED_TAGS.filter((t) => {
@@ -79,9 +93,9 @@ const UNAVAILABLE: TagComplianceResult = {
   dataSource: "unavailable",
 };
 
-export async function fetchTagCompliance(
-  { bypassCache = false }: { bypassCache?: boolean } = {},
-): Promise<TagComplianceResult> {
+export async function fetchTagCompliance({
+  bypassCache = false,
+}: { bypassCache?: boolean } = {}): Promise<TagComplianceResult> {
   if (!isAzureConfigured()) return UNAVAILABLE;
 
   if (!bypassCache && _cache && Date.now() - _cache.fetchedAt < CACHE_TTL_MS) {
@@ -94,11 +108,32 @@ export async function fetchTagCompliance(
   try {
     const client = getClient();
 
-    // Resource-only scan — subscription and resource-group scopes are excluded
-    // because tags are applied at the individual resource level per strategy.
+    // Resource-only scan — subscription and resource-group scopes are excluded.
+    // System/child/extension resource types are excluded because they cannot carry
+    // tags independently and would inflate the non-compliant count.
     const query = `
       resources
+      | where type !in~ (
+          'microsoft.compute/virtualmachines/extensions',
+          'microsoft.compute/virtualmachinescalesets/extensions',
+          'microsoft.insights/diagnosticsettings',
+          'microsoft.insights/autoscalesettings',
+          'microsoft.alertsmanagement/smartdetectoralertrules',
+          'microsoft.authorization/locks',
+          'microsoft.authorization/roleassignments',
+          'microsoft.authorization/roledefinitions',
+          'microsoft.network/networkwatchers',
+          'microsoft.network/networkwatchers/flowlogs',
+          'microsoft.security/automations',
+          'microsoft.security/pricings',
+          'microsoft.policyinsights/remediations',
+          'microsoft.operationsmanagement/solutions',
+          'microsoft.resources/deployments',
+          'microsoft.resources/templatespecs',
+          'microsoft.maintenance/configurationassignments'
+        )
       | project id, name, type, subscriptionId, resourceGroup, tags
+      | order by type asc
       | limit 1000
     `;
 
@@ -110,7 +145,7 @@ export async function fetchTagCompliance(
 
     for (const row of rows) {
       totalScanned++;
-      const tags = (row["tags"] as Record<string, unknown> | null) ?? null;
+      const tags = parseTags(row["tags"]);
       const missing = missingTagsFor(tags);
       if (missing.length === 0) continue;
 
@@ -136,10 +171,7 @@ export async function fetchTagCompliance(
     };
 
     _cache = { data, fetchedAt: Date.now() };
-    logger.info(
-      { totalScanned, nonCompliantCount: entries.length },
-      "fetchTagCompliance complete",
-    );
+    logger.info({ totalScanned, nonCompliantCount: entries.length }, "fetchTagCompliance complete");
     return data;
   } catch (err) {
     logger.error({ err }, "fetchTagCompliance error");
@@ -151,11 +183,13 @@ export async function fetchTagCompliance(
       // Azure SDK errors surface the code in e.code or e.statusCode
       if (typeof e["code"] === "string") {
         if (e["code"] === "AuthorizationFailed" || e["code"] === "403") {
-          cleanMsg = "Authorization failed — the managed identity does not have Reader access to one or more subscriptions.";
+          cleanMsg =
+            "Authorization failed — the managed identity does not have Reader access to one or more subscriptions.";
         } else if (e["code"] === "LinkedAuthorizationFailed") {
           cleanMsg = "Authorization failed — insufficient permissions on a linked subscription.";
         } else if (e["code"] === "InvalidSubscriptionId" || e["code"] === "SubscriptionNotFound") {
-          cleanMsg = "One or more subscription IDs in AZURE_SUBSCRIPTION_IDS are invalid or not accessible.";
+          cleanMsg =
+            "One or more subscription IDs in AZURE_SUBSCRIPTION_IDS are invalid or not accessible.";
         } else if (e["code"] === "TooManyRequests" || String(e["statusCode"]) === "429") {
           cleanMsg = "Azure Resource Graph is throttled — please retry in a few minutes.";
         } else if (typeof e["code"] === "string") {
