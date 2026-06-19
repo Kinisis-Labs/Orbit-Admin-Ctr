@@ -686,7 +686,7 @@ router.get("/apps/:appId/cost", async (req, res) => {
 
 // --- ops costs (Business Ops only) ---
 router.get("/apps/:appId/ops-costs", requireEngineerOrAdmin, async (req, res) => {
-  const app = findApp(req.params.appId);
+  const app = findApp(req.params.appId as string);
   if (!app) {
     res.status(404).json({ error: "App not found" });
     return;
@@ -696,7 +696,7 @@ router.get("/apps/:appId/ops-costs", requireEngineerOrAdmin, async (req, res) =>
 });
 
 router.post("/apps/:appId/ops-costs", requireEngineerOrAdmin, async (req, res) => {
-  const app = findApp(req.params.appId);
+  const app = findApp(req.params.appId as string);
   if (!app) {
     res.status(404).json({ error: "App not found" });
     return;
@@ -711,7 +711,7 @@ router.post("/apps/:appId/ops-costs", requireEngineerOrAdmin, async (req, res) =
 });
 
 router.patch("/apps/:appId/ops-costs/:itemId", requireEngineerOrAdmin, async (req, res) => {
-  const app = findApp(req.params.appId);
+  const app = findApp(req.params.appId as string);
   if (!app) {
     res.status(404).json({ error: "App not found" });
     return;
@@ -721,7 +721,7 @@ router.patch("/apps/:appId/ops-costs/:itemId", requireEngineerOrAdmin, async (re
     res.status(400).json({ error: "Invalid request body", details: parsed.error.flatten() });
     return;
   }
-  const item = await updateOpsCostItem(app.id, req.params.itemId, parsed.data as Parameters<typeof updateOpsCostItem>[2]);
+  const item = await updateOpsCostItem(app.id, req.params.itemId as string, parsed.data as Parameters<typeof updateOpsCostItem>[2]);
   if (!item) {
     res.status(404).json({ error: "Item not found" });
     return;
@@ -730,12 +730,12 @@ router.patch("/apps/:appId/ops-costs/:itemId", requireEngineerOrAdmin, async (re
 });
 
 router.delete("/apps/:appId/ops-costs/:itemId", requireEngineerOrAdmin, async (req, res) => {
-  const app = findApp(req.params.appId);
+  const app = findApp(req.params.appId as string);
   if (!app) {
     res.status(404).json({ error: "App not found" });
     return;
   }
-  const deleted = await deleteOpsCostItem(app.id, req.params.itemId);
+  const deleted = await deleteOpsCostItem(app.id, req.params.itemId as string);
   if (!deleted) {
     res.status(404).json({ error: "Item not found" });
     return;
