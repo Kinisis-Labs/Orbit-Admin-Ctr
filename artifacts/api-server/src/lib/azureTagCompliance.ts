@@ -24,6 +24,7 @@ export type TagComplianceEntry = {
   subscriptionId: string;
   resourceGroup?: string;
   missingTags: string[];
+  tags?: Record<string, string> | null;
 };
 
 export type TagComplianceResult = {
@@ -164,6 +165,11 @@ export async function fetchTagCompliance({
         subscriptionId: String(row["subscriptionId"] ?? ""),
         ...(rg ? { resourceGroup: rg } : {}),
         missingTags: missing,
+        tags: tags
+          ? Object.fromEntries(
+              Object.entries(tags).map(([k, v]) => [k, String(v)]),
+            )
+          : null,
       });
     }
 

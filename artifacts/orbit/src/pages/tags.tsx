@@ -669,13 +669,53 @@ const STRATEGY_SCHEMA: {
 ];
 
 function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLoading: boolean }) {
-  const rollup = COST_CATEGORY_VALUES.map((cat) => {
-    const count = apps.filter((a) => getTag(a, "CostCategory") === cat).length;
-    return { cat, count };
-  }).filter((r) => r.count > 0);
+  const { data: compliance } = useGetTagCompliance();
 
-  const untagged = apps.filter((a) => !getTag(a, "CostCategory")).length;
-  const total = apps.length;
+  // Build rollup from resource-level Application tag values from the live compliance scan.
+  // Falls back to app-level records if compliance data isn't available yet.
+  const { rollup, untagged, total, sourceLabel } = (() => {
+    const entries = compliance?.entries;
+    if (entries && entries.length > 0) {
+      const appTagMap = new Map<string, number>(); // Application tag value → resource count
+      let untaggedCount = 0;
+      for (const entry of entries) {
+        if (entry.scope !== "resource") continue;
+        // Case-insensitive lookup of Application tag
+        const tags = entry.tags;
+        const appValRaw = tags
+          ? Object.entries(tags).find(([k]) => k.toLowerCase() === "application")?.[1]
+          : undefined;
+        const appVal = appValRaw != null ? String(appValRaw).trim() : "";
+        if (appVal) {
+          appTagMap.set(appVal, (appTagMap.get(appVal) ?? 0) + 1);
+        } else {
+          untaggedCount++;
+        }
+      }
+      const totalResources = [...appTagMap.values()].reduce((s, n) => s + n, 0) + untaggedCount;
+      const rollupData = [...appTagMap.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([app, count]) => ({ cat: app, count }));
+      return {
+        rollup: rollupData,
+        untagged: untaggedCount,
+        total: totalResources,
+        sourceLabel: `${totalResources} resources scanned`,
+      };
+    }
+    // Fallback: app-level records
+    const rollupData = COST_CATEGORY_VALUES.map((cat) => ({
+      cat,
+      count: apps.filter((a) => getTag(a, "CostCategory") === cat).length,
+    })).filter((r) => r.count > 0);
+    const untaggedCount = apps.filter((a) => !getTag(a, "CostCategory")).length;
+    return {
+      rollup: rollupData,
+      untagged: untaggedCount,
+      total: apps.length,
+      sourceLabel: `${apps.length} apps tracked`,
+    };
+  })();
 
   return (
     <div className="bg-card border border-border shadow-sm">
@@ -683,7 +723,7 @@ function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLo
         <Layers className="h-3.5 w-3.5 text-muted-foreground ml-2" />
         <h2 className="text-sm font-semibold">Tag strategy overview</h2>
         <span className="text-[11px] text-muted-foreground ml-1">
-          Based on Azure Cost Tagging Strategy · {total} apps tracked
+          Based on Azure Cost Tagging Strategy · {sourceLabel}
         </span>
       </div>
 

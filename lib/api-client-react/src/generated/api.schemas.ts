@@ -1078,6 +1078,7 @@ export interface TagComplianceEntry {
   subscriptionId: string;
   resourceGroup?: string | null;
   missingTags: string[];
+  tags?: Record<string, string> | null;
 }
 
 export interface TagComplianceResponse {
