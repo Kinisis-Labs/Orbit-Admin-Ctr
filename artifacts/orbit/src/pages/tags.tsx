@@ -2,11 +2,27 @@ import { useApps } from "@/hooks/use-apps";
 import type { AppSummary, TagComplianceEntry } from "@workspace/api-client-react";
 import { useGetTagCompliance } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PageHeader } from "@/components/page-header";
-import { Tag, AlertTriangle, CheckCircle2, Info, ChevronRight, RefreshCw, Layers } from "lucide-react";
+import {
+  Tag,
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  ChevronRight,
+  RefreshCw,
+  Layers,
+  ExternalLink,
+} from "lucide-react";
 import { useState, Fragment } from "react";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +37,15 @@ const TAG_LABELS: Record<KnownTag, string> = {
   Environment: "Environment",
 };
 
-const COST_CATEGORY_VALUES = ["Infrastructure", "WebApp", "BusinessOps", "DataPlatform", "Security", "AI", "Shared"] as const;
+const COST_CATEGORY_VALUES = [
+  "Infrastructure",
+  "WebApp",
+  "BusinessOps",
+  "DataPlatform",
+  "Security",
+  "AI",
+  "Shared",
+] as const;
 type CostCategory = (typeof COST_CATEGORY_VALUES)[number];
 
 const COST_CATEGORY_COLOR: Record<CostCategory, string> = {
@@ -44,9 +68,13 @@ const ENVIRONMENT_COLOR: Record<string, string> = {
 function TagCell({ tag, value }: { tag: KnownTag; value: string | undefined }) {
   if (!value) return <span className="text-muted-foreground/50 text-[12px] italic">—</span>;
   if (tag === "CostCategory") {
-    const color = COST_CATEGORY_COLOR[value as CostCategory] ?? "bg-muted/50 text-muted-foreground border-border";
+    const color =
+      COST_CATEGORY_COLOR[value as CostCategory] ??
+      "bg-muted/50 text-muted-foreground border-border";
     return (
-      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border text-[11px] font-medium ${color}`}>
+      <span
+        className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border text-[11px] font-medium ${color}`}
+      >
         {value}
       </span>
     );
@@ -54,7 +82,9 @@ function TagCell({ tag, value }: { tag: KnownTag; value: string | undefined }) {
   if (tag === "Environment") {
     const color = ENVIRONMENT_COLOR[value] ?? "bg-muted/60 text-muted-foreground border-border";
     return (
-      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border text-[11px] font-mono ${color}`}>
+      <span
+        className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border text-[11px] font-mono ${color}`}
+      >
         {value}
       </span>
     );
@@ -96,10 +126,14 @@ const SCOPE_ORDER: Record<TagComplianceEntry["scope"], number> = {
 
 function scopeIcon(scope: TagComplianceEntry["scope"]): string {
   switch (scope) {
-    case "subscription": return "◈";
-    case "resource-group": return "▣";
-    case "resource": return "◻";
-    default: return "◻";
+    case "subscription":
+      return "◈";
+    case "resource-group":
+      return "▣";
+    case "resource":
+      return "◻";
+    default:
+      return "◻";
   }
 }
 
@@ -107,7 +141,8 @@ function shortenType(type: string): string {
   // e.g. "microsoft.containerapp/containerapps" → "ContainerApps"
   const parts = type.split("/");
   const leaf = parts[parts.length - 1] ?? type;
-  return leaf.replace(/([a-z])([A-Z])/g, "$1 $2")
+  return leaf
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
     .split(/(?=[A-Z])/)
     .join(" ")
     .replace(/\b\w/g, (c) => c.toUpperCase())
@@ -117,8 +152,8 @@ function shortenType(type: string): string {
 type GroupedSub = {
   subscriptionId: string;
   rgs: Map<string, TagComplianceEntry[]>; // rg name → resources in that rg
-  subEntries: TagComplianceEntry[];       // subscription-scope entries
-  rgEntries: TagComplianceEntry[];        // resource-group-scope entries
+  subEntries: TagComplianceEntry[]; // subscription-scope entries
+  rgEntries: TagComplianceEntry[]; // resource-group-scope entries
 };
 
 function groupBySubscription(entries: TagComplianceEntry[]): GroupedSub[] {
@@ -142,6 +177,10 @@ function groupBySubscription(entries: TagComplianceEntry[]): GroupedSub[] {
   return [...subMap.values()];
 }
 
+function azurePortalUrl(resourceId: string): string {
+  return `https://portal.azure.com/#@/resource${encodeURIComponent(resourceId)}/tags`;
+}
+
 function MissingTagBadge({ tag }: { tag: string }) {
   return (
     <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400 text-[10px] font-mono">
@@ -151,11 +190,23 @@ function MissingTagBadge({ tag }: { tag: string }) {
 }
 
 function ComplianceRow({ entry, indent = 0 }: { entry: TagComplianceEntry; indent?: number }) {
+  const portalUrl = azurePortalUrl(entry.id);
   return (
     <TableRow className="border-b border-border/40 hover:bg-muted/30">
       <TableCell className="py-1.5" style={{ paddingLeft: `${(indent + 1) * 16}px` }}>
-        <span className="text-muted-foreground/60 text-[11px] mr-1.5 select-none">{scopeIcon(entry.scope)}</span>
-        <span className="text-[12px] font-medium">{entry.name || entry.id.split("/").pop()}</span>
+        <span className="text-muted-foreground/60 text-[11px] mr-1.5 select-none">
+          {scopeIcon(entry.scope)}
+        </span>
+        <a
+          href={portalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[12px] font-medium text-foreground hover:text-primary hover:underline group"
+          title="Open in Azure Portal → Tags"
+        >
+          {entry.name || entry.id.split("/").pop()}
+          <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
+        </a>
       </TableCell>
       <TableCell className="py-1.5">
         <span className="text-[11px] text-muted-foreground">{SCOPE_LABEL[entry.scope]}</span>
@@ -167,7 +218,9 @@ function ComplianceRow({ entry, indent = 0 }: { entry: TagComplianceEntry; inden
       </TableCell>
       <TableCell className="py-1.5">
         <div className="flex flex-wrap gap-1">
-          {entry.missingTags.map((t: string) => <MissingTagBadge key={t} tag={t} />)}
+          {entry.missingTags.map((t: string) => (
+            <MissingTagBadge key={t} tag={t} />
+          ))}
         </div>
       </TableCell>
     </TableRow>
@@ -190,10 +243,18 @@ function SubscriptionGroup({ group }: { group: GroupedSub }) {
         <TableCell colSpan={4} className="py-1.5 pl-3">
           <div className="flex items-center gap-2">
             <ChevronRight
-              className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", open && "rotate-90")}
+              className={cn(
+                "h-3.5 w-3.5 text-muted-foreground transition-transform",
+                open && "rotate-90",
+              )}
             />
-            <span className="text-[11px] font-mono text-muted-foreground">{group.subscriptionId}</span>
-            <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-red-500/40 text-red-500">
+            <span className="text-[11px] font-mono text-muted-foreground">
+              {group.subscriptionId}
+            </span>
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1 py-0 h-4 border-red-500/40 text-red-500"
+            >
               {totalInSub} non-compliant
             </Badge>
           </div>
@@ -202,8 +263,12 @@ function SubscriptionGroup({ group }: { group: GroupedSub }) {
 
       {open && (
         <>
-          {group.subEntries.map((e) => <ComplianceRow key={e.id} entry={e} indent={0} />)}
-          {group.rgEntries.map((e) => <ComplianceRow key={e.id} entry={e} indent={0} />)}
+          {group.subEntries.map((e) => (
+            <ComplianceRow key={e.id} entry={e} indent={0} />
+          ))}
+          {group.rgEntries.map((e) => (
+            <ComplianceRow key={e.id} entry={e} indent={0} />
+          ))}
           {[...group.rgs.entries()].map(([rg, resources]) => (
             <Fragment key={`rg-${rg}`}>
               <TableRow className="border-b border-border/30 bg-muted/10">
@@ -211,7 +276,9 @@ function SubscriptionGroup({ group }: { group: GroupedSub }) {
                   <span className="text-[10px] text-muted-foreground/70 font-mono">{rg}</span>
                 </TableCell>
               </TableRow>
-              {resources.map((e) => <ComplianceRow key={e.id} entry={e} indent={2} />)}
+              {resources.map((e) => (
+                <ComplianceRow key={e.id} entry={e} indent={2} />
+              ))}
             </Fragment>
           ))}
         </>
@@ -240,7 +307,16 @@ function ComplianceSummary({
     <div className="p-3 border-b border-border grid grid-cols-2 gap-4">
       <div className="space-y-2">
         <div className="flex items-baseline gap-2">
-          <span className={cn("text-2xl font-semibold tabular-nums", pctCompliant === 100 ? "text-green-500" : pctCompliant >= 80 ? "text-yellow-500" : "text-red-500")}>
+          <span
+            className={cn(
+              "text-2xl font-semibold tabular-nums",
+              pctCompliant === 100
+                ? "text-green-500"
+                : pctCompliant >= 80
+                  ? "text-yellow-500"
+                  : "text-red-500",
+            )}
+          >
             {pctCompliant}%
           </span>
           <span className="text-[12px] text-muted-foreground">compliant</span>
@@ -250,19 +326,31 @@ function ComplianceSummary({
         </div>
         <div className="h-1.5 bg-muted rounded-full overflow-hidden w-48">
           <div
-            className={cn("h-full rounded-full", pctCompliant === 100 ? "bg-green-500" : pctCompliant >= 80 ? "bg-yellow-500" : "bg-red-500")}
+            className={cn(
+              "h-full rounded-full",
+              pctCompliant === 100
+                ? "bg-green-500"
+                : pctCompliant >= 80
+                  ? "bg-yellow-500"
+                  : "bg-red-500",
+            )}
             style={{ width: `${pctCompliant}%` }}
           />
         </div>
       </div>
       <div className="space-y-1">
-        <div className="text-[11px] font-medium text-muted-foreground mb-1.5">Missing by tag key</div>
+        <div className="text-[11px] font-medium text-muted-foreground mb-1.5">
+          Missing by tag key
+        </div>
         {byTag.map(({ tag, missing }) => (
           <div key={tag} className="flex items-center gap-2 text-[11px]">
             <span className="font-mono text-muted-foreground w-28 shrink-0">{tag}</span>
             <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
               <div
-                className={cn("h-full rounded-full", missing === 0 ? "bg-green-500" : missing < 5 ? "bg-yellow-500" : "bg-red-500")}
+                className={cn(
+                  "h-full rounded-full",
+                  missing === 0 ? "bg-green-500" : missing < 5 ? "bg-yellow-500" : "bg-red-500",
+                )}
                 style={{ width: total > 0 ? `${Math.round((missing / total) * 100)}%` : "0%" }}
               />
             </div>
@@ -310,7 +398,9 @@ function TagComplianceCard() {
         <div className="p-2 border-b border-border flex items-center gap-2">
           <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground ml-2" />
           <h2 className="text-sm font-semibold">Tag compliance</h2>
-          <span className="text-[11px] text-muted-foreground ml-1">Live scan across subscriptions → RGs → resources</span>
+          <span className="text-[11px] text-muted-foreground ml-1">
+            Live scan across subscriptions → RGs → resources
+          </span>
         </div>
         <Alert className="m-3 border-border/60">
           <Info className="h-4 w-4" />
@@ -330,7 +420,9 @@ function TagComplianceCard() {
         <div className="p-2 border-b border-border flex items-center gap-2">
           <AlertTriangle className="h-3.5 w-3.5 text-destructive ml-2" />
           <h2 className="text-sm font-semibold">Tag compliance</h2>
-          <span className="text-[11px] text-muted-foreground ml-1">Live scan across subscriptions → RGs → resources</span>
+          <span className="text-[11px] text-muted-foreground ml-1">
+            Live scan across subscriptions → RGs → resources
+          </span>
           <button
             type="button"
             onClick={() => void handleRefresh()}
@@ -338,7 +430,9 @@ function TagComplianceCard() {
             aria-label="Retry tag compliance scan"
             title="Retry scan"
             className={`ml-auto flex items-center justify-center rounded p-1 transition-colors ${
-              isRefreshing ? "cursor-not-allowed text-primary opacity-60" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              isRefreshing
+                ? "cursor-not-allowed text-primary opacity-60"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             }`}
           >
             <RefreshCw className={`h-3.5 w-3.5${isRefreshing ? " animate-spin" : ""}`} />
@@ -348,7 +442,9 @@ function TagComplianceCard() {
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="text-sm space-y-1">
             <p>{data.errorMessage ?? "Tag compliance scan failed — Azure returned an error."}</p>
-            <p className="text-xs opacity-70">Check the API server logs for the full error detail. Use the refresh button to retry.</p>
+            <p className="text-xs opacity-70">
+              Check the API server logs for the full error detail. Use the refresh button to retry.
+            </p>
           </AlertDescription>
         </Alert>
       </div>
@@ -365,7 +461,9 @@ function TagComplianceCard() {
       <div className="p-2 border-b border-border flex items-center gap-2">
         <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground ml-2" />
         <h2 className="text-sm font-semibold">Tag compliance</h2>
-        <span className="text-[11px] text-muted-foreground ml-1">Live scan · {totalScanned} resources</span>
+        <span className="text-[11px] text-muted-foreground ml-1">
+          Live scan · {totalScanned} resources
+        </span>
         {nonCompliantCount === 0 ? (
           <span className="flex items-center gap-1 text-[11px] text-green-500">
             <CheckCircle2 className="h-3.5 w-3.5" /> All compliant
@@ -382,7 +480,9 @@ function TagComplianceCard() {
           aria-label="Refresh tag compliance scan"
           title="Re-scan now (bypasses 15-min cache)"
           className={`ml-auto flex items-center justify-center rounded p-1 transition-colors ${
-            isRefreshing ? "cursor-not-allowed text-primary opacity-60" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            isRefreshing
+              ? "cursor-not-allowed text-primary opacity-60"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
           }`}
         >
           <RefreshCw className={`h-3.5 w-3.5${isRefreshing ? " animate-spin" : ""}`} />
@@ -399,18 +499,32 @@ function TagComplianceCard() {
         </div>
       ) : (
         <>
-          <ComplianceSummary total={totalScanned} nonCompliant={nonCompliantCount} entries={entries} />
+          <ComplianceSummary
+            total={totalScanned}
+            nonCompliant={nonCompliantCount}
+            entries={entries}
+          />
           <Table className="text-[12px]">
             <TableHeader className="bg-muted/50 border-b border-border">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-7 font-semibold text-foreground text-[11px]">Resource</TableHead>
-                <TableHead className="h-7 font-semibold text-foreground text-[11px]">Scope</TableHead>
-                <TableHead className="h-7 font-semibold text-foreground text-[11px]">Type</TableHead>
-                <TableHead className="h-7 font-semibold text-foreground text-[11px]">Missing tags</TableHead>
+                <TableHead className="h-7 font-semibold text-foreground text-[11px]">
+                  Resource
+                </TableHead>
+                <TableHead className="h-7 font-semibold text-foreground text-[11px]">
+                  Scope
+                </TableHead>
+                <TableHead className="h-7 font-semibold text-foreground text-[11px]">
+                  Type
+                </TableHead>
+                <TableHead className="h-7 font-semibold text-foreground text-[11px]">
+                  Missing tags
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {grouped.map((g) => <SubscriptionGroup key={g.subscriptionId} group={g} />)}
+              {grouped.map((g) => (
+                <SubscriptionGroup key={g.subscriptionId} group={g} />
+              ))}
             </TableBody>
           </Table>
           <div className="px-3 py-2 border-t border-border/50 text-[10px] text-muted-foreground">
@@ -429,7 +543,10 @@ export default function Tags() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Tags" subtitle="Azure tagging strategy — CostCategory, Application, ServiceType, Owner, Environment" />
+      <PageHeader
+        title="Tags"
+        subtitle="Azure tagging strategy — CostCategory, Application, ServiceType, Owner, Environment"
+      />
 
       <CostCategoryRollupPanel apps={apps ?? []} isLoading={isLoading} />
 
@@ -437,7 +554,10 @@ export default function Tags() {
         <div className="p-2 border-b border-border flex items-center gap-2">
           <Tag className="h-3.5 w-3.5 text-muted-foreground ml-2" />
           <h2 className="text-sm font-semibold">Tag inventory</h2>
-          <span className="text-[11px] text-muted-foreground ml-1">Required: CostCategory · Application · Environment &nbsp;·&nbsp; Recommended: ServiceType · Owner</span>
+          <span className="text-[11px] text-muted-foreground ml-1">
+            Required: CostCategory · Application · Environment &nbsp;·&nbsp; Recommended:
+            ServiceType · Owner
+          </span>
         </div>
 
         {isLoading ? (
@@ -450,14 +570,20 @@ export default function Tags() {
           <Table className="text-[13px]">
             <TableHeader className="bg-muted/50 border-b border-border">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-8 font-semibold text-foreground w-[160px]">Application</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground w-[160px]">
+                  Application
+                </TableHead>
                 {KNOWN_TAGS.map((tag) => (
                   <TableHead key={tag} className="h-8 font-semibold text-foreground">
                     <span className="font-mono text-[11px] text-muted-foreground">{tag}</span>
-                    <span className="block text-[10px] font-normal text-muted-foreground/70">{TAG_LABELS[tag]}</span>
+                    <span className="block text-[10px] font-normal text-muted-foreground/70">
+                      {TAG_LABELS[tag]}
+                    </span>
                   </TableHead>
                 ))}
-                <TableHead className="h-8 font-semibold text-foreground text-right">Extra tags</TableHead>
+                <TableHead className="h-8 font-semibold text-foreground text-right">
+                  Extra tags
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -488,9 +614,7 @@ export default function Tags() {
         )}
       </div>
 
-      {!isLoading && apps && apps.length > 0 && (
-        <CoverageCard apps={apps} />
-      )}
+      {!isLoading && apps && apps.length > 0 && <CoverageCard apps={apps} />}
 
       <TagComplianceCard />
     </div>
@@ -524,7 +648,16 @@ const STRATEGY_SCHEMA: {
   {
     tag: "ServiceType",
     required: false,
-    values: ["AppService", "Database", "Storage", "Networking", "Monitoring", "AI", "Identity", "Automation"],
+    values: [
+      "AppService",
+      "Database",
+      "Storage",
+      "Networking",
+      "Monitoring",
+      "AI",
+      "Identity",
+      "Automation",
+    ],
     description: "Azure service category",
   },
   {
@@ -549,12 +682,16 @@ function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLo
       <div className="p-2 border-b border-border flex items-center gap-2">
         <Layers className="h-3.5 w-3.5 text-muted-foreground ml-2" />
         <h2 className="text-sm font-semibold">Tag strategy overview</h2>
-        <span className="text-[11px] text-muted-foreground ml-1">Based on Azure Cost Tagging Strategy · {total} apps tracked</span>
+        <span className="text-[11px] text-muted-foreground ml-1">
+          Based on Azure Cost Tagging Strategy · {total} apps tracked
+        </span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
         <div className="p-4">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">CostCategory rollup (Executive View)</div>
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            CostCategory rollup (Executive View)
+          </div>
           {isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-6 w-full" />
@@ -562,22 +699,32 @@ function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLo
             </div>
           ) : rollup.length === 0 ? (
             <div className="text-[12px] text-muted-foreground italic py-2">
-              No <span className="font-mono">CostCategory</span> tags found — apply tags in Azure portal to populate this view.
+              No <span className="font-mono">CostCategory</span> tags found — apply tags in Azure
+              portal to populate this view.
             </div>
           ) : (
             <div className="space-y-2">
               {rollup.map(({ cat, count }) => {
-                const colorClass = COST_CATEGORY_COLOR[cat as CostCategory] ?? "bg-muted/50 text-muted-foreground border-border";
+                const colorClass =
+                  COST_CATEGORY_COLOR[cat as CostCategory] ??
+                  "bg-muted/50 text-muted-foreground border-border";
                 const pct = total > 0 ? Math.round((count / total) * 100) : 0;
                 return (
                   <div key={cat} className="flex items-center gap-3">
-                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border text-[11px] font-medium w-28 shrink-0 ${colorClass}`}>
+                    <span
+                      className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border text-[11px] font-medium w-28 shrink-0 ${colorClass}`}
+                    >
                       {cat}
                     </span>
                     <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-primary/60 transition-all" style={{ width: `${pct}%` }} />
+                      <div
+                        className="h-full rounded-full bg-primary/60 transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
-                    <span className="text-[11px] tabular-nums text-muted-foreground w-14 text-right">{count} app{count !== 1 ? "s" : ""}</span>
+                    <span className="text-[11px] tabular-nums text-muted-foreground w-14 text-right">
+                      {count} app{count !== 1 ? "s" : ""}
+                    </span>
                   </div>
                 );
               })}
@@ -587,9 +734,14 @@ function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLo
                     untagged
                   </span>
                   <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-destructive/40 transition-all" style={{ width: `${Math.round((untagged / total) * 100)}%` }} />
+                    <div
+                      className="h-full rounded-full bg-destructive/40 transition-all"
+                      style={{ width: `${Math.round((untagged / total) * 100)}%` }}
+                    />
                   </div>
-                  <span className="text-[11px] tabular-nums text-muted-foreground w-14 text-right">{untagged} app{untagged !== 1 ? "s" : ""}</span>
+                  <span className="text-[11px] tabular-nums text-muted-foreground w-14 text-right">
+                    {untagged} app{untagged !== 1 ? "s" : ""}
+                  </span>
                 </div>
               )}
             </div>
@@ -597,14 +749,18 @@ function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLo
         </div>
 
         <div className="p-4">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">Tag schema reference</div>
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Tag schema reference
+          </div>
           <div className="space-y-2">
             {STRATEGY_SCHEMA.map(({ tag, required, values, description }) => (
               <div key={tag} className="flex items-start gap-2.5">
                 <div className="w-24 shrink-0 pt-0.5">
                   <span className="font-mono text-[11px] text-foreground">{tag}</span>
                   {required ? (
-                    <span className="ml-1 text-[9px] font-semibold text-red-500 uppercase">req</span>
+                    <span className="ml-1 text-[9px] font-semibold text-red-500 uppercase">
+                      req
+                    </span>
                   ) : (
                     <span className="ml-1 text-[9px] text-muted-foreground/60 uppercase">opt</span>
                   )}
@@ -613,7 +769,10 @@ function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLo
                   <div className="text-[10px] text-muted-foreground mb-1">{description}</div>
                   <div className="flex flex-wrap gap-1">
                     {values.map((v) => (
-                      <span key={v} className="inline-flex items-center px-1 py-0.5 rounded-sm bg-muted/60 border border-border text-[10px] font-mono text-muted-foreground">
+                      <span
+                        key={v}
+                        className="inline-flex items-center px-1 py-0.5 rounded-sm bg-muted/60 border border-border text-[10px] font-mono text-muted-foreground"
+                      >
                         {v}
                       </span>
                     ))}
@@ -644,10 +803,10 @@ function CoverageCard({ apps }: { apps: AppSummary[] }) {
         {coverage.map(({ tag, tagged, total, pct }) => (
           <div key={tag} className="space-y-1">
             <div className="text-[11px] font-mono text-muted-foreground">{tag}</div>
-            <div className="text-lg font-semibold tabular-nums">
-              {pct}%
+            <div className="text-lg font-semibold tabular-nums">{pct}%</div>
+            <div className="text-[11px] text-muted-foreground">
+              {tagged}/{total} apps
             </div>
-            <div className="text-[11px] text-muted-foreground">{tagged}/{total} apps</div>
             <div className="h-1 bg-muted rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${pct === 100 ? "bg-green-500" : pct >= 50 ? "bg-yellow-500" : "bg-red-500"}`}
