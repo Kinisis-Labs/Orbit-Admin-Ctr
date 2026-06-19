@@ -613,20 +613,47 @@ function TagComplianceSection() {
     }));
   }, [data?.entries]);
 
-  // CostCategory distribution from apps
-  const costCategoryRollup = useMemo(() => {
-    if (!apps) return [];
-    const map = new Map<string, number>();
-    for (const app of apps) {
-      const cat = (app.tags as Record<string, string> | undefined)?.["CostCategory"];
-      if (cat) map.set(cat, (map.get(cat) ?? 0) + 1);
-    }
-    return [...map.entries()].sort((a, b) => b[1] - a[1]).map(([cat, count]) => ({ cat, count }));
-  }, [apps]);
-
-  const untaggedApps = apps
-    ? apps.filter((a) => !(a.tags as Record<string, string> | undefined)?.["CostCategory"]).length
-    : 0;
+  // Application tag distribution — prefer resource-level counts from compliance scan,
+  // fall back to app-level tags when compliance data isn't available yet.
+  const { applicationRollup, applicationUntagged, applicationTotal, applicationSource } =
+    useMemo(() => {
+      const counts = data?.applicationTagCounts;
+      if (counts && data?.totalScanned && data.totalScanned > 0) {
+        const untagged = counts["(untagged)"] ?? 0;
+        const rollup = (Object.entries(counts) as [string, number][])
+          .filter(([k]) => k !== "(untagged)")
+          .sort((a, b) => b[1] - a[1])
+          .map(([cat, count]) => ({ cat, count }));
+        return {
+          applicationRollup: rollup,
+          applicationUntagged: untagged,
+          applicationTotal: data.totalScanned,
+          applicationSource: "resources" as const,
+        };
+      }
+      if (!apps)
+        return {
+          applicationRollup: [],
+          applicationUntagged: 0,
+          applicationTotal: 0,
+          applicationSource: "apps" as const,
+        };
+      const map = new Map<string, number>();
+      for (const app of apps) {
+        const val = (app.tags as Record<string, string> | undefined)?.["Application"];
+        if (val) map.set(val, (map.get(val) ?? 0) + 1);
+      }
+      return {
+        applicationRollup: [...map.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .map(([cat, count]) => ({ cat, count })),
+        applicationUntagged: apps.filter(
+          (a) => !(a.tags as Record<string, string> | undefined)?.["Application"],
+        ).length,
+        applicationTotal: apps.length,
+        applicationSource: "apps" as const,
+      };
+    }, [data?.applicationTagCounts, data?.totalScanned, apps]);
 
   const pcTone =
     compliancePct === null
@@ -720,25 +747,26 @@ function TagComplianceSection() {
           )}
         </div>
 
-        {/* CostCategory rollup */}
+        {/* Application tag rollup */}
         <div className="p-4">
           <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-            CostCategory coverage (apps)
+            Application coverage ({applicationSource === "resources" ? `${applicationTotal} resources` : "apps"})
           </div>
-          {!apps ? (
+          {isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-5 w-full" />
               <Skeleton className="h-5 w-4/5" />
             </div>
-          ) : costCategoryRollup.length === 0 ? (
+          ) : applicationRollup.length === 0 ? (
             <div className="text-[12px] text-muted-foreground italic">
-              No <span className="font-mono">CostCategory</span> tags on apps yet.
+              No <span className="font-mono">Application</span> tags found yet.
             </div>
           ) : (
             <div className="space-y-2">
-              {costCategoryRollup.map(({ cat, count }) => {
-                const pct = apps.length > 0 ? Math.round((count / apps.length) * 100) : 0;
+              {applicationRollup.map(({ cat, count }) => {
+                const pct = applicationTotal > 0 ? Math.round((count / applicationTotal) * 100) : 0;
                 const color = COST_CATEGORY_COLOR[cat] ?? "#94a3b8";
+                const unit = applicationSource === "resources" ? "resource" : "app";
                 return (
                   <div key={cat} className="flex items-center gap-2">
                     <span
@@ -754,12 +782,12 @@ function TagComplianceSection() {
                       />
                     </div>
                     <span className="text-[11px] tabular-nums text-muted-foreground w-12 text-right">
-                      {count} app{count !== 1 ? "s" : ""}
+                      {count} {unit}{count !== 1 ? "s" : ""}
                     </span>
                   </div>
                 );
               })}
-              {untaggedApps > 0 && (
+              {applicationUntagged > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] text-muted-foreground/60 italic px-1.5 py-0.5 border border-dashed border-border rounded-sm w-28 shrink-0">
                     untagged
@@ -767,11 +795,11 @@ function TagComplianceSection() {
                   <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full bg-destructive/40 transition-all"
-                      style={{ width: `${Math.round((untaggedApps / apps.length) * 100)}%` }}
+                      style={{ width: `${applicationTotal > 0 ? Math.round((applicationUntagged / applicationTotal) * 100) : 0}%` }}
                     />
                   </div>
                   <span className="text-[11px] tabular-nums text-destructive w-12 text-right">
-                    {untaggedApps} app{untaggedApps !== 1 ? "s" : ""}
+                    {applicationUntagged}
                   </span>
                 </div>
               )}
