@@ -2,7 +2,12 @@ import { CostManagementClient } from "@azure/arm-costmanagement";
 import { ResourceGraphClient } from "@azure/arm-resourcegraph";
 import { eq } from "drizzle-orm";
 import { db, costSnapshotsTable } from "@workspace/db";
-import { getAzureCredential, getSubscriptionIds, isAzureConfigured } from "./azure.js";
+import {
+  getAzureCredential,
+  getSubscriptionIds,
+  getBillingAccountId,
+  isAzureConfigured,
+} from "./azure.js";
 import { normalizeResourceGraphRows } from "./azureNetwork.js";
 import { logger } from "./logger.js";
 import type { AppRecord } from "../routes/orbit.js";
@@ -194,7 +199,10 @@ const _lastMonthCache = new Map<string, LastMonthCacheEntry>();
  */
 export async function fetchLastMonthComparableCostTotal(
   app: AppRecord,
-  { billingScope = "rg", bypassCache = false }: { billingScope?: "rg" | "subscription"; bypassCache?: boolean } = {},
+  {
+    billingScope = "rg",
+    bypassCache = false,
+  }: { billingScope?: "rg" | "subscription"; bypassCache?: boolean } = {},
 ): Promise<number | null> {
   if (!isAzureConfigured()) return null;
 
@@ -240,7 +248,10 @@ export async function fetchLastMonthComparableCostTotal(
     _lastMonthCache.set(scope, { total, expiresAt: Date.now() + LAST_MONTH_CACHE_TTL_MS });
     return Number(total.toFixed(2));
   } catch (err) {
-    logger.warn({ err, appId: app.id, scope, start, end }, "Last-month comparable cost query failed");
+    logger.warn(
+      { err, appId: app.id, scope, start, end },
+      "Last-month comparable cost query failed",
+    );
     return null;
   }
 }
@@ -256,7 +267,10 @@ export async function fetchLastMonthComparableCostTotal(
  */
 export async function fetchMonthToDateCost(
   app: AppRecord,
-  { bypassCache = false, billingScope = "rg" }: { bypassCache?: boolean; billingScope?: "rg" | "subscription" } = {},
+  {
+    bypassCache = false,
+    billingScope = "rg",
+  }: { bypassCache?: boolean; billingScope?: "rg" | "subscription" } = {},
 ): Promise<CostResult | null> {
   // Evict before the configuration gate so a force-refresh always clears the
   // stale entry, even when Azure is temporarily unconfigured.
@@ -289,7 +303,10 @@ export async function fetchMonthToDateCost(
     const result = await getCostClient().query.usage(scope, {
       type: "Usage",
       timeframe: "Custom",
-      timePeriod: { from: new Date(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)), to: new Date(today()) },
+      timePeriod: {
+        from: new Date(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)),
+        to: new Date(today()),
+      },
       dataset: {
         granularity: "Daily",
         aggregation: {
@@ -299,9 +316,7 @@ export async function fetchMonthToDateCost(
       },
     });
 
-    const columns: string[] = (result.columns ?? []).map((c) =>
-      String(c.name ?? ""),
-    );
+    const columns: string[] = (result.columns ?? []).map((c) => String(c.name ?? ""));
     const rows = (result.rows ?? []) as unknown[][];
 
     logger.info(
@@ -316,7 +331,10 @@ export async function fetchMonthToDateCost(
     );
 
     if (costIdx === -1) {
-      logger.warn({ appId: app.id, columns }, "Cost column not found in Azure Cost Management response");
+      logger.warn(
+        { appId: app.id, columns },
+        "Cost column not found in Azure Cost Management response",
+      );
       return null;
     }
 
@@ -406,7 +424,10 @@ export async function fetchMonthToDateCost(
     _costCache.set(app.id, { result: costResult, expiresAt: Date.now() + COST_CACHE_TTL_MS });
     return costResult;
   } catch (err) {
-    logger.warn({ err, appId: app.id, scope }, "Azure Cost Management query failed — falling back to cached/mock");
+    logger.warn(
+      { err, appId: app.id, scope },
+      "Azure Cost Management query failed — falling back to cached/mock",
+    );
     return null;
   }
 }
@@ -482,7 +503,10 @@ export async function diagnoseCostForApp(
   subscriptionId: string | null;
   subError: string | null;
   queryScope: string | null;
-  costQuery: { ok: true; rowCount: number; columns: string[] } | { ok: false; error: string } | null;
+  costQuery:
+    | { ok: true; rowCount: number; columns: string[] }
+    | { ok: false; error: string }
+    | null;
   snapshotAge: string | null;
 }> {
   let subscriptionId: string | null = null;
@@ -500,7 +524,10 @@ export async function diagnoseCostForApp(
         ? `/subscriptions/${subscriptionId}`
         : `/subscriptions/${subscriptionId}/resourceGroups/${app.resourceGroup}`;
 
-  let costQuery: { ok: true; rowCount: number; columns: string[] } | { ok: false; error: string } | null = null;
+  let costQuery:
+    | { ok: true; rowCount: number; columns: string[] }
+    | { ok: false; error: string }
+    | null = null;
   if (queryScope) {
     try {
       const r = await getCostClient().query.usage(queryScope, {
@@ -511,7 +538,11 @@ export async function diagnoseCostForApp(
           aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } },
         },
       });
-      costQuery = { ok: true, rowCount: (r.rows ?? []).length, columns: (r.columns ?? []).map((c) => c.name ?? "") };
+      costQuery = {
+        ok: true,
+        rowCount: (r.rows ?? []).length,
+        columns: (r.columns ?? []).map((c) => c.name ?? ""),
+      };
     } catch (e: unknown) {
       costQuery = { ok: false, error: String(e) };
     }
@@ -526,17 +557,69 @@ export async function diagnoseCostForApp(
 }
 
 /**
+ * Maps Microsoft 365 billing product names (from the billing account scope query)
+ * to Orbit CostCategory values. Returns null for Azure infrastructure charges
+ * that are already captured via the subscription-scope query, preventing double-counting.
+ */
+function m365ProductToCategory(productName: string): string | null {
+  const p = productName.toLowerCase();
+  // Skip Azure infrastructure products — already in the subscription-scope query.
+  if (
+    p.includes("azure") ||
+    p.includes("virtual machine") ||
+    p.includes("storage") ||
+    p.includes("bandwidth")
+  ) {
+    return null;
+  }
+  // Microsoft 365 / Entra / Exchange → BusinessOps
+  if (
+    p.includes("microsoft 365") ||
+    p.includes("m365") ||
+    p.includes("exchange") ||
+    p.includes("sharepoint") ||
+    p.includes("teams") ||
+    p.includes("office 365") ||
+    p.includes("onedrive")
+  ) {
+    return "BusinessOps";
+  }
+  // Entra ID / Azure AD → Security
+  if (p.includes("entra") || p.includes("azure active directory") || p.includes("azure ad")) {
+    return "Security";
+  }
+  // Defender / Sentinel → Security
+  if (p.includes("defender") || p.includes("sentinel") || p.includes("purview")) {
+    return "Security";
+  }
+  // Power Platform → BusinessOps
+  if (p.includes("power bi") || p.includes("power apps") || p.includes("power automate")) {
+    return "BusinessOps";
+  }
+  // GitHub → BusinessOps (developer tooling)
+  if (p.includes("github")) {
+    return "BusinessOps";
+  }
+  // Anything else from billing account = untagged at resource level, surface as BusinessOps
+  // rather than Untagged since it's a SaaS/M365 charge.
+  return "BusinessOps";
+}
+
+/**
  * Query Azure Cost Management grouped by the `CostCategory` tag across all configured
  * subscriptions. Returns an array of { category, monthToDate } sorted by spend desc.
  * Returns null when Azure is not configured or on any error.
  *
  * Results are cached for 30 minutes (same TTL as per-app cost).
  */
-let _categoryCacheEntry: { result: { category: string; monthToDate: number }[]; expiresAt: number } | null = null;
+let _categoryCacheEntry: {
+  result: { category: string; monthToDate: number }[];
+  expiresAt: number;
+} | null = null;
 
-export async function fetchCostByCostCategoryTag(
-  { bypassCache = false }: { bypassCache?: boolean } = {},
-): Promise<{ category: string; monthToDate: number }[] | null> {
+export async function fetchCostByCostCategoryTag({
+  bypassCache = false,
+}: { bypassCache?: boolean } = {}): Promise<{ category: string; monthToDate: number }[] | null> {
   if (!isAzureConfigured()) return null;
 
   if (!bypassCache && _categoryCacheEntry && _categoryCacheEntry.expiresAt > Date.now()) {
@@ -544,14 +627,39 @@ export async function fetchCostByCostCategoryTag(
   }
 
   const subscriptionIds = getSubscriptionIds();
-  if (subscriptionIds.length === 0) return null;
+  const billingAccountId = getBillingAccountId();
+
+  if (subscriptionIds.length === 0 && !billingAccountId) return null;
 
   const start = monthStart();
   const end = today();
 
-  // Accumulate results across all subscriptions (may have multiple or one).
+  // Accumulate results across all scopes.
   const catMap = new Map<string, number>();
 
+  /** Parse rows from a Cost Management query response into the catMap. */
+  function accumulateRows(
+    columns: string[],
+    rows: unknown[][],
+    tagColumnHint: string,
+    scopeLabel: string,
+  ): void {
+    const costIdx = columns.findIndex((c) => c.toLowerCase().includes("cost"));
+    const tagIdx = columns.findIndex(
+      (c) => c.toLowerCase() === tagColumnHint.toLowerCase() || c.toLowerCase() === "tag",
+    );
+    if (costIdx === -1) {
+      logger.warn({ columns, scopeLabel }, "Cost column not found in Cost Management response");
+      return;
+    }
+    for (const row of rows) {
+      const amount = Number(row[costIdx] ?? 0);
+      const cat = tagIdx !== -1 ? String(row[tagIdx] ?? "Untagged") || "Untagged" : "Untagged";
+      catMap.set(cat, (catMap.get(cat) ?? 0) + amount);
+    }
+  }
+
+  // --- Subscription scope: Azure resources tagged with CostCategory ---
   await Promise.all(
     subscriptionIds.map(async (subId) => {
       const scope = `/subscriptions/${subId}`;
@@ -566,23 +674,53 @@ export async function fetchCostByCostCategoryTag(
             grouping: [{ type: "TagKey", name: "CostCategory" }],
           },
         });
-
-        const columns: string[] = (result.columns ?? []).map((c) => String(c.name ?? ""));
+        const columns = (result.columns ?? []).map((c) => String(c.name ?? ""));
         const rows = (result.rows ?? []) as unknown[][];
-        const costIdx = columns.findIndex((c) => c.toLowerCase().includes("cost"));
-        const tagIdx = columns.findIndex((c) => c.toLowerCase().includes("costcategory") || c.toLowerCase() === "tag");
-        if (costIdx === -1) return;
-
-        for (const row of rows) {
-          const amount = Number(row[costIdx] ?? 0);
-          const cat = tagIdx !== -1 ? String(row[tagIdx] ?? "Untagged") || "Untagged" : "Untagged";
-          catMap.set(cat, (catMap.get(cat) ?? 0) + amount);
-        }
+        accumulateRows(columns, rows, "CostCategory", `subscription:${subId}`);
       } catch (err) {
         logger.warn({ err, subId }, "CostCategory tag grouping query failed for subscription");
       }
     }),
   );
+
+  // --- MCA Billing Account scope: captures M365 / non-Azure charges ---
+  // Groups by ProductName since M365 products aren't ARM resources and can't
+  // carry resource tags. We map known M365 product names to CostCategory values.
+  if (billingAccountId) {
+    const billingScope = `/providers/Microsoft.Billing/billingAccounts/${billingAccountId}`;
+    try {
+      const result = await getCostClient().query.usage(billingScope, {
+        type: "Usage",
+        timeframe: "Custom",
+        timePeriod: { from: new Date(start), to: new Date(end) },
+        dataset: {
+          granularity: "None",
+          aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } },
+          grouping: [{ type: "Dimension", name: "ProductName" }],
+        },
+      });
+      const columns = (result.columns ?? []).map((c) => String(c.name ?? ""));
+      const rows = (result.rows ?? []) as unknown[][];
+      const costIdx = columns.findIndex((c) => c.toLowerCase().includes("cost"));
+      const nameIdx = columns.findIndex(
+        (c) => c.toLowerCase().includes("product") || c.toLowerCase() === "productname",
+      );
+      if (costIdx !== -1) {
+        for (const row of rows) {
+          const amount = Number(row[costIdx] ?? 0);
+          const productName = nameIdx !== -1 ? String(row[nameIdx] ?? "") : "";
+          // Map M365 product names to CostCategory — skip charges already
+          // captured via the subscription-scope query to avoid double-counting.
+          const cat = m365ProductToCategory(productName);
+          if (cat) {
+            catMap.set(cat, (catMap.get(cat) ?? 0) + amount);
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn({ err, billingAccountId }, "Billing account cost query failed");
+    }
+  }
 
   if (catMap.size === 0) return null;
 

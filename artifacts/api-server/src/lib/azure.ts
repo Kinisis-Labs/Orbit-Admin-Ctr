@@ -21,6 +21,11 @@ export function getAzureCredential(): DefaultAzureCredential {
   return _credential;
 }
 
+/** MCA Billing Account ID, read from AZURE_BILLING_ACCOUNT_ID (e.g. "URKM-WC2W-BG7-PGB"). */
+export function getBillingAccountId(): string | null {
+  return process.env.AZURE_BILLING_ACCOUNT_ID?.trim() || null;
+}
+
 /** Subscription IDs to query, parsed from AZURE_SUBSCRIPTION_IDS. */
 export function getSubscriptionIds(): string[] {
   const raw = process.env.AZURE_SUBSCRIPTION_IDS ?? "";
