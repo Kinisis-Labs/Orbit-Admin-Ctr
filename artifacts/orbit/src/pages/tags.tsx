@@ -6,43 +6,62 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PageHeader } from "@/components/page-header";
-import { Tag, AlertTriangle, CheckCircle2, Info, ChevronRight, RefreshCw } from "lucide-react";
+import { Tag, AlertTriangle, CheckCircle2, Info, ChevronRight, RefreshCw, Layers } from "lucide-react";
 import { useState, Fragment } from "react";
 import { cn } from "@/lib/utils";
 
-const KNOWN_TAGS = ["workload", "environment", "owner", "cost-center", "criticality"] as const;
+const KNOWN_TAGS = ["CostCategory", "Application", "ServiceType", "Owner", "Environment"] as const;
 type KnownTag = (typeof KNOWN_TAGS)[number];
 
 const TAG_LABELS: Record<KnownTag, string> = {
-  workload: "Workload",
-  environment: "Environment",
-  owner: "Owner",
-  "cost-center": "Cost Center",
-  criticality: "Criticality",
+  CostCategory: "Cost Category",
+  Application: "Application",
+  ServiceType: "Service Type",
+  Owner: "Owner",
+  Environment: "Environment",
 };
 
-function criticalityClass(value: string | undefined): string {
-  switch (value?.toLowerCase()) {
-    case "mission-critical": return "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30";
-    case "high": return "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30";
-    case "medium": return "bg-yellow-500/15 text-yellow-600 dark:text-yellow-600 border-yellow-500/30";
-    case "low": return "bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/30";
-    default: return "bg-muted/50 text-muted-foreground border-border";
-  }
-}
+const COST_CATEGORY_VALUES = ["Infrastructure", "WebApp", "BusinessOps", "DataPlatform", "Security", "AI", "Shared"] as const;
+type CostCategory = (typeof COST_CATEGORY_VALUES)[number];
+
+const COST_CATEGORY_COLOR: Record<CostCategory, string> = {
+  Infrastructure: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
+  WebApp: "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30",
+  BusinessOps: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+  DataPlatform: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30",
+  Security: "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30",
+  AI: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+  Shared: "bg-muted/60 text-muted-foreground border-border",
+};
+
+const ENVIRONMENT_COLOR: Record<string, string> = {
+  Prod: "bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/30",
+  Dev: "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30",
+  Test: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-500 border-yellow-500/30",
+  Sandbox: "bg-muted/60 text-muted-foreground border-border",
+};
 
 function TagCell({ tag, value }: { tag: KnownTag; value: string | undefined }) {
   if (!value) return <span className="text-muted-foreground/50 text-[12px] italic">—</span>;
-  if (tag === "criticality") {
+  if (tag === "CostCategory") {
+    const color = COST_CATEGORY_COLOR[value as CostCategory] ?? "bg-muted/50 text-muted-foreground border-border";
     return (
-      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border text-[11px] font-medium ${criticalityClass(value)}`}>
+      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border text-[11px] font-medium ${color}`}>
         {value}
       </span>
     );
   }
-  if (tag === "environment") {
+  if (tag === "Environment") {
+    const color = ENVIRONMENT_COLOR[value] ?? "bg-muted/60 text-muted-foreground border-border";
     return (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-[11px] font-mono">
+      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border text-[11px] font-mono ${color}`}>
+        {value}
+      </span>
+    );
+  }
+  if (tag === "Owner") {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-[11px] text-muted-foreground">
         {value}
       </span>
     );
@@ -75,11 +94,12 @@ const SCOPE_ORDER: Record<TagComplianceEntry["scope"], number> = {
   resource: 2,
 };
 
-function scopeIcon(scope: TagComplianceEntry["scope"]) {
+function scopeIcon(scope: TagComplianceEntry["scope"]): string {
   switch (scope) {
     case "subscription": return "◈";
     case "resource-group": return "▣";
     case "resource": return "◻";
+    default: return "◻";
   }
 }
 
@@ -147,7 +167,7 @@ function ComplianceRow({ entry, indent = 0 }: { entry: TagComplianceEntry; inden
       </TableCell>
       <TableCell className="py-1.5">
         <div className="flex flex-wrap gap-1">
-          {entry.missingTags.map((t) => <MissingTagBadge key={t} tag={t} />)}
+          {entry.missingTags.map((t: string) => <MissingTagBadge key={t} tag={t} />)}
         </div>
       </TableCell>
     </TableRow>
@@ -409,13 +429,15 @@ export default function Tags() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Tags" subtitle="Azure resource-group tags across all Kinisis applications" />
+      <PageHeader title="Tags" subtitle="Azure tagging strategy — CostCategory, Application, ServiceType, Owner, Environment" />
+
+      <CostCategoryRollupPanel apps={apps ?? []} isLoading={isLoading} />
 
       <div className="bg-card border border-border shadow-sm">
         <div className="p-2 border-b border-border flex items-center gap-2">
           <Tag className="h-3.5 w-3.5 text-muted-foreground ml-2" />
-          <h2 className="text-sm font-semibold">Standard tag inventory</h2>
-          <span className="text-[11px] text-muted-foreground ml-1">Five well-known Kinisis tag keys applied to every resource group</span>
+          <h2 className="text-sm font-semibold">Tag inventory</h2>
+          <span className="text-[11px] text-muted-foreground ml-1">Required: CostCategory · Application · Environment &nbsp;·&nbsp; Recommended: ServiceType · Owner</span>
         </div>
 
         {isLoading ? (
@@ -471,6 +493,137 @@ export default function Tags() {
       )}
 
       <TagComplianceCard />
+    </div>
+  );
+}
+
+const STRATEGY_SCHEMA: {
+  tag: KnownTag;
+  required: boolean;
+  values: string[];
+  description: string;
+}[] = [
+  {
+    tag: "CostCategory",
+    required: true,
+    values: ["Infrastructure", "WebApp", "BusinessOps", "DataPlatform", "Security", "AI", "Shared"],
+    description: "Top-level cost reporting category",
+  },
+  {
+    tag: "Application",
+    required: true,
+    values: ["Orbit", "Atlas", "Flora", "Constellation", "Shared", "InternalOps"],
+    description: "Which product or system owns this resource",
+  },
+  {
+    tag: "Environment",
+    required: true,
+    values: ["Prod", "Dev", "Test", "Sandbox"],
+    description: "Deployment environment",
+  },
+  {
+    tag: "ServiceType",
+    required: false,
+    values: ["AppService", "Database", "Storage", "Networking", "Monitoring", "AI", "Identity", "Automation"],
+    description: "Azure service category",
+  },
+  {
+    tag: "Owner",
+    required: false,
+    values: ["Platform", "Operations", "Marketing", "Engineering"],
+    description: "Team responsible for this resource",
+  },
+];
+
+function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLoading: boolean }) {
+  const rollup = COST_CATEGORY_VALUES.map((cat) => {
+    const count = apps.filter((a) => getTag(a, "CostCategory") === cat).length;
+    return { cat, count };
+  }).filter((r) => r.count > 0);
+
+  const untagged = apps.filter((a) => !getTag(a, "CostCategory")).length;
+  const total = apps.length;
+
+  return (
+    <div className="bg-card border border-border shadow-sm">
+      <div className="p-2 border-b border-border flex items-center gap-2">
+        <Layers className="h-3.5 w-3.5 text-muted-foreground ml-2" />
+        <h2 className="text-sm font-semibold">Tag strategy overview</h2>
+        <span className="text-[11px] text-muted-foreground ml-1">Based on Azure Cost Tagging Strategy · {total} apps tracked</span>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
+        <div className="p-4">
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">CostCategory rollup (Executive View)</div>
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-4/5" />
+            </div>
+          ) : rollup.length === 0 ? (
+            <div className="text-[12px] text-muted-foreground italic py-2">
+              No <span className="font-mono">CostCategory</span> tags found — apply tags in Azure portal to populate this view.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {rollup.map(({ cat, count }) => {
+                const colorClass = COST_CATEGORY_COLOR[cat as CostCategory] ?? "bg-muted/50 text-muted-foreground border-border";
+                const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                return (
+                  <div key={cat} className="flex items-center gap-3">
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border text-[11px] font-medium w-28 shrink-0 ${colorClass}`}>
+                      {cat}
+                    </span>
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-primary/60 transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-[11px] tabular-nums text-muted-foreground w-14 text-right">{count} app{count !== 1 ? "s" : ""}</span>
+                  </div>
+                );
+              })}
+              {untagged > 0 && (
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-dashed border-border text-[11px] text-muted-foreground/60 w-28 shrink-0 italic">
+                    untagged
+                  </span>
+                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-destructive/40 transition-all" style={{ width: `${Math.round((untagged / total) * 100)}%` }} />
+                  </div>
+                  <span className="text-[11px] tabular-nums text-muted-foreground w-14 text-right">{untagged} app{untagged !== 1 ? "s" : ""}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="p-4">
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">Tag schema reference</div>
+          <div className="space-y-2">
+            {STRATEGY_SCHEMA.map(({ tag, required, values, description }) => (
+              <div key={tag} className="flex items-start gap-2.5">
+                <div className="w-24 shrink-0 pt-0.5">
+                  <span className="font-mono text-[11px] text-foreground">{tag}</span>
+                  {required ? (
+                    <span className="ml-1 text-[9px] font-semibold text-red-500 uppercase">req</span>
+                  ) : (
+                    <span className="ml-1 text-[9px] text-muted-foreground/60 uppercase">opt</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] text-muted-foreground mb-1">{description}</div>
+                  <div className="flex flex-wrap gap-1">
+                    {values.map((v) => (
+                      <span key={v} className="inline-flex items-center px-1 py-0.5 rounded-sm bg-muted/60 border border-border text-[10px] font-mono text-muted-foreground">
+                        {v}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

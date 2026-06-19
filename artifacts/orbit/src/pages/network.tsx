@@ -5,8 +5,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { DataSourceBadge } from "@/components/data-source-badge";
 import { RefreshingBar } from "@/components/refreshing-bar";
-import { Network } from "lucide-react";
+import { Network, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 import type { GlobalEndpointRow } from "@workspace/api-client-react";
+import { useState } from "react";
 import {
   PieChart, Pie, Cell,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -25,7 +26,7 @@ const TONE: Record<EndpointStatus, "ok" | "warn" | "bad" | "muted"> = {
 const STATUS_COLOR: Record<EndpointStatus, string> = {
   healthy: "#8b5cf6",
   degraded: "#eab308",
-  unhealthy: "#a21caf",
+  unhealthy: "#ef4444",
   unknown: "#c4b5fd",
 };
 
@@ -33,16 +34,17 @@ const STATUS_ORDER: EndpointStatus[] = ["unhealthy", "degraded", "unknown", "hea
 
 export default function NetworkPage() {
   const { data, isLoading, isFetching } = useListGlobalEndpoints();
-  const eps = data?.endpoints ?? [];
+  const eps = useMemo(() => data?.endpoints ?? [], [data]);
   const isEmpty = !isLoading && eps.length === 0;
 
-  const unhealthy = eps.filter((e) => e.status === "unhealthy").length;
-  const degraded = eps.filter((e) => e.status === "degraded").length;
-  const healthy = eps.filter((e) => e.status === "healthy").length;
-  const unknown = eps.filter((e) => e.status === "unknown").length;
-  const avgLatency = eps.length
-    ? Math.round(eps.reduce((s, e) => s + e.latencyMs, 0) / eps.length)
-    : 0;
+  const unhealthy = useMemo(() => eps.filter((e) => e.status === "unhealthy").length, [eps]);
+  const degraded = useMemo(() => eps.filter((e) => e.status === "degraded").length, [eps]);
+  const healthy = useMemo(() => eps.filter((e) => e.status === "healthy").length, [eps]);
+  const unknown = useMemo(() => eps.filter((e) => e.status === "unknown").length, [eps]);
+  const avgLatency = useMemo(() =>
+    eps.length ? Math.round(eps.reduce((s, e) => s + e.latencyMs, 0) / eps.length) : 0,
+    [eps],
+  );
 
   const dataSource = data?.dataSource === "none" ? undefined : data?.dataSource;
   const dataAsOf = data?.dataAsOf;
@@ -80,6 +82,42 @@ export default function NetworkPage() {
     [eps],
   );
 
+  // Per-app breakdown
+  const appBreakdown = useMemo(() => {
+    type AppRec = { appId: string; appName: string; total: number; unhealthy: number; degraded: number; healthy: number; unknown: number; maxLatency: number; avgLatency: number };
+    const appMap = new Map<string, AppRec>();
+    for (const e of eps as GlobalEndpointRow[]) {
+      if (!appMap.has(e.appId)) {
+        appMap.set(e.appId, { appId: e.appId, appName: e.appName, total: 0, unhealthy: 0, degraded: 0, healthy: 0, unknown: 0, maxLatency: 0, avgLatency: 0 });
+      }
+      const rec = appMap.get(e.appId)!;
+      rec.total++;
+      if (e.status === "unhealthy") rec.unhealthy++;
+      else if (e.status === "degraded") rec.degraded++;
+      else if (e.status === "healthy") rec.healthy++;
+      else rec.unknown++;
+      if (e.latencyMs > rec.maxLatency) rec.maxLatency = e.latencyMs;
+    }
+    // compute avg latency per app
+    for (const [appId, rec] of appMap) {
+      const appEps = (eps as GlobalEndpointRow[]).filter((e) => e.appId === appId);
+      rec.avgLatency = appEps.length ? Math.round(appEps.reduce((s: number, e: GlobalEndpointRow) => s + e.latencyMs, 0) / appEps.length) : 0;
+    }
+    return [...appMap.values()].sort((a, b) => (b.unhealthy + b.degraded) - (a.unhealthy + a.degraded));
+  }, [eps]);
+
+  // Worst endpoints (unhealthy/degraded first, then by latency)
+  const worstEndpoints = useMemo(() =>
+    [...eps]
+      .filter((e) => e.status === "unhealthy" || e.status === "degraded")
+      .sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status) || b.latencyMs - a.latencyMs)
+      .slice(0, 5),
+    [eps],
+  );
+
+  const hasAlerts = !isLoading && (unhealthy > 0 || degraded > 0);
+  const allHealthy = !isLoading && eps.length > 0 && unhealthy === 0 && degraded === 0;
+
   return (
     <div className="space-y-4">
       <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
@@ -88,6 +126,38 @@ export default function NetworkPage() {
         subtitle="Cross-application endpoint health, latency, and packet loss"
         right={dataSource ? <DataSourceBadge dataSource={dataSource} dataAsOf={dataAsOf} label="Azure Resource Graph" /> : undefined}
       />
+
+      {/* Health alert banner */}
+      {hasAlerts && (
+        <div className="bg-destructive/10 border border-destructive/30 rounded-sm px-4 py-2.5 flex items-start gap-3">
+          <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <span className="text-[13px] font-semibold text-destructive">Network issues detected — </span>
+            <span className="text-[13px] text-destructive/80">
+              {unhealthy > 0 && `${unhealthy} unhealthy${degraded > 0 ? ", " : ""}`}
+              {degraded > 0 && `${degraded} degraded`}
+              {" "}endpoint{(unhealthy + degraded) !== 1 ? "s" : ""} across your applications
+            </span>
+          </div>
+          {worstEndpoints.length > 0 && (
+            <div className="hidden md:flex items-center gap-2 flex-wrap">
+              {worstEndpoints.map((e) => (
+                <span key={e.id} className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-sm bg-destructive/15 border border-destructive/30 text-destructive font-medium">
+                  <span className="h-1.5 w-1.5 rounded-full bg-destructive inline-block shrink-0" />
+                  {e.appName} · {e.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {allHealthy && (
+        <div className="bg-green-500/10 border border-green-500/30 rounded-sm px-4 py-2 flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+          <span className="text-[13px] text-green-600 dark:text-green-400 font-medium">All {eps.length} endpoints are healthy</span>
+        </div>
+      )}
 
       {/* Stat tiles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -255,6 +325,11 @@ export default function NetworkPage() {
         </div>
       )}
 
+      {/* Per-app breakdown */}
+      {!isEmpty && appBreakdown.length > 0 && (
+        <AppBreakdownPanel apps={appBreakdown} isLoading={isLoading} />
+      )}
+
       {/* Endpoints table — half-height, scrollable */}
       <div className="bg-card border border-border shadow-sm">
         <div className="p-2 border-b border-border flex items-center justify-between">
@@ -306,6 +381,82 @@ export default function NetworkPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+type AppRec = { appId: string; appName: string; total: number; unhealthy: number; degraded: number; healthy: number; unknown: number; maxLatency: number; avgLatency: number };
+
+function AppBreakdownPanel({ apps, isLoading }: { apps: AppRec[]; isLoading: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? apps : apps.slice(0, 6);
+
+  return (
+    <div className="bg-card border border-border shadow-sm">
+      <div className="p-2 border-b border-border flex items-center gap-2">
+        <Network className="h-3.5 w-3.5 text-muted-foreground ml-2" />
+        <h2 className="text-sm font-semibold">Health by application</h2>
+        <span className="text-[11px] text-muted-foreground ml-1">{apps.length} application{apps.length !== 1 ? "s" : ""} monitored</span>
+      </div>
+
+      {isLoading ? (
+        <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
+        </div>
+      ) : (
+        <>
+          <div className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {visible.map((app) => {
+              const hasIssue = app.unhealthy > 0 || app.degraded > 0;
+              const healthPct = app.total > 0 ? Math.round((app.healthy / app.total) * 100) : 100;
+              return (
+                <div
+                  key={app.appId}
+                  className={`p-3 rounded-sm border ${hasIssue ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/20"}`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[12px] font-semibold text-foreground">{app.appName}</span>
+                    <span className="text-[11px] text-muted-foreground tabular-nums">{app.total} ep{app.total !== 1 ? "s" : ""}</span>
+                  </div>
+                  <div className="flex gap-1 mb-2">
+                    <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-muted flex">
+                      {app.unhealthy > 0 && (
+                        <div className="h-full bg-destructive" style={{ width: `${Math.round((app.unhealthy / app.total) * 100)}%` }} />
+                      )}
+                      {app.degraded > 0 && (
+                        <div className="h-full bg-amber-500" style={{ width: `${Math.round((app.degraded / app.total) * 100)}%` }} />
+                      )}
+                      {app.unknown > 0 && (
+                        <div className="h-full bg-muted-foreground/30" style={{ width: `${Math.round((app.unknown / app.total) * 100)}%` }} />
+                      )}
+                      {app.healthy > 0 && (
+                        <div className="h-full bg-violet-500" style={{ width: `${Math.round((app.healthy / app.total) * 100)}%` }} />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <div className="flex items-center gap-2">
+                      {app.unhealthy > 0 && <span className="text-destructive font-medium">{app.unhealthy} down</span>}
+                      {app.degraded > 0 && <span className="text-amber-500 font-medium">{app.degraded} degraded</span>}
+                      {!hasIssue && <span className="text-green-500 font-medium">{healthPct}% healthy</span>}
+                    </div>
+                    <span className="text-muted-foreground tabular-nums">{app.avgLatency}ms avg</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {apps.length > 6 && (
+            <button
+              type="button"
+              onClick={() => setExpanded((x) => !x)}
+              className="w-full py-1.5 border-t border-border text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors flex items-center justify-center gap-1"
+            >
+              {expanded ? <><ChevronUp className="h-3 w-3" /> Show less</> : <><ChevronDown className="h-3 w-3" /> Show {apps.length - 6} more</>}
+            </button>
+          )}
+        </>
+      )}
     </div>
   );
 }
