@@ -1086,6 +1086,7 @@ export interface TagComplianceResponse {
   totalScanned: number;
   nonCompliantCount: number;
   entries: TagComplianceEntry[];
+  applicationTagCounts?: Record<string, number>;
   dataSource: TagComplianceResponseDataSource;
   errorMessage?: string | null;
 }

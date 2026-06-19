@@ -671,39 +671,25 @@ const STRATEGY_SCHEMA: {
 function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLoading: boolean }) {
   const { data: compliance } = useGetTagCompliance();
 
-  // Build rollup from resource-level Application tag values from the live compliance scan.
-  // Falls back to app-level records if compliance data isn't available yet.
+  // Build rollup from applicationTagCounts — populated by the backend across ALL scanned
+  // resources (not just non-compliant ones), so the numbers are always accurate.
   const { rollup, untagged, total, sourceLabel } = (() => {
-    const entries = compliance?.entries;
-    if (entries && entries.length > 0) {
-      const appTagMap = new Map<string, number>(); // Application tag value → resource count
-      let untaggedCount = 0;
-      for (const entry of entries) {
-        if (entry.scope !== "resource") continue;
-        // Case-insensitive lookup of Application tag
-        const tags = entry.tags;
-        const appValRaw = tags
-          ? Object.entries(tags).find(([k]) => k.toLowerCase() === "application")?.[1]
-          : undefined;
-        const appVal = appValRaw != null ? String(appValRaw).trim() : "";
-        if (appVal) {
-          appTagMap.set(appVal, (appTagMap.get(appVal) ?? 0) + 1);
-        } else {
-          untaggedCount++;
-        }
-      }
-      const totalResources = [...appTagMap.values()].reduce((s, n) => s + n, 0) + untaggedCount;
-      const rollupData = [...appTagMap.entries()]
+    const counts = compliance?.applicationTagCounts;
+    const scanned = compliance?.totalScanned ?? 0;
+    if (counts && scanned > 0) {
+      const untaggedCount = counts["(untagged)"] ?? 0;
+      const rollupData = (Object.entries(counts) as [string, number][])
+        .filter(([k]) => k !== "(untagged)")
         .sort((a, b) => b[1] - a[1])
         .map(([app, count]) => ({ cat: app, count }));
       return {
         rollup: rollupData,
         untagged: untaggedCount,
-        total: totalResources,
-        sourceLabel: `${totalResources} resources scanned`,
+        total: scanned,
+        sourceLabel: `${scanned} resources scanned`,
       };
     }
-    // Fallback: app-level records
+    // Fallback: app-level records (before compliance data loads)
     const rollupData = COST_CATEGORY_VALUES.map((cat) => ({
       cat,
       count: apps.filter((a) => getTag(a, "CostCategory") === cat).length,
@@ -730,7 +716,7 @@ function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLo
       <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
         <div className="p-4">
           <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-            CostCategory rollup (Executive View)
+            Application tag breakdown (by resource)
           </div>
           {isLoading ? (
             <div className="space-y-2">
@@ -739,8 +725,9 @@ function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLo
             </div>
           ) : rollup.length === 0 ? (
             <div className="text-[12px] text-muted-foreground italic py-2">
-              No <span className="font-mono">CostCategory</span> tags found — apply tags in Azure
-              portal to populate this view.
+              No <span className="font-mono">Application</span> tags found — apply the{" "}
+              <span className="font-mono">Application</span> tag in Azure portal to populate this
+              view.
             </div>
           ) : (
             <div className="space-y-2">
@@ -763,7 +750,7 @@ function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLo
                       />
                     </div>
                     <span className="text-[11px] tabular-nums text-muted-foreground w-14 text-right">
-                      {count} app{count !== 1 ? "s" : ""}
+                      {count} resource{count !== 1 ? "s" : ""}
                     </span>
                   </div>
                 );

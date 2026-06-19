@@ -32,6 +32,8 @@ export type TagComplianceResult = {
   totalScanned: number;
   nonCompliantCount: number;
   entries: TagComplianceEntry[];
+  /** Application tag value → resource count across ALL scanned resources (not just non-compliant) */
+  applicationTagCounts: Record<string, number>;
   dataSource: "live" | "unavailable" | "error";
   errorMessage?: string;
 };
@@ -96,6 +98,7 @@ const UNAVAILABLE: TagComplianceResult = {
   totalScanned: 0,
   nonCompliantCount: 0,
   entries: [],
+  applicationTagCounts: {},
   dataSource: "unavailable",
 };
 
@@ -148,10 +151,19 @@ export async function fetchTagCompliance({
 
     let totalScanned = 0;
     const entries: TagComplianceEntry[] = [];
+    const applicationTagCounts: Record<string, number> = {};
 
     for (const row of rows) {
       totalScanned++;
       const tags = parseTags(row["tags"]);
+      // Count Application tag across ALL resources for the rollup panel
+      const appVal = tags
+        ? String(
+            Object.entries(tags).find(([k]) => k.toLowerCase() === "application")?.[1] ?? "",
+          ).trim()
+        : "";
+      applicationTagCounts[appVal || "(untagged)"] =
+        (applicationTagCounts[appVal || "(untagged)"] ?? 0) + 1;
       const missing = missingTagsFor(tags);
       if (missing.length === 0) continue;
 
@@ -178,6 +190,7 @@ export async function fetchTagCompliance({
       totalScanned,
       nonCompliantCount: entries.length,
       entries,
+      applicationTagCounts,
       dataSource: "live",
     };
 
