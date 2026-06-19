@@ -10,6 +10,7 @@ import type { CostByService } from './costByService';
 import type { CostReportBudgetDataSource } from './costReportBudgetDataSource';
 import type { CostReportDataSource } from './costReportDataSource';
 import type { DailyCostPoint } from './dailyCostPoint';
+import type { OpsCostSummary } from './opsCostSummary';
 import type { Revenue } from './revenue';
 
 export interface CostReport {
@@ -29,4 +30,6 @@ export interface CostReport {
   budgetDataSource?: CostReportBudgetDataSource;
   /** Month-over-month percentage change: (MTD this month − same-day-of-month last month) / same-day-of-month last month × 100. Positive = higher spend than last month at this point, negative = lower. Null when insufficient history. */
   momChangePct?: number | null;
+  /** Non-Azure operational cost breakdown (M365 licenses, website ops, network ops). Only present for the kinisis-labs (Business Ops) app. */
+  opsCosts?: OpsCostSummary;
 }

@@ -28,7 +28,7 @@ import { RefreshingBar } from "@/components/refreshing-bar";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link, useSearch, useLocation } from "wouter";
-import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, TriangleAlert, ArrowUp, ArrowDown, ArrowUpDown, Filter, Users, RotateCcw } from "lucide-react";
+import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, TriangleAlert, ArrowUp, ArrowDown, ArrowUpDown, Filter, Users, RotateCcw, Building2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DataSourceBadge } from "@/components/data-source-badge";
 import { CostDataSourceBadge } from "@/components/cost-data-source-badge";
@@ -1537,6 +1537,11 @@ function AppCost() {
         </Panel>
 
       </div>
+
+      {scope === "kinisis-labs" && data?.opsCosts && (
+        <OpsCostsPanel opsCosts={data.opsCosts} currency={data.currency} isLoading={isLoading} />
+      )}
+
       </div>
       </TabsContent>
       <TabsContent value="budgets" className="mt-4">
@@ -1575,6 +1580,104 @@ function AppCost() {
         </div>
       )}
     </Tabs>
+  );
+}
+
+const OPS_COST_CATEGORY_LABELS: Record<string, string> = {
+  "website-ops": "Website Ops",
+  "network-ops": "Network Ops",
+  "m365-licenses": "M365 Licenses",
+};
+
+function OpsCostsPanel({
+  opsCosts,
+  currency,
+  isLoading,
+}: {
+  opsCosts: {
+    totalMonthly: number;
+    categories: {
+      category: string;
+      label: string;
+      totalMonthly: number;
+      items: {
+        id: string;
+        name: string;
+        vendor?: string | null;
+        amountMonthly: number;
+        billingCycle: string;
+        active: boolean;
+      }[];
+    }[];
+  };
+  currency: string;
+  isLoading: boolean;
+}) {
+  return (
+    <Panel
+      title="Operational Costs"
+      rightHeader={
+        !isLoading ? (
+          <div className="flex items-center gap-2 pr-2">
+            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-[11px] text-muted-foreground">
+              {fmt(opsCosts.totalMonthly, currency)}{" "}
+              <span className="text-muted-foreground/60">/ mo</span>
+            </span>
+          </div>
+        ) : null
+      }
+    >
+      <div className="divide-y divide-border">
+        {opsCosts.categories.map((cat) => (
+          <div key={cat.category} className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[12px] font-semibold text-foreground">
+                {OPS_COST_CATEGORY_LABELS[cat.category] ?? cat.label}
+              </span>
+              <span className="text-[12px] font-mono font-semibold text-foreground tabular-nums">
+                {fmt(cat.totalMonthly, currency)}
+                <span className="text-[10px] text-muted-foreground font-normal ml-0.5">/mo</span>
+              </span>
+            </div>
+            <Table className="text-[12px]">
+              <THead>
+                <TableHead className="h-7 font-medium text-muted-foreground">Name</TableHead>
+                <TableHead className="h-7 font-medium text-muted-foreground">Vendor</TableHead>
+                <TableHead className="h-7 font-medium text-muted-foreground">Billing</TableHead>
+                <TableHead className="h-7 font-medium text-muted-foreground text-right w-[110px]">Monthly</TableHead>
+                <TableHead className="h-7 w-[60px]"></TableHead>
+              </THead>
+              <TableBody>
+                {cat.items.map((item) => (
+                  <TableRow key={item.id} className="h-7 border-b border-border/50 hover:bg-muted/40">
+                    <TableCell className="py-1 font-medium">
+                      {item.name}
+                    </TableCell>
+                    <TableCell className="py-1 text-muted-foreground text-[11px]">
+                      {item.vendor ?? <span className="opacity-40">—</span>}
+                    </TableCell>
+                    <TableCell className="py-1 text-muted-foreground text-[11px] capitalize">
+                      {item.billingCycle}
+                    </TableCell>
+                    <TableCell className="py-1 text-right font-mono tabular-nums">
+                      {fmt(item.amountMonthly, currency)}
+                    </TableCell>
+                    <TableCell className="py-1 text-right">
+                      {!item.active && (
+                        <span className="text-[10px] px-1 py-0.5 rounded-sm bg-muted text-muted-foreground">
+                          inactive
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ))}
+      </div>
+    </Panel>
   );
 }
 

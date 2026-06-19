@@ -280,7 +280,90 @@ export const GetCostResponse = zod.object({
   "dataSource": zod.enum(['live', 'cached', 'mock']).describe('Indicates whether cost figures come from live Azure Cost Management, a DB snapshot (cached), or built-in mock values.'),
   "dataAsOf": zod.string().datetime({"offset":true}).optional().describe('Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live or cached.'),
   "budgetDataSource": zod.enum(['live', 'cached', 'estimated']).optional().describe('Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback.'),
-  "momChangePct": zod.number().nullish().describe('Month-over-month percentage change: (MTD this month − same-day-of-month last month) \/ same-day-of-month last month × 100. Positive = higher spend than last month at this point, negative = lower. Null when insufficient history.')
+  "momChangePct": zod.number().nullish().describe('Month-over-month percentage change: (MTD this month − same-day-of-month last month) \/ same-day-of-month last month × 100. Positive = higher spend than last month at this point, negative = lower. Null when insufficient history.'),
+  "opsCosts": zod.object({
+  "totalMonthly": zod.number().describe('Total monthly operational cost across all categories'),
+  "byCategory": zod.array(zod.object({
+  "category": zod.enum(['website-ops', 'network-ops', 'm365-licenses']).describe('Operational cost category for Business Ops line items.'),
+  "label": zod.string().describe('Human-readable category label'),
+  "total": zod.number().describe('Sum of amountMonthly for all active items in this category'),
+  "itemCount": zod.number(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "appId": zod.string(),
+  "category": zod.enum(['website-ops', 'network-ops', 'm365-licenses']).describe('Operational cost category for Business Ops line items.'),
+  "name": zod.string(),
+  "vendor": zod.string().nullish(),
+  "amountMonthly": zod.number().describe('Monthly cost in the specified currency'),
+  "currency": zod.string(),
+  "billingCycle": zod.enum(['monthly', 'annual', 'one-time']),
+  "active": zod.boolean().describe('Whether this cost item is currently active'),
+  "notes": zod.string().nullish(),
+  "effectiveFrom": zod.string().datetime({"offset":true}),
+  "createdAt": zod.string().datetime({"offset":true}),
+  "updatedAt": zod.string().datetime({"offset":true})
+})).optional()
+}))
+}).optional().describe('Non-Azure operational cost breakdown (M365 licenses, website ops, network ops). Only present for the kinisis-labs (Business Ops) app.')
+})
+
+
+export const ListOpsCostItemsParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const ListOpsCostItemsResponse = zod.array(zod.object({
+  "id": zod.string(),
+  "appId": zod.string(),
+  "category": zod.enum(['website-ops', 'network-ops', 'm365-licenses']).describe('Operational cost category for Business Ops line items.'),
+  "name": zod.string(),
+  "vendor": zod.string().nullish(),
+  "amountMonthly": zod.number().describe('Monthly cost in the specified currency'),
+  "currency": zod.string(),
+  "billingCycle": zod.enum(['monthly', 'annual', 'one-time']),
+  "active": zod.boolean().describe('Whether this cost item is currently active'),
+  "notes": zod.string().nullish(),
+  "effectiveFrom": zod.string().datetime({"offset":true}),
+  "createdAt": zod.string().datetime({"offset":true}),
+  "updatedAt": zod.string().datetime({"offset":true})
+}))
+
+export const CreateOpsCostItemParams = zod.object({
+  "appId": zod.coerce.string()
+})
+
+export const CreateOpsCostItemBody = zod.object({
+  "category": zod.enum(['website-ops', 'network-ops', 'm365-licenses']).describe('Operational cost category for Business Ops line items.'),
+  "name": zod.string().min(1),
+  "vendor": zod.string().optional(),
+  "amountMonthly": zod.number().gt(0),
+  "currency": zod.string().optional(),
+  "billingCycle": zod.enum(['monthly', 'annual', 'one-time']).optional(),
+  "active": zod.boolean().optional(),
+  "notes": zod.string().optional(),
+  "effectiveFrom": zod.string().datetime({"offset":true}).optional()
+})
+
+export const UpdateOpsCostItemParams = zod.object({
+  "appId": zod.coerce.string(),
+  "itemId": zod.coerce.string()
+})
+
+export const UpdateOpsCostItemBody = zod.object({
+  "category": zod.enum(['website-ops', 'network-ops', 'm365-licenses']).optional().describe('Operational cost category for Business Ops line items.'),
+  "name": zod.string().min(1).optional(),
+  "vendor": zod.string().nullish(),
+  "amountMonthly": zod.number().gt(0).optional(),
+  "currency": zod.string().optional(),
+  "billingCycle": zod.enum(['monthly', 'annual', 'one-time']).optional(),
+  "active": zod.boolean().optional(),
+  "notes": zod.string().nullish(),
+  "effectiveFrom": zod.string().datetime({"offset":true}).optional()
+})
+
+export const DeleteOpsCostItemParams = zod.object({
+  "appId": zod.coerce.string(),
+  "itemId": zod.coerce.string()
 })
 
 

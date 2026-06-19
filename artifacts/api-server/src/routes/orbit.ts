@@ -19,6 +19,8 @@ import {
   UpdateAppThresholdsBody,
   ListAppThresholdsLogResponse,
   GetGlobalCostSummaryResponse,
+  CreateOpsCostItemBody,
+  UpdateOpsCostItemBody,
 } from "@workspace/api-zod";
 import { db, appThresholdsTable, appThresholdsLogTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
@@ -26,6 +28,13 @@ import { requireEngineerOrAdmin, requireAuth } from "../middlewares/auth.js";
 import { fetchResourcesByResourceGroup, fetchResourceGroupTags, getResourcesFetchedAt } from "../lib/azureResources.js";
 import { fetchMonthToDateCostWithFallback, fetchLastMonthComparableCostTotal } from "../lib/azureCost.js";
 import { fetchThirdPartyUsage } from "../lib/thirdPartyUsage.js";
+import {
+  fetchOpsCostSummary,
+  listOpsCostItems,
+  createOpsCostItem,
+  updateOpsCostItem,
+  deleteOpsCostItem,
+} from "../lib/businessOpsCosts.js";
 import { fetchBudgetForAppWithFallback, diagnoseBudgetsForApp } from "../lib/azureBudgets.js";
 import { diagnoseActivityLog } from "../lib/azureActivity.js";
 import { fetchSubscriptionNames } from "../lib/azureSubscriptions.js";
@@ -618,7 +627,7 @@ router.get("/apps/:appId/cost", async (req, res) => {
   // 30-min (cost) or 1-hour (budget) snapshot.
   const bypassCache = req.query["refresh"] === "true";
   const scope = billingScope(app.id);
-  const [costWS, budgetWithSource, rev, priorMonthTotal, thirdPartyUsage] = await Promise.all([
+  const [costWS, budgetWithSource, rev, priorMonthTotal, thirdPartyUsage, opsCosts] = await Promise.all([
     fetchMonthToDateCostWithFallback(app, { bypassCache, billingScope: scope }),
     fetchBudgetForAppWithFallback(app, { bypassCache, budgetScope: scope }),
     syncAndReadRevenue(app),
@@ -630,6 +639,9 @@ router.get("/apps/:appId/cost", async (req, res) => {
     // Third-party API spend (OpenAI, Replicate). Live when env vars are set;
     // falls back to deterministic placeholder values otherwise.
     fetchThirdPartyUsage(app.id),
+    // Non-Azure operational costs (website ops, network ops, M365 licenses).
+    // Only populated for the Business Ops app; returns an empty summary for others.
+    app.id === "kinisis-labs" ? fetchOpsCostSummary(app.id) : Promise.resolve(null),
   ]);
   const liveCost = costWS?.result ?? null;
   const mtd = liveCost?.monthToDate ?? 0;
@@ -667,8 +679,68 @@ router.get("/apps/:appId/cost", async (req, res) => {
     ...(liveCost ? { dataAsOf: liveCost.dataAsOf } : {}),
     budgetDataSource,
     momChangePct,
+    ...(opsCosts ? { opsCosts } : {}),
   });
   res.json(data);
+});
+
+// --- ops costs (Business Ops only) ---
+router.get("/apps/:appId/ops-costs", requireEngineerOrAdmin, async (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  const items = await listOpsCostItems(app.id);
+  res.json(items);
+});
+
+router.post("/apps/:appId/ops-costs", requireEngineerOrAdmin, async (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  const parsed = CreateOpsCostItemBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request body", details: parsed.error.flatten() });
+    return;
+  }
+  const item = await createOpsCostItem(app.id, parsed.data as Parameters<typeof createOpsCostItem>[1]);
+  res.status(201).json(item);
+});
+
+router.patch("/apps/:appId/ops-costs/:itemId", requireEngineerOrAdmin, async (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  const parsed = UpdateOpsCostItemBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request body", details: parsed.error.flatten() });
+    return;
+  }
+  const item = await updateOpsCostItem(app.id, req.params.itemId, parsed.data as Parameters<typeof updateOpsCostItem>[2]);
+  if (!item) {
+    res.status(404).json({ error: "Item not found" });
+    return;
+  }
+  res.json(item);
+});
+
+router.delete("/apps/:appId/ops-costs/:itemId", requireEngineerOrAdmin, async (req, res) => {
+  const app = findApp(req.params.appId);
+  if (!app) {
+    res.status(404).json({ error: "App not found" });
+    return;
+  }
+  const deleted = await deleteOpsCostItem(app.id, req.params.itemId);
+  if (!deleted) {
+    res.status(404).json({ error: "Item not found" });
+    return;
+  }
+  res.status(204).send();
 });
 
 // --- telemetry ---

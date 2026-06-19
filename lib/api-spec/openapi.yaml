@@ -183,6 +183,85 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CostReport" }
+  /apps/{appId}/ops-costs:
+    get:
+      operationId: listOpsCostItems
+      tags: [cost]
+      summary: List operational cost line items for an app (Business Ops only)
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OpsCostItem" }
+        "404":
+          description: App not found
+    post:
+      operationId: createOpsCostItem
+      tags: [cost]
+      summary: Create a new operational cost line item
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateOpsCostItemRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OpsCostItem" }
+        "400":
+          description: Invalid request body
+        "404":
+          description: App not found
+  /apps/{appId}/ops-costs/{itemId}:
+    patch:
+      operationId: updateOpsCostItem
+      tags: [cost]
+      summary: Update an existing operational cost line item
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateOpsCostItemRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OpsCostItem" }
+        "400":
+          description: Invalid request body
+        "404":
+          description: Item or app not found
+    delete:
+      operationId: deleteOpsCostItem
+      tags: [cost]
+      summary: Delete an operational cost line item
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Item or app not found
   /apps/{appId}/telemetry:
     get:
       operationId: getTelemetry
@@ -1381,6 +1460,72 @@ components:
         dataAsOf: { type: string, format: date-time, description: "Timestamp of when cost data was last fetched from Azure. Only present when dataSource is live or cached." }
         budgetDataSource: { type: string, enum: [live, cached, estimated], description: "Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback." }
         momChangePct: { type: number, nullable: true, description: "Month-over-month percentage change: (MTD this month − same-day-of-month last month) / same-day-of-month last month × 100. Positive = higher spend than last month at this point, negative = lower. Null when insufficient history." }
+        opsCosts: { $ref: "#/components/schemas/OpsCostSummary", description: "Non-Azure operational cost breakdown (M365 licenses, website ops, network ops). Only present for the kinisis-labs (Business Ops) app." }
+    OpsCostCategory:
+      type: string
+      enum: [website-ops, network-ops, m365-licenses]
+      description: "Operational cost category for Business Ops line items."
+    OpsCostItem:
+      type: object
+      required: [id, appId, category, name, amountMonthly, currency, billingCycle, active, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        appId: { type: string }
+        category: { $ref: "#/components/schemas/OpsCostCategory" }
+        name: { type: string }
+        vendor: { type: string, nullable: true }
+        amountMonthly: { type: number, description: Monthly cost in the specified currency }
+        currency: { type: string, default: USD }
+        billingCycle: { type: string, enum: [monthly, annual, one-time], default: monthly }
+        active: { type: boolean, description: Whether this cost item is currently active }
+        notes: { type: string, nullable: true }
+        effectiveFrom: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    OpsCostCategoryTotal:
+      type: object
+      required: [category, label, total, itemCount]
+      properties:
+        category: { $ref: "#/components/schemas/OpsCostCategory" }
+        label: { type: string, description: Human-readable category label }
+        total: { type: number, description: Sum of amountMonthly for all active items in this category }
+        itemCount: { type: integer }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OpsCostItem" }
+    OpsCostSummary:
+      type: object
+      required: [totalMonthly, byCategory]
+      properties:
+        totalMonthly: { type: number, description: Total monthly operational cost across all categories }
+        byCategory:
+          type: array
+          items: { $ref: "#/components/schemas/OpsCostCategoryTotal" }
+    CreateOpsCostItemRequest:
+      type: object
+      required: [category, name, amountMonthly]
+      properties:
+        category: { $ref: "#/components/schemas/OpsCostCategory" }
+        name: { type: string, minLength: 1 }
+        vendor: { type: string }
+        amountMonthly: { type: number, exclusiveMinimum: 0 }
+        currency: { type: string, default: USD }
+        billingCycle: { type: string, enum: [monthly, annual, one-time], default: monthly }
+        active: { type: boolean, default: true }
+        notes: { type: string }
+        effectiveFrom: { type: string, format: date-time }
+    UpdateOpsCostItemRequest:
+      type: object
+      properties:
+        category: { $ref: "#/components/schemas/OpsCostCategory" }
+        name: { type: string, minLength: 1 }
+        vendor: { type: string, nullable: true }
+        amountMonthly: { type: number, exclusiveMinimum: 0 }
+        currency: { type: string }
+        billingCycle: { type: string, enum: [monthly, annual, one-time] }
+        active: { type: boolean }
+        notes: { type: string, nullable: true }
+        effectiveFrom: { type: string, format: date-time }
     RevenueSource:
       type: string
       enum: [stripe, app_store, play_store]
