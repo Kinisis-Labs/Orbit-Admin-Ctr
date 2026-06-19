@@ -4,21 +4,20 @@ import { normalizeResourceGraphRows } from "./azureNetwork.js";
 import { logger } from "./logger.js";
 
 /**
- * Azure tag compliance — scan subscriptions, resource groups, and individual
- * resources across all monitored subscriptions and report which of the five
- * required Kinisis tag keys are absent.
+ * Azure tag compliance — scan individual resources across all monitored
+ * subscriptions and report which of the required Kinisis tag keys are absent.
  *
- * Required tags: workload, environment, owner, cost-center, criticality.
+ * Required tags: CostCategory, Application, Environment.
+ * Recommended (not enforced): ServiceType, Owner.
+ * Scope: resources only — subscription and resource-group levels are intentionally excluded.
  * Cache: 15 minutes in-process.
  * Config-gated: returns unavailable sentinel when AZURE_SUBSCRIPTION_IDS is not set.
  */
 
 export const REQUIRED_TAGS = [
-  "workload",
-  "environment",
-  "owner",
-  "cost-center",
-  "criticality",
+  "CostCategory",
+  "Application",
+  "Environment",
 ] as const;
 
 export type TagComplianceEntry = {
@@ -95,21 +94,10 @@ export async function fetchTagCompliance(
   try {
     const client = getClient();
 
-    // Union query across all three scope levels. We fetch all resources first
-    // (totalScanned), then filter to those missing at least one required tag.
-    // Two passes: count total, then return non-compliant only (up to 1000).
-    const requiredTagsKql = REQUIRED_TAGS.map((t) => `"${t}"`).join(", ");
+    // Resource-only scan — subscription and resource-group scopes are excluded
+    // because tags are applied at the individual resource level per strategy.
     const query = `
-      let required_tags = dynamic([${requiredTagsKql}]);
-      union
-        (resourcecontainers
-          | where type =~ 'microsoft.resources/subscriptions'
-          | project id, name, type, subscriptionId, resourceGroup='', tags),
-        (resourcecontainers
-          | where type =~ 'microsoft.resources/subscriptions/resourcegroups'
-          | project id, name, type, subscriptionId, resourceGroup=name, tags),
-        (resources
-          | project id, name, type, subscriptionId, resourceGroup, tags)
+      resources
       | project id, name, type, subscriptionId, resourceGroup, tags
       | limit 1000
     `;
