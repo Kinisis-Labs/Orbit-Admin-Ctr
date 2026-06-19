@@ -179,9 +179,9 @@ function CostSection({ canSeeCost }: { canSeeCost: boolean }) {
       const cat = appTags?.["CostCategory"] ?? appTags?.["costCategory"] ?? "Untagged";
       map.set(cat, (map.get(cat) ?? 0) + (item.monthToDate ?? 0));
     }
-    const ordered = COST_CATEGORY_ORDER.filter((c) => map.has(c)).map((c) => ({
+    const ordered = COST_CATEGORY_ORDER.map((c) => ({
       name: c,
-      value: map.get(c)!,
+      value: map.get(c) ?? 0,
     }));
     const untagged = map.get("Untagged");
     if (untagged) ordered.push({ name: "Untagged", value: untagged });
