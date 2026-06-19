@@ -7,17 +7,20 @@
  */
 
 /**
- * Azure resource tags applied to this application's resource group. The five standard Kinisis tag keys are typed explicitly; any additional tags on the resource group are preserved as free-form string values.
+ * Azure resource tags applied to this application's resource group.
+ * Standard Kinisis tag keys: CostCategory, Application, ServiceType, Owner, Environment.
  */
 export interface AppTags {
-  /** Workload identifier matching the Azure workload tag (e.g. "GrailBabeProd"). */
+  CostCategory?: string;
+  Application?: string;
+  ServiceType?: string;
+  Owner?: string;
+  Environment?: string;
+  /** Legacy keys kept for backward compat */
   workload?: string;
-  /** Deployment environment tag value (e.g. "prod", "staging", "dev"). */
   environment?: string;
-  /** Team or individual responsible for this workload. */
   owner?: string;
-  /** FinOps cost-center code (e.g. "CC-GrailBabeProd"). */
   'cost-center'?: string;
-  /** Business criticality classification (e.g. mission-critical, high, medium, low). */
   criticality?: string;
+  [key: string]: string | undefined;
 }

@@ -89,6 +89,10 @@ export const APPS: AppRecord[] = [
     subscriptionName: "sub-GrailBabe-Prod",
     description: "Consumer marketplace for limited-edition collectibles.",
     tags: {
+      CostCategory: "WebApp",
+      Application: "GrailBabe",
+      Environment: "prod",
+      Owner: "Ryan Gutridge",
       workload: "GrailBabeProd",
       environment: "prod",
       owner: "Ryan Gutridge",
@@ -119,6 +123,10 @@ export const APPS: AppRecord[] = [
     subscriptionName: "Shared Platform Production",
     description: "Kinisis platform — Orbit admin center and kinisislabs.com, sharing the platform subscription (sub-sharedplatform-prod).",
     tags: {
+      CostCategory: "BusinessOps",
+      Application: "KinisisLabsPlatform",
+      Environment: "prod",
+      Owner: "Ryan Gutridge",
       workload: "Platform",
       environment: "prod",
       owner: "Ryan Gutridge",

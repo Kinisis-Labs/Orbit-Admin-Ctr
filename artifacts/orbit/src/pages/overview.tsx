@@ -28,10 +28,10 @@ import { COST_READER_GROUP } from "@/lib/auth-groups";
 
 // ─── Cost category config ──────────────────────────────────────────────────
 
-const COST_CATEGORY_ORDER = [
+const COST_CATEGORY_ORDER: string[] = [
   "Infrastructure", "WebApp", "BusinessOps", "DataPlatform",
   "Security", "AI", "Shared",
-] as const;
+];
 
 const COST_CATEGORY_COLOR: Record<string, string> = {
   Untagged: "#94a3b8",
@@ -123,8 +123,8 @@ function CostSection({ canSeeCost }: { canSeeCost: boolean }) {
     query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000, enabled: canSeeCost },
   });
 
-  const totalMtd = data?.totalMtd ?? 0;
-  const totalForecast = data?.totalForecast ?? null;
+  const totalMtd = data?.total ?? 0;
+  const totalForecast = data?.byApp?.reduce((s: number, a: { monthToDate: number }) => s + (a.monthToDate ?? 0), 0) ?? null;
   const dataSource = data?.dataSource;
 
   // Group MTD spend by CostCategory tag — uses byApp list + app tags
@@ -135,8 +135,9 @@ function CostSection({ canSeeCost }: { canSeeCost: boolean }) {
     const map = new Map<string, number>();
     for (const item of data.byApp) {
       const app = apps.find((a) => a.id === item.appId);
-      const cat = (app?.tags as Record<string, string> | undefined)?.["CostCategory"] ?? "Untagged";
-      map.set(cat, (map.get(cat) ?? 0) + item.mtd);
+      const appTags = app?.tags as Record<string, string> | undefined;
+      const cat = appTags?.["CostCategory"] ?? appTags?.["costCategory"] ?? "Untagged";
+      map.set(cat, (map.get(cat) ?? 0) + (item.monthToDate ?? 0));
     }
     const ordered = COST_CATEGORY_ORDER
       .filter((c) => map.has(c))

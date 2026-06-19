@@ -32,8 +32,13 @@ export const ListAppsResponseItem = zod.object({
   "environment": zod.string().optional().describe('Deployment environment tag value (e.g. \"prod\", \"staging\", \"dev\").'),
   "owner": zod.string().optional().describe('Team or individual responsible for this workload.'),
   "cost-center": zod.string().optional().describe('FinOps cost-center code (e.g. \"CC-GrailBabeProd\").'),
-  "criticality": zod.string().optional().describe('Business criticality classification (e.g. mission-critical, high, medium, low).')
-}).describe('Azure resource tags applied to this application\'s resource group. The five standard Kinisis tag keys are typed explicitly; any additional tags on the resource group are preserved as free-form string values.'),
+  "criticality": zod.string().optional(),
+  "CostCategory": zod.string().optional(),
+  "Application": zod.string().optional(),
+  "ServiceType": zod.string().optional(),
+  "Owner": zod.string().optional(),
+  "Environment": zod.string().optional()
+}).passthrough().describe('Azure resource tags. Standard Kinisis keys: CostCategory, Application, ServiceType, Owner, Environment.'),
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),
@@ -66,8 +71,13 @@ export const GetAppResponse = zod.object({
   "environment": zod.string().optional().describe('Deployment environment tag value (e.g. \"prod\", \"staging\", \"dev\").'),
   "owner": zod.string().optional().describe('Team or individual responsible for this workload.'),
   "cost-center": zod.string().optional().describe('FinOps cost-center code (e.g. \"CC-GrailBabeProd\").'),
-  "criticality": zod.string().optional().describe('Business criticality classification (e.g. mission-critical, high, medium, low).')
-}).describe('Azure resource tags applied to this application\'s resource group. The five standard Kinisis tag keys are typed explicitly; any additional tags on the resource group are preserved as free-form string values.'),
+  "criticality": zod.string().optional(),
+  "CostCategory": zod.string().optional(),
+  "Application": zod.string().optional(),
+  "ServiceType": zod.string().optional(),
+  "Owner": zod.string().optional(),
+  "Environment": zod.string().optional()
+}).passthrough().describe('Azure resource tags. Standard Kinisis keys: CostCategory, Application, ServiceType, Owner, Environment.'),
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),
