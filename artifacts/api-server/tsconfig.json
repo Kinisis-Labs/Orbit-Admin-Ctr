@@ -3,7 +3,11 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@workspace/*": ["./node_modules/@workspace/*"],
+      "@azure/*": ["./node_modules/@azure/*"]
+    }
   },
   "include": ["src"],
   "references": [
