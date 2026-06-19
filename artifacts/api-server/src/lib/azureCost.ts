@@ -239,7 +239,9 @@ export async function fetchLastMonthComparableCostTotal(
       },
     });
 
-    const columns: string[] = (result.columns ?? []).map((c) => String(c.name ?? ""));
+    const columns: string[] = (result.columns ?? []).map((c: { name?: string | null }) =>
+      String(c.name ?? ""),
+    );
     const rows = (result.rows ?? []) as unknown[][];
     const costIdx = columns.findIndex((c) => c.toLowerCase().includes("cost"));
     if (costIdx === -1 || rows.length === 0) return null;
@@ -316,7 +318,9 @@ export async function fetchMonthToDateCost(
       },
     });
 
-    const columns: string[] = (result.columns ?? []).map((c) => String(c.name ?? ""));
+    const columns: string[] = (result.columns ?? []).map((c: { name?: string | null }) =>
+      String(c.name ?? ""),
+    );
     const rows = (result.rows ?? []) as unknown[][];
 
     logger.info(
@@ -541,7 +545,7 @@ export async function diagnoseCostForApp(
       costQuery = {
         ok: true,
         rowCount: (r.rows ?? []).length,
-        columns: (r.columns ?? []).map((c) => c.name ?? ""),
+        columns: (r.columns ?? []).map((c: { name?: string | null }) => c.name ?? ""),
       };
     } catch (e: unknown) {
       costQuery = { ok: false, error: String(e) };
@@ -674,7 +678,9 @@ export async function fetchCostByCostCategoryTag({
             grouping: [{ type: "TagKey", name: "CostCategory" }],
           },
         });
-        const columns = (result.columns ?? []).map((c) => String(c.name ?? ""));
+        const columns = (result.columns ?? []).map((c: { name?: string | null }) =>
+          String(c.name ?? ""),
+        );
         const rows = (result.rows ?? []) as unknown[][];
         accumulateRows(columns, rows, "CostCategory", `subscription:${subId}`);
       } catch (err) {
@@ -699,11 +705,13 @@ export async function fetchCostByCostCategoryTag({
           grouping: [{ type: "Dimension", name: "ProductName" }],
         },
       });
-      const columns = (result.columns ?? []).map((c) => String(c.name ?? ""));
+      const columns: string[] = (result.columns ?? []).map((c: { name?: string | null }) =>
+        String(c.name ?? ""),
+      );
       const rows = (result.rows ?? []) as unknown[][];
-      const costIdx = columns.findIndex((c) => c.toLowerCase().includes("cost"));
+      const costIdx = columns.findIndex((c: string) => c.toLowerCase().includes("cost"));
       const nameIdx = columns.findIndex(
-        (c) => c.toLowerCase().includes("product") || c.toLowerCase() === "productname",
+        (c: string) => c.toLowerCase().includes("product") || c.toLowerCase() === "productname",
       );
       if (costIdx !== -1) {
         for (const row of rows) {

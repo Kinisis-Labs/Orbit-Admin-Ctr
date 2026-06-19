@@ -59,7 +59,9 @@ interface ArmBudget {
  *   "providers/Microsoft.Billing/billingAccounts/{billingAccountId}"
  */
 async function listBudgetsViaCostManagement(scope: string): Promise<ArmBudget[]> {
-  const tokenResponse = await getAzureCredential().getToken("https://management.azure.com/.default");
+  const tokenResponse = await getAzureCredential().getToken(
+    "https://management.azure.com/.default",
+  );
   if (!tokenResponse) throw new Error("getToken returned null — credential not available");
   const url = `https://management.azure.com/${scope}/providers/Microsoft.CostManagement/budgets?api-version=2023-11-01`;
   const res = await fetch(url, {
@@ -75,7 +77,9 @@ async function listBudgetsViaCostManagement(scope: string): Promise<ArmBudget[]>
 
 /** @deprecated Use listBudgetsViaCostManagement with billing account scope instead. */
 async function listBudgetsAtBillingScope(billingAccountId: string): Promise<ArmBudget[]> {
-  return listBudgetsViaCostManagement(`providers/Microsoft.Billing/billingAccounts/${billingAccountId}`);
+  return listBudgetsViaCostManagement(
+    `providers/Microsoft.Billing/billingAccounts/${billingAccountId}`,
+  );
 }
 
 /**
@@ -167,7 +171,10 @@ export function clearBudgetCacheForApp(appId: string): void {
  */
 export async function fetchBudgetForApp(
   app: AppRecord,
-  { bypassCache = false, budgetScope = "rg" }: { bypassCache?: boolean; budgetScope?: "subscription" | "rg" } = {},
+  {
+    bypassCache = false,
+    budgetScope = "rg",
+  }: { bypassCache?: boolean; budgetScope?: "subscription" | "rg" } = {},
 ): Promise<BudgetResult | null> {
   // Evict before the configuration gate so a force-refresh always clears the
   // stale entry, even when Azure is temporarily unconfigured.
@@ -201,17 +208,24 @@ export async function fetchBudgetForApp(
           type: "ActualCost",
           timeframe: "Custom",
           timePeriod: { from: monthStartDate(), to: monthEndDate() },
-          dataset: { granularity: "Monthly", aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } } },
+          dataset: {
+            granularity: "Monthly",
+            aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } },
+          },
           includeActualCost: false,
           includeFreshPartialCost: false,
         });
-        const cols: string[] = (forecastResult.columns ?? []).map((c) => String(c.name ?? ""));
+        const cols: string[] = (forecastResult.columns ?? []).map((c: { name?: string | null }) =>
+          String(c.name ?? ""),
+        );
         const costIdx = cols.findIndex((c) => c.toLowerCase().includes("cost"));
         const rows = (forecastResult.rows ?? []) as unknown[][];
         let total = 0;
         if (costIdx !== -1) for (const row of rows) total += Number(row[costIdx] ?? 0);
         if (total > 0) result.forecastAmount = Number(total.toFixed(2));
-      } catch (_) { /* ignore — forecast is best-effort */ }
+      } catch (_) {
+        /* ignore — forecast is best-effort */
+      }
     }
     const withOvr = { result, expiresAt: Date.now() + BUDGET_CACHE_TTL_MS };
     _budgetCache.set(app.id, withOvr);
@@ -243,7 +257,10 @@ export async function fetchBudgetForApp(
       const scope = budgetScope === "subscription" ? subScope : rgScope;
       try {
         const budget = await consumptionClient.budgets.get(scope, app.budgetName);
-        logger.debug({ appId: app.id, scope, budgetName: app.budgetName, amount: budget.amount }, "budget named-get succeeded");
+        logger.debug(
+          { appId: app.id, scope, budgetName: app.budgetName, amount: budget.amount },
+          "budget named-get succeeded",
+        );
         if (typeof budget.amount === "number" && budget.amount > 0) {
           budgetAmount = budget.amount;
           if (typeof budget.forecastSpend?.amount === "number") {
@@ -251,7 +268,10 @@ export async function fetchBudgetForApp(
           }
         }
       } catch (err) {
-        logger.warn({ err, appId: app.id, scope, budgetName: app.budgetName }, "budget named-get failed — falling through to list-scan");
+        logger.warn(
+          { err, appId: app.id, scope, budgetName: app.budgetName },
+          "budget named-get failed — falling through to list-scan",
+        );
       }
     }
 
@@ -305,7 +325,10 @@ export async function fetchBudgetForApp(
             if (typeof forecastAmt === "number") {
               forecastFromBudget = forecastAmt;
             }
-            logger.debug({ appId: app.id, budgetName: budget.name, amount }, "sub-scope CM budget found");
+            logger.debug(
+              { appId: app.id, budgetName: budget.name, amount },
+              "sub-scope CM budget found",
+            );
             break;
           }
         }
@@ -332,12 +355,18 @@ export async function fetchBudgetForApp(
               if (typeof forecastAmt === "number") {
                 forecastFromBudget = forecastAmt;
               }
-              logger.debug({ appId: app.id, billingAccountId, budgetName: budget.name, amount }, "billing-scope budget found");
+              logger.debug(
+                { appId: app.id, billingAccountId, budgetName: budget.name, amount },
+                "billing-scope budget found",
+              );
               break;
             }
           }
           if (budgetAmount === null) {
-            logger.debug({ appId: app.id, billingAccountId, subscriptionId }, "billing-scope list returned no matching budget");
+            logger.debug(
+              { appId: app.id, billingAccountId, subscriptionId },
+              "billing-scope list returned no matching budget",
+            );
           }
         } catch (err) {
           logger.warn({ err, appId: app.id, billingAccountId }, "billing-scope budget list failed");
@@ -346,7 +375,10 @@ export async function fetchBudgetForApp(
     }
 
     if (budgetAmount === null) {
-      logger.warn({ appId: app.id, subscriptionId, budgetName: app.budgetName, rgScope, subScope }, "no budget found after all lookup strategies");
+      logger.warn(
+        { appId: app.id, subscriptionId, budgetName: app.budgetName, rgScope, subScope },
+        "no budget found after all lookup strategies",
+      );
     }
   } catch (err) {
     logger.warn({ err, appId: app.id, subscriptionId }, "budget fetch outer error");
@@ -373,7 +405,9 @@ export async function fetchBudgetForApp(
         includeFreshPartialCost: false,
       });
 
-      const cols: string[] = (forecastResult.columns ?? []).map((c) => String(c.name ?? ""));
+      const cols: string[] = (forecastResult.columns ?? []).map((c: { name?: string | null }) =>
+        String(c.name ?? ""),
+      );
       const costIdx = cols.findIndex((c) => c.toLowerCase().includes("cost"));
       const rows = (forecastResult.rows ?? []) as unknown[][];
       if (costIdx !== -1 && rows.length > 0) {
@@ -382,7 +416,10 @@ export async function fetchBudgetForApp(
         forecastAmount = Number(total.toFixed(2));
       }
     } catch (err) {
-      logger.warn({ err, appId: app.id, forecastScope }, "budget forecast API failed — will use null forecast");
+      logger.warn(
+        { err, appId: app.id, forecastScope },
+        "budget forecast API failed — will use null forecast",
+      );
     }
   }
 
@@ -395,9 +432,15 @@ export async function fetchBudgetForApp(
 
   const hasBudget = budgetAmount !== null;
   if (hasBudget) {
-    logger.info({ appId: app.id, subscriptionId, budgetAmount, forecastAmount }, "budget fetch succeeded");
+    logger.info(
+      { appId: app.id, subscriptionId, budgetAmount, forecastAmount },
+      "budget fetch succeeded",
+    );
   } else {
-    logger.info({ appId: app.id, subscriptionId, forecastAmount }, "no budget defined; forecast-only result");
+    logger.info(
+      { appId: app.id, subscriptionId, forecastAmount },
+      "no budget defined; forecast-only result",
+    );
   }
 
   const result: BudgetResult = {
@@ -518,18 +561,52 @@ export async function diagnoseBudgetsForApp(
   const budgetOverride = getBudgetOverride(app.id);
   const overrideKey = `BUDGET_AMOUNT__${app.id.toUpperCase().replace(/-/g, "_")}`;
   if (budgetOverride !== null) {
-    entries.push({ strategy: "env-override", scope: overrideKey, outcome: "found", amount: budgetOverride });
+    entries.push({
+      strategy: "env-override",
+      scope: overrideKey,
+      outcome: "found",
+      amount: budgetOverride,
+    });
   } else {
-    entries.push({ strategy: "env-override", scope: overrideKey, outcome: "not_found", error: `${overrideKey} not set` });
+    entries.push({
+      strategy: "env-override",
+      scope: overrideKey,
+      outcome: "not_found",
+      error: `${overrideKey} not set`,
+    });
   }
 
   if (!isAzureConfigured()) {
-    return { appId: app.id, subscriptionId: null, entries: [...entries, { strategy: "pre-check", scope: "n/a", outcome: "error", error: "isAzureConfigured() = false" }] };
+    return {
+      appId: app.id,
+      subscriptionId: null,
+      entries: [
+        ...entries,
+        {
+          strategy: "pre-check",
+          scope: "n/a",
+          outcome: "error",
+          error: "isAzureConfigured() = false",
+        },
+      ],
+    };
   }
 
   const subscriptionId = await resolveSubscriptionId(app);
   if (!subscriptionId) {
-    return { appId: app.id, subscriptionId: null, entries: [{ strategy: "resolveSubscriptionId", scope: "n/a", outcome: "error", error: "resolveSubscriptionId returned null — check AZURE_SUB_* env vars and Resource Graph RBAC" }] };
+    return {
+      appId: app.id,
+      subscriptionId: null,
+      entries: [
+        {
+          strategy: "resolveSubscriptionId",
+          scope: "n/a",
+          outcome: "error",
+          error:
+            "resolveSubscriptionId returned null — check AZURE_SUB_* env vars and Resource Graph RBAC",
+        },
+      ],
+    };
   }
 
   const rgScope = `/subscriptions/${subscriptionId}/resourceGroups/${app.resourceGroup}`;
@@ -541,10 +618,23 @@ export async function diagnoseBudgetsForApp(
     const namedScope = budgetScope === "subscription" ? subScope : rgScope;
     try {
       const b = await client.budgets.get(namedScope, app.budgetName);
-      entries.push({ strategy: "named-get", scope: namedScope, budgetName: app.budgetName, outcome: "found", amount: b.amount ?? undefined, forecastAmount: b.forecastSpend?.amount ?? null });
+      entries.push({
+        strategy: "named-get",
+        scope: namedScope,
+        budgetName: app.budgetName,
+        outcome: "found",
+        amount: b.amount ?? undefined,
+        forecastAmount: b.forecastSpend?.amount ?? null,
+      });
     } catch (err: unknown) {
       const e = err as { message?: string; code?: string; statusCode?: number };
-      entries.push({ strategy: "named-get", scope: namedScope, budgetName: app.budgetName, outcome: "error", error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}` });
+      entries.push({
+        strategy: "named-get",
+        scope: namedScope,
+        budgetName: app.budgetName,
+        outcome: "error",
+        error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}`,
+      });
     }
   }
 
@@ -552,41 +642,94 @@ export async function diagnoseBudgetsForApp(
   try {
     const found: BudgetDiagnosticEntry[] = [];
     for await (const b of client.budgets.list(rgScope)) {
-      found.push({ strategy: "rg-list", scope: rgScope, budgetName: b.name ?? undefined, outcome: "found", amount: b.amount ?? undefined, forecastAmount: b.forecastSpend?.amount ?? null });
+      found.push({
+        strategy: "rg-list",
+        scope: rgScope,
+        budgetName: b.name ?? undefined,
+        outcome: "found",
+        amount: b.amount ?? undefined,
+        forecastAmount: b.forecastSpend?.amount ?? null,
+      });
     }
-    if (found.length === 0) entries.push({ strategy: "rg-list", scope: rgScope, outcome: "not_found", error: "empty list" });
+    if (found.length === 0)
+      entries.push({
+        strategy: "rg-list",
+        scope: rgScope,
+        outcome: "not_found",
+        error: "empty list",
+      });
     else entries.push(...found);
   } catch (err: unknown) {
     const e = err as { message?: string; code?: string; statusCode?: number };
-    entries.push({ strategy: "rg-list", scope: rgScope, outcome: "error", error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}` });
+    entries.push({
+      strategy: "rg-list",
+      scope: rgScope,
+      outcome: "error",
+      error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}`,
+    });
   }
 
   // 3. Sub-scope list
   try {
     const found: BudgetDiagnosticEntry[] = [];
     for await (const b of client.budgets.list(subScope)) {
-      found.push({ strategy: "sub-list", scope: subScope, budgetName: b.name ?? undefined, outcome: "found", amount: b.amount ?? undefined, forecastAmount: b.forecastSpend?.amount ?? null });
+      found.push({
+        strategy: "sub-list",
+        scope: subScope,
+        budgetName: b.name ?? undefined,
+        outcome: "found",
+        amount: b.amount ?? undefined,
+        forecastAmount: b.forecastSpend?.amount ?? null,
+      });
     }
-    if (found.length === 0) entries.push({ strategy: "sub-list", scope: subScope, outcome: "not_found", error: "empty list" });
+    if (found.length === 0)
+      entries.push({
+        strategy: "sub-list",
+        scope: subScope,
+        outcome: "not_found",
+        error: "empty list",
+      });
     else entries.push(...found);
   } catch (err: unknown) {
     const e = err as { message?: string; code?: string; statusCode?: number };
-    entries.push({ strategy: "sub-list", scope: subScope, outcome: "error", error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}` });
+    entries.push({
+      strategy: "sub-list",
+      scope: subScope,
+      outcome: "error",
+      error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}`,
+    });
   }
 
   // 4. Subscription-scope Cost Management budgets (Microsoft.CostManagement/budgets)
   try {
     const cmBudgets = await listBudgetsViaCostManagement(`subscriptions/${subscriptionId}`);
     if (cmBudgets.length === 0) {
-      entries.push({ strategy: "sub-cm-list", scope: `subscriptions/${subscriptionId}`, outcome: "not_found", error: "empty list" });
+      entries.push({
+        strategy: "sub-cm-list",
+        scope: `subscriptions/${subscriptionId}`,
+        outcome: "not_found",
+        error: "empty list",
+      });
     } else {
       for (const b of cmBudgets) {
-        entries.push({ strategy: "sub-cm-list", scope: `subscriptions/${subscriptionId}`, budgetName: b.name, outcome: "found", amount: b.properties.amount ?? undefined, forecastAmount: b.properties.forecastSpend?.amount ?? null });
+        entries.push({
+          strategy: "sub-cm-list",
+          scope: `subscriptions/${subscriptionId}`,
+          budgetName: b.name,
+          outcome: "found",
+          amount: b.properties.amount ?? undefined,
+          forecastAmount: b.properties.forecastSpend?.amount ?? null,
+        });
       }
     }
   } catch (err: unknown) {
     const e = err as { message?: string; code?: string; statusCode?: number };
-    entries.push({ strategy: "sub-cm-list", scope: `subscriptions/${subscriptionId}`, outcome: "error", error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}` });
+    entries.push({
+      strategy: "sub-cm-list",
+      scope: `subscriptions/${subscriptionId}`,
+      outcome: "error",
+      error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}`,
+    });
   }
 
   // 5. Billing account scope (MCA) — direct ARM REST API call
@@ -596,7 +739,12 @@ export async function diagnoseBudgetsForApp(
       const allBudgets = await listBudgetsAtBillingScope(billingAccountId);
       const matching = allBudgets.filter((b) => budgetMatchesSubscription(b, subscriptionId));
       if (matching.length === 0) {
-        entries.push({ strategy: "billing-scope-list", scope: `billingAccounts/${billingAccountId}`, outcome: "not_found", error: `empty list (${allBudgets.length} total budgets, 0 match subscriptionId ${subscriptionId})` });
+        entries.push({
+          strategy: "billing-scope-list",
+          scope: `billingAccounts/${billingAccountId}`,
+          outcome: "not_found",
+          error: `empty list (${allBudgets.length} total budgets, 0 match subscriptionId ${subscriptionId})`,
+        });
       } else {
         for (const b of matching) {
           entries.push({
@@ -611,10 +759,20 @@ export async function diagnoseBudgetsForApp(
       }
     } catch (err: unknown) {
       const e = err as { message?: string; code?: string; statusCode?: number };
-      entries.push({ strategy: "billing-scope-list", scope: `billingAccounts/${billingAccountId}`, outcome: "error", error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}` });
+      entries.push({
+        strategy: "billing-scope-list",
+        scope: `billingAccounts/${billingAccountId}`,
+        outcome: "error",
+        error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}`,
+      });
     }
   } else {
-    entries.push({ strategy: "billing-scope-list", scope: "n/a", outcome: "error", error: "AZURE_BILLING_ACCOUNT_ID not set — skipped" });
+    entries.push({
+      strategy: "billing-scope-list",
+      scope: "n/a",
+      outcome: "error",
+      error: "AZURE_BILLING_ACCOUNT_ID not set — skipped",
+    });
   }
 
   // 5. Forecast probe (independent of budget lookup)
@@ -624,19 +782,34 @@ export async function diagnoseBudgetsForApp(
       type: "ActualCost",
       timeframe: "Custom",
       timePeriod: { from: monthStartDate(), to: monthEndDate() },
-      dataset: { granularity: "Monthly", aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } } },
+      dataset: {
+        granularity: "Monthly",
+        aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } },
+      },
       includeActualCost: false,
       includeFreshPartialCost: false,
     });
-    const cols: string[] = (forecastResult.columns ?? []).map((c) => String(c.name ?? ""));
+    const cols: string[] = (forecastResult.columns ?? []).map((c: { name?: string | null }) =>
+      String(c.name ?? ""),
+    );
     const costIdx = cols.findIndex((c) => c.toLowerCase().includes("cost"));
     const rows = (forecastResult.rows ?? []) as unknown[][];
     let total = 0;
     if (costIdx !== -1) for (const row of rows) total += Number(row[costIdx] ?? 0);
-    entries.push({ strategy: "forecast-api", scope: forecastScope, outcome: "found", forecastAmount: Number(total.toFixed(2)) });
+    entries.push({
+      strategy: "forecast-api",
+      scope: forecastScope,
+      outcome: "found",
+      forecastAmount: Number(total.toFixed(2)),
+    });
   } catch (err: unknown) {
     const e = err as { message?: string; code?: string; statusCode?: number };
-    entries.push({ strategy: "forecast-api", scope: subScope, outcome: "error", error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}` });
+    entries.push({
+      strategy: "forecast-api",
+      scope: subScope,
+      outcome: "error",
+      error: `${e.code ?? e.statusCode ?? "?"}: ${e.message ?? String(err)}`,
+    });
   }
 
   return { appId: app.id, subscriptionId, entries };
