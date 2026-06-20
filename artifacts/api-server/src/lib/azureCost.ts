@@ -610,6 +610,114 @@ function m365ProductToCategory(productName: string): string | null {
 }
 
 /**
+ * Query Azure Cost Management grouped by the `Application` tag across all configured
+ * subscriptions. Returns an array of { application, monthToDate } sorted by spend desc.
+ * Returns null when Azure is not configured or on any error.
+ *
+ * Results are cached for 30 minutes (same TTL as per-app cost).
+ */
+let _appTagCacheEntry: {
+  result: { application: string; monthToDate: number }[];
+  expiresAt: number;
+} | null = null;
+
+export async function fetchCostByApplicationTag({
+  bypassCache = false,
+}: { bypassCache?: boolean } = {}): Promise<{ application: string; monthToDate: number }[] | null> {
+  if (!isAzureConfigured()) return null;
+
+  if (!bypassCache && _appTagCacheEntry && _appTagCacheEntry.expiresAt > Date.now()) {
+    return _appTagCacheEntry.result;
+  }
+
+  const subscriptionIds = getSubscriptionIds();
+  if (subscriptionIds.length === 0) return null;
+
+  const start = monthStart();
+  const end = today();
+  const appMap = new Map<string, number>();
+
+  await Promise.all(
+    subscriptionIds.map(async (subId) => {
+      const scope = `/subscriptions/${subId}`;
+      try {
+        const result = await getCostClient().query.usage(scope, {
+          type: "Usage",
+          timeframe: "Custom",
+          timePeriod: { from: new Date(start), to: new Date(end) },
+          dataset: {
+            granularity: "None",
+            aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } },
+            grouping: [{ type: "Dimension", name: "ResourceId" }],
+          },
+        });
+        const columns = (result.columns ?? []).map((c: { name?: string | null }) => String(c.name ?? ""));
+        const rows = (result.rows ?? []) as unknown[][];
+        const costIdx = columns.findIndex((c: string) => c.toLowerCase().includes("cost"));
+        const idIdx = columns.findIndex((c: string) => c.toLowerCase().includes("resourceid"));
+        if (costIdx === -1 || rows.length === 0) return;
+
+        const resourceIds = [
+          ...new Set(
+            rows
+              .map((r) => String(r[idIdx] ?? "").toLowerCase())
+              .filter((id) => id.startsWith("/subscriptions/")),
+          ),
+        ];
+
+        const resourceTagMap = new Map<string, string>();
+        if (resourceIds.length > 0) {
+          try {
+            const BATCH = 200;
+            for (let i = 0; i < resourceIds.length; i += BATCH) {
+              const batch = resourceIds.slice(i, i + BATCH);
+              const idList = batch.map((id) => `'${id}'`).join(", ");
+              const query = `resources | where tolower(id) in (${idList}) | project id, tags`;
+              const graphResult = await getGraphClient().resources({ query, subscriptions: [subId] });
+              const graphRows = normalizeResourceGraphRows(graphResult.data);
+              for (const row of graphRows) {
+                const rid = String(row["id"] ?? "").toLowerCase();
+                const tags = row["tags"];
+                const tagObj: Record<string, unknown> =
+                  tags && typeof tags === "object"
+                    ? (tags as Record<string, unknown>)
+                    : typeof tags === "string"
+                      ? (() => { try { return JSON.parse(tags) as Record<string, unknown>; } catch { return {}; } })()
+                      : {};
+                const lower = new Map(Object.entries(tagObj).map(([k, v]) => [k.toLowerCase(), v]));
+                const app = String(lower.get("application") ?? "").trim();
+                if (app) resourceTagMap.set(rid, app);
+              }
+            }
+          } catch (err) {
+            logger.warn({ err, subId }, "Resource Graph Application tag lookup failed");
+          }
+        }
+
+        for (const row of rows) {
+          const amount = Number(row[costIdx] ?? 0);
+          const rid = idIdx !== -1 ? String(row[idIdx] ?? "").toLowerCase() : "";
+          const app = resourceTagMap.get(rid) ?? "(untagged)";
+          appMap.set(app, (appMap.get(app) ?? 0) + amount);
+        }
+      } catch (err) {
+        logger.warn({ err, subId }, "Application tag cost query failed for subscription");
+      }
+    }),
+  );
+
+  if (appMap.size === 0) return null;
+
+  const result = [...appMap.entries()]
+    .filter(([k]) => k !== "(untagged)")
+    .map(([application, total]) => ({ application, monthToDate: Number(total.toFixed(2)) }))
+    .sort((a, b) => b.monthToDate - a.monthToDate);
+
+  _appTagCacheEntry = { result, expiresAt: Date.now() + COST_CACHE_TTL_MS };
+  return result;
+}
+
+/**
  * Query Azure Cost Management grouped by the `CostCategory` tag across all configured
  * subscriptions. Returns an array of { category, monthToDate } sorted by spend desc.
  * Returns null when Azure is not configured or on any error.

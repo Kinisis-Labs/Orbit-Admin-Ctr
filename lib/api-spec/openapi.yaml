@@ -1983,6 +1983,15 @@ components:
         byApp:
           type: array
           items: { $ref: "#/components/schemas/GlobalCostByAppItem" }
+        byApplicationTag:
+          type: array
+          description: MTD spend grouped by Application tag across all Azure resources
+          items:
+            type: object
+            required: [application, monthToDate]
+            properties:
+              application: { type: string, description: "Application tag value" }
+              monthToDate: { type: number, description: Month-to-date spend in USD }
         dataSource: { type: string, enum: [live, cached, mock] }
         dataAsOf: { type: string, format: date-time, nullable: true, description: "Timestamp of the most recent live or cached data point across all apps." }
         wowTrend: { type: string, nullable: true, description: "Spend-weighted week-over-week percentage change across all apps (e.g. '+8.2%' or '-3.1%'). Null when insufficient data." }

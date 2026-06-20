@@ -1068,6 +1068,10 @@ export const GetGlobalCostSummaryResponse = zod.object({
   "category": zod.string().describe('CostCategory tag value (e.g. "Infrastructure", "WebApp")'),
   "monthToDate": zod.number().describe('Month-to-date spend in USD for this category')
 })).optional().describe('MTD spend grouped by CostCategory tag across all Azure resources'),
+  "byApplicationTag": zod.array(zod.object({
+  "application": zod.string().describe('Application tag value'),
+  "monthToDate": zod.number().describe('Month-to-date spend in USD')
+})).optional().describe('MTD spend grouped by Application tag across all Azure resources'),
   "dataSource": zod.enum(['live', 'cached', 'mock']),
   "dataAsOf": zod.string().datetime({"offset":true}).nullish().describe('Timestamp of the most recent live or cached data point across all apps.'),
   "wowTrend": zod.string().nullish().describe('Spend-weighted week-over-week percentage change across all apps (e.g. \'+8.2%\' or \'-3.1%\'). Null when insufficient data.')

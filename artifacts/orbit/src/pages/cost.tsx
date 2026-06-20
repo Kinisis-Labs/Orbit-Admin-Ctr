@@ -411,13 +411,24 @@ function GlobalCostPanel() {
     return isNaN(n) ? -Infinity : n;
   }
 
-  const totalApps = data?.byApp.length ?? 0;
-  const maxMtd = useMemo(
-    () => data?.byApp.reduce((m, r) => Math.max(m, r.monthToDate), 0) ?? 0,
-    [data?.byApp],
-  );
+  // Prefer live tag-based grouping when available, fall back to registry-based byApp
+  const useTagRows = !!(data?.byApplicationTag && data.byApplicationTag.length > 0);
+
+  const totalApps = useTagRows
+    ? (data?.byApplicationTag?.length ?? 0)
+    : (data?.byApp.length ?? 0);
+
+  const maxMtd = useMemo(() => {
+    if (useTagRows) return data?.byApplicationTag?.reduce((m, r) => Math.max(m, r.monthToDate), 0) ?? 0;
+    return data?.byApp.reduce((m, r) => Math.max(m, r.monthToDate), 0) ?? 0;
+  }, [data?.byApp, data?.byApplicationTag, useTagRows]);
 
   const sortedRows = useMemo(() => {
+    if (useTagRows) {
+      const rows = [...(data?.byApplicationTag ?? [])];
+      if (sortCol === "amount") rows.sort((a, b) => sortDir === "desc" ? b.monthToDate - a.monthToDate : a.monthToDate - b.monthToDate);
+      return rows.map((r) => ({ appId: r.application, appName: r.application, environment: "", monthToDate: r.monthToDate, trend: null }));
+    }
     if (!data?.byApp) return [];
     const rows = [...data.byApp];
     rows.sort((a, b) => {
@@ -435,7 +446,7 @@ function GlobalCostPanel() {
       return sortDir === "desc" ? bv - av : av - bv;
     });
     return rows;
-  }, [data?.byApp, sortCol, sortDir, maxMtd]);
+  }, [data?.byApp, data?.byApplicationTag, useTagRows, sortCol, sortDir, maxMtd]);
 
   function SortIcon({ col }: { col: GlobalSortCol }) {
     if (sortCol !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;

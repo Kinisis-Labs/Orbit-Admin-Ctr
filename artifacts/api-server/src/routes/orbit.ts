@@ -34,6 +34,7 @@ import {
   fetchMonthToDateCostWithFallback,
   fetchLastMonthComparableCostTotal,
   fetchCostByCostCategoryTag,
+  fetchCostByApplicationTag,
 } from "../lib/azureCost.js";
 import { fetchThirdPartyUsage } from "../lib/thirdPartyUsage.js";
 import {
@@ -1190,9 +1191,10 @@ function deriveTrendFromServices(
 }
 
 router.get("/global/cost-summary", async (_req, res) => {
-  const [costResults, byCategory] = await Promise.all([
+  const [costResults, byCategory, byApplicationTag] = await Promise.all([
     Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, { billingScope: billingScope(a.id) }))),
     fetchCostByCostCategoryTag(),
+    fetchCostByApplicationTag(),
   ]);
 
   let overallSource: "live" | "cached" | "mock" = "mock";
@@ -1262,6 +1264,7 @@ router.get("/global/cost-summary", async (_req, res) => {
       currency: "USD",
       byApp,
       ...(byCategory ? { byCategory } : {}),
+      ...(byApplicationTag ? { byApplicationTag } : {}),
       dataSource: overallSource,
       ...(latestDataAsOf ? { dataAsOf: latestDataAsOf } : {}),
       ...(globalWowTrend !== null ? { wowTrend: globalWowTrend } : {}),
