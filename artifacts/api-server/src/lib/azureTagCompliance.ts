@@ -141,7 +141,16 @@ export async function fetchTagCompliance({
           'microsoft.operationsmanagement/solutions',
           'microsoft.resources/deployments',
           'microsoft.resources/templatespecs',
-          'microsoft.maintenance/configurationassignments'
+          'microsoft.maintenance/configurationassignments',
+          'microsoft.network/privatednszones/virtualnetworklinks',
+          'microsoft.network/privatednszones/a',
+          'microsoft.network/privatednszones/aaaa',
+          'microsoft.network/privatednszones/cname',
+          'microsoft.network/privateendpoints/privatednszonegroups',
+          'microsoft.network/privatelinkservices/privateendpointconnections',
+          'microsoft.compute/snapshots',
+          'microsoft.compute/restorepointcollections',
+          'microsoft.compute/restorepointcollections/restorepoints'
         )
       | project id, name, type, subscriptionId, resourceGroup, tags
       | order by type asc
