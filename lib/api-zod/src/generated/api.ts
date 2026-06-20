@@ -936,6 +936,7 @@ export const GetTagComplianceResponse = zod.object({
   "tags": zod.record(zod.string(), zod.string()).nullish()
 })),
   "applicationTagCounts": zod.record(zod.string(), zod.number()),
+  "tagCoverageByKey": zod.record(zod.string(), zod.number()),
   "dataSource": zod.enum(['live', 'unavailable', 'error']),
   "errorMessage": zod.string().nullish()
 })

@@ -34,6 +34,8 @@ export type TagComplianceResult = {
   entries: TagComplianceEntry[];
   /** Application tag value → resource count across ALL scanned resources (not just non-compliant) */
   applicationTagCounts: Record<string, number>;
+  /** Tag key → count of resources that have a non-empty value for that key (ALL scanned resources) */
+  tagCoverageByKey: Record<string, number>;
   dataSource: "live" | "unavailable" | "error";
   errorMessage?: string;
 };
@@ -99,6 +101,7 @@ const UNAVAILABLE: TagComplianceResult = {
   nonCompliantCount: 0,
   entries: [],
   applicationTagCounts: {},
+  tagCoverageByKey: {},
   dataSource: "unavailable",
 };
 
@@ -152,6 +155,7 @@ export async function fetchTagCompliance({
     let totalScanned = 0;
     const entries: TagComplianceEntry[] = [];
     const applicationTagCounts: Record<string, number> = {};
+    const tagCoverageByKey: Record<string, number> = {};
 
     for (const row of rows) {
       totalScanned++;
@@ -164,6 +168,16 @@ export async function fetchTagCompliance({
         : "";
       applicationTagCounts[appVal || "(untagged)"] =
         (applicationTagCounts[appVal || "(untagged)"] ?? 0) + 1;
+      // Count per-tag coverage across ALL resources
+      if (tags) {
+        const lower = new Map(Object.entries(tags).map(([k, v]) => [k.toLowerCase(), v]));
+        for (const t of REQUIRED_TAGS) {
+          const v = lower.get(t.toLowerCase());
+          if (v !== undefined && v !== null && String(v).trim() !== "") {
+            tagCoverageByKey[t] = (tagCoverageByKey[t] ?? 0) + 1;
+          }
+        }
+      }
       const missing = missingTagsFor(tags);
       if (missing.length === 0) continue;
 
@@ -191,6 +205,7 @@ export async function fetchTagCompliance({
       nonCompliantCount: entries.length,
       entries,
       applicationTagCounts,
+      tagCoverageByKey,
       dataSource: "live",
     };
 

@@ -884,24 +884,49 @@ function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLo
 }
 
 function CoverageCard({ apps }: { apps: AppSummary[] }) {
-  const coverage = KNOWN_TAGS.map((tag) => {
-    const tagged = apps.filter((a) => !!getTag(a, tag)).length;
-    const pct = Math.round((tagged / apps.length) * 100);
-    return { tag, tagged, total: apps.length, pct };
-  });
+  const { data: compliance } = useGetTagCompliance();
+
+  // Prefer resource-level coverage from compliance scan (tagCoverageByKey covers ALL resources).
+  // Fall back to app-level tag lookup when compliance data isn't available.
+  const { coverage, total, unit } = (() => {
+    const byKey = compliance?.tagCoverageByKey;
+    const scanned = compliance?.totalScanned ?? 0;
+    if (byKey && scanned > 0) {
+      return {
+        coverage: KNOWN_TAGS.map((tag) => ({
+          tag,
+          tagged: byKey[tag] ?? 0,
+          pct: Math.round(((byKey[tag] ?? 0) / scanned) * 100),
+        })),
+        total: scanned,
+        unit: "resources",
+      };
+    }
+    return {
+      coverage: KNOWN_TAGS.map((tag) => {
+        const tagged = apps.filter((a) => !!getTag(a, tag)).length;
+        return { tag, tagged, pct: apps.length > 0 ? Math.round((tagged / apps.length) * 100) : 0 };
+      }),
+      total: apps.length,
+      unit: "apps",
+    };
+  })();
 
   return (
     <div className="bg-card border border-border shadow-sm">
-      <div className="p-2 border-b border-border">
+      <div className="p-2 border-b border-border flex items-center gap-2">
         <h2 className="text-sm font-semibold px-2">Tag coverage</h2>
+        <span className="text-[11px] text-muted-foreground">
+          {total} {unit} scanned
+        </span>
       </div>
       <div className="p-3 grid grid-cols-5 gap-3">
-        {coverage.map(({ tag, tagged, total, pct }) => (
+        {coverage.map(({ tag, tagged, pct }) => (
           <div key={tag} className="space-y-1">
             <div className="text-[11px] font-mono text-muted-foreground">{tag}</div>
             <div className="text-lg font-semibold tabular-nums">{pct}%</div>
             <div className="text-[11px] text-muted-foreground">
-              {tagged}/{total} apps
+              {tagged}/{total} {unit}
             </div>
             <div className="h-1 bg-muted rounded-full overflow-hidden">
               <div

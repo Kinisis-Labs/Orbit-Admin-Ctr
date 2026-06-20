@@ -1839,7 +1839,7 @@ components:
         message: { type: string }
     TagComplianceResponse:
       type: object
-      required: [scannedAt, totalScanned, nonCompliantCount, entries, dataSource, applicationTagCounts]
+      required: [scannedAt, totalScanned, nonCompliantCount, entries, dataSource, applicationTagCounts, tagCoverageByKey]
       properties:
         scannedAt: { type: string, format: date-time }
         totalScanned: { type: integer }
@@ -1851,6 +1851,10 @@ components:
           type: object
           additionalProperties: { type: integer }
           description: Application tag value to resource count across ALL scanned resources
+        tagCoverageByKey:
+          type: object
+          additionalProperties: { type: integer }
+          description: Tag key to count of resources that have a non-empty value for that key (ALL scanned resources)
         dataSource: { type: string, enum: [live, unavailable, error] }
         errorMessage: { type: string, nullable: true }
     TagComplianceEntry:
