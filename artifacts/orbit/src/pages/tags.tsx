@@ -536,6 +536,137 @@ function TagComplianceCard() {
   );
 }
 
+// ─── Application tag inventory ─────────────────────────────────────────────
+
+function ApplicationTagInventory() {
+  const { data, isLoading } = useGetTagCompliance();
+
+  const rows = (() => {
+    const counts = data?.applicationTagCounts;
+    if (!counts) return null;
+    return (Object.entries(counts) as [string, number][])
+      .filter(([k]) => k !== "(untagged)")
+      .sort((a, b) => b[1] - a[1])
+      .map(([appTag, total]) => {
+        const nonCompliant = data?.entries
+          ? data.entries.filter((e) => {
+              const tags = e.tags as Record<string, string> | undefined | null;
+              const val = tags?.["Application"] ?? tags?.["application"];
+              return val === appTag;
+            }).length
+          : 0;
+        return { appTag, total, nonCompliant };
+      });
+  })();
+
+  const untagged = data?.applicationTagCounts?.["(untagged)"] ?? 0;
+  const totalScanned = data?.totalScanned ?? 0;
+
+  return (
+    <div className="bg-card border border-border shadow-sm">
+      <div className="p-2 border-b border-border flex items-center gap-2">
+        <Tag className="h-3.5 w-3.5 text-muted-foreground ml-2" />
+        <h2 className="text-sm font-semibold">Tag inventory</h2>
+        <span className="text-[11px] text-muted-foreground ml-1">
+          Grouped by <span className="font-mono">Application</span> tag · Azure resource scan
+        </span>
+        {totalScanned > 0 && (
+          <span className="text-[11px] text-muted-foreground ml-auto">{totalScanned} resources</span>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="p-4 space-y-2">
+          <Skeleton className="h-8" />
+          <Skeleton className="h-8" />
+          <Skeleton className="h-8" />
+        </div>
+      ) : !data || data.dataSource === "unavailable" ? (
+        <div className="p-4 text-[12px] text-muted-foreground italic">
+          Azure not configured — set{" "}
+          <code className="text-xs bg-muted px-1 rounded">AZURE_SUBSCRIPTION_IDS</code> to enable
+          tag scanning.
+        </div>
+      ) : !rows || rows.length === 0 ? (
+        <div className="p-4 text-[12px] text-muted-foreground italic">
+          No <span className="font-mono">Application</span> tags found on scanned resources yet.
+        </div>
+      ) : (
+        <Table className="text-[13px]">
+          <TableHeader className="bg-muted/50 border-b border-border">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="h-8 font-semibold text-foreground w-[200px]">
+                Application tag
+              </TableHead>
+              <TableHead className="h-8 font-semibold text-foreground text-right">
+                Resources
+              </TableHead>
+              <TableHead className="h-8 font-semibold text-foreground text-right">
+                Non-compliant
+              </TableHead>
+              <TableHead className="h-8 font-semibold text-foreground text-right">
+                Compliance
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map(({ appTag, total, nonCompliant }) => {
+              const pct = total > 0 ? Math.round(((total - nonCompliant) / total) * 100) : 100;
+              const colorClass =
+                COST_CATEGORY_COLOR[appTag as CostCategory] ??
+                "bg-muted/50 text-muted-foreground border-border";
+              return (
+                <TableRow key={appTag} className="border-b border-border/50 hover:bg-muted/40">
+                  <TableCell className="py-2">
+                    <span
+                      className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border text-[11px] font-medium ${colorClass}`}
+                    >
+                      {appTag}
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-2 text-right tabular-nums text-[12px]">{total}</TableCell>
+                  <TableCell className="py-2 text-right tabular-nums text-[12px]">
+                    {nonCompliant === 0 ? (
+                      <span className="text-green-500">0</span>
+                    ) : (
+                      <span className="text-destructive">{nonCompliant}</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="py-2 text-right">
+                    <span
+                      className={`text-[11px] font-medium ${pct === 100 ? "text-green-500" : pct >= 80 ? "text-amber-500" : "text-destructive"}`}
+                    >
+                      {pct}%
+                    </span>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {untagged > 0 && (
+              <TableRow className="border-b border-border/40 bg-muted/10">
+                <TableCell className="py-2">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-dashed border-border text-[11px] text-muted-foreground/60 italic">
+                    (untagged)
+                  </span>
+                </TableCell>
+                <TableCell className="py-2 text-right tabular-nums text-[12px] text-muted-foreground">
+                  {untagged}
+                </TableCell>
+                <TableCell className="py-2 text-right tabular-nums text-[12px] text-destructive">
+                  {untagged}
+                </TableCell>
+                <TableCell className="py-2 text-right">
+                  <span className="text-[11px] font-medium text-destructive">0%</span>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  );
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────
 
 export default function Tags() {
@@ -550,69 +681,7 @@ export default function Tags() {
 
       <CostCategoryRollupPanel apps={apps ?? []} isLoading={isLoading} />
 
-      <div className="bg-card border border-border shadow-sm">
-        <div className="p-2 border-b border-border flex items-center gap-2">
-          <Tag className="h-3.5 w-3.5 text-muted-foreground ml-2" />
-          <h2 className="text-sm font-semibold">Tag inventory</h2>
-          <span className="text-[11px] text-muted-foreground ml-1">
-            Required: CostCategory · Application · Environment &nbsp;·&nbsp; Recommended:
-            ServiceType · Owner
-          </span>
-        </div>
-
-        {isLoading ? (
-          <div className="p-4 space-y-2">
-            <Skeleton className="h-8" />
-            <Skeleton className="h-8" />
-            <Skeleton className="h-8" />
-          </div>
-        ) : (
-          <Table className="text-[13px]">
-            <TableHeader className="bg-muted/50 border-b border-border">
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="h-8 font-semibold text-foreground w-[160px]">
-                  Application
-                </TableHead>
-                {KNOWN_TAGS.map((tag) => (
-                  <TableHead key={tag} className="h-8 font-semibold text-foreground">
-                    <span className="font-mono text-[11px] text-muted-foreground">{tag}</span>
-                    <span className="block text-[10px] font-normal text-muted-foreground/70">
-                      {TAG_LABELS[tag]}
-                    </span>
-                  </TableHead>
-                ))}
-                <TableHead className="h-8 font-semibold text-foreground text-right">
-                  Extra tags
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(apps ?? []).map((app) => {
-                const extras = extraTags(app);
-                return (
-                  <TableRow key={app.id} className="border-b border-border/50 hover:bg-muted/40">
-                    <TableCell className="py-1.5 font-medium text-primary">{app.name}</TableCell>
-                    {KNOWN_TAGS.map((tag) => (
-                      <TableCell key={tag} className="py-1.5">
-                        <TagCell tag={tag} value={getTag(app, tag)} />
-                      </TableCell>
-                    ))}
-                    <TableCell className="py-1.5 text-right">
-                      {extras.length === 0 ? (
-                        <span className="text-muted-foreground/50 text-[12px] italic">—</span>
-                      ) : (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-border bg-muted/40 text-[11px] font-mono text-muted-foreground">
-                          +{extras.length}
-                        </span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+      <ApplicationTagInventory />
 
       {!isLoading && apps && apps.length > 0 && <CoverageCard apps={apps} />}
 
