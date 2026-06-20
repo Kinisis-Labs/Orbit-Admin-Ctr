@@ -9,7 +9,7 @@ import { useApp } from "@/hooks/use-app";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
-import { ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, Bell, TrendingUp, TrendingDown, X, TriangleAlert, Wifi, Smartphone, ExternalLink } from "lucide-react";
+import { ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, Bell, TrendingUp, TrendingDown, X, TriangleAlert, Wifi, Smartphone, ExternalLink, LayoutGrid, AlertCircle, DollarSign, TrendingUp as BudgetIcon, HeartPulse, ShieldCheck } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ScopeSelect } from "@/lib/scope";
@@ -406,21 +406,29 @@ export default function Home() {
               title="Total Apps"
               value={apps == null ? null : apps.length}
               sub="Tracked in this fleet"
+              icon={<LayoutGrid className="h-4 w-4" />}
+              iconColor="#7C3AED"
             />
             <Tile
               title="Active Alerts"
               value={allAppDetails.length === 0 && apps && apps.length > 0 ? null : globalTotalAlerts}
               sub="Open across all apps"
+              icon={<AlertCircle className="h-4 w-4" />}
+              iconColor="#06B6D4"
             />
             <Tile
               title="MTD Spend"
               value={apps == null ? null : fmt(globalTotalMTD)}
               sub="Sum of month-to-date cost"
+              icon={<DollarSign className="h-4 w-4" />}
+              iconColor="#10B981"
             />
             <Tile
               title="Apps Over Budget"
               value={apps == null ? null : globalAppsOverBudget}
               sub={globalAppsOverBudget === 1 ? "App forecast exceeds budget" : "Apps forecast over budget"}
+              icon={<BudgetIcon className="h-4 w-4" />}
+              iconColor="#F59E0B"
             />
           </div>
           <GlobalStrips apps={apps} fleetHealth={fleetHealth} authCounts={authCounts} />
@@ -1696,8 +1704,17 @@ function GlobalStrips({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-      <div className="bg-card border border-border shadow-sm p-3 flex flex-col gap-2">
-        <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Fleet Health</div>
+      <div className="relative overflow-hidden bg-card border border-border shadow-sm p-3 flex flex-col gap-2 orbit-card-accent">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(80% 60% at 0% 0%, #10B98110 0%, transparent 70%)" }}
+        />
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-md" style={{ background: "#10B98122", border: "1px solid #10B98144", color: "#10B981" }}>
+            <HeartPulse className="h-3.5 w-3.5" />
+          </span>
+          <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Fleet Health</div>
+        </div>
         <div className="flex items-center gap-4 flex-wrap">
           {!hasApps ? (
             <Skeleton className="h-5 w-48" />
@@ -1716,8 +1733,17 @@ function GlobalStrips({
         </div>
       </div>
 
-      <div className="bg-card border border-border shadow-sm p-3 flex flex-col gap-2">
-        <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Identity Landscape</div>
+      <div className="relative overflow-hidden bg-card border border-border shadow-sm p-3 flex flex-col gap-2 orbit-card-accent">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(80% 60% at 0% 0%, #7C3AED10 0%, transparent 70%)" }}
+        />
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-md" style={{ background: "#7C3AED22", border: "1px solid #7C3AED44", color: "#A78BFA" }}>
+            <ShieldCheck className="h-3.5 w-3.5" />
+          </span>
+          <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Identity Landscape</div>
+        </div>
         <div className="flex items-center gap-4 flex-wrap">
           {!hasApps ? (
             <Skeleton className="h-5 w-48" />
@@ -1739,32 +1765,69 @@ function GlobalStrips({
   );
 }
 
-function Tile({ title, value, sub, href }: { title: string; value: React.ReactNode; sub: string; href?: string }) {
+function Tile({
+  title,
+  value,
+  sub,
+  href,
+  icon,
+  iconColor = "#7C3AED",
+}: {
+  title: string;
+  value: React.ReactNode;
+  sub: string;
+  href?: string;
+  icon?: React.ReactNode;
+  iconColor?: string;
+}) {
   const inner = (
     <>
-      <div className="flex items-center justify-between gap-1 mb-1">
-        <div className="text-[12px] text-muted-foreground font-medium truncate">{title}</div>
-        {href && <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />}
+      <div className="flex items-start justify-between gap-2 mb-2">
+        {icon && (
+          <span
+            className="inline-flex items-center justify-center w-8 h-8 rounded-md shrink-0"
+            style={{
+              background: `${iconColor}22`,
+              border: `1px solid ${iconColor}44`,
+              color: iconColor,
+              boxShadow: `0 0 12px ${iconColor}33`,
+            }}
+          >
+            {icon}
+          </span>
+        )}
+        {href && <ChevronRight className="h-3 w-3 text-muted-foreground/40 shrink-0 mt-1 ml-auto" />}
       </div>
       {value === null ? (
         <Skeleton className="h-7 w-20 mb-1" />
       ) : (
-        <div className="text-xl font-semibold text-foreground mb-1 tabular-nums">{value}</div>
+        <div className="text-2xl font-bold text-foreground mb-0.5 tabular-nums">{value}</div>
       )}
-      <div className="text-[11px] text-muted-foreground truncate">{sub}</div>
+      <div className="text-[11px] text-muted-foreground truncate">{title}</div>
+      <div className="text-[10px] text-muted-foreground/60 truncate mt-0.5">{sub}</div>
     </>
   );
 
+  const cardClass = `relative overflow-hidden bg-card border border-border p-3 shadow-sm flex flex-col justify-between orbit-card-accent transition-colors`;
+
   if (href) {
     return (
-      <Link href={href} className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between hover:bg-muted/40 hover:border-border/80 transition-colors cursor-pointer">
+      <Link href={href} className={`${cardClass} hover:bg-muted/40 hover:border-border/80 cursor-pointer`}>
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: `radial-gradient(80% 60% at 0% 0%, ${iconColor}0d 0%, transparent 70%)` }}
+        />
         {inner}
       </Link>
     );
   }
 
   return (
-    <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+    <div className={cardClass}>
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: `radial-gradient(80% 60% at 0% 0%, ${iconColor}0d 0%, transparent 70%)` }}
+      />
       {inner}
     </div>
   );
