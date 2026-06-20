@@ -26,13 +26,14 @@ import {
 import { useState, Fragment } from "react";
 import { cn } from "@/lib/utils";
 
-const KNOWN_TAGS = ["CostCategory", "Application", "ServiceType", "Owner", "Environment"] as const;
+const KNOWN_TAGS = ["CostCategory", "Application", "ServiceType", "CostCenter", "Owner", "Environment"] as const;
 type KnownTag = (typeof KNOWN_TAGS)[number];
 
 const TAG_LABELS: Record<KnownTag, string> = {
   CostCategory: "Cost Category",
   Application: "Application",
   ServiceType: "Service Type",
+  CostCenter: "Cost Center",
   Owner: "Owner",
   Environment: "Environment",
 };
@@ -920,7 +921,7 @@ function CoverageCard({ apps }: { apps: AppSummary[] }) {
           {total} {unit} scanned
         </span>
       </div>
-      <div className="p-3 grid grid-cols-5 gap-3">
+      <div className="p-3 grid grid-cols-6 gap-3">
         {coverage.map(({ tag, tagged, pct }) => (
           <div key={tag} className="space-y-1">
             <div className="text-[11px] font-mono text-muted-foreground">{tag}</div>

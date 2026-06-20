@@ -16,7 +16,7 @@ import { logger } from "./logger.js";
 
 export const REQUIRED_TAGS = ["CostCategory", "Application", "Environment"] as const;
 /** All tags tracked for coverage reporting — superset of REQUIRED_TAGS */
-const ALL_TRACKED_TAGS = ["CostCategory", "Application", "ServiceType", "Owner", "Environment"] as const;
+const ALL_TRACKED_TAGS = ["CostCategory", "Application", "ServiceType", "CostCenter", "Owner", "Environment"] as const;
 
 export type TagComplianceEntry = {
   id: string;
