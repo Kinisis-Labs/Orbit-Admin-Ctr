@@ -708,10 +708,12 @@ export async function fetchCostByApplicationTag({
 
   if (appMap.size === 0) return null;
 
-  const result = [...appMap.entries()]
-    .filter(([k]) => k !== "(untagged)")
-    .map(([application, total]) => ({ application, monthToDate: Number(total.toFixed(2)) }))
-    .sort((a, b) => b.monthToDate - a.monthToDate);
+  const tagged = [...appMap.entries()].filter(([k]) => k !== "(untagged)");
+  const untagged = appMap.get("(untagged)") ?? 0;
+  const result = [
+    ...tagged.map(([application, total]) => ({ application, monthToDate: Number(total.toFixed(2)) })),
+    ...(untagged > 0 ? [{ application: "(untagged)", monthToDate: Number(untagged.toFixed(2)) }] : []),
+  ].sort((a, b) => b.monthToDate - a.monthToDate);
 
   _appTagCacheEntry = { result, expiresAt: Date.now() + COST_CACHE_TTL_MS };
   return result;
