@@ -7,16 +7,13 @@ import { logger } from "./logger.js";
  * Azure tag compliance — scan individual resources across all monitored
  * subscriptions and report which of the required Kinisis tag keys are absent.
  *
- * Required tags: CostCategory, Application, Environment.
- * Recommended (not enforced): ServiceType, Owner.
+ * Required tags: CostCategory, Application, ServiceType, CostCenter, Owner, Environment (all 6).
  * Scope: resources only — subscription and resource-group levels are intentionally excluded.
  * Cache: 15 minutes in-process.
  * Config-gated: returns unavailable sentinel when AZURE_SUBSCRIPTION_IDS is not set.
  */
 
-export const REQUIRED_TAGS = ["CostCategory", "Application", "Environment"] as const;
-/** All tags tracked for coverage reporting — superset of REQUIRED_TAGS */
-const ALL_TRACKED_TAGS = ["CostCategory", "Application", "ServiceType", "CostCenter", "Owner", "Environment"] as const;
+export const REQUIRED_TAGS = ["CostCategory", "Application", "ServiceType", "CostCenter", "Owner", "Environment"] as const;
 
 export type TagComplianceEntry = {
   id: string;
@@ -173,7 +170,7 @@ export async function fetchTagCompliance({
       // Count per-tag coverage across ALL resources
       if (tags) {
         const lower = new Map(Object.entries(tags).map(([k, v]) => [k.toLowerCase(), v]));
-        for (const t of ALL_TRACKED_TAGS) {
+        for (const t of REQUIRED_TAGS) {
           const v = lower.get(t.toLowerCase());
           if (v !== undefined && v !== null && String(v).trim() !== "") {
             tagCoverageByKey[t] = (tagCoverageByKey[t] ?? 0) + 1;
