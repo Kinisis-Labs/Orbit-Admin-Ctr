@@ -369,13 +369,13 @@
 }
 
 /* ── Button overrides ────────────────────────────────────────────────────── */
-.dark button[class*="bg-primary"],
+.dark button[class~="bg-primary"],
 .dark .btn-primary {
   background: linear-gradient(135deg, #7C3AED 0%, #6366F1 100%);
   box-shadow: 0 0 12px rgba(124, 58, 237, 0.35);
   transition: box-shadow 150ms ease, filter 150ms ease;
 }
-.dark button[class*="bg-primary"]:hover,
+.dark button[class~="bg-primary"]:hover,
 .dark .btn-primary:hover {
   filter: brightness(1.08);
   box-shadow: 0 0 18px rgba(124, 58, 237, 0.5);
