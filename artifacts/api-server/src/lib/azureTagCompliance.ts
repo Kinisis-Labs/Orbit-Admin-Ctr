@@ -15,6 +15,8 @@ import { logger } from "./logger.js";
  */
 
 export const REQUIRED_TAGS = ["CostCategory", "Application", "Environment"] as const;
+/** All tags tracked for coverage reporting — superset of REQUIRED_TAGS */
+const ALL_TRACKED_TAGS = ["CostCategory", "Application", "ServiceType", "Owner", "Environment"] as const;
 
 export type TagComplianceEntry = {
   id: string;
@@ -171,7 +173,7 @@ export async function fetchTagCompliance({
       // Count per-tag coverage across ALL resources
       if (tags) {
         const lower = new Map(Object.entries(tags).map(([k, v]) => [k.toLowerCase(), v]));
-        for (const t of REQUIRED_TAGS) {
+        for (const t of ALL_TRACKED_TAGS) {
           const v = lower.get(t.toLowerCase());
           if (v !== undefined && v !== null && String(v).trim() !== "") {
             tagCoverageByKey[t] = (tagCoverageByKey[t] ?? 0) + 1;
