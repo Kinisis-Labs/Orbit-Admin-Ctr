@@ -348,9 +348,13 @@ export default function Cost() {
 function GlobalCostPanelRow({
   row,
   maxMtd,
+  totalMtd,
+  isTagMode,
 }: {
   row: { appId: string; appName: string; environment: string; monthToDate: number; trend?: string | null };
   maxMtd: number;
+  totalMtd: number;
+  isTagMode: boolean;
 }) {
   const budgetThreshold = useBudgetThreshold(row.appId);
   const trend = row.trend ?? null;
@@ -363,22 +367,43 @@ function GlobalCostPanelRow({
       : "text-muted-foreground";
   const rawUtilPct = maxMtd > 0 ? (row.monthToDate / maxMtd) * 100 : 0;
   const utilPct = Math.min(rawUtilPct, 100);
+  const pctOfTotal = totalMtd > 0 ? (row.monthToDate / totalMtd) * 100 : 0;
 
   return (
     <TableRow key={row.appId} className="h-8 border-b border-border/50 hover:bg-muted/40">
       <TableCell className="py-1 font-medium">{row.appName}</TableCell>
-      <TableCell className="py-1 text-[11px] text-muted-foreground">{row.environment}</TableCell>
+      <TableCell className="py-1">
+        {row.environment ? (
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+            {row.environment}
+          </span>
+        ) : null}
+      </TableCell>
       <TableCell className="py-1 text-right font-mono text-[12px]">{fmt(row.monthToDate)}</TableCell>
       <TableCell className={`py-1 text-right font-mono text-[11px] ${trendClass}`}>
         {trend ?? <span className="text-muted-foreground/50">—</span>}
       </TableCell>
       <TableCell className="py-1">
-        <BudgetThresholdPopover
-          appId={row.appId}
-          utilPct={utilPct}
-          rawUtilPct={rawUtilPct}
-          budgetThreshold={budgetThreshold}
-        />
+        {isTagMode ? (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary/60"
+                style={{ width: `${Math.min(pctOfTotal, 100)}%` }}
+              />
+            </div>
+            <span className="text-[11px] font-mono text-muted-foreground w-[38px] text-right shrink-0">
+              {pctOfTotal.toFixed(1)}%
+            </span>
+          </div>
+        ) : (
+          <BudgetThresholdPopover
+            appId={row.appId}
+            utilPct={utilPct}
+            rawUtilPct={rawUtilPct}
+            budgetThreshold={budgetThreshold}
+          />
+        )}
       </TableCell>
     </TableRow>
   );
@@ -427,7 +452,7 @@ function GlobalCostPanel() {
     if (useTagRows) {
       const rows = [...(data?.byApplicationTag ?? [])];
       if (sortCol === "amount") rows.sort((a, b) => sortDir === "desc" ? b.monthToDate - a.monthToDate : a.monthToDate - b.monthToDate);
-      return rows.map((r) => ({ appId: r.application, appName: r.application, environment: "", monthToDate: r.monthToDate, trend: null }));
+      return rows.map((r) => ({ appId: r.application, appName: r.application, environment: r.environment ?? "", monthToDate: r.monthToDate, trend: r.wowTrend ?? null }));
     }
     if (!data?.byApp) return [];
     const rows = [...data.byApp];
@@ -479,12 +504,12 @@ function GlobalCostPanel() {
               <SortIcon col="trend" />
             </button>
           </TableHead>
-          <TableHead className="h-8 font-semibold text-foreground w-[160px]">
+          <TableHead className="h-8 font-semibold text-foreground w-[180px]">
             <button
               onClick={() => handleSortClick("budget")}
               className="inline-flex items-center justify-start w-full hover:text-foreground transition-colors"
             >
-              Budget
+              {useTagRows ? "% of Total" : "Budget"}
               <SortIcon col="budget" />
             </button>
           </TableHead>
@@ -494,7 +519,7 @@ function GlobalCostPanel() {
             <SkeletonRows cols={5} rows={3} />
           ) : (
             sortedRows.map((row) => (
-              <GlobalCostPanelRow key={row.appId} row={row} maxMtd={maxMtd} />
+              <GlobalCostPanelRow key={row.appId} row={row} maxMtd={maxMtd} totalMtd={data.total} isTagMode={useTagRows} />
             ))
           )}
         </TableBody>

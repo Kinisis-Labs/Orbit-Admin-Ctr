@@ -1241,7 +1241,7 @@ export interface GetGlobalCostSummaryResponse {
   /** MTD spend grouped by CostCategory tag across all Azure resources */
   byCategory?: { category: string; monthToDate: number }[];
   /** MTD spend grouped by Application tag across all Azure resources */
-  byApplicationTag?: { application: string; monthToDate: number }[];
+  byApplicationTag?: { application: string; environment?: string; monthToDate: number; wowTrend?: string | null }[];
   dataSource: GetGlobalCostSummaryResponseDataSource;
   /** Timestamp of the most recent live or cached data point across all apps. */
   dataAsOf?: string | null;

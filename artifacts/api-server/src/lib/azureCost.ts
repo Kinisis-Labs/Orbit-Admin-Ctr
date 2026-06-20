@@ -616,14 +616,28 @@ function m365ProductToCategory(productName: string): string | null {
  *
  * Results are cached for 30 minutes (same TTL as per-app cost).
  */
+export type AppTagCostItem = {
+  application: string;
+  environment: string;
+  monthToDate: number;
+  wowTrend: string | null;
+};
+
 let _appTagCacheEntry: {
-  result: { application: string; monthToDate: number }[];
+  result: AppTagCostItem[];
   expiresAt: number;
 } | null = null;
 
+/** Returns YYYY-MM-DD for N days ago (UTC). */
+function daysAgo(n: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
 export async function fetchCostByApplicationTag({
   bypassCache = false,
-}: { bypassCache?: boolean } = {}): Promise<{ application: string; monthToDate: number }[] | null> {
+}: { bypassCache?: boolean } = {}): Promise<AppTagCostItem[] | null> {
   if (!isAzureConfigured()) return null;
 
   if (!bypassCache && _appTagCacheEntry && _appTagCacheEntry.expiresAt > Date.now()) {
@@ -635,70 +649,130 @@ export async function fetchCostByApplicationTag({
 
   const start = monthStart();
   const end = today();
+  // Previous 7-day window for WoW: [14d ago, 7d ago]
+  const prevStart = daysAgo(14);
+  const prevEnd = daysAgo(8);
+  // Current 7-day window: [7d ago, yesterday]
+  const curStart = daysAgo(7);
+  const curEnd = daysAgo(1);
+
   const appMap = new Map<string, number>();
+  // key = application tag value
+  const curWeekMap = new Map<string, number>();
+  const prevWeekMap = new Map<string, number>();
+  // Also track environment per application (last-seen wins)
+  const envMap = new Map<string, string>();
 
   await Promise.all(
     subscriptionIds.map(async (subId) => {
       const scope = `/subscriptions/${subId}`;
-      try {
-        const result = await getCostClient().query.usage(scope, {
+
+      // Resolve tags (Application + Environment) for all resources in this sub once
+      const resourceTagMap = new Map<string, { app: string; env: string }>();
+      const buildTagMap = async (resourceIds: string[]) => {
+        if (resourceIds.length === 0) return;
+        try {
+          const BATCH = 200;
+          for (let i = 0; i < resourceIds.length; i += BATCH) {
+            const batch = resourceIds.slice(i, i + BATCH);
+            const idList = batch.map((id) => `'${id}'`).join(", ");
+            const query = `resources | where tolower(id) in (${idList}) | project id, tags`;
+            const graphResult = await getGraphClient().resources({ query, subscriptions: [subId] });
+            const graphRows = normalizeResourceGraphRows(graphResult.data);
+            for (const row of graphRows) {
+              const rid = String(row["id"] ?? "").toLowerCase();
+              const tags = row["tags"];
+              const tagObj: Record<string, unknown> =
+                tags && typeof tags === "object"
+                  ? (tags as Record<string, unknown>)
+                  : typeof tags === "string"
+                    ? (() => { try { return JSON.parse(tags) as Record<string, unknown>; } catch { return {}; } })()
+                    : {};
+              const lower = new Map(Object.entries(tagObj).map(([k, v]) => [k.toLowerCase(), v]));
+              const app = String(lower.get("application") ?? "").trim();
+              const env = String(lower.get("environment") ?? "").trim();
+              if (app) resourceTagMap.set(rid, { app, env });
+            }
+          }
+        } catch (err) {
+          logger.warn({ err, subId }, "Resource Graph Application/Environment tag lookup failed");
+        }
+      };
+
+      const queryCost = async (from: string, to: string) => {
+        return getCostClient().query.usage(`/subscriptions/${subId}`, {
           type: "Usage",
           timeframe: "Custom",
-          timePeriod: { from: new Date(start), to: new Date(end) },
+          timePeriod: { from: new Date(from), to: new Date(to) },
           dataset: {
             granularity: "None",
             aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } },
             grouping: [{ type: "Dimension", name: "ResourceId" }],
           },
         });
-        const columns = (result.columns ?? []).map((c: { name?: string | null }) => String(c.name ?? ""));
-        const rows = (result.rows ?? []) as unknown[][];
-        const costIdx = columns.findIndex((c: string) => c.toLowerCase().includes("cost"));
-        const idIdx = columns.findIndex((c: string) => c.toLowerCase().includes("resourceid"));
-        if (costIdx === -1 || rows.length === 0) return;
+      };
 
-        const resourceIds = [
-          ...new Set(
-            rows
-              .map((r) => String(r[idIdx] ?? "").toLowerCase())
-              .filter((id) => id.startsWith("/subscriptions/")),
-          ),
-        ];
+      try {
+        const [mtdResult, curWeekResult, prevWeekResult] = await Promise.all([
+          queryCost(start, end),
+          queryCost(curStart, curEnd),
+          queryCost(prevStart, prevEnd),
+        ]);
 
-        const resourceTagMap = new Map<string, string>();
-        if (resourceIds.length > 0) {
-          try {
-            const BATCH = 200;
-            for (let i = 0; i < resourceIds.length; i += BATCH) {
-              const batch = resourceIds.slice(i, i + BATCH);
-              const idList = batch.map((id) => `'${id}'`).join(", ");
-              const query = `resources | where tolower(id) in (${idList}) | project id, tags`;
-              const graphResult = await getGraphClient().resources({ query, subscriptions: [subId] });
-              const graphRows = normalizeResourceGraphRows(graphResult.data);
-              for (const row of graphRows) {
-                const rid = String(row["id"] ?? "").toLowerCase();
-                const tags = row["tags"];
-                const tagObj: Record<string, unknown> =
-                  tags && typeof tags === "object"
-                    ? (tags as Record<string, unknown>)
-                    : typeof tags === "string"
-                      ? (() => { try { return JSON.parse(tags) as Record<string, unknown>; } catch { return {}; } })()
-                      : {};
-                const lower = new Map(Object.entries(tagObj).map(([k, v]) => [k.toLowerCase(), v]));
-                const app = String(lower.get("application") ?? "").trim();
-                if (app) resourceTagMap.set(rid, app);
-              }
+        const extractRows = (r: typeof mtdResult) => {
+          const cols = (r.columns ?? []).map((c: { name?: string | null }) => String(c.name ?? ""));
+          const costIdx = cols.findIndex((c: string) => c.toLowerCase().includes("cost"));
+          const idIdx = cols.findIndex((c: string) => c.toLowerCase().includes("resourceid"));
+          return { rows: (r.rows ?? []) as unknown[][], costIdx, idIdx };
+        };
+
+        const mtd = extractRows(mtdResult);
+        const cur = extractRows(curWeekResult);
+        const prev = extractRows(prevWeekResult);
+
+        // Collect all resource IDs across all three queries
+        const allIds = new Set<string>();
+        for (const { rows, idIdx } of [mtd, cur, prev]) {
+          if (idIdx !== -1) {
+            for (const r of rows) {
+              const rid = String(r[idIdx] ?? "").toLowerCase();
+              if (rid.startsWith("/subscriptions/")) allIds.add(rid);
             }
-          } catch (err) {
-            logger.warn({ err, subId }, "Resource Graph Application tag lookup failed");
+          }
+        }
+        await buildTagMap([...allIds]);
+
+        // Accumulate MTD
+        if (mtd.costIdx !== -1) {
+          for (const row of mtd.rows) {
+            const amount = Number(row[mtd.costIdx] ?? 0);
+            const rid = mtd.idIdx !== -1 ? String(row[mtd.idIdx] ?? "").toLowerCase() : "";
+            const info = resourceTagMap.get(rid);
+            const app = info?.app ?? "(untagged)";
+            const env = info?.env ?? "";
+            appMap.set(app, (appMap.get(app) ?? 0) + amount);
+            if (env && !envMap.has(app)) envMap.set(app, env);
           }
         }
 
-        for (const row of rows) {
-          const amount = Number(row[costIdx] ?? 0);
-          const rid = idIdx !== -1 ? String(row[idIdx] ?? "").toLowerCase() : "";
-          const app = resourceTagMap.get(rid) ?? "(untagged)";
-          appMap.set(app, (appMap.get(app) ?? 0) + amount);
+        // Accumulate current week
+        if (cur.costIdx !== -1) {
+          for (const row of cur.rows) {
+            const amount = Number(row[cur.costIdx] ?? 0);
+            const rid = cur.idIdx !== -1 ? String(row[cur.idIdx] ?? "").toLowerCase() : "";
+            const app = resourceTagMap.get(rid)?.app ?? "(untagged)";
+            curWeekMap.set(app, (curWeekMap.get(app) ?? 0) + amount);
+          }
+        }
+
+        // Accumulate previous week
+        if (prev.costIdx !== -1) {
+          for (const row of prev.rows) {
+            const amount = Number(row[prev.costIdx] ?? 0);
+            const rid = prev.idIdx !== -1 ? String(row[prev.idIdx] ?? "").toLowerCase() : "";
+            const app = resourceTagMap.get(rid)?.app ?? "(untagged)";
+            prevWeekMap.set(app, (prevWeekMap.get(app) ?? 0) + amount);
+          }
         }
       } catch (err) {
         logger.warn({ err, subId }, "Application tag cost query failed for subscription");
@@ -708,11 +782,26 @@ export async function fetchCostByApplicationTag({
 
   if (appMap.size === 0) return null;
 
+  const calcWow = (app: string): string | null => {
+    const cur = curWeekMap.get(app) ?? 0;
+    const prev = prevWeekMap.get(app) ?? 0;
+    if (prev === 0 || cur === 0) return null;
+    const pct = ((cur - prev) / prev) * 100;
+    return (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%";
+  };
+
   const tagged = [...appMap.entries()].filter(([k]) => k !== "(untagged)");
-  const untagged = appMap.get("(untagged)") ?? 0;
-  const result = [
-    ...tagged.map(([application, total]) => ({ application, monthToDate: Number(total.toFixed(2)) })),
-    ...(untagged > 0 ? [{ application: "(untagged)", monthToDate: Number(untagged.toFixed(2)) }] : []),
+  const untaggedAmt = appMap.get("(untagged)") ?? 0;
+  const result: AppTagCostItem[] = [
+    ...tagged.map(([application, total]) => ({
+      application,
+      environment: envMap.get(application) ?? "",
+      monthToDate: Number(total.toFixed(2)),
+      wowTrend: calcWow(application),
+    })),
+    ...(untaggedAmt > 0
+      ? [{ application: "(untagged)", environment: "", monthToDate: Number(untaggedAmt.toFixed(2)), wowTrend: calcWow("(untagged)") }]
+      : []),
   ].sort((a, b) => b.monthToDate - a.monthToDate);
 
   _appTagCacheEntry = { result, expiresAt: Date.now() + COST_CACHE_TTL_MS };
