@@ -6,7 +6,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Download, ExternalLink, RefreshCw, Search, GitBranch } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { PageHeader, StatusPill } from "@/components/page-header";
@@ -17,6 +16,45 @@ import type { Deployment, AppSummary } from "@workspace/api-client-react";
 
 type DeploymentStatus = Deployment["status"];
 type RunTypeFilter = "all" | "deploy" | "ci";
+
+const APP_TAG_FILTERS = [
+  { value: "all", label: "All" },
+  { value: "orbit", label: "Orbit" },
+  { value: "grailbabe", label: "Grailbabe" },
+] as const;
+
+type AppTagFilterValue = (typeof APP_TAG_FILTERS)[number]["value"];
+
+function AppTagToggle({
+  value,
+  onChange,
+}: {
+  value: AppTagFilterValue;
+  onChange: (v: AppTagFilterValue) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <label className="text-[12px] text-muted-foreground font-medium">Scope</label>
+      <div className="flex items-center gap-1 rounded-sm border border-border bg-card p-0.5">
+        {APP_TAG_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            onClick={() => onChange(f.value)}
+            aria-pressed={value === f.value}
+            className={`text-[12px] px-2.5 py-1 rounded-sm transition-colors ${
+              value === f.value
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const SESSION_KEY = "deployments-run-type-filter";
 
@@ -145,26 +183,14 @@ export default function Deployments() {
     [search, location, navigate],
   );
 
-  const appTagScope = useMemo(() => {
+  const appTagScope = useMemo((): AppTagFilterValue => {
     const v = new URLSearchParams(search).get(APP_TAG_SCOPE_PARAM)?.toLowerCase();
-    return v || "all";
+    if (v === "orbit" || v === "grailbabe") return v;
+    return "all";
   }, [search]);
 
-  useEffect(() => {
-    if (!apps || apps.length === 0) return;
-    const valid =
-      appTagScope === "all" ||
-      apps.some((a) => getApplicationTag(a)?.toLowerCase() === appTagScope);
-    if (!valid) {
-      const params = new URLSearchParams(search);
-      params.delete(APP_TAG_SCOPE_PARAM);
-      const qs = params.toString();
-      navigate(`${location}${qs ? `?${qs}` : ""}`, { replace: true });
-    }
-  }, [apps, appTagScope, search, location, navigate]);
-
   const setAppTagScope = useCallback(
-    (v: string) => {
+    (v: AppTagFilterValue) => {
       const params = new URLSearchParams(search);
       if (v === "all") {
         params.delete(APP_TAG_SCOPE_PARAM);
@@ -176,15 +202,6 @@ export default function Deployments() {
     },
     [search, location, navigate],
   );
-
-  const appTagOptions = useMemo(() => {
-    const tags = new Set<string>();
-    (apps ?? []).forEach((a) => {
-      const tag = getApplicationTag(a);
-      if (tag) tags.add(tag.toLowerCase());
-    });
-    return ["all", ...Array.from(tags).sort()];
-  }, [apps]);
 
   const appTagById = useMemo(() => {
     const map = new Map<string, string>();
@@ -276,31 +293,7 @@ export default function Deployments() {
                 label="GitHub Actions"
               />
             )}
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="deployment-app-tag-scope"
-                className="text-[12px] text-muted-foreground font-medium"
-              >
-                Scope
-              </label>
-              <Select value={appTagScope} onValueChange={setAppTagScope}>
-                <SelectTrigger
-                  id="deployment-app-tag-scope"
-                  aria-label="Deployment scope"
-                  data-testid="deployment-scope-select"
-                  className="h-8 w-[260px] rounded-sm border-border bg-card text-[13px]"
-                >
-                  <span>{formatAppTagLabel(appTagScope)}</span>
-                </SelectTrigger>
-                <SelectContent>
-                  {appTagOptions.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {formatAppTagLabel(value)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <AppTagToggle value={appTagScope} onChange={setAppTagScope} />
           </div>
         }
       />
