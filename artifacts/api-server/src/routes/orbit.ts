@@ -33,7 +33,6 @@ import {
 import {
   fetchMonthToDateCostWithFallback,
   fetchLastMonthComparableCostTotal,
-  fetchCostByCostCategoryTag,
   fetchCostByApplicationTag,
   fetchM365MonthlyCost,
   isGuid,
@@ -1206,11 +1205,10 @@ router.get("/global/cost-summary", async (_req, res) => {
   // general list.
   const allAppSubscriptionIds = [...new Set(APPS.map((a) => a.subscriptionId).filter(isGuid))];
 
-  const [costResults, taggedCostCenters, m365Cost, byApplicationTag] = await Promise.all([
+  const [costResults, m365Cost, byApplicationTag] = await Promise.all([
     Promise.all(
       APPS.map((a) => fetchMonthToDateCostWithFallback(a, { billingScope: billingScope(a.id) })),
     ),
-    fetchCostByCostCategoryTag({ subscriptionIds: allAppSubscriptionIds }),
     fetchM365MonthlyCost(),
     fetchCostByApplicationTag({ subscriptionIds: allAppSubscriptionIds }),
   ]);
@@ -1250,29 +1248,18 @@ router.get("/global/cost-summary", async (_req, res) => {
 
   const total = byApp.reduce((sum, r) => sum + r.monthToDate, 0);
 
-  // Build byCategory from CostCenter-tag-based Azure query + billing account M365.
-  // taggedCostCenters groups Azure spend by the CostCenter tag on each resource.
-  // Microsoft365 is appended separately since M365 products cannot carry resource tags.
-  // If the tag query returned null (Azure not configured), fall back to per-app totals
-  // so the UI always shows all three cost centers.
+  // Build byCategory directly from per-app subscription totals (proven reliable) +
+  // Microsoft365 from the MCA billing account (cannot carry Azure resource tags).
+  // This approach is stable: byApp results come from per-subscription Cost Management
+  // queries that already work correctly. Microsoft365 is always included as a row.
   const byCategoryMap = new Map<string, number>();
-  if (taggedCostCenters) {
-    for (const { category, monthToDate } of taggedCostCenters) {
-      byCategoryMap.set(category, (byCategoryMap.get(category) ?? 0) + monthToDate);
-    }
-  } else {
-    // Fallback: derive from per-app subscription totals when tag query unavailable.
-    for (const item of byApp) {
-      const label = APP_COST_CENTER[item.appId];
-      if (label) {
-        byCategoryMap.set(label, (byCategoryMap.get(label) ?? 0) + item.monthToDate);
-      }
+  for (const item of byApp) {
+    const label = APP_COST_CENTER[item.appId];
+    if (label) {
+      byCategoryMap.set(label, (byCategoryMap.get(label) ?? 0) + item.monthToDate);
     }
   }
-  // Always include Microsoft365 as a cost center — it cannot carry Azure resource tags
-  // since it is billed via the MCA billing account (CA environment), not Azure subscriptions.
-  // Show $0.00 when the billing query fails so the row is always visible in the UI.
-  byCategoryMap.set("Microsoft365", (byCategoryMap.get("Microsoft365") ?? 0) + m365Cost);
+  byCategoryMap.set("Microsoft365", m365Cost);
   const byCategory = [...byCategoryMap.entries()]
     .map(([category, monthToDate]) => ({ category, monthToDate: Number(monthToDate.toFixed(2)) }))
     .sort((a, b) => b.monthToDate - a.monthToDate);
