@@ -1199,7 +1199,10 @@ export async function fetchM365MonthlyCost({
   }
 
   const billingAccountId = getBillingAccountId();
-  if (!billingAccountId) return 0;
+  if (!billingAccountId) {
+    logger.warn("M365 monthly cost: AZURE_BILLING_ACCOUNT_ID not set — returning 0");
+    return 0;
+  }
 
   const start = monthStart();
   const end = today();
@@ -1224,7 +1227,14 @@ export async function fetchM365MonthlyCost({
     const nameIdx = columns.findIndex(
       (c) => c.toLowerCase().includes("product") || c.toLowerCase() === "productname",
     );
-    if (costIdx === -1) return 0;
+    logger.info(
+      { billingAccountId, columns, rowCount: rows.length, firstRow: rows[0] ?? null },
+      "M365 billing account query result",
+    );
+    if (costIdx === -1) {
+      logger.warn({ columns }, "M365 billing query: cost column not found in response");
+      return 0;
+    }
 
     let total = 0;
     for (const row of rows) {
@@ -1238,8 +1248,13 @@ export async function fetchM365MonthlyCost({
         p.includes("storage") ||
         p.includes("bandwidth")
       ) {
+        logger.debug(
+          { productName, amount },
+          "M365 billing: skipping Azure infrastructure product",
+        );
         continue;
       }
+      logger.debug({ productName, amount }, "M365 billing: including product");
       total += amount;
     }
 

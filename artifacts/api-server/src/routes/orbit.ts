@@ -1269,10 +1269,10 @@ router.get("/global/cost-summary", async (_req, res) => {
       }
     }
   }
-  // Always merge Microsoft365 from billing account — never derived from Azure tags.
-  if (m365Cost > 0) {
-    byCategoryMap.set("Microsoft365", (byCategoryMap.get("Microsoft365") ?? 0) + m365Cost);
-  }
+  // Always include Microsoft365 as a cost center — it cannot carry Azure resource tags
+  // since it is billed via the MCA billing account (CA environment), not Azure subscriptions.
+  // Show $0.00 when the billing query fails so the row is always visible in the UI.
+  byCategoryMap.set("Microsoft365", (byCategoryMap.get("Microsoft365") ?? 0) + m365Cost);
   const byCategory = [...byCategoryMap.entries()]
     .map(([category, monthToDate]) => ({ category, monthToDate: Number(monthToDate.toFixed(2)) }))
     .sort((a, b) => b.monthToDate - a.monthToDate);
