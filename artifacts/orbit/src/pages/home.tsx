@@ -231,7 +231,6 @@ const AUTH_TYPES: { value: UserAuthType; label: string }[] = [
 
 const APP_TAG_FILTERS = [
   { value: "all", label: "All" },
-  { value: "shared", label: "Shared" },
   { value: "orbit", label: "Orbit" },
   { value: "grailbabe", label: "Grailbabe" },
 ] as const;
