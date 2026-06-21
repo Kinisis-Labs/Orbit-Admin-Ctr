@@ -931,7 +931,12 @@ export async function fetchCostByCostCategoryTag({
                       : {};
                 const lower = new Map(Object.entries(tagObj).map(([k, v]) => [k.toLowerCase(), v]));
                 const cat = String(
-                  lower.get("costcenter") ?? lower.get("costcategory") ?? "",
+                  lower.get("costcenter") ??
+                    lower.get("cost center") ??
+                    lower.get("cost-category") ??
+                    lower.get("costcategory") ??
+                    lower.get("cost category") ??
+                    "",
                 ).trim();
                 if (cat) resourceTagMap.set(rid, cat);
               }
@@ -949,12 +954,16 @@ export async function fetchCostByCostCategoryTag({
         }
 
         // Step C: accumulate costs using resource tag, fall back to Other
+        const subCategories = new Set<string>();
         for (const row of rows) {
           const amount = Number(row[costIdx] ?? 0);
           const rid = idIdx !== -1 ? String(row[idIdx] ?? "").toLowerCase() : "";
-          const cat = normalizeEntity(resourceTagMap.get(rid) ?? "Other");
+          const raw = resourceTagMap.get(rid);
+          const cat = normalizeEntity(raw ?? "Other");
+          if (raw) subCategories.add(cat);
           catMap.set(cat, (catMap.get(cat) ?? 0) + amount);
         }
+        logger.info({ subId, categories: [...subCategories] }, "CostCategory aggregation complete");
       } catch (err) {
         logger.warn({ err, subId }, "CostCategory by-ResourceId query failed for subscription");
       }
