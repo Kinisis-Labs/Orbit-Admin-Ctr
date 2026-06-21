@@ -8,7 +8,6 @@ import {
   Home,
   Bell,
   DollarSign,
-  LayoutDashboard,
   ChevronRight,
   Menu,
   Sun,
@@ -469,15 +468,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 />
               </NavSection>
 
-              <NavSection sectionKey="resources" label="Resources" navCollapsed={navCollapsed}>
-                <NavItem
-                  href="/resources"
-                  icon={<LayoutDashboard className="h-[18px] w-[18px]" />}
-                  label="All resources"
-                  active={location === "/resources"}
-                  collapsed={navCollapsed}
-                />
-              </NavSection>
             </nav>
           </aside>
 

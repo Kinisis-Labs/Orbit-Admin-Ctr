@@ -417,11 +417,13 @@ router.post("/auth/logout", async (req, res, next) => {
     req.session.destroy(() => {
       res.clearCookie("orbit.sid");
       void (async () => {
-        if (cfg?.postLogoutRedirectUri) {
+        if (cfg) {
           try {
             const config = await getOidcConfiguration(cfg);
             const url = client.buildEndSessionUrl(config, {
-              post_logout_redirect_uri: cfg.postLogoutRedirectUri,
+              ...(cfg.postLogoutRedirectUri
+                ? { post_logout_redirect_uri: cfg.postLogoutRedirectUri }
+                : {}),
               ...(idToken ? { id_token_hint: idToken } : upn ? { logout_hint: upn } : {}),
             });
             res.json({ redirect: url.href });
