@@ -450,7 +450,6 @@ export default function Cost() {
             />
           )}
           <AdminAccessBadge />
-          <ScopeSelect allowGlobal />
         </div>
       </div>
 

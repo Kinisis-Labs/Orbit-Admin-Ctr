@@ -698,7 +698,13 @@ export async function fetchCostByApplicationTag({
                 tags && typeof tags === "object"
                   ? (tags as Record<string, unknown>)
                   : typeof tags === "string"
-                    ? (() => { try { return JSON.parse(tags) as Record<string, unknown>; } catch { return {}; } })()
+                    ? (() => {
+                        try {
+                          return JSON.parse(tags) as Record<string, unknown>;
+                        } catch {
+                          return {};
+                        }
+                      })()
                     : {};
               const lower = new Map(Object.entries(tagObj).map(([k, v]) => [k.toLowerCase(), v]));
               const app = String(lower.get("application") ?? "").trim();
@@ -946,7 +952,10 @@ export async function fetchCostByCostCategoryTag({
                           }
                         })()
                       : {};
-                const cat = String(tagObj["CostCategory"] ?? "").trim();
+                const lower = new Map(Object.entries(tagObj).map(([k, v]) => [k.toLowerCase(), v]));
+                const cat = String(
+                  lower.get("costcenter") ?? lower.get("costcategory") ?? "",
+                ).trim();
                 if (cat) resourceTagMap.set(rid, cat);
               }
             }
