@@ -24,12 +24,9 @@ type TimePoint = { time: string; inbound: number; outbound: number; drops: numbe
 
 function useMockTelemetry() {
   const regions: RegionRow[] = [
-    { region: "East US",       inboundMbps: 412,  outboundMbps: 389,  dropRate: 0.12, retransmitRate: 0.41, p99LatencyMs: 18,  trend: "stable" },
-    { region: "West Europe",   inboundMbps: 287,  outboundMbps: 261,  dropRate: 0.08, retransmitRate: 0.29, p99LatencyMs: 23,  trend: "down"   },
-    { region: "Southeast Asia",inboundMbps: 198,  outboundMbps: 174,  dropRate: 0.31, retransmitRate: 0.88, p99LatencyMs: 61,  trend: "up"     },
-    { region: "Australia East",inboundMbps: 94,   outboundMbps: 87,   dropRate: 0.19, retransmitRate: 0.55, p99LatencyMs: 44,  trend: "stable" },
-    { region: "Canada Central",inboundMbps: 73,   outboundMbps: 69,   dropRate: 0.05, retransmitRate: 0.18, p99LatencyMs: 14,  trend: "down"   },
-    { region: "Brazil South",  inboundMbps: 51,   outboundMbps: 48,   dropRate: 0.44, retransmitRate: 1.12, p99LatencyMs: 82,  trend: "up"     },
+    { region: "East US 2", inboundMbps: 412, outboundMbps: 389, dropRate: 0.12, retransmitRate: 0.41, p99LatencyMs: 18, trend: "stable" },
+    { region: "East US",   inboundMbps: 287, outboundMbps: 261, dropRate: 0.08, retransmitRate: 0.29, p99LatencyMs: 23, trend: "down"   },
+    { region: "Global",    inboundMbps: 94,  outboundMbps: 87,  dropRate: 0.19, retransmitRate: 0.55, p99LatencyMs: 44, trend: "stable" },
   ];
 
   const protocols: ProtoDistrib[] = [
