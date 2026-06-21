@@ -648,7 +648,8 @@ export async function fetchCostByApplicationTag({
   }
 
   const subscriptionIds = getSubscriptionIds();
-  if (subscriptionIds.length === 0) return null;
+  const billingAccountId = getBillingAccountId();
+  if (subscriptionIds.length === 0 && !billingAccountId) return null;
 
   const start = monthStart();
   const end = today();
@@ -665,21 +666,59 @@ export async function fetchCostByApplicationTag({
   const prevWeekMap = new Map<string, number>();
   // Also track environment per application (last-seen wins)
   const envMap = new Map<string, string>();
+  // M365 / non-Azure SaaS charges carry no Application tag, so surface them as Microsoft365.
+  let m365Total = 0;
 
-  await Promise.all(
-    subscriptionIds.map(async (subId) => {
+  await Promise.all([
+    ...subscriptionIds.map(async (subId) => {
       const scope = `/subscriptions/${subId}`;
 
-      // Resolve tags (Application + Environment) for all resources in this sub once
+      // Resolve tags (Application + Environment) for all resources in this sub once.
+      // Also build a resource group -> Application tag map so untagged resources can inherit.
       const resourceTagMap = new Map<string, { app: string; env: string }>();
+      const rgAppMap = new Map<string, string>();
       const buildTagMap = async (resourceIds: string[]) => {
         if (resourceIds.length === 0) return;
+        try {
+          const rgQuery = `
+            resourcecontainers
+            | where type == 'microsoft.resources/subscriptions/resourcegroups'
+            | project name=tolower(name), tags
+          `;
+          const rgResult = await getGraphClient().resources({
+            query: rgQuery,
+            subscriptions: [subId],
+          });
+          const rgRows = normalizeResourceGraphRows(rgResult.data);
+          for (const row of rgRows) {
+            const rgName = String(row["name"] ?? "").toLowerCase();
+            const tags = row["tags"];
+            const tagObj: Record<string, unknown> =
+              tags && typeof tags === "object"
+                ? (tags as Record<string, unknown>)
+                : typeof tags === "string"
+                  ? (() => {
+                      try {
+                        return JSON.parse(tags) as Record<string, unknown>;
+                      } catch {
+                        return {};
+                      }
+                    })()
+                  : {};
+            const lower = new Map(Object.entries(tagObj).map(([k, v]) => [k.toLowerCase(), v]));
+            const app = String(lower.get("application") ?? "").trim();
+            if (app) rgAppMap.set(rgName, app);
+          }
+        } catch (err) {
+          logger.warn({ err, subId }, "Resource group Application tag lookup failed");
+        }
+
         try {
           const BATCH = 200;
           for (let i = 0; i < resourceIds.length; i += BATCH) {
             const batch = resourceIds.slice(i, i + BATCH);
             const idList = batch.map((id) => `'${id}'`).join(", ");
-            const query = `resources | where tolower(id) in (${idList}) | project id, tags`;
+            const query = `resources | where tolower(id) in (${idList}) | project id, resourceGroup, tags`;
             const graphResult = await getGraphClient().resources({ query, subscriptions: [subId] });
             const graphRows = normalizeResourceGraphRows(graphResult.data);
             for (const row of graphRows) {
@@ -698,8 +737,12 @@ export async function fetchCostByApplicationTag({
                       })()
                     : {};
               const lower = new Map(Object.entries(tagObj).map(([k, v]) => [k.toLowerCase(), v]));
-              const app = String(lower.get("application") ?? "").trim();
+              let app = String(lower.get("application") ?? "").trim();
               const env = String(lower.get("environment") ?? "").trim();
+              if (!app) {
+                const rgName = String(row["resourceGroup"] ?? "").toLowerCase();
+                app = rgAppMap.get(rgName) ?? "";
+              }
               if (app) resourceTagMap.set(rid, { app, env });
             }
           }
@@ -787,9 +830,58 @@ export async function fetchCostByApplicationTag({
         logger.warn({ err, subId }, "Application tag cost query failed for subscription");
       }
     }),
-  );
+    (async () => {
+      if (!billingAccountId) return;
+      // M365 / non-Azure SaaS charges carry no Application tag, so surface them as Microsoft365.
+      try {
+        const billingScope = `/providers/Microsoft.Billing/billingAccounts/${billingAccountId}`;
+        const result = await getCostClient().query.usage(billingScope, {
+          type: "Usage",
+          timeframe: "Custom",
+          timePeriod: { from: new Date(start), to: new Date(end) },
+          dataset: {
+            granularity: "None",
+            aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } },
+            grouping: [{ type: "Dimension", name: "ProductName" }],
+          },
+        });
+        const columns: string[] = (result.columns ?? []).map((c: { name?: string | null }) =>
+          String(c.name ?? ""),
+        );
+        const rows = (result.rows ?? []) as unknown[][];
+        const costIdx = columns.findIndex((c: string) => c.toLowerCase().includes("cost"));
+        const nameIdx = columns.findIndex(
+          (c: string) => c.toLowerCase().includes("product") || c.toLowerCase() === "productname",
+        );
+        if (costIdx === -1) return;
+        let total = 0;
+        for (const row of rows) {
+          const amount = Number(row[costIdx] ?? 0);
+          const productName = nameIdx !== -1 ? String(row[nameIdx] ?? "") : "";
+          // Skip Azure infrastructure products — already captured via subscription-scope query.
+          const p = productName.toLowerCase();
+          if (
+            p.includes("azure") ||
+            p.includes("virtual machine") ||
+            p.includes("storage") ||
+            p.includes("bandwidth")
+          ) {
+            continue;
+          }
+          total += amount;
+        }
+        m365Total += total;
+        logger.info({ billingAccountId, m365Total }, "M365 application costs aggregated");
+      } catch (err) {
+        logger.warn({ err, billingAccountId }, "M365 application cost query failed");
+      }
+    })(),
+  ]);
 
-  if (appMap.size === 0) return null;
+  if (appMap.size === 0 && m365Total === 0) return null;
+  if (m365Total > 0) {
+    appMap.set("Microsoft365", (appMap.get("Microsoft365") ?? 0) + m365Total);
+  }
 
   const calcWow = (app: string): string | null => {
     const cur = curWeekMap.get(app) ?? 0;
