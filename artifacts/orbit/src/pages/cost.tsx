@@ -163,7 +163,7 @@ const LS_DAILY_TABLE_KEY = (scope: string) => `orbit-cost-daily-table-${scope}`;
 const LS_SERVICE_SORT_KEY = (scope: string) => `orbit-cost-service-sort-${scope}`;
 const LS_COST_VIEW_MODE = "orbit-cost-view-mode";
 
-type CostViewMode = "all" | "application" | "costCenter";
+type CostViewMode = "application" | "costCenter";
 
 function CostViewSelector({
   value,
@@ -172,8 +172,7 @@ function CostViewSelector({
   value: CostViewMode;
   onChange: (v: CostViewMode) => void;
 }) {
-  const options: { value: CostViewMode; label: string; icon: typeof PieChart }[] = [
-    { value: "all", label: "All", icon: PieChart },
+  const options: { value: CostViewMode; label: string; icon: typeof Users }[] = [
     { value: "application", label: "Application", icon: Users },
     { value: "costCenter", label: "Cost Center", icon: Building2 },
   ];
@@ -405,11 +404,11 @@ export default function Cost() {
   const [viewMode, setViewMode] = useState<CostViewMode>(() => {
     try {
       const raw = localStorage.getItem(LS_COST_VIEW_MODE);
-      if (raw === "all" || raw === "application" || raw === "costCenter") return raw;
+      if (raw === "application" || raw === "costCenter") return raw;
     } catch {
       /* ignore */
     }
-    return "all";
+    return "costCenter";
   });
 
   useEffect(() => {
@@ -566,84 +565,42 @@ function GlobalCostPanel({ viewMode }: { viewMode: CostViewMode }) {
     return isNaN(n) ? -Infinity : n;
   }
 
-  // Determine grouping mode based on the dashboard view filter.
-  // "all" and "application" show application tag grouping; "costCenter" shows cost category grouping.
+  // The dashboard now only reflects Azure tag data, never the app name list.
+  // "application" uses the Application tag; "costCenter" uses the CostCategory tag.
   const isCostCenterMode = viewMode === "costCenter";
   const appTagRows = useMemo(() => data?.byApplicationTag ?? [], [data?.byApplicationTag]);
   const costCenterRows = useMemo(() => data?.byCategory ?? [], [data?.byCategory]);
-  const useTagRows = isCostCenterMode || (appTagRows.length > 0 && viewMode !== "all");
-  const isFallbackToByApp = viewMode === "all" && appTagRows.length === 0;
 
-  const totalRows = isCostCenterMode
-    ? costCenterRows.length
-    : isFallbackToByApp
-      ? (data?.byApp.length ?? 0)
-      : appTagRows.length;
-
+  const activeRows = isCostCenterMode ? costCenterRows : appTagRows;
+  const totalRows = activeRows.length;
   const rowLabel = isCostCenterMode ? "cost center" : "application";
 
   const maxMtd = useMemo(() => {
-    if (isCostCenterMode) return costCenterRows.reduce((m, r) => Math.max(m, r.monthToDate), 0);
-    if (useTagRows) return appTagRows.reduce((m, r) => Math.max(m, r.monthToDate), 0);
-    return data?.byApp.reduce((m, r) => Math.max(m, r.monthToDate), 0) ?? 0;
-  }, [data?.byApp, appTagRows, costCenterRows, useTagRows, isCostCenterMode]);
+    return activeRows.reduce((m, r) => Math.max(m, r.monthToDate), 0);
+  }, [activeRows]);
 
   const sortedRows = useMemo(() => {
-    if (isCostCenterMode) {
-      const rows = [...costCenterRows];
-      if (sortCol === "amount")
-        rows.sort((a, b) =>
-          sortDir === "desc" ? b.monthToDate - a.monthToDate : a.monthToDate - b.monthToDate,
-        );
-      return rows.map((r) => ({
-        appId: r.category,
-        appName: r.category,
-        environment: "",
-        monthToDate: r.monthToDate,
-        trend: null,
-      }));
-    }
-    if (useTagRows) {
-      const rows = [...appTagRows];
-      if (sortCol === "amount")
-        rows.sort((a, b) =>
-          sortDir === "desc" ? b.monthToDate - a.monthToDate : a.monthToDate - b.monthToDate,
-        );
-      return rows.map((r) => ({
-        appId: r.application,
-        appName: r.application,
-        environment: r.environment ?? "",
-        monthToDate: r.monthToDate,
-        trend: r.wowTrend ?? null,
-      }));
-    }
-    if (!data?.byApp) return [];
-    const rows = [...data.byApp];
-    rows.sort((a, b) => {
-      let av: number, bv: number;
-      if (sortCol === "amount") {
-        av = a.monthToDate;
-        bv = b.monthToDate;
-      } else if (sortCol === "budget") {
-        av = maxMtd > 0 ? a.monthToDate / maxMtd : 0;
-        bv = maxMtd > 0 ? b.monthToDate / maxMtd : 0;
-      } else {
-        av = parseTrend(a.trend);
-        bv = parseTrend(b.trend);
-      }
-      return sortDir === "desc" ? bv - av : av - bv;
-    });
+    const rows = isCostCenterMode
+      ? costCenterRows.map((r) => ({
+          appId: r.category,
+          appName: r.category,
+          environment: "",
+          monthToDate: r.monthToDate,
+          trend: null,
+        }))
+      : appTagRows.map((r) => ({
+          appId: r.application,
+          appName: r.application,
+          environment: r.environment ?? "",
+          monthToDate: r.monthToDate,
+          trend: r.wowTrend ?? null,
+        }));
+    if (sortCol === "amount")
+      rows.sort((a, b) =>
+        sortDir === "desc" ? b.monthToDate - a.monthToDate : a.monthToDate - b.monthToDate,
+      );
     return rows;
-  }, [
-    data?.byApp,
-    appTagRows,
-    costCenterRows,
-    useTagRows,
-    isCostCenterMode,
-    sortCol,
-    sortDir,
-    maxMtd,
-  ]);
+  }, [appTagRows, costCenterRows, isCostCenterMode, sortCol, sortDir]);
 
   function SortIcon({ col }: { col: GlobalSortCol }) {
     if (sortCol !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
@@ -660,7 +617,9 @@ function GlobalCostPanel({ viewMode }: { viewMode: CostViewMode }) {
     <Panel title={panelTitle}>
       <Table className="text-[13px]">
         <THead>
-          <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
+          <TableHead className="h-8 font-semibold text-foreground">
+            {isCostCenterMode ? "Cost Center" : "Application"}
+          </TableHead>
           <TableHead className="h-8 font-semibold text-foreground">Env</TableHead>
           <TableHead className="h-8 font-semibold text-foreground text-right w-[130px]">
             <button
@@ -685,7 +644,7 @@ function GlobalCostPanel({ viewMode }: { viewMode: CostViewMode }) {
               onClick={() => handleSortClick("budget")}
               className="inline-flex items-center justify-start w-full hover:text-foreground transition-colors"
             >
-              {useTagRows ? "% of Total" : "Budget"}
+              % of Total
               <SortIcon col="budget" />
             </button>
           </TableHead>
@@ -700,7 +659,7 @@ function GlobalCostPanel({ viewMode }: { viewMode: CostViewMode }) {
                 row={row}
                 maxMtd={maxMtd}
                 totalMtd={data.total}
-                isTagMode={useTagRows}
+                isTagMode={true}
               />
             ))
           )}
