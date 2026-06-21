@@ -6,7 +6,8 @@ const router: IRouter = Router();
 
 // GET /api/global/tag-compliance
 // Scans all configured subscriptions at the resource level and returns every
-// entry missing at least one of the three required tags (CostCategory, Application, Environment).
+// entry missing at least one of the required Kinisis tags (CostCategory, Application,
+// ServiceType, CostCenter, Owner, Environment).
 // Subscription and resource-group scopes are excluded — tags are applied at individual resources only.
 // Config-gated: returns dataSource:"unavailable" when AZURE_SUBSCRIPTION_IDS
 // is not set so the frontend can show a setup prompt instead of empty data.

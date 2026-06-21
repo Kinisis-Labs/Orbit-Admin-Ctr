@@ -885,16 +885,36 @@ function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLo
 }
 
 function CoverageCard({ apps }: { apps: AppSummary[] }) {
-  // Use app-level tag lookup for coverage. The backend TagComplianceResponse no longer
-  // includes a tagCoverageByKey field, so we rely on the app-level fallback.
-  const { coverage, total, unit } = {
-    coverage: KNOWN_TAGS.map((tag) => {
-      const tagged = apps.filter((a) => !!getTag(a, tag)).length;
-      return { tag, tagged, pct: apps.length > 0 ? Math.round((tagged / apps.length) * 100) : 0 };
-    }),
-    total: apps.length,
-    unit: "apps",
-  };
+  const { data: compliance } = useGetTagCompliance();
+
+  const { coverage, total, unit } = (() => {
+    // Prefer live Azure scan coverage when available: it counts tags across every
+    // scanned resource, so ServiceType and CostCenter are included correctly.
+    if (compliance && compliance.dataSource === "live" && compliance.totalScanned > 0) {
+      const tagCoverageByKey = compliance.tagCoverageByKey;
+      return {
+        coverage: KNOWN_TAGS.map((tag) => {
+          const tagged = tagCoverageByKey[tag] ?? 0;
+          return {
+            tag,
+            tagged,
+            pct: Math.round((tagged / compliance.totalScanned) * 100),
+          };
+        }),
+        total: compliance.totalScanned,
+        unit: "resources",
+      };
+    }
+    // Fallback to app-level records when Azure scan data is not yet available.
+    return {
+      coverage: KNOWN_TAGS.map((tag) => {
+        const tagged = apps.filter((a) => !!getTag(a, tag)).length;
+        return { tag, tagged, pct: apps.length > 0 ? Math.round((tagged / apps.length) * 100) : 0 };
+      }),
+      total: apps.length,
+      unit: "apps",
+    };
+  })();
 
   return (
     <div className="bg-card border border-border shadow-sm">
