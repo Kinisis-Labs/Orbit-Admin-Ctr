@@ -562,12 +562,15 @@ export async function diagnoseCostForApp(
 
 /**
  * Maps Microsoft 365 billing product names (from the billing account scope query)
- * to Orbit / Grailbabe / Other cost centers. M365 charges cannot carry Azure resource
- * tags, so we infer the cost center from the product name. Returns null for Azure
- * infrastructure charges that are already captured via the subscription-scope query,
- * preventing double-counting.
+ * to Orbit / Grailbabe / Microsoft365 cost centers. M365 charges cannot carry Azure
+ * resource tags, so we infer the cost center from the product name. Returns null for
+ * Azure infrastructure charges already captured via the subscription-scope query,
+ * preventing double-counting. All non-Azure SaaS charges that can't be attributed to
+ * Orbit or GrailBabe directly are bucketed as Microsoft365.
  */
-function m365ProductToCostCenter(productName: string): "Orbit" | "Grailbabe" | "Other" | null {
+function m365ProductToCostCenter(
+  productName: string,
+): "Orbit" | "Grailbabe" | "Microsoft365" | null {
   const p = productName.toLowerCase();
   // Skip Azure infrastructure products — already in the subscription-scope query.
   if (
@@ -581,9 +584,9 @@ function m365ProductToCostCenter(productName: string): "Orbit" | "Grailbabe" | "
   // Infer cost center from the product name when it names the entity directly.
   if (p.includes("orbit")) return "Orbit";
   if (p.includes("grailbabe")) return "Grailbabe";
-  // All other M365 / Entra / Defender / Power Platform / GitHub SaaS charges are
-  // untagged at the resource level, so bucket them as Other until explicitly mapped.
-  return "Other";
+  // All other M365 / Entra / Defender / Power Platform / GitHub SaaS charges
+  // are non-Azure and belong to the Microsoft365 cost center.
+  return "Microsoft365";
 }
 
 /**
@@ -613,15 +616,20 @@ function daysAgo(n: number): string {
 }
 
 /**
- * Normalize Azure tag values to the two canonical entities we track.
- * Anything that isn't exactly "Orbit" or "Grailbabe" (case-insensitive)
- * is bucketed as "Other" so the UI always shows a clean Orbit/Grailbabe split.
+ * Normalize an Azure tag value to one of the three canonical cost centers.
+ * Subscription-scope resources must belong to either Orbit or GrailBabe;
+ * the caller supplies a `subOwner` fallback so unrecognised tags are
+ * attributed to the subscription owner rather than left as "Other".
  */
-function normalizeEntity(value: string): "Orbit" | "Grailbabe" | "Other" {
+function normalizeEntity(
+  value: string,
+  subOwner: "Orbit" | "Grailbabe" = "Orbit",
+): "Orbit" | "Grailbabe" {
   const v = value.trim().toLowerCase();
-  if (v === "orbit") return "Orbit";
+  if (v === "orbit" || v === "businessops" || v === "kinisis-labs" || v === "platform")
+    return "Orbit";
   if (v === "grailbabe") return "Grailbabe";
-  return "Other";
+  return subOwner;
 }
 
 /** Extract the cost-center tag value from a tags object, case-insensitive. */
@@ -633,6 +641,7 @@ function extractCostCenterTag(tags: Record<string, unknown>): string | null {
       lower.get("cost-category") ??
       lower.get("costcategory") ??
       lower.get("cost category") ??
+      lower.get("application") ??
       "",
   ).trim();
   return cat || null;
@@ -944,26 +953,22 @@ export async function fetchCostByCostCategoryTag({
   // Accumulate results across all scopes.
   const catMap = new Map<string, number>();
 
-  /** Parse rows from a Cost Management query response into the catMap. */
-  function accumulateRows(
-    columns: string[],
-    rows: unknown[][],
-    tagColumnHint: string,
-    scopeLabel: string,
-  ): void {
-    const costIdx = columns.findIndex((c) => c.toLowerCase().includes("cost"));
-    const tagIdx = columns.findIndex(
-      (c) => c.toLowerCase() === tagColumnHint.toLowerCase() || c.toLowerCase() === "tag",
-    );
-    if (costIdx === -1) {
-      logger.warn({ columns, scopeLabel }, "Cost column not found in Cost Management response");
-      return;
-    }
-    for (const row of rows) {
-      const amount = Number(row[costIdx] ?? 0);
-      const raw = tagIdx !== -1 ? String(row[tagIdx] ?? "Other") || "Other" : "Other";
-      const cat = normalizeEntity(raw);
-      catMap.set(cat, (catMap.get(cat) ?? 0) + amount);
+  // Build a map from subscription ID → canonical cost-center owner so that
+  // resources with no recognisable tag fall back to their subscription's owner
+  // (Orbit or GrailBabe) rather than disappearing into an "Other" bucket.
+  const subOwnerMap = new Map<string, "Orbit" | "Grailbabe">();
+  {
+    const grailbabeSub = (process.env.AZURE_SUB_GRAILBABE ?? "").toLowerCase();
+    const orbitSub = (
+      process.env.AZURE_SUB_SHAREDPLATFORM ??
+      process.env.AZURE_SUB_KINISIS_LABS ??
+      ""
+    ).toLowerCase();
+    for (const subId of subscriptionIds) {
+      const id = subId.toLowerCase();
+      if (grailbabeSub && id === grailbabeSub) subOwnerMap.set(id, "Grailbabe");
+      else if (orbitSub && id === orbitSub) subOwnerMap.set(id, "Orbit");
+      else subOwnerMap.set(id, "Orbit"); // default any extra subs to Orbit
     }
   }
 
@@ -973,6 +978,7 @@ export async function fetchCostByCostCategoryTag({
   // This gives per-resource accuracy rather than per-RG approximation.
   await Promise.all(
     subscriptionIds.map(async (subId) => {
+      const subOwner = subOwnerMap.get(subId.toLowerCase()) ?? "Orbit";
       const scope = `/subscriptions/${subId}`;
       try {
         // Step A: cost grouped by ResourceId
@@ -1106,13 +1112,13 @@ export async function fetchCostByCostCategoryTag({
           }
         }
 
-        // Step C: accumulate costs using resource tag, fall back to Other
+        // Step C: accumulate costs using resource tag, fall back to subscription owner
         const subCategories = new Set<string>();
         for (const row of rows) {
           const amount = Number(row[costIdx] ?? 0);
           const rid = idIdx !== -1 ? String(row[idIdx] ?? "").toLowerCase() : "";
           const raw = resourceTagMap.get(rid);
-          const cat = normalizeEntity(raw ?? "Other");
+          const cat = normalizeEntity(raw ?? "", subOwner);
           if (raw) subCategories.add(cat);
           catMap.set(cat, (catMap.get(cat) ?? 0) + amount);
         }
@@ -1151,7 +1157,7 @@ export async function fetchCostByCostCategoryTag({
         for (const row of rows) {
           const amount = Number(row[costIdx] ?? 0);
           const productName = nameIdx !== -1 ? String(row[nameIdx] ?? "") : "";
-          // Map M365 product names to Orbit/Grailbabe/Other — skip charges already
+          // Map M365 product names to Orbit/Grailbabe/Microsoft365 — skip charges already
           // captured via the subscription-scope query to avoid double-counting.
           const mapped = m365ProductToCostCenter(productName);
           if (mapped) {
@@ -1167,6 +1173,7 @@ export async function fetchCostByCostCategoryTag({
   if (catMap.size === 0) return null;
 
   const result = [...catMap.entries()]
+    .filter(([category]) => category !== "Other") // safety net — no Other should remain
     .map(([category, total]) => ({ category, monthToDate: Number(total.toFixed(2)) }))
     .sort((a, b) => b.monthToDate - a.monthToDate);
 
