@@ -635,6 +635,18 @@ function daysAgo(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Normalize Azure tag values to the two canonical entities we track.
+ * Anything that isn't exactly "Orbit" or "Grailbabe" (case-insensitive)
+ * is bucketed as "Other" so the UI always shows a clean Orbit/Grailbabe split.
+ */
+function normalizeEntity(value: string): "Orbit" | "Grailbabe" | "Other" {
+  const v = value.trim().toLowerCase();
+  if (v === "orbit") return "Orbit";
+  if (v === "grailbabe") return "Grailbabe";
+  return "Other";
+}
+
 export async function fetchCostByApplicationTag({
   bypassCache = false,
 }: { bypassCache?: boolean } = {}): Promise<AppTagCostItem[] | null> {
@@ -748,7 +760,7 @@ export async function fetchCostByApplicationTag({
             const amount = Number(row[mtd.costIdx] ?? 0);
             const rid = mtd.idIdx !== -1 ? String(row[mtd.idIdx] ?? "").toLowerCase() : "";
             const info = resourceTagMap.get(rid);
-            const app = info?.app ?? "(untagged)";
+            const app = normalizeEntity(info?.app ?? "Other");
             const env = info?.env ?? "";
             appMap.set(app, (appMap.get(app) ?? 0) + amount);
             if (env && !envMap.has(app)) envMap.set(app, env);
@@ -760,7 +772,7 @@ export async function fetchCostByApplicationTag({
           for (const row of cur.rows) {
             const amount = Number(row[cur.costIdx] ?? 0);
             const rid = cur.idIdx !== -1 ? String(row[cur.idIdx] ?? "").toLowerCase() : "";
-            const app = resourceTagMap.get(rid)?.app ?? "(untagged)";
+            const app = normalizeEntity(resourceTagMap.get(rid)?.app ?? "Other");
             curWeekMap.set(app, (curWeekMap.get(app) ?? 0) + amount);
           }
         }
@@ -770,7 +782,7 @@ export async function fetchCostByApplicationTag({
           for (const row of prev.rows) {
             const amount = Number(row[prev.costIdx] ?? 0);
             const rid = prev.idIdx !== -1 ? String(row[prev.idIdx] ?? "").toLowerCase() : "";
-            const app = resourceTagMap.get(rid)?.app ?? "(untagged)";
+            const app = normalizeEntity(resourceTagMap.get(rid)?.app ?? "Other");
             prevWeekMap.set(app, (prevWeekMap.get(app) ?? 0) + amount);
           }
         }
@@ -790,19 +802,14 @@ export async function fetchCostByApplicationTag({
     return (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%";
   };
 
-  const tagged = [...appMap.entries()].filter(([k]) => k !== "(untagged)");
-  const untaggedAmt = appMap.get("(untagged)") ?? 0;
-  const result: AppTagCostItem[] = [
-    ...tagged.map(([application, total]) => ({
+  const result: AppTagCostItem[] = [...appMap.entries()]
+    .map(([application, total]) => ({
       application,
       environment: envMap.get(application) ?? "",
       monthToDate: Number(total.toFixed(2)),
       wowTrend: calcWow(application),
-    })),
-    ...(untaggedAmt > 0
-      ? [{ application: "(untagged)", environment: "", monthToDate: Number(untaggedAmt.toFixed(2)), wowTrend: calcWow("(untagged)") }]
-      : []),
-  ].sort((a, b) => b.monthToDate - a.monthToDate);
+    }))
+    .sort((a, b) => b.monthToDate - a.monthToDate);
 
   _appTagCacheEntry = { result, expiresAt: Date.now() + COST_CACHE_TTL_MS };
   return result;
@@ -857,7 +864,8 @@ export async function fetchCostByCostCategoryTag({
     }
     for (const row of rows) {
       const amount = Number(row[costIdx] ?? 0);
-      const cat = tagIdx !== -1 ? String(row[tagIdx] ?? "Untagged") || "Untagged" : "Untagged";
+      const raw = tagIdx !== -1 ? String(row[tagIdx] ?? "Other") || "Other" : "Other";
+      const cat = normalizeEntity(raw);
       catMap.set(cat, (catMap.get(cat) ?? 0) + amount);
     }
   }
@@ -954,11 +962,11 @@ export async function fetchCostByCostCategoryTag({
           }
         }
 
-        // Step C: accumulate costs using resource tag, fall back to RG tag map (from RG tags)
+        // Step C: accumulate costs using resource tag, fall back to Other
         for (const row of rows) {
           const amount = Number(row[costIdx] ?? 0);
           const rid = idIdx !== -1 ? String(row[idIdx] ?? "").toLowerCase() : "";
-          const cat = resourceTagMap.get(rid) ?? "Untagged";
+          const cat = normalizeEntity(resourceTagMap.get(rid) ?? "Other");
           catMap.set(cat, (catMap.get(cat) ?? 0) + amount);
         }
       } catch (err) {
@@ -997,8 +1005,9 @@ export async function fetchCostByCostCategoryTag({
           const productName = nameIdx !== -1 ? String(row[nameIdx] ?? "") : "";
           // Map M365 product names to CostCategory — skip charges already
           // captured via the subscription-scope query to avoid double-counting.
-          const cat = m365ProductToCategory(productName);
-          if (cat) {
+          const mapped = m365ProductToCategory(productName);
+          if (mapped) {
+            const cat = normalizeEntity(mapped);
             catMap.set(cat, (catMap.get(cat) ?? 0) + amount);
           }
         }

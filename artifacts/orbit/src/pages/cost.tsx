@@ -25,11 +25,45 @@ import { useForceRefresh } from "@/hooks/use-force-refresh";
 import { ForceRefreshButton } from "@/components/force-refresh-button";
 import { StaleCacheBanner } from "@/components/stale-cache-banner";
 import { RefreshingBar } from "@/components/refreshing-bar";
-import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Link, useSearch, useLocation } from "wouter";
-import { Download, PieChart, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, X, ChevronDown, ChevronUp, TableIcon, CalendarSearch, TriangleAlert, ArrowUp, ArrowDown, ArrowUpDown, Filter, Users, RotateCcw, Building2 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  Download,
+  PieChart,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  X,
+  ChevronDown,
+  ChevronUp,
+  TableIcon,
+  CalendarSearch,
+  TriangleAlert,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  Filter,
+  Users,
+  RotateCcw,
+  Building2,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DataSourceBadge } from "@/components/data-source-badge";
 import { CostDataSourceBadge } from "@/components/cost-data-source-badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -39,7 +73,12 @@ import { useScope } from "@/lib/scope-context";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useMemo, useState, useEffect, useRef } from "react";
-import { DailySpendChart, type DailyCostPoint, type DailySpendRange, readSigma } from "@/components/daily-spend-chart";
+import {
+  DailySpendChart,
+  type DailyCostPoint,
+  type DailySpendRange,
+  readSigma,
+} from "@/components/daily-spend-chart";
 import { computeAnomalies } from "@/components/daily-spend-utils";
 import { format, parseISO, isValid } from "date-fns";
 
@@ -69,7 +108,10 @@ function isoDate(ts: string | Date): string {
   return new Date(ts).toISOString().slice(0, 10);
 }
 
-export function detectRecentAnomaly(daily: DailyCostPoint[] | undefined | null, sigmas = ANOMALY_SIGMAS): {
+export function detectRecentAnomaly(
+  daily: DailyCostPoint[] | undefined | null,
+  sigmas = ANOMALY_SIGMAS,
+): {
   date: Date;
   dateKey: string;
   value: number;
@@ -119,6 +161,43 @@ export function detectRecentAnomaly(daily: DailyCostPoint[] | undefined | null, 
 const LS_KEY_PREFIX = "orbit-cost-anomaly-dismissed-";
 const LS_DAILY_TABLE_KEY = (scope: string) => `orbit-cost-daily-table-${scope}`;
 const LS_SERVICE_SORT_KEY = (scope: string) => `orbit-cost-service-sort-${scope}`;
+const LS_COST_VIEW_MODE = "orbit-cost-view-mode";
+
+type CostViewMode = "all" | "application" | "costCenter";
+
+function CostViewSelector({
+  value,
+  onChange,
+}: {
+  value: CostViewMode;
+  onChange: (v: CostViewMode) => void;
+}) {
+  const options: { value: CostViewMode; label: string; icon: typeof PieChart }[] = [
+    { value: "all", label: "All", icon: PieChart },
+    { value: "application", label: "Application", icon: Users },
+    { value: "costCenter", label: "Cost Center", icon: Building2 },
+  ];
+
+  return (
+    <div className="flex items-center bg-muted rounded-md p-0.5">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-sm transition-colors ${
+            value === opt.value
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <opt.icon className="h-3 w-3" />
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 type ServiceSortCol = "amount" | "trend";
 type SortDir = "asc" | "desc";
@@ -135,7 +214,9 @@ function loadServiceSort(scope: string): { col: ServiceSortCol; dir: SortDir } {
         return { col: parsed.col, dir: parsed.dir };
       }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return { col: "amount", dir: "desc" };
 }
 
@@ -179,14 +260,12 @@ function AnomalyAlertBanner({
   if (!anomaly) return null;
 
   // Global (team-wide) dismissal for this anomaly date, if any
-  const globalDismissal = serverDismissals?.globalDismissals.find(
-    (d) => d.dateKey === anomaly.dateKey,
-  ) ?? null;
+  const globalDismissal =
+    serverDismissals?.globalDismissals.find((d) => d.dateKey === anomaly.dateKey) ?? null;
 
   // Session-scoped dismissal (this user only)
   const dismissedInSession =
-    serverDismissals?.dismissedDateKeys.includes(anomaly.dateKey) &&
-    !globalDismissal
+    serverDismissals?.dismissedDateKeys.includes(anomaly.dateKey) && !globalDismissal
       ? true
       : false;
 
@@ -195,7 +274,11 @@ function AnomalyAlertBanner({
 
   function dismissForMe() {
     if (!anomaly) return;
-    try { localStorage.setItem(LS_KEY_PREFIX + anomaly.dateKey, "1"); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(LS_KEY_PREFIX + anomaly.dateKey, "1");
+    } catch {
+      /* ignore */
+    }
     setDismissedLocally(true);
     serverDismiss({ data: { appId, dateKey: anomaly.dateKey, scope: "session" } });
     onDismiss?.();
@@ -203,7 +286,11 @@ function AnomalyAlertBanner({
 
   function dismissForTeam() {
     if (!anomaly) return;
-    try { localStorage.setItem(LS_KEY_PREFIX + anomaly.dateKey, "1"); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(LS_KEY_PREFIX + anomaly.dateKey, "1");
+    } catch {
+      /* ignore */
+    }
     setDismissedLocally(true);
     serverDismiss(
       { data: { appId, dateKey: anomaly.dateKey, scope: "global" } },
@@ -213,7 +300,11 @@ function AnomalyAlertBanner({
 
   function showAgain() {
     if (!anomaly) return;
-    try { localStorage.removeItem(LS_KEY_PREFIX + anomaly.dateKey); } catch { /* ignore */ }
+    try {
+      localStorage.removeItem(LS_KEY_PREFIX + anomaly.dateKey);
+    } catch {
+      /* ignore */
+    }
     setDismissedLocally(false);
     serverUndismiss(
       { params: { appId, dateKey: anomaly.dateKey } },
@@ -234,8 +325,8 @@ function AnomalyAlertBanner({
           Cost anomaly {appName ? `(${appName}) ` : ""}dismissed by{" "}
           <span className="font-medium text-foreground/70">
             {globalDismissal.dismissedBy ?? "a team member"}
-          </span>
-          {" "}—{" "}
+          </span>{" "}
+          —{" "}
           <button
             onClick={showAgain}
             className="inline-flex items-center gap-1 font-medium text-foreground/70 underline underline-offset-2 hover:text-foreground transition-colors"
@@ -254,12 +345,16 @@ function AnomalyAlertBanner({
       <div className="flex-1 min-w-0 text-[13px] leading-snug">
         <span className="font-semibold">
           {isPeak ? "Peak & anomaly" : "Cost anomaly detected"}
-          {appName ? ` — ${appName}` : ""}{" — "}
+          {appName ? ` — ${appName}` : ""}
+          {" — "}
         </span>
         <span>
           {dateLabel}: {multipleLabel}
           {anomaly.excess > 0 && (
-            <>, an estimated <span className="font-semibold">{formatCurrency(anomaly.excess)}</span> above baseline</>
+            <>
+              , an estimated <span className="font-semibold">{formatCurrency(anomaly.excess)}</span>{" "}
+              above baseline
+            </>
           )}
           .
         </span>
@@ -307,8 +402,30 @@ export default function Cost() {
   const selectedApp = apps?.find((a) => a.id === scope);
   const isGlobal = scope === "global";
 
+  const [viewMode, setViewMode] = useState<CostViewMode>(() => {
+    try {
+      const raw = localStorage.getItem(LS_COST_VIEW_MODE);
+      if (raw === "all" || raw === "application" || raw === "costCenter") return raw;
+    } catch {
+      /* ignore */
+    }
+    return "all";
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_COST_VIEW_MODE, viewMode);
+    } catch {
+      /* ignore */
+    }
+  }, [viewMode]);
+
   const { data: globalCostSummary, isLoading: globalCostLoading } = useGetGlobalCostSummary({
-    query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000, enabled: isGlobal },
+    query: {
+      queryKey: getGetGlobalCostSummaryQueryKey(),
+      staleTime: 5 * 60 * 1000,
+      enabled: isGlobal,
+    },
   });
 
   return (
@@ -319,10 +436,13 @@ export default function Cost() {
             {isGlobal ? "Cost — All Applications" : `Cost — ${selectedApp?.name ?? ""}`}
           </h1>
           <p className="text-[12px] text-muted-foreground mt-0.5">
-            {isGlobal ? "Cost and revenue across all tracked applications" : `Scoped to ${selectedApp?.name ?? "application"}`}
+            {isGlobal
+              ? "Cost and revenue across all tracked applications"
+              : `Scoped to ${selectedApp?.name ?? "application"}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {isGlobal && <CostViewSelector value={viewMode} onChange={setViewMode} />}
           {isGlobal && !globalCostLoading && globalCostSummary && (
             <DataSourceBadge
               dataSource={globalCostSummary.dataSource}
@@ -337,10 +457,12 @@ export default function Cost() {
 
       {isGlobal ? (
         <>
-          <GlobalCostPanel />
+          <GlobalCostPanel viewMode={viewMode} />
           <GlobalCost />
         </>
-      ) : <AppCost />}
+      ) : (
+        <AppCost />
+      )}
     </div>
   );
 }
@@ -351,7 +473,13 @@ function GlobalCostPanelRow({
   totalMtd,
   isTagMode,
 }: {
-  row: { appId: string; appName: string; environment: string; monthToDate: number; trend?: string | null };
+  row: {
+    appId: string;
+    appName: string;
+    environment: string;
+    monthToDate: number;
+    trend?: string | null;
+  };
   maxMtd: number;
   totalMtd: number;
   isTagMode: boolean;
@@ -379,7 +507,9 @@ function GlobalCostPanelRow({
           </span>
         ) : null}
       </TableCell>
-      <TableCell className="py-1 text-right font-mono text-[12px]">{fmt(row.monthToDate)}</TableCell>
+      <TableCell className="py-1 text-right font-mono text-[12px]">
+        {fmt(row.monthToDate)}
+      </TableCell>
       <TableCell className={`py-1 text-right font-mono text-[11px] ${trendClass}`}>
         {trend ?? <span className="text-muted-foreground/50">—</span>}
       </TableCell>
@@ -409,7 +539,7 @@ function GlobalCostPanelRow({
   );
 }
 
-function GlobalCostPanel() {
+function GlobalCostPanel({ viewMode }: { viewMode: CostViewMode }) {
   const { data, isLoading } = useGetGlobalCostSummary({
     query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
   });
@@ -436,23 +566,56 @@ function GlobalCostPanel() {
     return isNaN(n) ? -Infinity : n;
   }
 
-  // Prefer live tag-based grouping when available, fall back to registry-based byApp
-  const useTagRows = !!(data?.byApplicationTag && data.byApplicationTag.length > 0);
+  // Determine grouping mode based on the dashboard view filter.
+  // "all" and "application" show application tag grouping; "costCenter" shows cost category grouping.
+  const isCostCenterMode = viewMode === "costCenter";
+  const appTagRows = useMemo(() => data?.byApplicationTag ?? [], [data?.byApplicationTag]);
+  const costCenterRows = useMemo(() => data?.byCategory ?? [], [data?.byCategory]);
+  const useTagRows = isCostCenterMode || (appTagRows.length > 0 && viewMode !== "all");
+  const isFallbackToByApp = viewMode === "all" && appTagRows.length === 0;
 
-  const totalApps = useTagRows
-    ? (data?.byApplicationTag?.length ?? 0)
-    : (data?.byApp.length ?? 0);
+  const totalRows = isCostCenterMode
+    ? costCenterRows.length
+    : isFallbackToByApp
+      ? (data?.byApp.length ?? 0)
+      : appTagRows.length;
+
+  const rowLabel = isCostCenterMode ? "cost center" : "application";
 
   const maxMtd = useMemo(() => {
-    if (useTagRows) return data?.byApplicationTag?.reduce((m, r) => Math.max(m, r.monthToDate), 0) ?? 0;
+    if (isCostCenterMode) return costCenterRows.reduce((m, r) => Math.max(m, r.monthToDate), 0);
+    if (useTagRows) return appTagRows.reduce((m, r) => Math.max(m, r.monthToDate), 0);
     return data?.byApp.reduce((m, r) => Math.max(m, r.monthToDate), 0) ?? 0;
-  }, [data?.byApp, data?.byApplicationTag, useTagRows]);
+  }, [data?.byApp, appTagRows, costCenterRows, useTagRows, isCostCenterMode]);
 
   const sortedRows = useMemo(() => {
+    if (isCostCenterMode) {
+      const rows = [...costCenterRows];
+      if (sortCol === "amount")
+        rows.sort((a, b) =>
+          sortDir === "desc" ? b.monthToDate - a.monthToDate : a.monthToDate - b.monthToDate,
+        );
+      return rows.map((r) => ({
+        appId: r.category,
+        appName: r.category,
+        environment: "",
+        monthToDate: r.monthToDate,
+        trend: null,
+      }));
+    }
     if (useTagRows) {
-      const rows = [...(data?.byApplicationTag ?? [])];
-      if (sortCol === "amount") rows.sort((a, b) => sortDir === "desc" ? b.monthToDate - a.monthToDate : a.monthToDate - b.monthToDate);
-      return rows.map((r) => ({ appId: r.application, appName: r.application, environment: r.environment ?? "", monthToDate: r.monthToDate, trend: r.wowTrend ?? null }));
+      const rows = [...appTagRows];
+      if (sortCol === "amount")
+        rows.sort((a, b) =>
+          sortDir === "desc" ? b.monthToDate - a.monthToDate : a.monthToDate - b.monthToDate,
+        );
+      return rows.map((r) => ({
+        appId: r.application,
+        appName: r.application,
+        environment: r.environment ?? "",
+        monthToDate: r.monthToDate,
+        trend: r.wowTrend ?? null,
+      }));
     }
     if (!data?.byApp) return [];
     const rows = [...data.byApp];
@@ -471,17 +634,30 @@ function GlobalCostPanel() {
       return sortDir === "desc" ? bv - av : av - bv;
     });
     return rows;
-  }, [data?.byApp, data?.byApplicationTag, useTagRows, sortCol, sortDir, maxMtd]);
+  }, [
+    data?.byApp,
+    appTagRows,
+    costCenterRows,
+    useTagRows,
+    isCostCenterMode,
+    sortCol,
+    sortDir,
+    maxMtd,
+  ]);
 
   function SortIcon({ col }: { col: GlobalSortCol }) {
     if (sortCol !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
-    return sortDir === "desc"
-      ? <ArrowDown className="h-3 w-3 ml-1 text-foreground" />
-      : <ArrowUp className="h-3 w-3 ml-1 text-foreground" />;
+    return sortDir === "desc" ? (
+      <ArrowDown className="h-3 w-3 ml-1 text-foreground" />
+    ) : (
+      <ArrowUp className="h-3 w-3 ml-1 text-foreground" />
+    );
   }
 
+  const panelTitle = isCostCenterMode ? "Cost by Cost Center" : "Cost by Application";
+
   return (
-    <Panel title="Cost by Application">
+    <Panel title={panelTitle}>
       <Table className="text-[13px]">
         <THead>
           <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
@@ -519,21 +695,31 @@ function GlobalCostPanel() {
             <SkeletonRows cols={5} rows={3} />
           ) : (
             sortedRows.map((row) => (
-              <GlobalCostPanelRow key={row.appId} row={row} maxMtd={maxMtd} totalMtd={data.total} isTagMode={useTagRows} />
+              <GlobalCostPanelRow
+                key={row.appId}
+                row={row}
+                maxMtd={maxMtd}
+                totalMtd={data.total}
+                isTagMode={useTagRows}
+              />
             ))
           )}
         </TableBody>
       </Table>
       {!isLoading && data && (
         <div className="px-3 py-2 border-t border-border bg-muted/30 flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>{totalApps} application{totalApps !== 1 ? "s" : ""}</span>
-          <span className="font-mono font-semibold text-foreground">{fmt(data.total)} total MTD</span>
+          <span>
+            {totalRows} {rowLabel}
+            {totalRows !== 1 ? "s" : ""}
+          </span>
+          <span className="font-mono font-semibold text-foreground">
+            {fmt(data.total)} total MTD
+          </span>
         </div>
       )}
     </Panel>
   );
 }
-
 
 function MomTrendBadge({ pct }: { pct: number }) {
   const isUp = pct > 0;
@@ -542,8 +728,8 @@ function MomTrendBadge({ pct }: { pct: number }) {
   const colorClass = isUp
     ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
     : isFlat
-    ? "bg-muted text-muted-foreground border-border"
-    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30";
+      ? "bg-muted text-muted-foreground border-border"
+      : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30";
   const Icon = isUp ? TrendingUp : isFlat ? null : TrendingDown;
 
   return (
@@ -554,7 +740,8 @@ function MomTrendBadge({ pct }: { pct: number }) {
             className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[11px] font-semibold border cursor-default ${colorClass}`}
           >
             {Icon && <Icon className="h-3 w-3 shrink-0" />}
-            {isUp ? "+" : ""}{pct.toFixed(1)}%
+            {isUp ? "+" : ""}
+            {pct.toFixed(1)}%
           </span>
         </TooltipTrigger>
         <TooltipContent>{label} (same elapsed days)</TooltipContent>
@@ -563,7 +750,13 @@ function MomTrendBadge({ pct }: { pct: number }) {
   );
 }
 
-function WoWTrendBadge({ trend, label = "Week-over-week spend trend" }: { trend: string | null | undefined; label?: string }) {
+function WoWTrendBadge({
+  trend,
+  label = "Week-over-week spend trend",
+}: {
+  trend: string | null | undefined;
+  label?: string;
+}) {
   if (!trend) return null;
   const isUp = trend.startsWith("+");
   const isDown = trend.startsWith("-");
@@ -571,8 +764,8 @@ function WoWTrendBadge({ trend, label = "Week-over-week spend trend" }: { trend:
   const colorClass = isUp
     ? "text-destructive bg-destructive/10 border-destructive/30"
     : isDown
-    ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
-    : "text-muted-foreground bg-muted border-border";
+      ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
+      : "text-muted-foreground bg-muted border-border";
   return (
     <TooltipProvider>
       <Tooltip>
@@ -592,8 +785,12 @@ function WoWTrendBadge({ trend, label = "Week-over-week spend trend" }: { trend:
 
 function GlobalCost() {
   const { data: apps, isLoading: appsLoading } = useApps();
-  const { data: globalHealth } = useGetGlobalHealth({ query: { queryKey: getGetGlobalHealthQueryKey(), staleTime: 5 * 60 * 1000 } });
-  const { data: globalCostSummary } = useGetGlobalCostSummary({ query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 } });
+  const { data: globalHealth } = useGetGlobalHealth({
+    query: { queryKey: getGetGlobalHealthQueryKey(), staleTime: 5 * 60 * 1000 },
+  });
+  const { data: globalCostSummary } = useGetGlobalCostSummary({
+    query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
+  });
 
   const costQueries = useQueries({
     queries: (apps ?? []).map((app) => ({
@@ -610,7 +807,11 @@ function GlobalCost() {
   // Find the most significant recent anomaly across all apps
   const globalAnomaly = useMemo(() => {
     if (!apps || isLoading) return null;
-    let worst: { appId: string; appName: string; anomaly: NonNullable<ReturnType<typeof detectRecentAnomaly>> } | null = null;
+    let worst: {
+      appId: string;
+      appName: string;
+      anomaly: NonNullable<ReturnType<typeof detectRecentAnomaly>>;
+    } | null = null;
     for (let i = 0; i < apps.length; i++) {
       const daily = costQueries[i]?.data?.daily as DailyCostPoint[] | undefined;
       if (!daily) continue;
@@ -632,8 +833,10 @@ function GlobalCost() {
       const costData = costQueries[i]?.data;
       const cost = costData?.monthToDate ?? app.monthToDateCost;
       const stripe = costData?.revenue.bySource.find((s) => s.source === "stripe")?.amount ?? 0;
-      const appStore = costData?.revenue.bySource.find((s) => s.source === "app_store")?.amount ?? 0;
-      const playStore = costData?.revenue.bySource.find((s) => s.source === "play_store")?.amount ?? 0;
+      const appStore =
+        costData?.revenue.bySource.find((s) => s.source === "app_store")?.amount ?? 0;
+      const playStore =
+        costData?.revenue.bySource.find((s) => s.source === "play_store")?.amount ?? 0;
       const revenue = costData?.revenue.total ?? stripe + appStore + playStore;
       const net = revenue - cost;
       const marginPct = revenue > 0 ? (net / revenue) * 100 : null;
@@ -658,13 +861,25 @@ function GlobalCost() {
     return { cost, stripe, appStore, playStore, revenue, net, marginPct };
   }, [tableRows]);
 
-  const csvHeaders = ["Application", "Cost (MTD)", "MoM %", "Stripe", "App Store", "Play Store", "Revenue", "Net", "Margin %"];
+  const csvHeaders = [
+    "Application",
+    "Cost (MTD)",
+    "MoM %",
+    "Stripe",
+    "App Store",
+    "Play Store",
+    "Revenue",
+    "Net",
+    "Margin %",
+  ];
   const csvRows = useMemo(() => {
     if (!tableRows || !totals) return null;
     const rows = tableRows.map((r) => [
       r.app.name,
       r.cost.toFixed(2),
-      r.momChangePct != null ? (r.momChangePct >= 0 ? "+" : "") + r.momChangePct.toFixed(1) + "%" : "—",
+      r.momChangePct != null
+        ? (r.momChangePct >= 0 ? "+" : "") + r.momChangePct.toFixed(1) + "%"
+        : "—",
       r.stripe.toFixed(2),
       r.appStore.toFixed(2),
       r.playStore.toFixed(2),
@@ -716,13 +931,17 @@ function GlobalCost() {
     rows.sort((a, b) => {
       let av: number, bv: number;
       if (cvrSortCol === "cost") {
-        av = a.cost; bv = b.cost;
+        av = a.cost;
+        bv = b.cost;
       } else if (cvrSortCol === "revenue") {
-        av = a.revenue; bv = b.revenue;
+        av = a.revenue;
+        bv = b.revenue;
       } else if (cvrSortCol === "net") {
-        av = a.net; bv = b.net;
+        av = a.net;
+        bv = b.net;
       } else {
-        av = a.marginPct ?? -Infinity; bv = b.marginPct ?? -Infinity;
+        av = a.marginPct ?? -Infinity;
+        bv = b.marginPct ?? -Infinity;
       }
       return cvrSortDir === "desc" ? bv - av : av - bv;
     });
@@ -731,9 +950,11 @@ function GlobalCost() {
 
   function CvrSortIcon({ col }: { col: CvrSortCol }) {
     if (cvrSortCol !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
-    return cvrSortDir === "desc"
-      ? <ArrowDown className="h-3 w-3 ml-1 text-foreground" />
-      : <ArrowUp className="h-3 w-3 ml-1 text-foreground" />;
+    return cvrSortDir === "desc" ? (
+      <ArrowDown className="h-3 w-3 ml-1 text-foreground" />
+    ) : (
+      <ArrowUp className="h-3 w-3 ml-1 text-foreground" />
+    );
   }
 
   return (
@@ -754,7 +975,9 @@ function GlobalCost() {
             <Skeleton className="h-7 w-28 mt-1" />
           ) : (
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-xl font-semibold text-foreground tabular-nums">{fmt(totalMtd, currency)}</span>
+              <span className="text-xl font-semibold text-foreground tabular-nums">
+                {fmt(totalMtd, currency)}
+              </span>
               {momTrendPct !== null && <MomTrendBadge pct={momTrendPct} />}
             </div>
           )}
@@ -765,7 +988,9 @@ function GlobalCost() {
           </div>
         </div>
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-          <div className="text-[12px] text-muted-foreground font-medium mb-1">Applications tracked</div>
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">
+            Applications tracked
+          </div>
           {isLoading ? (
             <Skeleton className="h-7 w-10 mt-1" />
           ) : (
@@ -789,161 +1014,212 @@ function GlobalCost() {
           <div className="text-[11px] text-muted-foreground mt-1">Azure Cost Management</div>
         </div>
       </div>
-    <Panel
-      title="Cost vs Revenue by Application"
-      bodyClassName="overflow-auto max-h-[500px] relative"
-      toolbar={
-        <div className="flex items-center gap-1">
-          <CsvToolbar
-            handleExport={handleExport}
-            handleCopy={handleCopy}
-            disabled={csvDisabled}
-            copied={copied}
-          />
-        </div>
-      }
-    >
-      <Table className="text-[13px]">
-        <THead>
-          <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
-          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">
-            <button
-              onClick={() => handleCvrSortClick("cost")}
-              className="inline-flex items-center justify-end w-full hover:text-foreground transition-colors"
-            >
-              Cost (MTD)
-              <CvrSortIcon col="cost" />
-            </button>
-          </TableHead>
-          <TableHead className="h-8 font-semibold text-foreground w-[100px]">MoM</TableHead>
-          <TableHead className="h-8 font-semibold text-foreground text-right w-[100px]">Stripe</TableHead>
-          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">App Store</TableHead>
-          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Play Store</TableHead>
-          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">
-            <button
-              onClick={() => handleCvrSortClick("revenue")}
-              className="inline-flex items-center justify-end w-full hover:text-foreground transition-colors"
-            >
-              Revenue
-              <CvrSortIcon col="revenue" />
-            </button>
-          </TableHead>
-          <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">
-            <button
-              onClick={() => handleCvrSortClick("net")}
-              className="inline-flex items-center justify-end w-full hover:text-foreground transition-colors"
-            >
-              Net
-              <CvrSortIcon col="net" />
-            </button>
-          </TableHead>
-          <TableHead className="h-8 font-semibold text-foreground text-right w-[90px]">
-            <button
-              onClick={() => handleCvrSortClick("margin")}
-              className="inline-flex items-center justify-end w-full hover:text-foreground transition-colors"
-            >
-              Margin %
-              <CvrSortIcon col="margin" />
-            </button>
-          </TableHead>
-        </THead>
-        <TableBody>
-          {isLoading ? (
-            <SkeletonRows cols={9} rows={3} />
-          ) : (
-            (sortedTableRows ?? []).map((row) => {
-              const netClass =
-                row.net > 0
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : row.net < 0
-                    ? "text-destructive"
-                    : "text-muted-foreground";
-              const marginClass =
-                row.marginPct == null
-                  ? "text-muted-foreground"
-                  : row.marginPct > 0
+      <Panel
+        title="Cost vs Revenue by Application"
+        bodyClassName="overflow-auto max-h-[500px] relative"
+        toolbar={
+          <div className="flex items-center gap-1">
+            <CsvToolbar
+              handleExport={handleExport}
+              handleCopy={handleCopy}
+              disabled={csvDisabled}
+              copied={copied}
+            />
+          </div>
+        }
+      >
+        <Table className="text-[13px]">
+          <THead>
+            <TableHead className="h-8 font-semibold text-foreground">Application</TableHead>
+            <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">
+              <button
+                onClick={() => handleCvrSortClick("cost")}
+                className="inline-flex items-center justify-end w-full hover:text-foreground transition-colors"
+              >
+                Cost (MTD)
+                <CvrSortIcon col="cost" />
+              </button>
+            </TableHead>
+            <TableHead className="h-8 font-semibold text-foreground w-[100px]">MoM</TableHead>
+            <TableHead className="h-8 font-semibold text-foreground text-right w-[100px]">
+              Stripe
+            </TableHead>
+            <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">
+              App Store
+            </TableHead>
+            <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">
+              Play Store
+            </TableHead>
+            <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">
+              <button
+                onClick={() => handleCvrSortClick("revenue")}
+                className="inline-flex items-center justify-end w-full hover:text-foreground transition-colors"
+              >
+                Revenue
+                <CvrSortIcon col="revenue" />
+              </button>
+            </TableHead>
+            <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">
+              <button
+                onClick={() => handleCvrSortClick("net")}
+                className="inline-flex items-center justify-end w-full hover:text-foreground transition-colors"
+              >
+                Net
+                <CvrSortIcon col="net" />
+              </button>
+            </TableHead>
+            <TableHead className="h-8 font-semibold text-foreground text-right w-[90px]">
+              <button
+                onClick={() => handleCvrSortClick("margin")}
+                className="inline-flex items-center justify-end w-full hover:text-foreground transition-colors"
+              >
+                Margin %
+                <CvrSortIcon col="margin" />
+              </button>
+            </TableHead>
+          </THead>
+          <TableBody>
+            {isLoading ? (
+              <SkeletonRows cols={9} rows={3} />
+            ) : (
+              (sortedTableRows ?? []).map((row) => {
+                const netClass =
+                  row.net > 0
                     ? "text-emerald-600 dark:text-emerald-400"
-                    : row.marginPct < 0
+                    : row.net < 0
                       ? "text-destructive"
                       : "text-muted-foreground";
-              return (
-                <TableRow key={row.app.id} className="h-8 border-b border-border/50 hover:bg-muted/40">
-                  <TableCell className="py-1 font-medium">
-                    {row.app.name}
-                    <span className="text-muted-foreground text-[11px] ml-1.5">· {row.app.environment}</span>
-                  </TableCell>
-                  <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">{fmt(row.cost, currency)}</TableCell>
-                  <TableCell className="py-1">
-                    {row.momChangePct != null ? (
-                      <MomTrendBadge pct={row.momChangePct} />
-                    ) : (
-                      <span className="text-muted-foreground/40 text-[11px]">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
-                    {row.stripe > 0 ? fmt(row.stripe, currency) : <span className="opacity-30">—</span>}
-                  </TableCell>
-                  <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
-                    {row.appStore > 0 ? fmt(row.appStore, currency) : <span className="opacity-30">—</span>}
-                  </TableCell>
-                  <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
-                    {row.playStore > 0 ? fmt(row.playStore, currency) : <span className="opacity-30">—</span>}
-                  </TableCell>
-                  <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">{fmt(row.revenue, currency)}</TableCell>
-                  <TableCell className={`py-1 text-right font-mono text-[12px] tabular-nums font-semibold ${netClass}`}>{fmt(row.net, currency)}</TableCell>
-                  <TableCell className={`py-1 text-right font-mono text-[12px] tabular-nums font-semibold ${marginClass}`}>
-                    {row.marginPct != null ? `${row.marginPct.toFixed(1)}%` : "—"}
-                  </TableCell>
-                </TableRow>
-              );
-            })
+                const marginClass =
+                  row.marginPct == null
+                    ? "text-muted-foreground"
+                    : row.marginPct > 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : row.marginPct < 0
+                        ? "text-destructive"
+                        : "text-muted-foreground";
+                return (
+                  <TableRow
+                    key={row.app.id}
+                    className="h-8 border-b border-border/50 hover:bg-muted/40"
+                  >
+                    <TableCell className="py-1 font-medium">
+                      {row.app.name}
+                      <span className="text-muted-foreground text-[11px] ml-1.5">
+                        · {row.app.environment}
+                      </span>
+                    </TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">
+                      {fmt(row.cost, currency)}
+                    </TableCell>
+                    <TableCell className="py-1">
+                      {row.momChangePct != null ? (
+                        <MomTrendBadge pct={row.momChangePct} />
+                      ) : (
+                        <span className="text-muted-foreground/40 text-[11px]">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
+                      {row.stripe > 0 ? (
+                        fmt(row.stripe, currency)
+                      ) : (
+                        <span className="opacity-30">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
+                      {row.appStore > 0 ? (
+                        fmt(row.appStore, currency)
+                      ) : (
+                        <span className="opacity-30">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
+                      {row.playStore > 0 ? (
+                        fmt(row.playStore, currency)
+                      ) : (
+                        <span className="opacity-30">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">
+                      {fmt(row.revenue, currency)}
+                    </TableCell>
+                    <TableCell
+                      className={`py-1 text-right font-mono text-[12px] tabular-nums font-semibold ${netClass}`}
+                    >
+                      {fmt(row.net, currency)}
+                    </TableCell>
+                    <TableCell
+                      className={`py-1 text-right font-mono text-[12px] tabular-nums font-semibold ${marginClass}`}
+                    >
+                      {row.marginPct != null ? `${row.marginPct.toFixed(1)}%` : "—"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+          {!isLoading && totals && (
+            <TableFooter className="sticky bottom-0 z-10 bg-muted/60 border-t-2 border-border">
+              <TableRow className="h-9 hover:bg-muted/70">
+                <TableCell className="py-1.5 font-bold text-foreground text-[13px]">
+                  Total
+                </TableCell>
+                <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-bold text-foreground">
+                  {fmt(totals.cost, currency)}
+                </TableCell>
+                <TableCell className="py-1.5" />
+                <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-semibold text-foreground">
+                  {totals.stripe > 0 ? (
+                    fmt(totals.stripe, currency)
+                  ) : (
+                    <span className="opacity-30">—</span>
+                  )}
+                </TableCell>
+                <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-semibold text-foreground">
+                  {totals.appStore > 0 ? (
+                    fmt(totals.appStore, currency)
+                  ) : (
+                    <span className="opacity-30">—</span>
+                  )}
+                </TableCell>
+                <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-semibold text-foreground">
+                  {totals.playStore > 0 ? (
+                    fmt(totals.playStore, currency)
+                  ) : (
+                    <span className="opacity-30">—</span>
+                  )}
+                </TableCell>
+                <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-bold text-foreground">
+                  {fmt(totals.revenue, currency)}
+                </TableCell>
+                <TableCell
+                  className={`py-1.5 text-right font-mono text-[12px] tabular-nums font-bold ${
+                    totals.net > 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : totals.net < 0
+                        ? "text-destructive"
+                        : "text-foreground"
+                  }`}
+                >
+                  {fmt(totals.net, currency)}
+                </TableCell>
+                <TableCell
+                  className={`py-1.5 text-right font-mono text-[12px] tabular-nums font-bold ${
+                    totals.marginPct == null
+                      ? "text-foreground"
+                      : totals.marginPct > 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : totals.marginPct < 0
+                          ? "text-destructive"
+                          : "text-foreground"
+                  }`}
+                >
+                  {totals.marginPct != null ? `${totals.marginPct.toFixed(1)}%` : "—"}
+                </TableCell>
+              </TableRow>
+            </TableFooter>
           )}
-        </TableBody>
-        {!isLoading && totals && (
-          <TableFooter className="sticky bottom-0 z-10 bg-muted/60 border-t-2 border-border">
-            <TableRow className="h-9 hover:bg-muted/70">
-              <TableCell className="py-1.5 font-bold text-foreground text-[13px]">Total</TableCell>
-              <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-bold text-foreground">
-                {fmt(totals.cost, currency)}
-              </TableCell>
-              <TableCell className="py-1.5" />
-              <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-semibold text-foreground">
-                {totals.stripe > 0 ? fmt(totals.stripe, currency) : <span className="opacity-30">—</span>}
-              </TableCell>
-              <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-semibold text-foreground">
-                {totals.appStore > 0 ? fmt(totals.appStore, currency) : <span className="opacity-30">—</span>}
-              </TableCell>
-              <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-semibold text-foreground">
-                {totals.playStore > 0 ? fmt(totals.playStore, currency) : <span className="opacity-30">—</span>}
-              </TableCell>
-              <TableCell className="py-1.5 text-right font-mono text-[12px] tabular-nums font-bold text-foreground">
-                {fmt(totals.revenue, currency)}
-              </TableCell>
-              <TableCell className={`py-1.5 text-right font-mono text-[12px] tabular-nums font-bold ${
-                totals.net > 0
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : totals.net < 0
-                    ? "text-destructive"
-                    : "text-foreground"
-              }`}>
-                {fmt(totals.net, currency)}
-              </TableCell>
-              <TableCell className={`py-1.5 text-right font-mono text-[12px] tabular-nums font-bold ${
-                totals.marginPct == null
-                  ? "text-foreground"
-                  : totals.marginPct > 0
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : totals.marginPct < 0
-                      ? "text-destructive"
-                      : "text-foreground"
-              }`}>
-                {totals.marginPct != null ? `${totals.marginPct.toFixed(1)}%` : "—"}
-              </TableCell>
-            </TableRow>
-          </TableFooter>
-        )}
-      </Table>
-    </Panel>
+        </Table>
+      </Panel>
     </>
   );
 }
@@ -963,9 +1239,11 @@ function AppCost() {
     const entry = globalCostSummary?.byApp?.find((a) => a.appId === scope);
     return entry?.trend ?? null;
   }, [globalCostSummary?.byApp, scope]);
-  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(`/api/apps/${scope}/cost`, queryKey, [
-    { url: "/api/apps", queryKey: getListAppsQueryKey() },
-  ]);
+  const { isRefreshing, isCoolingDown, forceRefresh } = useForceRefresh(
+    `/api/apps/${scope}/cost`,
+    queryKey,
+    [{ url: "/api/apps", queryKey: getListAppsQueryKey() }],
+  );
   const budgetPercent = data ? (data.monthToDate / data.budget) * 100 : 0;
   const budgetThreshold = useBudgetThreshold(scope);
   const net = data ? data.revenue.total - data.monthToDate : 0;
@@ -989,7 +1267,9 @@ function AppCost() {
     }
   }, [scope]);
 
-  const [serviceSortCol, setServiceSortCol] = useState<ServiceSortCol>(() => loadServiceSort(scope).col);
+  const [serviceSortCol, setServiceSortCol] = useState<ServiceSortCol>(
+    () => loadServiceSort(scope).col,
+  );
   const [serviceSortDir, setServiceSortDir] = useState<SortDir>(() => loadServiceSort(scope).dir);
 
   useEffect(() => {
@@ -1011,8 +1291,13 @@ function AppCost() {
     setServiceSortCol(newCol);
     setServiceSortDir(newDir);
     try {
-      localStorage.setItem(LS_SERVICE_SORT_KEY(scope), JSON.stringify({ col: newCol, dir: newDir }));
-    } catch { /* ignore */ }
+      localStorage.setItem(
+        LS_SERVICE_SORT_KEY(scope),
+        JSON.stringify({ col: newCol, dir: newDir }),
+      );
+    } catch {
+      /* ignore */
+    }
   }
 
   function parseTrend(trend: string | undefined | null): number {
@@ -1024,10 +1309,15 @@ function AppCost() {
   const chartRef = useRef<HTMLDivElement>(null);
   const bannerWrapperRef = useRef<HTMLDivElement>(null);
   const [chartRange, setChartRange] = useState<DailySpendRange>(30);
-  const [activeSigma, setActiveSigma] = useState<number>(() => readSigma(SENSITIVITY_KEY, ANOMALY_SIGMAS));
+  const [activeSigma, setActiveSigma] = useState<number>(() =>
+    readSigma(SENSITIVITY_KEY, ANOMALY_SIGMAS),
+  );
   const [highlightDate, setHighlightDate] = useState<string | undefined>(undefined);
 
-  const anomaly = useMemo(() => detectRecentAnomaly(data?.daily, activeSigma), [data?.daily, activeSigma]);
+  const anomaly = useMemo(
+    () => detectRecentAnomaly(data?.daily, activeSigma),
+    [data?.daily, activeSigma],
+  );
 
   // Track whether the main anomaly banner and the chart are in the viewport
   const [chartInView, setChartInView] = useState(false);
@@ -1037,16 +1327,23 @@ function AppCost() {
 
   // Re-sync dismissal state when the anomaly changes (e.g. scope switch)
   useEffect(() => {
-    if (!anomaly) { setAnomalyDismissed(false); return; }
+    if (!anomaly) {
+      setAnomalyDismissed(false);
+      return;
+    }
     try {
       setAnomalyDismissed(localStorage.getItem(LS_KEY_PREFIX + anomaly.dateKey) === "1");
-    } catch { setAnomalyDismissed(false); }
+    } catch {
+      setAnomalyDismissed(false);
+    }
   }, [anomaly?.dateKey]);
 
   useEffect(() => {
     const el = chartRef.current;
     if (!el) return;
-    const obs = new IntersectionObserver(([entry]) => setChartInView(entry.isIntersecting), { threshold: 0.1 });
+    const obs = new IntersectionObserver(([entry]) => setChartInView(entry.isIntersecting), {
+      threshold: 0.1,
+    });
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
@@ -1075,7 +1372,15 @@ function AppCost() {
     }, 1650);
   }
 
-  const breakdownHeaders = ["Service", "Resource Group", "Environment", "Cost (USD)", "% of Total", "Trend", "Budget breach"];
+  const breakdownHeaders = [
+    "Service",
+    "Resource Group",
+    "Environment",
+    "Cost (USD)",
+    "% of Total",
+    "Trend",
+    "Budget breach",
+  ];
   const breakdownRows = useMemo(() => {
     if (!data?.byService?.length) return null;
     const resourceGroup = selectedApp?.resourceGroup ?? "";
@@ -1155,7 +1460,9 @@ function AppCost() {
   const dailyCsvRows = useMemo(() => {
     if (!data?.daily?.length) return null;
     return [...data.daily].reverse().map((day) => {
-      const dateLabel = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(day.timestamp as string));
+      const dateLabel = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(
+        new Date(day.timestamp as string),
+      );
       const pct = day.vsLastWeek;
       const pctLabel = pct == null ? "" : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
       return [dateLabel, day.value.toFixed(2), pctLabel];
@@ -1172,8 +1479,16 @@ function AppCost() {
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="flex h-10 w-full justify-start rounded-none border-b border-border bg-transparent p-0">
-        <TabsTrigger value="overview" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">Overview</TabsTrigger>
-        <TabsTrigger value="budgets" className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent">
+        <TabsTrigger
+          value="overview"
+          className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent"
+        >
+          Overview
+        </TabsTrigger>
+        <TabsTrigger
+          value="budgets"
+          className="h-10 rounded-none border-b-2 border-transparent px-4 py-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none bg-transparent"
+        >
           <span className="inline-flex items-center gap-1.5">
             Budgets
             {unacknowledgedCount > 0 && (
@@ -1190,13 +1505,15 @@ function AppCost() {
             <Filter className="h-3.5 w-3.5 shrink-0 text-blue-500 dark:text-blue-400" />
             <span className="text-foreground font-medium">
               Navigated from{" "}
-              <Link href="/" className="underline underline-offset-2 decoration-blue-500/60 hover:decoration-blue-600 dark:decoration-blue-400/60 dark:hover:decoration-blue-300 transition-colors">
+              <Link
+                href="/"
+                className="underline underline-offset-2 decoration-blue-500/60 hover:decoration-blue-600 dark:decoration-blue-400/60 dark:hover:decoration-blue-300 transition-colors"
+              >
                 Budget Status
               </Link>
             </span>
             <span className="text-muted-foreground text-[11px]">
-              — filtered by{" "}
-              <span className="font-medium text-foreground">{fromFilter}</span>
+              — filtered by <span className="font-medium text-foreground">{fromFilter}</span>
             </span>
             <button
               onClick={dismissFromFilter}
@@ -1208,377 +1525,512 @@ function AppCost() {
           </div>
         )}
         {dateFilter && (
-        <div className="flex items-center gap-2 px-3 py-2 border border-amber-500/30 bg-amber-500/8 rounded-sm text-[13px]">
-          <CalendarSearch className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-          <span className="text-foreground font-medium">
-            Drilled in from anomaly on{" "}
-            <span className="font-semibold">{format(dateFilter, "EEEE, MMMM d, yyyy")}</span>
-          </span>
-          <span className="text-muted-foreground text-[11px] ml-1">— service breakdown below shows the full month</span>
-          <button
-            onClick={dismissDateFilter}
-            className="ml-auto flex items-center justify-center h-5 w-5 rounded-sm hover:bg-amber-500/20 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Dismiss date filter"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-      {!isLoading && data && (
-        <div className="flex items-center justify-end gap-2">
-          {data.dataSource === "live" && (
-            <ForceRefreshButton isRefreshing={isRefreshing} isCoolingDown={isCoolingDown} onRefresh={forceRefresh} />
-          )}
-          <CostDataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
-        </div>
-      )}
-      {!isLoading && data && (
-        <StaleCacheBanner source="azure-cost" dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
-      )}
-      <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
-      <div ref={bannerWrapperRef}>
-        {!isLoading && data?.daily && (
-          <AnomalyAlertBanner
-            appId={scope}
-            anomaly={anomaly}
-            formatCurrency={(v) => fmt(v, data.currency)}
-            onViewInChart={anomaly ? handleViewInChart : undefined}
-            onDismiss={() => setAnomalyDismissed(true)}
-            sigmas={activeSigma}
+          <div className="flex items-center gap-2 px-3 py-2 border border-amber-500/30 bg-amber-500/8 rounded-sm text-[13px]">
+            <CalendarSearch className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span className="text-foreground font-medium">
+              Drilled in from anomaly on{" "}
+              <span className="font-semibold">{format(dateFilter, "EEEE, MMMM d, yyyy")}</span>
+            </span>
+            <span className="text-muted-foreground text-[11px] ml-1">
+              — service breakdown below shows the full month
+            </span>
+            <button
+              onClick={dismissDateFilter}
+              className="ml-auto flex items-center justify-center h-5 w-5 rounded-sm hover:bg-amber-500/20 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Dismiss date filter"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+        {!isLoading && data && (
+          <div className="flex items-center justify-end gap-2">
+            {data.dataSource === "live" && (
+              <ForceRefreshButton
+                isRefreshing={isRefreshing}
+                isCoolingDown={isCoolingDown}
+                onRefresh={forceRefresh}
+              />
+            )}
+            <CostDataSourceBadge dataSource={data.dataSource} dataAsOf={data.dataAsOf} />
+          </div>
+        )}
+        {!isLoading && data && (
+          <StaleCacheBanner
+            source="azure-cost"
+            dataSource={data.dataSource}
+            dataAsOf={data.dataAsOf}
           />
         )}
-      </div>
-      <div className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <Tile
-          title="Actual cost (MTD)"
-          value={isLoading ? null : data ? fmt(data.monthToDate, data.currency) : "$0.00"}
-          badge={
-            !isLoading && (data?.momChangePct != null || wowTrend) ? (
-              <span className="inline-flex items-center gap-1">
-                {wowTrend && <WoWTrendBadge trend={wowTrend} label="Week-over-week spend trend (this app)" />}
-                {data?.momChangePct != null && <MomTrendBadge pct={data.momChangePct} />}
+        <RefreshingBar isFetching={isFetching} isLoading={isLoading} />
+        <div ref={bannerWrapperRef}>
+          {!isLoading && data?.daily && (
+            <AnomalyAlertBanner
+              appId={scope}
+              anomaly={anomaly}
+              formatCurrency={(v) => fmt(v, data.currency)}
+              onViewInChart={anomaly ? handleViewInChart : undefined}
+              onDismiss={() => setAnomalyDismissed(true)}
+              sigmas={activeSigma}
+            />
+          )}
+        </div>
+        <div
+          className={`space-y-4 transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+            <Tile
+              title="Actual cost (MTD)"
+              value={isLoading ? null : data ? fmt(data.monthToDate, data.currency) : "$0.00"}
+              badge={
+                !isLoading && (data?.momChangePct != null || wowTrend) ? (
+                  <span className="inline-flex items-center gap-1">
+                    {wowTrend && (
+                      <WoWTrendBadge
+                        trend={wowTrend}
+                        label="Week-over-week spend trend (this app)"
+                      />
+                    )}
+                    {data?.momChangePct != null && <MomTrendBadge pct={data.momChangePct} />}
+                  </span>
+                ) : undefined
+              }
+              subLabel={
+                !isLoading && data?.dataAsOf ? `as of ${fmtRelativeTime(data.dataAsOf)}` : undefined
+              }
+            />
+            <Tile
+              title="Forecasted cost"
+              value={isLoading ? null : data ? fmt(data.forecast, data.currency) : "$0.00"}
+              subLabel={
+                !isLoading && data?.dataAsOf ? `as of ${fmtRelativeTime(data.dataAsOf)}` : undefined
+              }
+            />
+            <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-[12px] text-muted-foreground font-medium">API usage (MTD)</div>
+                {!isLoading && data?.apiUsage.dataSource && (
+                  <span
+                    className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${data.apiUsage.dataSource === "live" ? "bg-green-500/15 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}
+                  >
+                    {data.apiUsage.dataSource === "live" ? "live" : "est"}
+                  </span>
+                )}
+              </div>
+              {isLoading || !data ? (
+                <Skeleton className="h-7 w-20 mt-1" />
+              ) : (
+                <>
+                  <div className="text-xl font-semibold text-foreground mt-1 tabular-nums">
+                    {fmt(data.apiUsage.cost, data.currency)}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
+                    {fmtInt(data.apiUsage.totalCalls)} calls
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+              <div className="text-[12px] text-muted-foreground font-medium mb-1">
+                Budget utilization
+              </div>
+              {isLoading || !data ? (
+                <Skeleton className="h-7 w-full mt-1" />
+              ) : (
+                <div className="space-y-1 mt-1">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="font-semibold text-foreground tabular-nums">
+                      {fmt(data.monthToDate, data.currency)}
+                    </span>
+                    <span className="text-muted-foreground tabular-nums">
+                      {fmt(data.budget, data.currency)}
+                    </span>
+                  </div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Progress
+                          value={budgetPercent}
+                          className="h-1.5 rounded-none bg-muted cursor-default"
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Alert at {budgetThreshold}% · {budgetPercent.toFixed(0)}% utilized
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {!isLoading && data && data.revenue.total === 0 && (
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="inline-flex items-center px-1.5 py-0.5 border border-border bg-muted/40 text-muted-foreground font-semibold tracking-wide uppercase text-[10px]">
+                No data
               </span>
-            ) : undefined
-          }
-          subLabel={!isLoading && data?.dataAsOf ? `as of ${fmtRelativeTime(data.dataAsOf)}` : undefined}
-        />
-        <Tile
-          title="Forecasted cost"
-          value={isLoading ? null : data ? fmt(data.forecast, data.currency) : "$0.00"}
-          subLabel={!isLoading && data?.dataAsOf ? `as of ${fmtRelativeTime(data.dataAsOf)}` : undefined}
-        />
-        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-1">
-            <div className="text-[12px] text-muted-foreground font-medium">API usage (MTD)</div>
-            {!isLoading && data?.apiUsage.dataSource && (
-              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${data.apiUsage.dataSource === "live" ? "bg-green-500/15 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-                {data.apiUsage.dataSource === "live" ? "live" : "est"}
-              </span>
+              No revenue recorded this month. Stripe, App Store Connect, and Google Play sources
+              will appear here once active.
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+            <Tile
+              title="Revenue (MTD)"
+              value={isLoading || !data ? null : fmt(data.revenue.total, data.revenue.currency)}
+            />
+            <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+              <div className="text-[12px] text-muted-foreground font-medium mb-1">
+                Net (Revenue − Cost)
+              </div>
+              {isLoading || !data ? (
+                <Skeleton className="h-7 w-20 mt-1" />
+              ) : (
+                <div
+                  className={`text-xl font-semibold mt-1 tabular-nums flex items-center gap-1.5 ${netClass}`}
+                >
+                  {net >= 0 ? (
+                    <TrendingUp className="h-4 w-4" />
+                  ) : (
+                    <TrendingDown className="h-4 w-4" />
+                  )}
+                  {fmt(net, data.currency)}
+                </div>
+              )}
+            </div>
+            <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+              <div className="text-[12px] text-muted-foreground font-medium mb-1">Gross margin</div>
+              {isLoading || !data ? (
+                <Skeleton className="h-7 w-20 mt-1" />
+              ) : (
+                <div className={`text-xl font-semibold mt-1 tabular-nums ${netClass}`}>
+                  {marginPct === null ? "—" : `${marginPct.toFixed(1)}%`}
+                </div>
+              )}
+            </div>
+            <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+              <div className="text-[12px] text-muted-foreground font-medium mb-1">
+                Revenue by source
+              </div>
+              {isLoading || !data ? (
+                <Skeleton className="h-7 w-full mt-1" />
+              ) : data.revenue.total === 0 ? (
+                <div className="text-[11px] text-muted-foreground mt-2">
+                  No revenue sources configured (internal app).
+                </div>
+              ) : (
+                <div className="space-y-0.5 mt-1 text-[11px] tabular-nums">
+                  {data.revenue.bySource.map((s) => (
+                    <div key={s.source} className="flex justify-between">
+                      <span className="text-muted-foreground truncate pr-2">{s.label}</span>
+                      <span className="font-mono text-foreground">
+                        {fmt(s.amount, data.revenue.currency)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div ref={chartRef} className="bg-card border border-border shadow-sm flex flex-col">
+            <div className="p-3 border-b border-border bg-card flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Daily Spend</h2>
+              {!isLoading && data && data.daily.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {showDailyTable && (
+                    <CsvToolbar
+                      handleExport={handleDailyExport}
+                      handleCopy={handleDailyCopy}
+                      disabled={dailyCsvDisabled}
+                      copied={copiedDaily}
+                    />
+                  )}
+                  <button
+                    onClick={() =>
+                      setShowDailyTable((v) => {
+                        const next = !v;
+                        try {
+                          localStorage.setItem(LS_DAILY_TABLE_KEY(scope), next ? "1" : "0");
+                        } catch {
+                          /* ignore */
+                        }
+                        return next;
+                      })
+                    }
+                    className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors ml-1"
+                  >
+                    <TableIcon className="h-3.5 w-3.5" />
+                    {showDailyTable ? "Hide table" : "Show table"}
+                    {showDailyTable ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="p-4 h-72">
+              {isLoading ? (
+                <Skeleton className="h-full w-full" />
+              ) : data?.daily?.length ? (
+                <DailySpendChart
+                  daily={data.daily}
+                  formatCurrency={(v) => fmt(v, data.currency)}
+                  showAnomalies
+                  highlightPeak
+                  colorByTrend
+                  showLegend
+                  range={chartRange}
+                  onRangeChange={setChartRange}
+                  sensitivityKey="orbit:anomaly-sigma:cost"
+                  onSigmaChange={setActiveSigma}
+                  highlightDate={highlightDate}
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                  No daily data available
+                </div>
+              )}
+            </div>
+            {showDailyTable && data && data.daily.length > 0 && (
+              <div className="border-t border-border overflow-x-auto">
+                <Table className="text-[13px]">
+                  <TableHeader className="bg-muted/50 border-b border-border">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="h-8 font-semibold text-foreground w-[140px]">
+                        Date
+                      </TableHead>
+                      <TableHead className="h-8 font-semibold text-foreground text-right w-[140px]">
+                        Spend
+                      </TableHead>
+                      <TableHead className="h-8 font-semibold text-foreground text-right w-[140px]">
+                        vs Last Week
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {([...data.daily] as DailyCostPoint[]).reverse().map((day) => {
+                      const pct = day.vsLastWeek;
+                      const pctClass =
+                        pct == null
+                          ? "text-muted-foreground/50"
+                          : pct > 15
+                            ? "text-destructive"
+                            : pct > 0
+                              ? "text-amber-500 dark:text-amber-400"
+                              : "text-emerald-600 dark:text-emerald-400";
+                      const pctLabel =
+                        pct == null ? "—" : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
+                      return (
+                        <TableRow
+                          key={day.timestamp as string}
+                          className="h-8 border-b border-border/50 hover:bg-muted/40"
+                        >
+                          <TableCell className="py-1 font-medium tabular-nums text-[12px]">
+                            {new Intl.DateTimeFormat("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            }).format(new Date(day.timestamp as string))}
+                          </TableCell>
+                          <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">
+                            {fmt(day.value, data.currency)}
+                          </TableCell>
+                          <TableCell
+                            className={`py-1 text-right font-mono text-[12px] tabular-nums font-semibold ${pctClass}`}
+                          >
+                            {pctLabel}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </div>
-          {isLoading || !data ? <Skeleton className="h-7 w-20 mt-1" /> : (
-            <>
-              <div className="text-xl font-semibold text-foreground mt-1 tabular-nums">{fmt(data.apiUsage.cost, data.currency)}</div>
-              <div className="text-[11px] text-muted-foreground tabular-nums mt-0.5">{fmtInt(data.apiUsage.totalCalls)} calls</div>
-            </>
-          )}
-        </div>
-        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-          <div className="text-[12px] text-muted-foreground font-medium mb-1">Budget utilization</div>
-          {isLoading || !data ? <Skeleton className="h-7 w-full mt-1" /> : (
-            <div className="space-y-1 mt-1">
-              <div className="flex justify-between text-[11px]">
-                <span className="font-semibold text-foreground tabular-nums">{fmt(data.monthToDate, data.currency)}</span>
-                <span className="text-muted-foreground tabular-nums">{fmt(data.budget, data.currency)}</span>
-              </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Progress value={budgetPercent} className="h-1.5 rounded-none bg-muted cursor-default" />
-                  </TooltipTrigger>
-                  <TooltipContent>Alert at {budgetThreshold}% · {budgetPercent.toFixed(0)}% utilized</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          )}
-        </div>
-      </div>
 
-      {!isLoading && data && data.revenue.total === 0 && (
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center px-1.5 py-0.5 border border-border bg-muted/40 text-muted-foreground font-semibold tracking-wide uppercase text-[10px]">No data</span>
-          No revenue recorded this month. Stripe, App Store Connect, and Google Play sources will appear here once active.
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <Tile title="Revenue (MTD)" value={isLoading || !data ? null : fmt(data.revenue.total, data.revenue.currency)} />
-        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-          <div className="text-[12px] text-muted-foreground font-medium mb-1">Net (Revenue − Cost)</div>
-          {isLoading || !data ? <Skeleton className="h-7 w-20 mt-1" /> : (
-            <div className={`text-xl font-semibold mt-1 tabular-nums flex items-center gap-1.5 ${netClass}`}>
-              {net >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-              {fmt(net, data.currency)}
-            </div>
-          )}
-        </div>
-        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-          <div className="text-[12px] text-muted-foreground font-medium mb-1">Gross margin</div>
-          {isLoading || !data ? <Skeleton className="h-7 w-20 mt-1" /> : (
-            <div className={`text-xl font-semibold mt-1 tabular-nums ${netClass}`}>
-              {marginPct === null ? "—" : `${marginPct.toFixed(1)}%`}
-            </div>
-          )}
-        </div>
-        <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
-          <div className="text-[12px] text-muted-foreground font-medium mb-1">Revenue by source</div>
-          {isLoading || !data ? <Skeleton className="h-7 w-full mt-1" /> : data.revenue.total === 0 ? (
-            <div className="text-[11px] text-muted-foreground mt-2">No revenue sources configured (internal app).</div>
-          ) : (
-            <div className="space-y-0.5 mt-1 text-[11px] tabular-nums">
-              {data.revenue.bySource.map((s) => (
-                <div key={s.source} className="flex justify-between">
-                  <span className="text-muted-foreground truncate pr-2">{s.label}</span>
-                  <span className="font-mono text-foreground">{fmt(s.amount, data.revenue.currency)}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Panel
+              title="Cost by Service"
+              toolbar={
+                <div className="flex items-center gap-1">
+                  <CsvToolbar
+                    handleExport={handleBreakdownExport}
+                    handleCopy={handleBreakdownCopy}
+                    disabled={breakdownDisabled}
+                    copied={copied}
+                  />
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div ref={chartRef} className="bg-card border border-border shadow-sm flex flex-col">
-        <div className="p-3 border-b border-border bg-card flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Daily Spend</h2>
-          {!isLoading && data && data.daily.length > 0 && (
-            <div className="flex items-center gap-1">
-              {showDailyTable && (
-                <CsvToolbar
-                  handleExport={handleDailyExport}
-                  handleCopy={handleDailyCopy}
-                  disabled={dailyCsvDisabled}
-                  copied={copiedDaily}
-                />
-              )}
-              <button
-                onClick={() => setShowDailyTable((v) => {
-                  const next = !v;
-                  try { localStorage.setItem(LS_DAILY_TABLE_KEY(scope), next ? "1" : "0"); } catch { /* ignore */ }
-                  return next;
-                })}
-                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors ml-1"
-              >
-                <TableIcon className="h-3.5 w-3.5" />
-                {showDailyTable ? "Hide table" : "Show table"}
-                {showDailyTable ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="p-4 h-72">
-          {isLoading ? (
-            <Skeleton className="h-full w-full" />
-          ) : data?.daily?.length ? (
-            <DailySpendChart
-              daily={data.daily}
-              formatCurrency={(v) => fmt(v, data.currency)}
-              showAnomalies
-              highlightPeak
-              colorByTrend
-              showLegend
-              range={chartRange}
-              onRangeChange={setChartRange}
-              sensitivityKey="orbit:anomaly-sigma:cost"
-              onSigmaChange={setActiveSigma}
-              highlightDate={highlightDate}
-            />
-          ) : (
-            <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No daily data available</div>
-          )}
-        </div>
-        {showDailyTable && data && data.daily.length > 0 && (
-          <div className="border-t border-border overflow-x-auto">
-            <Table className="text-[13px]">
-              <TableHeader className="bg-muted/50 border-b border-border">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-8 font-semibold text-foreground w-[140px]">Date</TableHead>
-                  <TableHead className="h-8 font-semibold text-foreground text-right w-[140px]">Spend</TableHead>
-                  <TableHead className="h-8 font-semibold text-foreground text-right w-[140px]">vs Last Week</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {([...data.daily] as DailyCostPoint[]).reverse().map((day) => {
-                  const pct = day.vsLastWeek;
-                  const pctClass =
-                    pct == null
-                      ? "text-muted-foreground/50"
-                      : pct > 15
+              }
+            >
+              <Table className="text-[13px]">
+                <THead>
+                  <TableHead className="h-8 font-semibold text-foreground">Service</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground text-right w-[130px] p-0">
+                    <button
+                      type="button"
+                      onClick={() => handleServiceSortClick("amount")}
+                      className="flex items-center justify-end gap-1 h-full w-full px-4 hover:text-foreground/70 transition-colors"
+                    >
+                      Cost (MTD)
+                      {serviceSortCol === "amount" ? (
+                        serviceSortDir === "asc" ? (
+                          <ArrowUp className="h-3 w-3 shrink-0" />
+                        ) : (
+                          <ArrowDown className="h-3 w-3 shrink-0" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
+                      )}
+                    </button>
+                  </TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground text-right w-[80px] p-0">
+                    <button
+                      type="button"
+                      onClick={() => handleServiceSortClick("trend")}
+                      className="flex items-center justify-end gap-1 h-full w-full px-4 hover:text-foreground/70 transition-colors"
+                    >
+                      WoW
+                      {serviceSortCol === "trend" ? (
+                        serviceSortDir === "asc" ? (
+                          <ArrowUp className="h-3 w-3 shrink-0" />
+                        ) : (
+                          <ArrowDown className="h-3 w-3 shrink-0" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
+                      )}
+                    </button>
+                  </TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground w-[160px]"></TableHead>
+                </THead>
+                <TableBody>
+                  {isLoading || !data ? (
+                    <SkeletonRows cols={4} rows={5} />
+                  ) : (
+                    (sortedByService ?? []).map((svc, i) => {
+                      const trend = svc.trend;
+                      const isPos = trend?.startsWith("+");
+                      const isNeg = trend?.startsWith("-");
+                      const trendClass = isPos
                         ? "text-destructive"
-                        : pct > 0
-                          ? "text-amber-500 dark:text-amber-400"
-                          : "text-emerald-600 dark:text-emerald-400";
-                  const pctLabel =
-                    pct == null
-                      ? "—"
-                      : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
-                  return (
-                    <TableRow key={day.timestamp as string} className="h-8 border-b border-border/50 hover:bg-muted/40">
-                      <TableCell className="py-1 font-medium tabular-nums text-[12px]">
-                        {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(day.timestamp as string))}
-                      </TableCell>
-                      <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">
-                        {fmt(day.value, data.currency)}
-                      </TableCell>
-                      <TableCell className={`py-1 text-right font-mono text-[12px] tabular-nums font-semibold ${pctClass}`}>
-                        {pctLabel}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        : isNeg
+                          ? "text-emerald-500"
+                          : "text-muted-foreground";
+                      return (
+                        <TableRow
+                          key={i}
+                          className="h-8 border-b border-border/50 hover:bg-muted/40"
+                        >
+                          <TableCell className="py-1 font-medium">{svc.service}</TableCell>
+                          <TableCell className="py-1 text-right font-mono text-[12px]">
+                            {fmt(svc.amount, data.currency)}
+                          </TableCell>
+                          <TableCell
+                            className={`py-1 text-right font-mono text-[11px] ${trendClass}`}
+                          >
+                            {trend ?? <span className="text-muted-foreground/50">—</span>}
+                          </TableCell>
+                          <TableCell className="py-1">
+                            <Progress
+                              value={(svc.amount / data.monthToDate) * 100}
+                              className="h-1.5 rounded-none bg-muted"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </Panel>
+
+            <Panel
+              title="Third-party API costs"
+              rightHeader={
+                data ? (
+                  <div className="flex items-center gap-2 pr-2">
+                    {data.apiUsage.dataSource && (
+                      <span
+                        className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${data.apiUsage.dataSource === "live" ? "bg-green-500/15 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}
+                      >
+                        {data.apiUsage.dataSource === "live" ? "live" : "est"}
+                      </span>
+                    )}
+                    <span className="text-[11px] text-muted-foreground">
+                      {fmt(data.apiUsage.cost, data.currency)} @{" "}
+                      {fmt(data.apiUsage.costPerMillion, data.currency)}/M calls
+                    </span>
+                  </div>
+                ) : null
+              }
+              toolbar={
+                <div className="flex items-center gap-1">
+                  <CsvToolbar
+                    handleExport={handleApiNameExport}
+                    handleCopy={handleApiNameCopy}
+                    disabled={apiNameDisabled}
+                    copied={apiNameCopied}
+                  />
+                </div>
+              }
+            >
+              <Table className="text-[13px]">
+                <THead>
+                  <TableHead className="h-8 font-semibold text-foreground">API Name</TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground text-right w-[140px]">
+                    Calls (MTD)
+                  </TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">
+                    Cost
+                  </TableHead>
+                  <TableHead className="h-8 font-semibold text-foreground w-[140px]"></TableHead>
+                </THead>
+                <TableBody>
+                  {isLoading || !data ? (
+                    <SkeletonRows cols={4} rows={6} />
+                  ) : (
+                    data.apiUsage.byApi?.map((row, idx) => {
+                      const maxCost = data.apiUsage.byApi[0]?.cost || 1;
+                      return (
+                        <TableRow
+                          key={`${row.name}-${idx}`}
+                          className="h-8 border-b border-border/50 hover:bg-muted/40"
+                        >
+                          <TableCell className="py-1 font-mono text-[12px] font-medium">
+                            {row.name}
+                          </TableCell>
+                          <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
+                            {fmtInt(row.totalCalls)}
+                          </TableCell>
+                          <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">
+                            {fmt(row.cost, data.currency)}
+                          </TableCell>
+                          <TableCell className="py-1">
+                            <Progress
+                              value={(row.cost / maxCost) * 100}
+                              className="h-1.5 rounded-none bg-muted"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </Panel>
           </div>
-        )}
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Panel
-          title="Cost by Service"
-          toolbar={
-            <div className="flex items-center gap-1">
-              <CsvToolbar
-                handleExport={handleBreakdownExport}
-                handleCopy={handleBreakdownCopy}
-                disabled={breakdownDisabled}
-                copied={copied}
-              />
-            </div>
-          }
-        >
-          <Table className="text-[13px]">
-            <THead>
-              <TableHead className="h-8 font-semibold text-foreground">Service</TableHead>
-              <TableHead className="h-8 font-semibold text-foreground text-right w-[130px] p-0">
-                <button
-                  type="button"
-                  onClick={() => handleServiceSortClick("amount")}
-                  className="flex items-center justify-end gap-1 h-full w-full px-4 hover:text-foreground/70 transition-colors"
-                >
-                  Cost (MTD)
-                  {serviceSortCol === "amount" ? (
-                    serviceSortDir === "asc" ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />
-                  ) : (
-                    <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
-                  )}
-                </button>
-              </TableHead>
-              <TableHead className="h-8 font-semibold text-foreground text-right w-[80px] p-0">
-                <button
-                  type="button"
-                  onClick={() => handleServiceSortClick("trend")}
-                  className="flex items-center justify-end gap-1 h-full w-full px-4 hover:text-foreground/70 transition-colors"
-                >
-                  WoW
-                  {serviceSortCol === "trend" ? (
-                    serviceSortDir === "asc" ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />
-                  ) : (
-                    <ArrowUpDown className="h-3 w-3 shrink-0 opacity-40" />
-                  )}
-                </button>
-              </TableHead>
-              <TableHead className="h-8 font-semibold text-foreground w-[160px]"></TableHead>
-            </THead>
-            <TableBody>
-              {isLoading || !data ? (
-                <SkeletonRows cols={4} rows={5} />
-              ) : (
-                (sortedByService ?? []).map((svc, i) => {
-                  const trend = svc.trend;
-                  const isPos = trend?.startsWith("+");
-                  const isNeg = trend?.startsWith("-");
-                  const trendClass = isPos
-                    ? "text-destructive"
-                    : isNeg
-                      ? "text-emerald-500"
-                      : "text-muted-foreground";
-                  return (
-                    <TableRow key={i} className="h-8 border-b border-border/50 hover:bg-muted/40">
-                      <TableCell className="py-1 font-medium">{svc.service}</TableCell>
-                      <TableCell className="py-1 text-right font-mono text-[12px]">{fmt(svc.amount, data.currency)}</TableCell>
-                      <TableCell className={`py-1 text-right font-mono text-[11px] ${trendClass}`}>
-                        {trend ?? <span className="text-muted-foreground/50">—</span>}
-                      </TableCell>
-                      <TableCell className="py-1">
-                        <Progress value={(svc.amount / data.monthToDate) * 100} className="h-1.5 rounded-none bg-muted" />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </Panel>
-
-        <Panel
-          title="Third-party API costs"
-          rightHeader={data ? (
-            <div className="flex items-center gap-2 pr-2">
-              {data.apiUsage.dataSource && (
-                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${data.apiUsage.dataSource === "live" ? "bg-green-500/15 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-                  {data.apiUsage.dataSource === "live" ? "live" : "est"}
-                </span>
-              )}
-              <span className="text-[11px] text-muted-foreground">{fmt(data.apiUsage.cost, data.currency)} @ {fmt(data.apiUsage.costPerMillion, data.currency)}/M calls</span>
-            </div>
-          ) : null}
-          toolbar={
-            <div className="flex items-center gap-1">
-              <CsvToolbar
-                handleExport={handleApiNameExport}
-                handleCopy={handleApiNameCopy}
-                disabled={apiNameDisabled}
-                copied={apiNameCopied}
-              />
-            </div>
-          }
-        >
-          <Table className="text-[13px]">
-            <THead>
-              <TableHead className="h-8 font-semibold text-foreground">API Name</TableHead>
-              <TableHead className="h-8 font-semibold text-foreground text-right w-[140px]">Calls (MTD)</TableHead>
-              <TableHead className="h-8 font-semibold text-foreground text-right w-[110px]">Cost</TableHead>
-              <TableHead className="h-8 font-semibold text-foreground w-[140px]"></TableHead>
-            </THead>
-            <TableBody>
-              {isLoading || !data ? (
-                <SkeletonRows cols={4} rows={6} />
-              ) : (
-                data.apiUsage.byApi?.map((row, idx) => {
-                  const maxCost = data.apiUsage.byApi[0]?.cost || 1;
-                  return (
-                    <TableRow key={`${row.name}-${idx}`} className="h-8 border-b border-border/50 hover:bg-muted/40">
-                      <TableCell className="py-1 font-mono text-[12px] font-medium">{row.name}</TableCell>
-                      <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums text-muted-foreground">{fmtInt(row.totalCalls)}</TableCell>
-                      <TableCell className="py-1 text-right font-mono text-[12px] tabular-nums">{fmt(row.cost, data.currency)}</TableCell>
-                      <TableCell className="py-1">
-                        <Progress value={(row.cost / maxCost) * 100} className="h-1.5 rounded-none bg-muted" />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </Panel>
-
-      </div>
-
-      {scope === "kinisis-labs" && data?.opsCosts && (
-        <OpsCostsPanel opsCosts={data.opsCosts} currency={data.currency} isLoading={isLoading} />
-      )}
-
-      </div>
+          {scope === "kinisis-labs" && data?.opsCosts && (
+            <OpsCostsPanel
+              opsCosts={data.opsCosts}
+              currency={data.currency}
+              isLoading={isLoading}
+            />
+          )}
+        </div>
       </TabsContent>
       <TabsContent value="budgets" className="mt-4">
         <BudgetAlertHistory appId={scope} />
@@ -1605,7 +2057,11 @@ function AppCost() {
           )}
           <button
             onClick={() => {
-              try { localStorage.setItem(LS_KEY_PREFIX + anomaly.dateKey, "1"); } catch { /* ignore */ }
+              try {
+                localStorage.setItem(LS_KEY_PREFIX + anomaly.dateKey, "1");
+              } catch {
+                /* ignore */
+              }
               setAnomalyDismissed(true);
             }}
             className="ml-auto shrink-0 p-0.5 rounded hover:bg-white/20 transition-colors"
@@ -1678,15 +2134,18 @@ function OpsCostsPanel({
               <THead>
                 <TableHead className="h-7 font-medium text-muted-foreground">Name</TableHead>
                 <TableHead className="h-7 font-medium text-muted-foreground">Billing</TableHead>
-                <TableHead className="h-7 font-medium text-muted-foreground text-right w-[110px]">Monthly</TableHead>
+                <TableHead className="h-7 font-medium text-muted-foreground text-right w-[110px]">
+                  Monthly
+                </TableHead>
                 <TableHead className="h-7 w-[60px]"></TableHead>
               </THead>
               <TableBody>
                 {cat.items.map((item) => (
-                  <TableRow key={item.id} className="h-7 border-b border-border/50 hover:bg-muted/40">
-                    <TableCell className="py-1 font-medium">
-                      {item.name}
-                    </TableCell>
+                  <TableRow
+                    key={item.id}
+                    className="h-7 border-b border-border/50 hover:bg-muted/40"
+                  >
+                    <TableCell className="py-1 font-medium">{item.name}</TableCell>
                     <TableCell className="py-1 text-muted-foreground text-[11px] capitalize">
                       {item.billingCycle}
                     </TableCell>
@@ -1751,7 +2210,9 @@ function SkeletonRows({ cols, rows }: { cols: number; rows: number }) {
       {Array.from({ length: rows }).map((_, i) => (
         <TableRow key={i} className="h-8 border-b border-border/50">
           {Array.from({ length: cols }).map((__, j) => (
-            <TableCell key={j}><Skeleton className="h-4 w-24" /></TableCell>
+            <TableCell key={j}>
+              <Skeleton className="h-4 w-24" />
+            </TableCell>
           ))}
         </TableRow>
       ))}
@@ -1759,16 +2220,39 @@ function SkeletonRows({ cols, rows }: { cols: number; rows: number }) {
   );
 }
 
-function ToolbarBtn({ icon: Icon, children, onClick }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode; onClick?: () => void }) {
+function ToolbarBtn({
+  icon: Icon,
+  children,
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
   return (
-    <Button variant="ghost" size="sm" className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10" onClick={onClick}>
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
+      onClick={onClick}
+    >
       <Icon className="h-3.5 w-3.5 mr-1.5" />
       {children}
     </Button>
   );
 }
 
-function Tile({ title, value, badge, subLabel }: { title: string; value: React.ReactNode; badge?: React.ReactNode; subLabel?: React.ReactNode }) {
+function Tile({
+  title,
+  value,
+  badge,
+  subLabel,
+}: {
+  title: string;
+  value: React.ReactNode;
+  badge?: React.ReactNode;
+  subLabel?: React.ReactNode;
+}) {
   return (
     <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
       <div className="flex items-center justify-between gap-2 mb-1">
