@@ -92,7 +92,7 @@ function lastMonthComparablePeriod(): { start: string; end: string } {
 }
 
 /** A UUID-shaped GUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx). */
-function isGuid(s: string): boolean {
+export function isGuid(s: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 }
 
@@ -640,14 +640,17 @@ function extractCostCenterTag(tags: Record<string, unknown>): string | null {
 
 export async function fetchCostByApplicationTag({
   bypassCache = false,
-}: { bypassCache?: boolean } = {}): Promise<AppTagCostItem[] | null> {
+  subscriptionIds: explicitSubscriptionIds,
+}: { bypassCache?: boolean; subscriptionIds?: string[] } = {}): Promise<AppTagCostItem[] | null> {
   if (!isAzureConfigured()) return null;
 
   if (!bypassCache && _appTagCacheEntry && _appTagCacheEntry.expiresAt > Date.now()) {
     return _appTagCacheEntry.result;
   }
 
-  const subscriptionIds = getSubscriptionIds();
+  const subscriptionIds = [
+    ...new Set([...getSubscriptionIds(), ...(explicitSubscriptionIds ?? [])]),
+  ];
   const billingAccountId = getBillingAccountId();
   if (subscriptionIds.length === 0 && !billingAccountId) return null;
 
@@ -918,14 +921,19 @@ let _categoryCacheEntry: {
 
 export async function fetchCostByCostCategoryTag({
   bypassCache = false,
-}: { bypassCache?: boolean } = {}): Promise<{ category: string; monthToDate: number }[] | null> {
+  subscriptionIds: explicitSubscriptionIds,
+}: { bypassCache?: boolean; subscriptionIds?: string[] } = {}): Promise<
+  { category: string; monthToDate: number }[] | null
+> {
   if (!isAzureConfigured()) return null;
 
   if (!bypassCache && _categoryCacheEntry && _categoryCacheEntry.expiresAt > Date.now()) {
     return _categoryCacheEntry.result;
   }
 
-  const subscriptionIds = getSubscriptionIds();
+  const subscriptionIds = [
+    ...new Set([...getSubscriptionIds(), ...(explicitSubscriptionIds ?? [])]),
+  ];
   const billingAccountId = getBillingAccountId();
 
   if (subscriptionIds.length === 0 && !billingAccountId) return null;

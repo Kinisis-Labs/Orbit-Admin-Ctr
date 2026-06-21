@@ -105,9 +105,21 @@ export const UserAuthType = {
 } as const;
 
 /**
- * Azure resource tags applied to this application's resource group. The five standard Kinisis tag keys are typed explicitly; any additional tags on the resource group are preserved as free-form string values.
+ * Azure resource tags applied to this application's resource group. The standard Kinisis tag keys are typed explicitly; any additional tags on the resource group are preserved as free-form string values.
  */
 export interface AppTags {
+  /** Application tag value (e.g. "GrailBabe", "Orbit"). */
+  Application?: string;
+  /** Cost category tag value (e.g. "WebApp", "Infrastructure"). */
+  CostCategory?: string;
+  /** Cost center tag value (e.g. "Orbit", "GrailBabe"). */
+  CostCenter?: string;
+  /** Service type tag value (e.g. "Web", "Database"). */
+  ServiceType?: string;
+  /** Environment tag value (e.g. "Production", "Staging"). */
+  Environment?: string;
+  /** Team or individual responsible for this workload. */
+  Owner?: string;
   /** Workload identifier matching the Azure workload tag (e.g. "GrailBabeProd"). */
   workload?: string;
   /** Deployment environment tag value (e.g. "prod", "staging", "dev"). */

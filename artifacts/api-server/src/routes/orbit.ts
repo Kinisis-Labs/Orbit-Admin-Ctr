@@ -35,6 +35,7 @@ import {
   fetchLastMonthComparableCostTotal,
   fetchCostByCostCategoryTag,
   fetchCostByApplicationTag,
+  isGuid,
 } from "../lib/azureCost.js";
 import { fetchThirdPartyUsage } from "../lib/thirdPartyUsage.js";
 import {
@@ -1191,10 +1192,18 @@ function deriveTrendFromServices(
 }
 
 router.get("/global/cost-summary", async (_req, res) => {
+  // Ensure tag-based cost queries cover every app subscription, not just the
+  // generic AZURE_SUBSCRIPTION_IDS list. App records carry their own specific
+  // subscription GUIDs (e.g. AZURE_SUB_GRAILBABE) and those may differ from the
+  // general list.
+  const allAppSubscriptionIds = [...new Set(APPS.map((a) => a.subscriptionId).filter(isGuid))];
+
   const [costResults, byCategory, byApplicationTag] = await Promise.all([
-    Promise.all(APPS.map((a) => fetchMonthToDateCostWithFallback(a, { billingScope: billingScope(a.id) }))),
-    fetchCostByCostCategoryTag(),
-    fetchCostByApplicationTag(),
+    Promise.all(
+      APPS.map((a) => fetchMonthToDateCostWithFallback(a, { billingScope: billingScope(a.id) })),
+    ),
+    fetchCostByCostCategoryTag({ subscriptionIds: allAppSubscriptionIds }),
+    fetchCostByApplicationTag({ subscriptionIds: allAppSubscriptionIds }),
   ]);
 
   let overallSource: "live" | "cached" | "mock" = "mock";

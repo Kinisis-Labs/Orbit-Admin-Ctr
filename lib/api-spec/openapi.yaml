@@ -1104,9 +1104,27 @@ components:
       type: object
       description: >-
         Azure resource tags applied to this application's resource group.
-        The five standard Kinisis tag keys are typed explicitly; any additional
+        The standard Kinisis tag keys are typed explicitly; any additional
         tags on the resource group are preserved as free-form string values.
       properties:
+        Application:
+          type: string
+          description: Application tag value (e.g. "GrailBabe", "Orbit").
+        CostCategory:
+          type: string
+          description: Cost category tag value (e.g. "WebApp", "Infrastructure").
+        CostCenter:
+          type: string
+          description: Cost center tag value (e.g. "Orbit", "GrailBabe").
+        ServiceType:
+          type: string
+          description: Service type tag value (e.g. "Web", "Database").
+        Environment:
+          type: string
+          description: Environment tag value (e.g. "Production", "Staging").
+        Owner:
+          type: string
+          description: Team or individual responsible for this workload.
         workload:
           type: string
           description: Workload identifier matching the Azure workload tag (e.g. "GrailBabeProd").
