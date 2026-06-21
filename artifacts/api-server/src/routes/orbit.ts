@@ -122,7 +122,7 @@ export const APPS: AppRecord[] = [
   },
   {
     id: "kinisis-labs",
-    name: "Business Ops",
+    name: "Orbit",
     environment: "prod",
     region: "eastus2",
     resourceGroup: "rg-kinisislabs-platform-shared-prod-eus2",
