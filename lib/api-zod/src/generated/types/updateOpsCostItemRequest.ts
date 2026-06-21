@@ -10,8 +10,10 @@ import type { UpdateOpsCostItemRequestBillingCycle } from './updateOpsCostItemRe
 
 export interface UpdateOpsCostItemRequest {
   category?: OpsCostCategory;
+  /** @minLength 1 */
   name?: string;
   vendor?: string | null;
+  /** @exclusiveMinimum 0 */
   amountMonthly?: number;
   currency?: string;
   billingCycle?: UpdateOpsCostItemRequestBillingCycle;

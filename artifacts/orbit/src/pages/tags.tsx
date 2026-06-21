@@ -26,7 +26,14 @@ import {
 import { useState, Fragment } from "react";
 import { cn } from "@/lib/utils";
 
-const KNOWN_TAGS = ["CostCategory", "Application", "ServiceType", "CostCenter", "Owner", "Environment"] as const;
+const KNOWN_TAGS = [
+  "CostCategory",
+  "Application",
+  "ServiceType",
+  "CostCenter",
+  "Owner",
+  "Environment",
+] as const;
 type KnownTag = (typeof KNOWN_TAGS)[number];
 
 const TAG_LABELS: Record<KnownTag, string> = {
@@ -572,7 +579,9 @@ function ApplicationTagInventory() {
           Grouped by <span className="font-mono">Application</span> tag · Azure resource scan
         </span>
         {totalScanned > 0 && (
-          <span className="text-[11px] text-muted-foreground ml-auto">{totalScanned} resources</span>
+          <span className="text-[11px] text-muted-foreground ml-auto">
+            {totalScanned} resources
+          </span>
         )}
       </div>
 
@@ -625,7 +634,9 @@ function ApplicationTagInventory() {
                       {appTag}
                     </span>
                   </TableCell>
-                  <TableCell className="py-2 text-right tabular-nums text-[12px]">{total}</TableCell>
+                  <TableCell className="py-2 text-right tabular-nums text-[12px]">
+                    {total}
+                  </TableCell>
                   <TableCell className="py-2 text-right tabular-nums text-[12px]">
                     {nonCompliant === 0 ? (
                       <span className="text-green-500">0</span>

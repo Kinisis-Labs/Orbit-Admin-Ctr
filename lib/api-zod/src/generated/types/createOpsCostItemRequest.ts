@@ -5,13 +5,15 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
-import type { OpsCostCategory } from './opsCostCategory';
 import type { CreateOpsCostItemRequestBillingCycle } from './createOpsCostItemRequestBillingCycle';
+import type { OpsCostCategory } from './opsCostCategory';
 
 export interface CreateOpsCostItemRequest {
   category: OpsCostCategory;
+  /** @minLength 1 */
   name: string;
   vendor?: string;
+  /** @exclusiveMinimum 0 */
   amountMonthly: number;
   currency?: string;
   billingCycle?: CreateOpsCostItemRequestBillingCycle;

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { TagComplianceEntryScope } from './tagComplianceEntryScope';
+import type { TagComplianceEntryTags } from './tagComplianceEntryTags';
 
 export interface TagComplianceEntry {
   id: string;
@@ -15,5 +16,5 @@ export interface TagComplianceEntry {
   subscriptionId: string;
   resourceGroup?: string | null;
   missingTags: string[];
-  tags?: Record<string, string> | null;
+  tags?: TagComplianceEntryTags;
 }

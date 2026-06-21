@@ -5,6 +5,8 @@
  * Global App Admin Center API
  * OpenAPI spec version: 0.1.0
  */
+import type { GetGlobalCostSummaryResponseByApplicationTagItem } from './getGlobalCostSummaryResponseByApplicationTagItem';
+import type { GetGlobalCostSummaryResponseByCategoryItem } from './getGlobalCostSummaryResponseByCategoryItem';
 import type { GetGlobalCostSummaryResponseDataSource } from './getGlobalCostSummaryResponseDataSource';
 import type { GlobalCostByAppItem } from './globalCostByAppItem';
 
@@ -13,6 +15,10 @@ export interface GetGlobalCostSummaryResponse {
   total: number;
   currency: string;
   byApp: GlobalCostByAppItem[];
+  /** MTD spend grouped by Application tag across all Azure resources */
+  byApplicationTag?: GetGlobalCostSummaryResponseByApplicationTagItem[];
+  /** MTD spend grouped by CostCenter tag across all Azure resources */
+  byCategory?: GetGlobalCostSummaryResponseByCategoryItem[];
   dataSource: GetGlobalCostSummaryResponseDataSource;
   /** Timestamp of the most recent live or cached data point across all apps. */
   dataAsOf?: string | null;

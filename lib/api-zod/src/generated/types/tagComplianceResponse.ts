@@ -6,13 +6,19 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { TagComplianceEntry } from './tagComplianceEntry';
+import type { TagComplianceResponseApplicationTagCounts } from './tagComplianceResponseApplicationTagCounts';
 import type { TagComplianceResponseDataSource } from './tagComplianceResponseDataSource';
+import type { TagComplianceResponseTagCoverageByKey } from './tagComplianceResponseTagCoverageByKey';
 
 export interface TagComplianceResponse {
   scannedAt: string;
   totalScanned: number;
   nonCompliantCount: number;
   entries: TagComplianceEntry[];
+  /** Application tag value to resource count across ALL scanned resources */
+  applicationTagCounts: TagComplianceResponseApplicationTagCounts;
+  /** Tag key to count of resources that have a non-empty value for that key (ALL scanned resources) */
+  tagCoverageByKey: TagComplianceResponseTagCoverageByKey;
   dataSource: TagComplianceResponseDataSource;
   errorMessage?: string | null;
 }

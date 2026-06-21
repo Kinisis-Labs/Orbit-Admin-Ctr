@@ -21,7 +21,7 @@ export interface OpsCostItem {
   /** Whether this cost item is currently active */
   active: boolean;
   notes?: string | null;
-  effectiveFrom: string;
+  effectiveFrom?: string;
   createdAt: string;
   updatedAt: string;
 }

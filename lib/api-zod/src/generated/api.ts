@@ -32,13 +32,8 @@ export const ListAppsResponseItem = zod.object({
   "environment": zod.string().optional().describe('Deployment environment tag value (e.g. \"prod\", \"staging\", \"dev\").'),
   "owner": zod.string().optional().describe('Team or individual responsible for this workload.'),
   "cost-center": zod.string().optional().describe('FinOps cost-center code (e.g. \"CC-GrailBabeProd\").'),
-  "criticality": zod.string().optional(),
-  "CostCategory": zod.string().optional(),
-  "Application": zod.string().optional(),
-  "ServiceType": zod.string().optional(),
-  "Owner": zod.string().optional(),
-  "Environment": zod.string().optional()
-}).passthrough().describe('Azure resource tags. Standard Kinisis keys: CostCategory, Application, ServiceType, Owner, Environment.'),
+  "criticality": zod.string().optional().describe('Business criticality classification (e.g. mission-critical, high, medium, low).')
+}).describe('Azure resource tags applied to this application\'s resource group. The five standard Kinisis tag keys are typed explicitly; any additional tags on the resource group are preserved as free-form string values.'),
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),
@@ -71,13 +66,8 @@ export const GetAppResponse = zod.object({
   "environment": zod.string().optional().describe('Deployment environment tag value (e.g. \"prod\", \"staging\", \"dev\").'),
   "owner": zod.string().optional().describe('Team or individual responsible for this workload.'),
   "cost-center": zod.string().optional().describe('FinOps cost-center code (e.g. \"CC-GrailBabeProd\").'),
-  "criticality": zod.string().optional(),
-  "CostCategory": zod.string().optional(),
-  "Application": zod.string().optional(),
-  "ServiceType": zod.string().optional(),
-  "Owner": zod.string().optional(),
-  "Environment": zod.string().optional()
-}).passthrough().describe('Azure resource tags. Standard Kinisis keys: CostCategory, Application, ServiceType, Owner, Environment.'),
+  "criticality": zod.string().optional().describe('Business criticality classification (e.g. mission-critical, high, medium, low).')
+}).describe('Azure resource tags applied to this application\'s resource group. The five standard Kinisis tag keys are typed explicitly; any additional tags on the resource group are preserved as free-form string values.'),
   "status": zod.enum(['healthy', 'degraded', 'unhealthy', 'unknown']),
   "activeAlerts": zod.number(),
   "monthToDateCost": zod.number(),
@@ -252,6 +242,9 @@ export const GetCostQueryParams = zod.object({
   "refresh": zod.coerce.boolean().optional().describe('When true, bypasses the in-process server-side cache and fetches fresh data from Azure.')
 })
 
+export const getCostResponseOpsCostsByCategoryItemItemsItemCurrencyDefault = `USD`;
+export const getCostResponseOpsCostsByCategoryItemItemsItemBillingCycleDefault = `monthly`;
+
 export const GetCostResponse = zod.object({
   "currency": zod.string(),
   "monthToDate": zod.number(),
@@ -305,11 +298,11 @@ export const GetCostResponse = zod.object({
   "name": zod.string(),
   "vendor": zod.string().nullish(),
   "amountMonthly": zod.number().describe('Monthly cost in the specified currency'),
-  "currency": zod.string(),
-  "billingCycle": zod.enum(['monthly', 'annual', 'one-time']),
+  "currency": zod.string().default(getCostResponseOpsCostsByCategoryItemItemsItemCurrencyDefault),
+  "billingCycle": zod.enum(['monthly', 'annual', 'one-time']).default(getCostResponseOpsCostsByCategoryItemItemsItemBillingCycleDefault),
   "active": zod.boolean().describe('Whether this cost item is currently active'),
   "notes": zod.string().nullish(),
-  "effectiveFrom": zod.string().datetime({"offset":true}),
+  "effectiveFrom": zod.string().datetime({"offset":true}).optional(),
   "createdAt": zod.string().datetime({"offset":true}),
   "updatedAt": zod.string().datetime({"offset":true})
 })).optional()
@@ -318,52 +311,79 @@ export const GetCostResponse = zod.object({
 })
 
 
+/**
+ * @summary List operational cost line items for an app (Business Ops only)
+ */
 export const ListOpsCostItemsParams = zod.object({
   "appId": zod.coerce.string()
 })
 
-export const ListOpsCostItemsResponse = zod.array(zod.object({
+export const listOpsCostItemsResponseCurrencyDefault = `USD`;
+export const listOpsCostItemsResponseBillingCycleDefault = `monthly`;
+
+export const ListOpsCostItemsResponseItem = zod.object({
   "id": zod.string(),
   "appId": zod.string(),
   "category": zod.enum(['website-ops', 'network-ops', 'm365-licenses']).describe('Operational cost category for Business Ops line items.'),
   "name": zod.string(),
   "vendor": zod.string().nullish(),
   "amountMonthly": zod.number().describe('Monthly cost in the specified currency'),
-  "currency": zod.string(),
-  "billingCycle": zod.enum(['monthly', 'annual', 'one-time']),
+  "currency": zod.string().default(listOpsCostItemsResponseCurrencyDefault),
+  "billingCycle": zod.enum(['monthly', 'annual', 'one-time']).default(listOpsCostItemsResponseBillingCycleDefault),
   "active": zod.boolean().describe('Whether this cost item is currently active'),
   "notes": zod.string().nullish(),
-  "effectiveFrom": zod.string().datetime({"offset":true}),
+  "effectiveFrom": zod.string().datetime({"offset":true}).optional(),
   "createdAt": zod.string().datetime({"offset":true}),
   "updatedAt": zod.string().datetime({"offset":true})
-}))
+})
+export const ListOpsCostItemsResponse = zod.array(ListOpsCostItemsResponseItem)
 
+
+/**
+ * @summary Create a new operational cost line item
+ */
 export const CreateOpsCostItemParams = zod.object({
   "appId": zod.coerce.string()
 })
+
+
+export const createOpsCostItemBodyAmountMonthlyExclusiveMin = 0;
+
+export const createOpsCostItemBodyCurrencyDefault = `USD`;
+export const createOpsCostItemBodyBillingCycleDefault = `monthly`;
+export const createOpsCostItemBodyActiveDefault = true;
 
 export const CreateOpsCostItemBody = zod.object({
   "category": zod.enum(['website-ops', 'network-ops', 'm365-licenses']).describe('Operational cost category for Business Ops line items.'),
   "name": zod.string().min(1),
   "vendor": zod.string().optional(),
-  "amountMonthly": zod.number().gt(0),
-  "currency": zod.string().optional(),
-  "billingCycle": zod.enum(['monthly', 'annual', 'one-time']).optional(),
-  "active": zod.boolean().optional(),
+  "amountMonthly": zod.number().gt(createOpsCostItemBodyAmountMonthlyExclusiveMin),
+  "currency": zod.string().default(createOpsCostItemBodyCurrencyDefault),
+  "billingCycle": zod.enum(['monthly', 'annual', 'one-time']).default(createOpsCostItemBodyBillingCycleDefault),
+  "active": zod.boolean().default(createOpsCostItemBodyActiveDefault),
   "notes": zod.string().optional(),
   "effectiveFrom": zod.string().datetime({"offset":true}).optional()
 })
 
+
+/**
+ * @summary Update an existing operational cost line item
+ */
 export const UpdateOpsCostItemParams = zod.object({
   "appId": zod.coerce.string(),
   "itemId": zod.coerce.string()
 })
 
+
+export const updateOpsCostItemBodyAmountMonthlyExclusiveMin = 0;
+
+
+
 export const UpdateOpsCostItemBody = zod.object({
   "category": zod.enum(['website-ops', 'network-ops', 'm365-licenses']).optional().describe('Operational cost category for Business Ops line items.'),
   "name": zod.string().min(1).optional(),
   "vendor": zod.string().nullish(),
-  "amountMonthly": zod.number().gt(0).optional(),
+  "amountMonthly": zod.number().gt(updateOpsCostItemBodyAmountMonthlyExclusiveMin).optional(),
   "currency": zod.string().optional(),
   "billingCycle": zod.enum(['monthly', 'annual', 'one-time']).optional(),
   "active": zod.boolean().optional(),
@@ -371,6 +391,29 @@ export const UpdateOpsCostItemBody = zod.object({
   "effectiveFrom": zod.string().datetime({"offset":true}).optional()
 })
 
+export const updateOpsCostItemResponseCurrencyDefault = `USD`;
+export const updateOpsCostItemResponseBillingCycleDefault = `monthly`;
+
+export const UpdateOpsCostItemResponse = zod.object({
+  "id": zod.string(),
+  "appId": zod.string(),
+  "category": zod.enum(['website-ops', 'network-ops', 'm365-licenses']).describe('Operational cost category for Business Ops line items.'),
+  "name": zod.string(),
+  "vendor": zod.string().nullish(),
+  "amountMonthly": zod.number().describe('Monthly cost in the specified currency'),
+  "currency": zod.string().default(updateOpsCostItemResponseCurrencyDefault),
+  "billingCycle": zod.enum(['monthly', 'annual', 'one-time']).default(updateOpsCostItemResponseBillingCycleDefault),
+  "active": zod.boolean().describe('Whether this cost item is currently active'),
+  "notes": zod.string().nullish(),
+  "effectiveFrom": zod.string().datetime({"offset":true}).optional(),
+  "createdAt": zod.string().datetime({"offset":true}),
+  "updatedAt": zod.string().datetime({"offset":true})
+})
+
+
+/**
+ * @summary Delete an operational cost line item
+ */
 export const DeleteOpsCostItemParams = zod.object({
   "appId": zod.coerce.string(),
   "itemId": zod.coerce.string()
@@ -935,8 +978,8 @@ export const GetTagComplianceResponse = zod.object({
   "missingTags": zod.array(zod.string()),
   "tags": zod.record(zod.string(), zod.string()).nullish()
 })),
-  "applicationTagCounts": zod.record(zod.string(), zod.number()),
-  "tagCoverageByKey": zod.record(zod.string(), zod.number()),
+  "applicationTagCounts": zod.record(zod.string(), zod.number()).describe('Application tag value to resource count across ALL scanned resources'),
+  "tagCoverageByKey": zod.record(zod.string(), zod.number()).describe('Tag key to count of resources that have a non-empty value for that key (ALL scanned resources)'),
   "dataSource": zod.enum(['live', 'unavailable', 'error']),
   "errorMessage": zod.string().nullish()
 })
@@ -1064,16 +1107,16 @@ export const GetGlobalCostSummaryResponse = zod.object({
   "monthToDate": zod.number().describe('Month-to-date spend in USD'),
   "trend": zod.string().nullish().describe('Week-over-week percentage change (e.g. \'+8.2%\' or \'-3.1%\'). Null when insufficient data.')
 })),
-  "byCategory": zod.array(zod.object({
-  "category": zod.string().describe('CostCategory tag value (e.g. "Infrastructure", "WebApp")'),
-  "monthToDate": zod.number().describe('Month-to-date spend in USD for this category')
-})).optional().describe('MTD spend grouped by CostCategory tag across all Azure resources'),
   "byApplicationTag": zod.array(zod.object({
   "application": zod.string().describe('Application tag value'),
   "environment": zod.string().optional().describe('Environment tag value (e.g. Production, Staging)'),
   "monthToDate": zod.number().describe('Month-to-date spend in USD'),
-  "wowTrend": zod.string().nullish().describe('Week-over-week percentage change (e.g. \'\'+8.2%\'\'')
+  "wowTrend": zod.string().nullish().describe('Week-over-week percentage change (e.g. \'+8.2%\'). Null when insufficient data.')
 })).optional().describe('MTD spend grouped by Application tag across all Azure resources'),
+  "byCategory": zod.array(zod.object({
+  "category": zod.string().describe('CostCenter tag value'),
+  "monthToDate": zod.number().describe('Month-to-date spend in USD')
+})).optional().describe('MTD spend grouped by CostCenter tag across all Azure resources'),
   "dataSource": zod.enum(['live', 'cached', 'mock']),
   "dataAsOf": zod.string().datetime({"offset":true}).nullish().describe('Timestamp of the most recent live or cached data point across all apps.'),
   "wowTrend": zod.string().nullish().describe('Spend-weighted week-over-week percentage change across all apps (e.g. \'+8.2%\' or \'-3.1%\'). Null when insufficient data.')

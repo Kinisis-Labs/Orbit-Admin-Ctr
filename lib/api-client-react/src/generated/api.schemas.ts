@@ -8,12 +8,12 @@
 /**
  * live = read from App Configuration store; mock = APP_CONFIGURATION_ENDPOINT not set (always enabled)
  */
-export type FeatureFlagConfigStore =
-  (typeof FeatureFlagConfigStore)[keyof typeof FeatureFlagConfigStore];
+export type FeatureFlagConfigStore = typeof FeatureFlagConfigStore[keyof typeof FeatureFlagConfigStore];
+
 
 export const FeatureFlagConfigStore = {
-  live: "live",
-  mock: "mock",
+  live: 'live',
+  mock: 'mock',
 } as const;
 
 export interface FeatureFlag {
@@ -51,12 +51,12 @@ export interface AnomalyDismissalsResponse {
 /**
  * session = only this browser session; global = dismissed for everyone on the team
  */
-export type DismissAnomalyRequestScope =
-  (typeof DismissAnomalyRequestScope)[keyof typeof DismissAnomalyRequestScope];
+export type DismissAnomalyRequestScope = typeof DismissAnomalyRequestScope[keyof typeof DismissAnomalyRequestScope];
+
 
 export const DismissAnomalyRequestScope = {
-  session: "session",
-  global: "global",
+  session: 'session',
+  global: 'global',
 } as const;
 
 export interface DismissAnomalyRequest {
@@ -72,33 +72,36 @@ export interface HealthStatus {
   status: string;
 }
 
-export type Status = (typeof Status)[keyof typeof Status];
+export type Status = typeof Status[keyof typeof Status];
+
 
 export const Status = {
-  healthy: "healthy",
-  degraded: "degraded",
-  unhealthy: "unhealthy",
-  unknown: "unknown",
+  healthy: 'healthy',
+  degraded: 'degraded',
+  unhealthy: 'unhealthy',
+  unknown: 'unknown',
 } as const;
 
-export type Severity = (typeof Severity)[keyof typeof Severity];
+export type Severity = typeof Severity[keyof typeof Severity];
+
 
 export const Severity = {
-  info: "info",
-  warning: "warning",
-  error: "error",
-  critical: "critical",
+  info: 'info',
+  warning: 'warning',
+  error: 'error',
+  critical: 'critical',
 } as const;
 
 /**
  * Identity system that authenticates this app's end users. "clerk" = consumer app with Clerk-authenticated users (activity ingested via webhooks). "entra" = employee-only internal tool authenticated via Entra ID. "none" = no end-user authentication (e.g. public marketing site).
  */
-export type UserAuthType = (typeof UserAuthType)[keyof typeof UserAuthType];
+export type UserAuthType = typeof UserAuthType[keyof typeof UserAuthType];
+
 
 export const UserAuthType = {
-  clerk: "clerk",
-  entra: "entra",
-  none: "none",
+  clerk: 'clerk',
+  entra: 'entra',
+  none: 'none',
 } as const;
 
 /**
@@ -112,30 +115,30 @@ export interface AppTags {
   /** Team or individual responsible for this workload. */
   owner?: string;
   /** FinOps cost-center code (e.g. "CC-GrailBabeProd"). */
-  "cost-center"?: string;
+  'cost-center'?: string;
   /** Business criticality classification (e.g. mission-critical, high, medium, low). */
   criticality?: string;
 }
 
-export type AppSummaryEnvironment =
-  (typeof AppSummaryEnvironment)[keyof typeof AppSummaryEnvironment];
+export type AppSummaryEnvironment = typeof AppSummaryEnvironment[keyof typeof AppSummaryEnvironment];
+
 
 export const AppSummaryEnvironment = {
-  prod: "prod",
-  staging: "staging",
-  dev: "dev",
+  prod: 'prod',
+  staging: 'staging',
+  dev: 'dev',
 } as const;
 
 /**
  * Indicates whether the monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values.
  */
-export type AppSummaryCostDataSource =
-  (typeof AppSummaryCostDataSource)[keyof typeof AppSummaryCostDataSource];
+export type AppSummaryCostDataSource = typeof AppSummaryCostDataSource[keyof typeof AppSummaryCostDataSource];
+
 
 export const AppSummaryCostDataSource = {
-  live: "live",
-  cached: "cached",
-  mock: "mock",
+  live: 'live',
+  cached: 'cached',
+  mock: 'mock',
 } as const;
 
 export interface AppSummary {
@@ -221,12 +224,12 @@ export interface StaffGroupRow {
 /**
  * 'live' when Entra client creds are configured; 'unconfigured' otherwise.
  */
-export type StaffStatsResponseDataSource =
-  (typeof StaffStatsResponseDataSource)[keyof typeof StaffStatsResponseDataSource];
+export type StaffStatsResponseDataSource = typeof StaffStatsResponseDataSource[keyof typeof StaffStatsResponseDataSource];
+
 
 export const StaffStatsResponseDataSource = {
-  live: "live",
-  unconfigured: "unconfigured",
+  live: 'live',
+  unconfigured: 'unconfigured',
 } as const;
 
 export interface StaffStatsResponse {
@@ -238,12 +241,12 @@ export interface StaffStatsResponse {
 /**
  * live = real Clerk webhook events exist in DB; demo = seeded/placeholder data only
  */
-export type UserActivityRowDataSource =
-  (typeof UserActivityRowDataSource)[keyof typeof UserActivityRowDataSource];
+export type UserActivityRowDataSource = typeof UserActivityRowDataSource[keyof typeof UserActivityRowDataSource];
+
 
 export const UserActivityRowDataSource = {
-  live: "live",
-  demo: "demo",
+  live: 'live',
+  demo: 'demo',
 } as const;
 
 export interface UserActivityRow {
@@ -270,13 +273,13 @@ export interface ClerkIdentityRow {
   deleted: boolean;
 }
 
-export type PlaySubscriptionRowDataSource =
-  (typeof PlaySubscriptionRowDataSource)[keyof typeof PlaySubscriptionRowDataSource];
+export type PlaySubscriptionRowDataSource = typeof PlaySubscriptionRowDataSource[keyof typeof PlaySubscriptionRowDataSource];
+
 
 export const PlaySubscriptionRowDataSource = {
-  placeholder: "placeholder",
-  live: "live",
-  cached: "cached",
+  placeholder: 'placeholder',
+  live: 'live',
+  cached: 'cached',
 } as const;
 
 export interface PlaySubscriptionRow {
@@ -306,12 +309,12 @@ export interface PlaySubscriptionRow {
   dataAsOf?: string;
 }
 
-export type StripeSubscriptionRowDataSource =
-  (typeof StripeSubscriptionRowDataSource)[keyof typeof StripeSubscriptionRowDataSource];
+export type StripeSubscriptionRowDataSource = typeof StripeSubscriptionRowDataSource[keyof typeof StripeSubscriptionRowDataSource];
+
 
 export const StripeSubscriptionRowDataSource = {
-  live: "live",
-  cached: "cached",
+  live: 'live',
+  cached: 'cached',
 } as const;
 
 export interface StripeSubscriptionRow {
@@ -340,13 +343,13 @@ export interface StripeSubscriptionRow {
   stripeDashboardUrl?: string;
 }
 
-export type AppleSubscriptionRowDataSource =
-  (typeof AppleSubscriptionRowDataSource)[keyof typeof AppleSubscriptionRowDataSource];
+export type AppleSubscriptionRowDataSource = typeof AppleSubscriptionRowDataSource[keyof typeof AppleSubscriptionRowDataSource];
+
 
 export const AppleSubscriptionRowDataSource = {
-  placeholder: "placeholder",
-  live: "live",
-  cached: "cached",
+  placeholder: 'placeholder',
+  live: 'live',
+  cached: 'cached',
 } as const;
 
 export interface AppleSubscriptionRow {
@@ -405,12 +408,12 @@ export interface InfrastructureResource {
 /**
  * Indicates whether resource data comes from live Azure Resource Graph or built-in mock values.
  */
-export type InfrastructureReportDataSource =
-  (typeof InfrastructureReportDataSource)[keyof typeof InfrastructureReportDataSource];
+export type InfrastructureReportDataSource = typeof InfrastructureReportDataSource[keyof typeof InfrastructureReportDataSource];
+
 
 export const InfrastructureReportDataSource = {
-  live: "live",
-  mock: "mock",
+  live: 'live',
+  mock: 'mock',
 } as const;
 
 export interface InfrastructureReport {
@@ -433,23 +436,23 @@ export interface NetworkEndpoint {
 /**
  * Whether throughput data came from a real Azure source or is seeded mock data.
  */
-export type NetworkReportDataSource =
-  (typeof NetworkReportDataSource)[keyof typeof NetworkReportDataSource];
+export type NetworkReportDataSource = typeof NetworkReportDataSource[keyof typeof NetworkReportDataSource];
+
 
 export const NetworkReportDataSource = {
-  live: "live",
-  mock: "mock",
+  live: 'live',
+  mock: 'mock',
 } as const;
 
 /**
  * Whether endpoint data came from a real Azure source or is seeded mock data.
  */
-export type NetworkReportEndpointsDataSource =
-  (typeof NetworkReportEndpointsDataSource)[keyof typeof NetworkReportEndpointsDataSource];
+export type NetworkReportEndpointsDataSource = typeof NetworkReportEndpointsDataSource[keyof typeof NetworkReportEndpointsDataSource];
+
 
 export const NetworkReportEndpointsDataSource = {
-  live: "live",
-  mock: "mock",
+  live: 'live',
+  mock: 'mock',
 } as const;
 
 export interface NetworkReport {
@@ -478,11 +481,12 @@ export interface ApiByName {
 /**
  * live = fetched from provider billing API; placeholder = deterministic fallback (provider credentials not set).
  */
-export type ApiUsageDataSource = (typeof ApiUsageDataSource)[keyof typeof ApiUsageDataSource];
+export type ApiUsageDataSource = typeof ApiUsageDataSource[keyof typeof ApiUsageDataSource];
+
 
 export const ApiUsageDataSource = {
-  live: "live",
-  placeholder: "placeholder",
+  live: 'live',
+  placeholder: 'placeholder',
 } as const;
 
 /**
@@ -504,32 +508,34 @@ export interface ApiUsage {
 /**
  * Indicates whether cost figures come from live Azure Cost Management, a DB snapshot (cached), or built-in mock values.
  */
-export type CostReportDataSource = (typeof CostReportDataSource)[keyof typeof CostReportDataSource];
+export type CostReportDataSource = typeof CostReportDataSource[keyof typeof CostReportDataSource];
+
 
 export const CostReportDataSource = {
-  live: "live",
-  cached: "cached",
-  mock: "mock",
+  live: 'live',
+  cached: 'cached',
+  mock: 'mock',
 } as const;
 
 /**
  * Indicates the origin of the budget and forecast figures: live = from Azure Budgets API, cached = last-known value from DB snapshot, estimated = formula fallback.
  */
-export type CostReportBudgetDataSource =
-  (typeof CostReportBudgetDataSource)[keyof typeof CostReportBudgetDataSource];
+export type CostReportBudgetDataSource = typeof CostReportBudgetDataSource[keyof typeof CostReportBudgetDataSource];
+
 
 export const CostReportBudgetDataSource = {
-  live: "live",
-  cached: "cached",
-  estimated: "estimated",
+  live: 'live',
+  cached: 'cached',
+  estimated: 'estimated',
 } as const;
 
-export type RevenueSource = (typeof RevenueSource)[keyof typeof RevenueSource];
+export type RevenueSource = typeof RevenueSource[keyof typeof RevenueSource];
+
 
 export const RevenueSource = {
-  stripe: "stripe",
-  app_store: "app_store",
-  play_store: "play_store",
+  stripe: 'stripe',
+  app_store: 'app_store',
+  play_store: 'play_store',
 } as const;
 
 export interface RevenueBySource {
@@ -546,17 +552,53 @@ export interface Revenue {
   bySource: RevenueBySource[];
 }
 
+/**
+ * Operational cost category for Business Ops line items.
+ */
+export type OpsCostCategory = typeof OpsCostCategory[keyof typeof OpsCostCategory];
+
+
+export const OpsCostCategory = {
+  'website-ops': 'website-ops',
+  'network-ops': 'network-ops',
+  'm365-licenses': 'm365-licenses',
+} as const;
+
+export type OpsCostItemBillingCycle = typeof OpsCostItemBillingCycle[keyof typeof OpsCostItemBillingCycle];
+
+
+export const OpsCostItemBillingCycle = {
+  monthly: 'monthly',
+  annual: 'annual',
+  'one-time': 'one-time',
+} as const;
+
+export interface OpsCostItem {
+  id: string;
+  appId: string;
+  category: OpsCostCategory;
+  name: string;
+  vendor?: string | null;
+  /** Monthly cost in the specified currency */
+  amountMonthly: number;
+  currency: string;
+  billingCycle: OpsCostItemBillingCycle;
+  /** Whether this cost item is currently active */
+  active: boolean;
+  notes?: string | null;
+  effectiveFrom?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface OpsCostCategoryTotal {
-  category: "website-ops" | "network-ops" | "m365-licenses";
-  totalMonthly: number;
-  items: {
-    id: string;
-    name: string;
-    amountMonthly: number;
-    billingCycle: string;
-    active: boolean;
-    effectiveFrom?: string;
-  }[];
+  category: OpsCostCategory;
+  /** Human-readable category label */
+  label: string;
+  /** Sum of amountMonthly for all active items in this category */
+  total: number;
+  itemCount: number;
+  items?: OpsCostItem[];
 }
 
 export interface OpsCostSummary {
@@ -586,14 +628,61 @@ export interface CostReport {
   opsCosts?: OpsCostSummary;
 }
 
-export type LedgerAccountType = (typeof LedgerAccountType)[keyof typeof LedgerAccountType];
+export type CreateOpsCostItemRequestBillingCycle = typeof CreateOpsCostItemRequestBillingCycle[keyof typeof CreateOpsCostItemRequestBillingCycle];
+
+
+export const CreateOpsCostItemRequestBillingCycle = {
+  monthly: 'monthly',
+  annual: 'annual',
+  'one-time': 'one-time',
+} as const;
+
+export interface CreateOpsCostItemRequest {
+  category: OpsCostCategory;
+  /** @minLength 1 */
+  name: string;
+  vendor?: string;
+  /** @exclusiveMinimum 0 */
+  amountMonthly: number;
+  currency?: string;
+  billingCycle?: CreateOpsCostItemRequestBillingCycle;
+  active?: boolean;
+  notes?: string;
+  effectiveFrom?: string;
+}
+
+export type UpdateOpsCostItemRequestBillingCycle = typeof UpdateOpsCostItemRequestBillingCycle[keyof typeof UpdateOpsCostItemRequestBillingCycle];
+
+
+export const UpdateOpsCostItemRequestBillingCycle = {
+  monthly: 'monthly',
+  annual: 'annual',
+  'one-time': 'one-time',
+} as const;
+
+export interface UpdateOpsCostItemRequest {
+  category?: OpsCostCategory;
+  /** @minLength 1 */
+  name?: string;
+  vendor?: string | null;
+  /** @exclusiveMinimum 0 */
+  amountMonthly?: number;
+  currency?: string;
+  billingCycle?: UpdateOpsCostItemRequestBillingCycle;
+  active?: boolean;
+  notes?: string | null;
+  effectiveFrom?: string;
+}
+
+export type LedgerAccountType = typeof LedgerAccountType[keyof typeof LedgerAccountType];
+
 
 export const LedgerAccountType = {
-  asset: "asset",
-  liability: "liability",
-  equity: "equity",
-  revenue: "revenue",
-  expense: "expense",
+  asset: 'asset',
+  liability: 'liability',
+  equity: 'equity',
+  revenue: 'revenue',
+  expense: 'expense',
 } as const;
 
 export interface LedgerAccount {
@@ -605,13 +694,13 @@ export interface LedgerAccount {
   balance: number;
 }
 
-export type LedgerReconciliationStatus =
-  (typeof LedgerReconciliationStatus)[keyof typeof LedgerReconciliationStatus];
+export type LedgerReconciliationStatus = typeof LedgerReconciliationStatus[keyof typeof LedgerReconciliationStatus];
+
 
 export const LedgerReconciliationStatus = {
-  reconciled: "reconciled",
-  pending: "pending",
-  discrepancy: "discrepancy",
+  reconciled: 'reconciled',
+  pending: 'pending',
+  discrepancy: 'discrepancy',
 } as const;
 
 export interface LedgerReconciliation {
@@ -623,13 +712,13 @@ export interface LedgerReconciliation {
   unreconciledAmount: number;
 }
 
-export type LedgerTransactionStatus =
-  (typeof LedgerTransactionStatus)[keyof typeof LedgerTransactionStatus];
+export type LedgerTransactionStatus = typeof LedgerTransactionStatus[keyof typeof LedgerTransactionStatus];
+
 
 export const LedgerTransactionStatus = {
-  posted: "posted",
-  pending: "pending",
-  failed: "failed",
+  posted: 'posted',
+  pending: 'pending',
+  failed: 'failed',
 } as const;
 
 export interface LedgerTransaction {
@@ -644,23 +733,24 @@ export interface LedgerTransaction {
   status: LedgerTransactionStatus;
 }
 
-export type LedgerEntrySource = (typeof LedgerEntrySource)[keyof typeof LedgerEntrySource];
+export type LedgerEntrySource = typeof LedgerEntrySource[keyof typeof LedgerEntrySource];
+
 
 export const LedgerEntrySource = {
-  stripe: "stripe",
-  app_store: "app_store",
-  play_store: "play_store",
-  bank: "bank",
-  manual: "manual",
+  stripe: 'stripe',
+  app_store: 'app_store',
+  play_store: 'play_store',
+  bank: 'bank',
+  manual: 'manual',
 } as const;
 
-export type LedgerJournalEntryStatus =
-  (typeof LedgerJournalEntryStatus)[keyof typeof LedgerJournalEntryStatus];
+export type LedgerJournalEntryStatus = typeof LedgerJournalEntryStatus[keyof typeof LedgerJournalEntryStatus];
+
 
 export const LedgerJournalEntryStatus = {
-  posted: "posted",
-  pending: "pending",
-  failed: "failed",
+  posted: 'posted',
+  pending: 'pending',
+  failed: 'failed',
 } as const;
 
 export interface LedgerJournalEntry {
@@ -676,13 +766,13 @@ export interface LedgerJournalEntry {
   source: LedgerEntrySource;
 }
 
-export type PostLedgerEntryRequestStatus =
-  (typeof PostLedgerEntryRequestStatus)[keyof typeof PostLedgerEntryRequestStatus];
+export type PostLedgerEntryRequestStatus = typeof PostLedgerEntryRequestStatus[keyof typeof PostLedgerEntryRequestStatus];
+
 
 export const PostLedgerEntryRequestStatus = {
-  posted: "posted",
-  pending: "pending",
-  failed: "failed",
+  posted: 'posted',
+  pending: 'pending',
+  failed: 'failed',
 } as const;
 
 export interface PostLedgerEntryRequest {
@@ -723,26 +813,26 @@ export interface LedgerRevenue {
   bySource: LedgerRevenueBySource[];
 }
 
-export type IngestSaleRequestStatus =
-  (typeof IngestSaleRequestStatus)[keyof typeof IngestSaleRequestStatus];
+export type IngestSaleRequestStatus = typeof IngestSaleRequestStatus[keyof typeof IngestSaleRequestStatus];
+
 
 export const IngestSaleRequestStatus = {
-  posted: "posted",
-  pending: "pending",
-  failed: "failed",
+  posted: 'posted',
+  pending: 'pending',
+  failed: 'failed',
 } as const;
 
 export interface IngestSaleRequest {
   source: LedgerEntrySource;
   /**
-   * Gross sale amount before the platform fee
-   * @exclusiveMinimum 0
-   */
+     * Gross sale amount before the platform fee
+     * @exclusiveMinimum 0
+     */
   grossAmount: number;
   /**
-   * Actual platform fee for this sale. When provided it overrides the flat schedule rate — used by live feeds (e.g. Stripe) that report the real per-transaction fee. Must not exceed grossAmount.
-   * @minimum 0
-   */
+     * Actual platform fee for this sale. When provided it overrides the flat schedule rate — used by live feeds (e.g. Stripe) that report the real per-transaction fee. Must not exceed grossAmount.
+     * @minimum 0
+     */
   feeAmount?: number;
   /** @minLength 1 */
   description?: string;
@@ -793,12 +883,12 @@ export interface StripeSyncResult {
 /**
  * Which store produced this result
  */
-export type StoreSyncResultDataSource =
-  (typeof StoreSyncResultDataSource)[keyof typeof StoreSyncResultDataSource];
+export type StoreSyncResultDataSource = typeof StoreSyncResultDataSource[keyof typeof StoreSyncResultDataSource];
+
 
 export const StoreSyncResultDataSource = {
-  app_store: "app_store",
-  play_store: "play_store",
+  app_store: 'app_store',
+  play_store: 'play_store',
 } as const;
 
 export interface StoreSyncResult {
@@ -836,12 +926,12 @@ export interface LedgerReport {
 /**
  * Indicates whether telemetry comes from live Azure Monitor / Application Insights or built-in mock values.
  */
-export type TelemetryReportDataSource =
-  (typeof TelemetryReportDataSource)[keyof typeof TelemetryReportDataSource];
+export type TelemetryReportDataSource = typeof TelemetryReportDataSource[keyof typeof TelemetryReportDataSource];
+
 
 export const TelemetryReportDataSource = {
-  live: "live",
-  mock: "mock",
+  live: 'live',
+  mock: 'mock',
 } as const;
 
 export interface TopError {
@@ -908,23 +998,25 @@ export interface TelemetryReport {
   browserTelemetry?: BrowserTelemetry;
 }
 
-export type AlertSource = (typeof AlertSource)[keyof typeof AlertSource];
+export type AlertSource = typeof AlertSource[keyof typeof AlertSource];
+
 
 export const AlertSource = {
-  AzureMonitor: "AzureMonitor",
-  LogAnalytics: "LogAnalytics",
-  NetworkWatcher: "NetworkWatcher",
-  CostManagement: "CostManagement",
-  ApplicationInsights: "ApplicationInsights",
-  WebAppTelemetry: "WebAppTelemetry",
+  AzureMonitor: 'AzureMonitor',
+  LogAnalytics: 'LogAnalytics',
+  NetworkWatcher: 'NetworkWatcher',
+  CostManagement: 'CostManagement',
+  ApplicationInsights: 'ApplicationInsights',
+  WebAppTelemetry: 'WebAppTelemetry',
 } as const;
 
-export type AlertStatus = (typeof AlertStatus)[keyof typeof AlertStatus];
+export type AlertStatus = typeof AlertStatus[keyof typeof AlertStatus];
+
 
 export const AlertStatus = {
-  active: "active",
-  acknowledged: "acknowledged",
-  resolved: "resolved",
+  active: 'active',
+  acknowledged: 'acknowledged',
+  resolved: 'resolved',
 } as const;
 
 export interface Alert {
@@ -942,13 +1034,13 @@ export interface Alert {
 /**
  * Indicates whether the aggregate monthToDateCost figure comes from live Azure Cost Management, a DB snapshot (cached), or built-in mock values. live = all apps live, cached = at least one app used a snapshot, mock = no live or cached data.
  */
-export type GlobalHealthCostDataSource =
-  (typeof GlobalHealthCostDataSource)[keyof typeof GlobalHealthCostDataSource];
+export type GlobalHealthCostDataSource = typeof GlobalHealthCostDataSource[keyof typeof GlobalHealthCostDataSource];
+
 
 export const GlobalHealthCostDataSource = {
-  live: "live",
-  cached: "cached",
-  mock: "mock",
+  live: 'live',
+  cached: 'cached',
+  mock: 'mock',
 } as const;
 
 export interface GlobalHealth {
@@ -965,31 +1057,33 @@ export interface GlobalHealth {
   currency: string;
 }
 
-export type ListDeploymentsResponseDataSource =
-  (typeof ListDeploymentsResponseDataSource)[keyof typeof ListDeploymentsResponseDataSource];
+export type ListDeploymentsResponseDataSource = typeof ListDeploymentsResponseDataSource[keyof typeof ListDeploymentsResponseDataSource];
+
 
 export const ListDeploymentsResponseDataSource = {
-  live: "live",
-  mock: "mock",
+  live: 'live',
+  mock: 'mock',
 } as const;
 
-export type DeploymentStatus = (typeof DeploymentStatus)[keyof typeof DeploymentStatus];
+export type DeploymentStatus = typeof DeploymentStatus[keyof typeof DeploymentStatus];
+
 
 export const DeploymentStatus = {
-  Succeeded: "Succeeded",
-  Failed: "Failed",
-  InProgress: "InProgress",
-  RolledBack: "RolledBack",
+  Succeeded: 'Succeeded',
+  Failed: 'Failed',
+  InProgress: 'InProgress',
+  RolledBack: 'RolledBack',
 } as const;
 
 /**
  * Whether this run is a deployment/release workflow or a CI workflow (typecheck, lint, test, etc.).
  */
-export type DeploymentRunType = (typeof DeploymentRunType)[keyof typeof DeploymentRunType];
+export type DeploymentRunType = typeof DeploymentRunType[keyof typeof DeploymentRunType];
+
 
 export const DeploymentRunType = {
-  deploy: "deploy",
-  ci: "ci",
+  deploy: 'deploy',
+  ci: 'ci',
 } as const;
 
 export interface Deployment {
@@ -1017,12 +1111,13 @@ export interface ListDeploymentsResponse {
   fetchedAt?: string | null;
 }
 
-export type ActivityEntryStatus = (typeof ActivityEntryStatus)[keyof typeof ActivityEntryStatus];
+export type ActivityEntryStatus = typeof ActivityEntryStatus[keyof typeof ActivityEntryStatus];
+
 
 export const ActivityEntryStatus = {
-  Succeeded: "Succeeded",
-  Failed: "Failed",
-  Started: "Started",
+  Succeeded: 'Succeeded',
+  Failed: 'Failed',
+  Started: 'Started',
 } as const;
 
 export interface ActivityEntry {
@@ -1036,12 +1131,13 @@ export interface ActivityEntry {
   category: string;
 }
 
-export type LogLineLevel = (typeof LogLineLevel)[keyof typeof LogLineLevel];
+export type LogLineLevel = typeof LogLineLevel[keyof typeof LogLineLevel];
+
 
 export const LogLineLevel = {
-  INFO: "INFO",
-  WARN: "WARN",
-  ERROR: "ERROR",
+  INFO: 'INFO',
+  WARN: 'WARN',
+  ERROR: 'ERROR',
 } as const;
 
 export interface LogLine {
@@ -1052,23 +1148,35 @@ export interface LogLine {
   message: string;
 }
 
-export type TagComplianceResponseDataSource =
-  (typeof TagComplianceResponseDataSource)[keyof typeof TagComplianceResponseDataSource];
+/**
+ * Application tag value to resource count across ALL scanned resources
+ */
+export type TagComplianceResponseApplicationTagCounts = {[key: string]: number};
+
+/**
+ * Tag key to count of resources that have a non-empty value for that key (ALL scanned resources)
+ */
+export type TagComplianceResponseTagCoverageByKey = {[key: string]: number};
+
+export type TagComplianceResponseDataSource = typeof TagComplianceResponseDataSource[keyof typeof TagComplianceResponseDataSource];
+
 
 export const TagComplianceResponseDataSource = {
-  live: "live",
-  unavailable: "unavailable",
-  error: "error",
+  live: 'live',
+  unavailable: 'unavailable',
+  error: 'error',
 } as const;
 
-export type TagComplianceEntryScope =
-  (typeof TagComplianceEntryScope)[keyof typeof TagComplianceEntryScope];
+export type TagComplianceEntryScope = typeof TagComplianceEntryScope[keyof typeof TagComplianceEntryScope];
+
 
 export const TagComplianceEntryScope = {
-  subscription: "subscription",
-  "resource-group": "resource-group",
-  resource: "resource",
+  subscription: 'subscription',
+  'resource-group': 'resource-group',
+  resource: 'resource',
 } as const;
+
+export type TagComplianceEntryTags = {[key: string]: string} | null;
 
 export interface TagComplianceEntry {
   id: string;
@@ -1078,7 +1186,7 @@ export interface TagComplianceEntry {
   subscriptionId: string;
   resourceGroup?: string | null;
   missingTags: string[];
-  tags?: Record<string, string> | null;
+  tags?: TagComplianceEntryTags;
 }
 
 export interface TagComplianceResponse {
@@ -1086,8 +1194,10 @@ export interface TagComplianceResponse {
   totalScanned: number;
   nonCompliantCount: number;
   entries: TagComplianceEntry[];
-  applicationTagCounts: Record<string, number>;
-  tagCoverageByKey: Record<string, number>;
+  /** Application tag value to resource count across ALL scanned resources */
+  applicationTagCounts: TagComplianceResponseApplicationTagCounts;
+  /** Tag key to count of resources that have a non-empty value for that key (ALL scanned resources) */
+  tagCoverageByKey: TagComplianceResponseTagCoverageByKey;
   dataSource: TagComplianceResponseDataSource;
   errorMessage?: string | null;
 }
@@ -1095,30 +1205,30 @@ export interface TagComplianceResponse {
 /**
  * Indicates whether events come from live Azure Service Health or mock data.
  */
-export type ServiceHealthResponseDataSource =
-  (typeof ServiceHealthResponseDataSource)[keyof typeof ServiceHealthResponseDataSource];
+export type ServiceHealthResponseDataSource = typeof ServiceHealthResponseDataSource[keyof typeof ServiceHealthResponseDataSource];
+
 
 export const ServiceHealthResponseDataSource = {
-  live: "live",
-  mock: "mock",
+  live: 'live',
+  mock: 'mock',
 } as const;
 
-export type ServiceHealthEventStatus =
-  (typeof ServiceHealthEventStatus)[keyof typeof ServiceHealthEventStatus];
+export type ServiceHealthEventStatus = typeof ServiceHealthEventStatus[keyof typeof ServiceHealthEventStatus];
+
 
 export const ServiceHealthEventStatus = {
-  Active: "Active",
-  Resolved: "Resolved",
-  Advisory: "Advisory",
+  Active: 'Active',
+  Resolved: 'Resolved',
+  Advisory: 'Advisory',
 } as const;
 
-export type ServiceHealthEventSeverity =
-  (typeof ServiceHealthEventSeverity)[keyof typeof ServiceHealthEventSeverity];
+export type ServiceHealthEventSeverity = typeof ServiceHealthEventSeverity[keyof typeof ServiceHealthEventSeverity];
+
 
 export const ServiceHealthEventSeverity = {
-  Low: "Low",
-  Medium: "Medium",
-  High: "High",
+  Low: 'Low',
+  Medium: 'Medium',
+  High: 'High',
 } as const;
 
 export interface ServiceHealthEvent {
@@ -1165,12 +1275,12 @@ export interface SloRow {
 /**
  * Indicates whether SLO metrics come from live Azure Monitor or built-in mock values.
  */
-export type SlosResponseDataSource =
-  (typeof SlosResponseDataSource)[keyof typeof SlosResponseDataSource];
+export type SlosResponseDataSource = typeof SlosResponseDataSource[keyof typeof SlosResponseDataSource];
+
 
 export const SlosResponseDataSource = {
-  live: "live",
-  mock: "mock",
+  live: 'live',
+  mock: 'mock',
 } as const;
 
 export interface SlosResponse {
@@ -1184,13 +1294,13 @@ export interface SlosResponse {
 /**
  * 'live' = Azure Resource Graph query succeeded, 'mock' = Azure configured but query returned no resources, 'none' = Azure not configured.
  */
-export type GlobalEndpointsResponseDataSource =
-  (typeof GlobalEndpointsResponseDataSource)[keyof typeof GlobalEndpointsResponseDataSource];
+export type GlobalEndpointsResponseDataSource = typeof GlobalEndpointsResponseDataSource[keyof typeof GlobalEndpointsResponseDataSource];
+
 
 export const GlobalEndpointsResponseDataSource = {
-  live: "live",
-  mock: "mock",
-  none: "none",
+  live: 'live',
+  mock: 'mock',
+  none: 'none',
 } as const;
 
 export interface GlobalEndpointRow {
@@ -1224,13 +1334,31 @@ export interface GlobalCostByAppItem {
   trend?: string | null;
 }
 
-export type GetGlobalCostSummaryResponseDataSource =
-  (typeof GetGlobalCostSummaryResponseDataSource)[keyof typeof GetGlobalCostSummaryResponseDataSource];
+export type GetGlobalCostSummaryResponseByApplicationTagItem = {
+  /** Application tag value */
+  application: string;
+  /** Environment tag value (e.g. Production, Staging) */
+  environment?: string;
+  /** Month-to-date spend in USD */
+  monthToDate: number;
+  /** Week-over-week percentage change (e.g. '+8.2%'). Null when insufficient data. */
+  wowTrend?: string | null;
+};
+
+export type GetGlobalCostSummaryResponseByCategoryItem = {
+  /** CostCenter tag value */
+  category: string;
+  /** Month-to-date spend in USD */
+  monthToDate: number;
+};
+
+export type GetGlobalCostSummaryResponseDataSource = typeof GetGlobalCostSummaryResponseDataSource[keyof typeof GetGlobalCostSummaryResponseDataSource];
+
 
 export const GetGlobalCostSummaryResponseDataSource = {
-  live: "live",
-  cached: "cached",
-  mock: "mock",
+  live: 'live',
+  cached: 'cached',
+  mock: 'mock',
 } as const;
 
 export interface GetGlobalCostSummaryResponse {
@@ -1238,10 +1366,10 @@ export interface GetGlobalCostSummaryResponse {
   total: number;
   currency: string;
   byApp: GlobalCostByAppItem[];
-  /** MTD spend grouped by CostCategory tag across all Azure resources */
-  byCategory?: { category: string; monthToDate: number }[];
   /** MTD spend grouped by Application tag across all Azure resources */
-  byApplicationTag?: { application: string; environment?: string; monthToDate: number; wowTrend?: string | null }[];
+  byApplicationTag?: GetGlobalCostSummaryResponseByApplicationTagItem[];
+  /** MTD spend grouped by CostCenter tag across all Azure resources */
+  byCategory?: GetGlobalCostSummaryResponseByCategoryItem[];
   dataSource: GetGlobalCostSummaryResponseDataSource;
   /** Timestamp of the most recent live or cached data point across all apps. */
   dataAsOf?: string | null;
@@ -1279,9 +1407,9 @@ export interface BudgetAlertLogPage {
 
 export interface AcknowledgeBudgetAlertBody {
   /**
-   * Optional freetext note (e.g. "spike from load test, safe to ignore")
-   * @maxLength 500
-   */
+     * Optional freetext note (e.g. "spike from load test, safe to ignore")
+     * @maxLength 500
+     */
   note?: string;
 }
 
@@ -1300,78 +1428,78 @@ export interface AlertChannelStatus {
  */
 export interface UpdateAlertConfigBody {
   /**
-   * CPU alert threshold (percent). Null clears the DB override.
-   * @minimum 1
-   * @maximum 100
-   */
+     * CPU alert threshold (percent). Null clears the DB override.
+     * @minimum 1
+     * @maximum 100
+     */
   cpuThresholdPct?: number | null;
   /**
-   * Memory alert threshold (percent). Null clears the DB override.
-   * @minimum 1
-   * @maximum 100
-   */
+     * Memory alert threshold (percent). Null clears the DB override.
+     * @minimum 1
+     * @maximum 100
+     */
   memoryThresholdPct?: number | null;
   /**
-   * Consecutive over-threshold checks required before a notification fires. Null clears the DB override.
-   * @minimum 1
-   */
+     * Consecutive over-threshold checks required before a notification fires. Null clears the DB override.
+     * @minimum 1
+     */
   consecutiveChecks?: number | null;
   /**
-   * Minimum hours between repeat alert notifications for this app. Null clears the DB override and reverts to env-var / global default (12h).
-   * @minimum 1
-   */
+     * Minimum hours between repeat alert notifications for this app. Null clears the DB override and reverts to env-var / global default (12h).
+     * @minimum 1
+     */
   cooldownHours?: number | null;
 }
 
 /**
  * Which source provides the effective CPU threshold: db = operator-saved DB override, env = per-app env var (ALERT_CPU_THRESHOLD_PCT__<APPID>), inventory = app built-in baseline from the APPS record, default = global env var or hardcoded 80%
  */
-export type AppAlertConfigCpuSource =
-  (typeof AppAlertConfigCpuSource)[keyof typeof AppAlertConfigCpuSource];
+export type AppAlertConfigCpuSource = typeof AppAlertConfigCpuSource[keyof typeof AppAlertConfigCpuSource];
+
 
 export const AppAlertConfigCpuSource = {
-  db: "db",
-  env: "env",
-  inventory: "inventory",
-  default: "default",
+  db: 'db',
+  env: 'env',
+  inventory: 'inventory',
+  default: 'default',
 } as const;
 
 /**
  * Which source provides the effective memory threshold: db = operator-saved DB override, env = per-app env var (ALERT_MEMORY_THRESHOLD_PCT__<APPID>), inventory = app built-in baseline from the APPS record, default = global env var or hardcoded 85%
  */
-export type AppAlertConfigMemorySource =
-  (typeof AppAlertConfigMemorySource)[keyof typeof AppAlertConfigMemorySource];
+export type AppAlertConfigMemorySource = typeof AppAlertConfigMemorySource[keyof typeof AppAlertConfigMemorySource];
+
 
 export const AppAlertConfigMemorySource = {
-  db: "db",
-  env: "env",
-  inventory: "inventory",
-  default: "default",
+  db: 'db',
+  env: 'env',
+  inventory: 'inventory',
+  default: 'default',
 } as const;
 
 /**
  * Which source provides the effective consecutive-checks value
  */
-export type AppAlertConfigConsecutiveChecksSource =
-  (typeof AppAlertConfigConsecutiveChecksSource)[keyof typeof AppAlertConfigConsecutiveChecksSource];
+export type AppAlertConfigConsecutiveChecksSource = typeof AppAlertConfigConsecutiveChecksSource[keyof typeof AppAlertConfigConsecutiveChecksSource];
+
 
 export const AppAlertConfigConsecutiveChecksSource = {
-  db: "db",
-  env: "env",
-  default: "default",
+  db: 'db',
+  env: 'env',
+  default: 'default',
 } as const;
 
 /**
  * Which source provides the effective cooldown (db = Orbit UI override, env = ALERT_COOLDOWN_HOURS[__APPID], appconfig = Azure App Configuration key ALERT_COOLDOWN_HOURS, default = 12h built-in)
  */
-export type AppAlertConfigCooldownSource =
-  (typeof AppAlertConfigCooldownSource)[keyof typeof AppAlertConfigCooldownSource];
+export type AppAlertConfigCooldownSource = typeof AppAlertConfigCooldownSource[keyof typeof AppAlertConfigCooldownSource];
+
 
 export const AppAlertConfigCooldownSource = {
-  db: "db",
-  env: "env",
-  appconfig: "appconfig",
-  default: "default",
+  db: 'db',
+  env: 'env',
+  appconfig: 'appconfig',
+  default: 'default',
 } as const;
 
 export interface AppAlertConfig {
@@ -1435,14 +1563,14 @@ export interface AppThresholds {
 
 export interface UpdateAppThresholdsBody {
   /**
-   * @minimum 1
-   * @maximum 100
-   */
+     * @minimum 1
+     * @maximum 100
+     */
   cpuThreshold: number;
   /**
-   * @minimum 1
-   * @maximum 100
-   */
+     * @minimum 1
+     * @maximum 100
+     */
   memoryThreshold: number;
 }
 
@@ -1541,17 +1669,17 @@ export type UpdateAppThresholds403 = {
 };
 
 export type ListAppThresholdsLogParams = {
-  /**
-   * Maximum number of entries to return (default 50).
-   * @minimum 1
-   * @maximum 200
-   */
-  limit?: number;
-  /**
-   * Number of entries to skip for pagination (default 0).
-   * @minimum 0
-   */
-  offset?: number;
+/**
+ * Maximum number of entries to return (default 50).
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: number;
+/**
+ * Number of entries to skip for pagination (default 0).
+ * @minimum 0
+ */
+offset?: number;
 };
 
 export type ListAppThresholdsLog403 = {
@@ -1560,146 +1688,146 @@ export type ListAppThresholdsLog403 = {
 };
 
 export type GetInfrastructureParams = {
-  /**
-   * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
-   */
-  refresh?: RefreshParameter;
+/**
+ * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+ */
+refresh?: RefreshParameter;
 };
 
 export type GetNetworkParams = {
-  /**
-   * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
-   */
-  refresh?: RefreshParameter;
-  /**
-   * When true, bypasses the endpoint-probe cache only (network tab). Independent of refreshThroughput.
-   */
-  refreshEndpoints?: RefreshEndpointsParameter;
-  /**
-   * When true, bypasses the throughput time-series cache only (network tab). Independent of refreshEndpoints.
-   */
-  refreshThroughput?: RefreshThroughputParameter;
+/**
+ * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+ */
+refresh?: RefreshParameter;
+/**
+ * When true, bypasses the endpoint-probe cache only (network tab). Independent of refreshThroughput.
+ */
+refreshEndpoints?: RefreshEndpointsParameter;
+/**
+ * When true, bypasses the throughput time-series cache only (network tab). Independent of refreshEndpoints.
+ */
+refreshThroughput?: RefreshThroughputParameter;
 };
 
 export type GetCostParams = {
-  /**
-   * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
-   */
-  refresh?: RefreshParameter;
+/**
+ * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+ */
+refresh?: RefreshParameter;
 };
 
 export type GetTelemetryParams = {
-  /**
-   * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
-   */
-  refresh?: RefreshParameter;
+/**
+ * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+ */
+refresh?: RefreshParameter;
 };
 
 export type GetAppAlertsParams = {
-  /**
-   * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
-   */
-  refresh?: RefreshParameter;
+/**
+ * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+ */
+refresh?: RefreshParameter;
 };
 
 export type SyncAppStoreSalesParams = {
-  /**
-   * Month in YYYY-MM format. Defaults to the previous calendar month.
-   * @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$
-   */
-  month?: string;
+/**
+ * Month in YYYY-MM format. Defaults to the previous calendar month.
+ * @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$
+ */
+month?: string;
 };
 
 export type SyncPlayStoreSalesParams = {
-  /**
-   * Month in YYYY-MM format. Defaults to the previous calendar month.
-   * @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$
-   */
-  month?: string;
+/**
+ * Month in YYYY-MM format. Defaults to the previous calendar month.
+ * @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$
+ */
+month?: string;
 };
 
 export type ListGlobalAlertsParams = {
-  /**
-   * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
-   */
-  refresh?: RefreshParameter;
+/**
+ * When true, bypasses the in-process server-side cache and fetches fresh data from Azure.
+ */
+refresh?: RefreshParameter;
 };
 
 export type ListClerkIdentitiesParams = {
-  appId: string;
-  limit?: number;
-  offset?: number;
+appId: string;
+limit?: number;
+offset?: number;
 };
 
 export type QueryLogsParams = {
-  q?: string;
-  limit?: number;
+q?: string;
+limit?: number;
 };
 
 export type ListAnomalyDismissalsParams = {
-  /**
-   * The app whose dismissals to return.
-   */
-  appId: string;
+/**
+ * The app whose dismissals to return.
+ */
+appId: string;
 };
 
 export type UndismissAnomalyParams = {
-  /**
-   * The app whose global dismissal to remove.
-   */
-  appId: string;
-  /**
-   * ISO date (YYYY-MM-DD) of the anomaly to un-dismiss.
-   */
-  dateKey: string;
+/**
+ * The app whose global dismissal to remove.
+ */
+appId: string;
+/**
+ * ISO date (YYYY-MM-DD) of the anomaly to un-dismiss.
+ */
+dateKey: string;
 };
 
 export type ListBudgetAlertLogParams = {
-  /**
-   * Filter to a specific app. Omit to return entries for all apps.
-   */
-  appId?: string;
-  /**
-   * Maximum number of entries to return (default 50, max 200).
-   */
-  limit?: number;
-  /**
-   * Number of entries to skip for pagination (default 0).
-   * @minimum 0
-   */
-  offset?: number;
-  /**
-   * When true, only return entries that have not yet been acknowledged.
-   */
-  unacknowledgedOnly?: boolean;
-  /**
-   * ISO 8601 datetime. When set, only return entries with sentAt >= since.
-   */
-  since?: string;
+/**
+ * Filter to a specific app. Omit to return entries for all apps.
+ */
+appId?: string;
+/**
+ * Maximum number of entries to return (default 50, max 200).
+ */
+limit?: number;
+/**
+ * Number of entries to skip for pagination (default 0).
+ * @minimum 0
+ */
+offset?: number;
+/**
+ * When true, only return entries that have not yet been acknowledged.
+ */
+unacknowledgedOnly?: boolean;
+/**
+ * ISO 8601 datetime. When set, only return entries with sentAt >= since.
+ */
+since?: string;
 };
 
 export type ListInfraAlertLogParams = {
-  /**
-   * Filter to a specific app. Omit to return entries for all apps.
-   */
-  appId?: string;
-  /**
-   * Maximum number of entries to return (default 50, max 200).
-   */
-  limit?: number;
-  /**
-   * Number of entries to skip for pagination (default 0).
-   * @minimum 0
-   */
-  offset?: number;
-  /**
-   * When true, only return entries that have not yet been acknowledged.
-   */
-  unacknowledgedOnly?: boolean;
-  /**
-   * ISO 8601 datetime. When set, only return entries with sentAt >= since.
-   */
-  since?: string;
+/**
+ * Filter to a specific app. Omit to return entries for all apps.
+ */
+appId?: string;
+/**
+ * Maximum number of entries to return (default 50, max 200).
+ */
+limit?: number;
+/**
+ * Number of entries to skip for pagination (default 0).
+ * @minimum 0
+ */
+offset?: number;
+/**
+ * When true, only return entries that have not yet been acknowledged.
+ */
+unacknowledgedOnly?: boolean;
+/**
+ * ISO 8601 datetime. When set, only return entries with sentAt >= since.
+ */
+since?: string;
 };
 
 export type ListFeatureFlags403 = {
@@ -1715,3 +1843,4 @@ export type SetFeatureFlag403 = {
 export type SetFeatureFlag404 = {
   error?: string;
 };
+

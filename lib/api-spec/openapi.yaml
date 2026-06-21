@@ -1994,6 +1994,15 @@ components:
               environment: { type: string, description: "Environment tag value (e.g. Production, Staging)" }
               monthToDate: { type: number, description: Month-to-date spend in USD }
               wowTrend: { type: string, nullable: true, description: "Week-over-week percentage change (e.g. '+8.2%'). Null when insufficient data." }
+        byCategory:
+          type: array
+          description: MTD spend grouped by CostCenter tag across all Azure resources
+          items:
+            type: object
+            required: [category, monthToDate]
+            properties:
+              category: { type: string, description: "CostCenter tag value" }
+              monthToDate: { type: number, description: Month-to-date spend in USD }
         dataSource: { type: string, enum: [live, cached, mock] }
         dataAsOf: { type: string, format: date-time, nullable: true, description: "Timestamp of the most recent live or cached data point across all apps." }
         wowTrend: { type: string, nullable: true, description: "Spend-weighted week-over-week percentage change across all apps (e.g. '+8.2%' or '-3.1%'). Null when insufficient data." }

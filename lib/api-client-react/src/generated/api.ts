@@ -37,6 +37,7 @@ import type {
   ClerkEventSummaryRow,
   ClerkIdentityRow,
   CostReport,
+  CreateOpsCostItemRequest,
   DismissAnomalyRequest,
   FeatureFlag,
   GetAppAlertsParams,
@@ -67,6 +68,7 @@ import type {
   ListInfraAlertLogParams,
   LogLine,
   NetworkReport,
+  OpsCostItem,
   PlaySubscriptionRow,
   PostLedgerEntryRequest,
   QueryLogsParams,
@@ -87,6 +89,7 @@ import type {
   UpdateAlertConfigBody,
   UpdateAppThresholds403,
   UpdateAppThresholdsBody,
+  UpdateOpsCostItemRequest,
   UserActivityRow
 } from './api.schemas';
 
@@ -813,6 +816,301 @@ export function useGetCost<TData = Awaited<ReturnType<typeof getCost>>, TError =
 
 
 
+
+export const getListOpsCostItemsUrl = (appId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/ops-costs`
+}
+
+/**
+ * @summary List operational cost line items for an app (Business Ops only)
+ */
+export const listOpsCostItems = async (appId: string, options?: RequestInit): Promise<OpsCostItem[]> => {
+
+  return customFetch<OpsCostItem[]>(getListOpsCostItemsUrl(appId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOpsCostItemsQueryKey = (appId: string,) => {
+    return [
+    `/api/apps/${appId}/ops-costs`
+    ] as const;
+    }
+
+
+export const getListOpsCostItemsQueryOptions = <TData = Awaited<ReturnType<typeof listOpsCostItems>>, TError = ErrorType<void>>(appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOpsCostItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOpsCostItemsQueryKey(appId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOpsCostItems>>> = ({ signal }) => listOpsCostItems(appId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(appId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOpsCostItems>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOpsCostItemsQueryResult = NonNullable<Awaited<ReturnType<typeof listOpsCostItems>>>
+export type ListOpsCostItemsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List operational cost line items for an app (Business Ops only)
+ */
+
+export function useListOpsCostItems<TData = Awaited<ReturnType<typeof listOpsCostItems>>, TError = ErrorType<void>>(
+ appId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOpsCostItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOpsCostItemsQueryOptions(appId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateOpsCostItemUrl = (appId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/ops-costs`
+}
+
+/**
+ * @summary Create a new operational cost line item
+ */
+export const createOpsCostItem = async (appId: string,
+    createOpsCostItemRequest: CreateOpsCostItemRequest, options?: RequestInit): Promise<OpsCostItem> => {
+
+  return customFetch<OpsCostItem>(getCreateOpsCostItemUrl(appId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createOpsCostItemRequest,)
+  }
+);}
+
+
+
+
+export const getCreateOpsCostItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOpsCostItem>>, TError,{appId: string;data: BodyType<CreateOpsCostItemRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createOpsCostItem>>, TError,{appId: string;data: BodyType<CreateOpsCostItemRequest>}, TContext> => {
+
+const mutationKey = ['createOpsCostItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createOpsCostItem>>, {appId: string;data: BodyType<CreateOpsCostItemRequest>}> = (props) => {
+          const {appId,data} = props ?? {};
+
+          return  createOpsCostItem(appId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateOpsCostItemMutationResult = NonNullable<Awaited<ReturnType<typeof createOpsCostItem>>>
+    export type CreateOpsCostItemMutationBody = BodyType<CreateOpsCostItemRequest>
+    export type CreateOpsCostItemMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a new operational cost line item
+ */
+export const useCreateOpsCostItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOpsCostItem>>, TError,{appId: string;data: BodyType<CreateOpsCostItemRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createOpsCostItem>>,
+        TError,
+        {appId: string;data: BodyType<CreateOpsCostItemRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateOpsCostItemMutationOptions(options));
+    }
+
+export const getUpdateOpsCostItemUrl = (appId: string,
+    itemId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/ops-costs/${itemId}`
+}
+
+/**
+ * @summary Update an existing operational cost line item
+ */
+export const updateOpsCostItem = async (appId: string,
+    itemId: string,
+    updateOpsCostItemRequest: UpdateOpsCostItemRequest, options?: RequestInit): Promise<OpsCostItem> => {
+
+  return customFetch<OpsCostItem>(getUpdateOpsCostItemUrl(appId,itemId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateOpsCostItemRequest,)
+  }
+);}
+
+
+
+
+export const getUpdateOpsCostItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOpsCostItem>>, TError,{appId: string;itemId: string;data: BodyType<UpdateOpsCostItemRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOpsCostItem>>, TError,{appId: string;itemId: string;data: BodyType<UpdateOpsCostItemRequest>}, TContext> => {
+
+const mutationKey = ['updateOpsCostItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOpsCostItem>>, {appId: string;itemId: string;data: BodyType<UpdateOpsCostItemRequest>}> = (props) => {
+          const {appId,itemId,data} = props ?? {};
+
+          return  updateOpsCostItem(appId,itemId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOpsCostItemMutationResult = NonNullable<Awaited<ReturnType<typeof updateOpsCostItem>>>
+    export type UpdateOpsCostItemMutationBody = BodyType<UpdateOpsCostItemRequest>
+    export type UpdateOpsCostItemMutationError = ErrorType<void>
+
+    /**
+ * @summary Update an existing operational cost line item
+ */
+export const useUpdateOpsCostItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOpsCostItem>>, TError,{appId: string;itemId: string;data: BodyType<UpdateOpsCostItemRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOpsCostItem>>,
+        TError,
+        {appId: string;itemId: string;data: BodyType<UpdateOpsCostItemRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateOpsCostItemMutationOptions(options));
+    }
+
+export const getDeleteOpsCostItemUrl = (appId: string,
+    itemId: string,) => {
+
+
+
+
+  return `/api/apps/${appId}/ops-costs/${itemId}`
+}
+
+/**
+ * @summary Delete an operational cost line item
+ */
+export const deleteOpsCostItem = async (appId: string,
+    itemId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteOpsCostItemUrl(appId,itemId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteOpsCostItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteOpsCostItem>>, TError,{appId: string;itemId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteOpsCostItem>>, TError,{appId: string;itemId: string}, TContext> => {
+
+const mutationKey = ['deleteOpsCostItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteOpsCostItem>>, {appId: string;itemId: string}> = (props) => {
+          const {appId,itemId} = props ?? {};
+
+          return  deleteOpsCostItem(appId,itemId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteOpsCostItemMutationResult = NonNullable<Awaited<ReturnType<typeof deleteOpsCostItem>>>
+
+    export type DeleteOpsCostItemMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete an operational cost line item
+ */
+export const useDeleteOpsCostItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteOpsCostItem>>, TError,{appId: string;itemId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteOpsCostItem>>,
+        TError,
+        {appId: string;itemId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteOpsCostItemMutationOptions(options));
+    }
 
 export const getGetTelemetryUrl = (appId: string,
     params?: GetTelemetryParams,) => {
