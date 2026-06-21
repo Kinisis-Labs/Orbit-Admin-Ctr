@@ -562,10 +562,12 @@ export async function diagnoseCostForApp(
 
 /**
  * Maps Microsoft 365 billing product names (from the billing account scope query)
- * to Orbit CostCategory values. Returns null for Azure infrastructure charges
- * that are already captured via the subscription-scope query, preventing double-counting.
+ * to Orbit / Grailbabe / Other cost centers. M365 charges cannot carry Azure resource
+ * tags, so we infer the cost center from the product name. Returns null for Azure
+ * infrastructure charges that are already captured via the subscription-scope query,
+ * preventing double-counting.
  */
-function m365ProductToCategory(productName: string): string | null {
+function m365ProductToCostCenter(productName: string): "Orbit" | "Grailbabe" | "Other" | null {
   const p = productName.toLowerCase();
   // Skip Azure infrastructure products — already in the subscription-scope query.
   if (
@@ -576,37 +578,12 @@ function m365ProductToCategory(productName: string): string | null {
   ) {
     return null;
   }
-  // Microsoft 365 / Entra / Exchange → BusinessOps
-  if (
-    p.includes("microsoft 365") ||
-    p.includes("m365") ||
-    p.includes("exchange") ||
-    p.includes("sharepoint") ||
-    p.includes("teams") ||
-    p.includes("office 365") ||
-    p.includes("onedrive")
-  ) {
-    return "BusinessOps";
-  }
-  // Entra ID / Azure AD → Security
-  if (p.includes("entra") || p.includes("azure active directory") || p.includes("azure ad")) {
-    return "Security";
-  }
-  // Defender / Sentinel → Security
-  if (p.includes("defender") || p.includes("sentinel") || p.includes("purview")) {
-    return "Security";
-  }
-  // Power Platform → BusinessOps
-  if (p.includes("power bi") || p.includes("power apps") || p.includes("power automate")) {
-    return "BusinessOps";
-  }
-  // GitHub → BusinessOps (developer tooling)
-  if (p.includes("github")) {
-    return "BusinessOps";
-  }
-  // Anything else from billing account = untagged at resource level, surface as BusinessOps
-  // rather than Untagged since it's a SaaS/M365 charge.
-  return "BusinessOps";
+  // Infer cost center from the product name when it names the entity directly.
+  if (p.includes("orbit")) return "Orbit";
+  if (p.includes("grailbabe")) return "Grailbabe";
+  // All other M365 / Entra / Defender / Power Platform / GitHub SaaS charges are
+  // untagged at the resource level, so bucket them as Other until explicitly mapped.
+  return "Other";
 }
 
 /**
@@ -1012,12 +989,11 @@ export async function fetchCostByCostCategoryTag({
         for (const row of rows) {
           const amount = Number(row[costIdx] ?? 0);
           const productName = nameIdx !== -1 ? String(row[nameIdx] ?? "") : "";
-          // Map M365 product names to CostCategory — skip charges already
+          // Map M365 product names to Orbit/Grailbabe/Other — skip charges already
           // captured via the subscription-scope query to avoid double-counting.
-          const mapped = m365ProductToCategory(productName);
+          const mapped = m365ProductToCostCenter(productName);
           if (mapped) {
-            const cat = normalizeEntity(mapped);
-            catMap.set(cat, (catMap.get(cat) ?? 0) + amount);
+            catMap.set(mapped, (catMap.get(mapped) ?? 0) + amount);
           }
         }
       }
