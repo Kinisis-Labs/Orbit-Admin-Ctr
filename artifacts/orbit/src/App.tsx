@@ -17,6 +17,7 @@ import Incidents from "@/pages/incidents";
 import ActivityLog from "@/pages/activity";
 import Health from "@/pages/health";
 import NetworkPage from "@/pages/network";
+import TelemetryPage from "@/pages/telemetry";
 import Logs from "@/pages/logs";
 import ServiceHealth from "@/pages/service-health";
 import Subscriptions from "@/pages/subscriptions";
@@ -56,6 +57,7 @@ function Router() {
         <Route path="/activity" component={ActivityLog} />
         <Route path="/health" component={Health} />
         <Route path="/network" component={NetworkPage} />
+        <Route path="/telemetry" component={TelemetryPage} />
         <Route path="/logs" component={Logs} />
         <Route path="/service-health" component={ServiceHealth} />
         <Route path="/users" component={Users} />

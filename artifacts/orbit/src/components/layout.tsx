@@ -19,6 +19,7 @@ import {
   Activity,
   HeartPulse,
   Network,
+  Telescope,
   FileText,
   ShieldAlert,
   Users,
@@ -60,6 +61,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/activity": "Activity log",
   "/health": "Health & SLOs",
   "/network": "Network",
+  "/telemetry": "Network Telemetry",
   "/logs": "Log search",
   "/service-health": "Service health",
   "/users": "Users & activity",
@@ -328,6 +330,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   icon={<Network className="h-[18px] w-[18px]" />}
                   label="Network"
                   active={location === "/network"}
+                  collapsed={navCollapsed}
+                />
+                <NavItem
+                  href="/telemetry"
+                  icon={<Telescope className="h-[18px] w-[18px]" />}
+                  label="Telemetry"
+                  active={location === "/telemetry"}
                   collapsed={navCollapsed}
                 />
                 <NavItem
