@@ -1181,6 +1181,78 @@ export async function fetchCostByCostCategoryTag({
   return result;
 }
 
+let _m365CacheEntry: { result: number; expiresAt: number } | null = null;
+
+/**
+ * Queries the MCA billing account for non-Azure SaaS charges (Microsoft 365,
+ * Entra, Defender, Power Platform, GitHub, etc.) and returns the total MTD
+ * spend as the Microsoft365 cost center amount.
+ *
+ * Returns 0 when AZURE_BILLING_ACCOUNT_ID is not configured or on any error.
+ * Results are cached for 30 minutes.
+ */
+export async function fetchM365MonthlyCost({
+  bypassCache = false,
+}: { bypassCache?: boolean } = {}): Promise<number> {
+  if (!bypassCache && _m365CacheEntry && _m365CacheEntry.expiresAt > Date.now()) {
+    return _m365CacheEntry.result;
+  }
+
+  const billingAccountId = getBillingAccountId();
+  if (!billingAccountId) return 0;
+
+  const start = monthStart();
+  const end = today();
+  const billingScope = `/providers/Microsoft.Billing/billingAccounts/${billingAccountId}`;
+
+  try {
+    const result = await getCostClient().query.usage(billingScope, {
+      type: "Usage",
+      timeframe: "Custom",
+      timePeriod: { from: new Date(start), to: new Date(end) },
+      dataset: {
+        granularity: "None",
+        aggregation: { totalCost: { name: "PreTaxCost", function: "Sum" } },
+        grouping: [{ type: "Dimension", name: "ProductName" }],
+      },
+    });
+    const columns: string[] = (result.columns ?? []).map((c: { name?: string | null }) =>
+      String(c.name ?? ""),
+    );
+    const rows = (result.rows ?? []) as unknown[][];
+    const costIdx = columns.findIndex((c) => c.toLowerCase().includes("cost"));
+    const nameIdx = columns.findIndex(
+      (c) => c.toLowerCase().includes("product") || c.toLowerCase() === "productname",
+    );
+    if (costIdx === -1) return 0;
+
+    let total = 0;
+    for (const row of rows) {
+      const amount = Number(row[costIdx] ?? 0);
+      const productName = nameIdx !== -1 ? String(row[nameIdx] ?? "") : "";
+      const p = productName.toLowerCase();
+      // Skip Azure infrastructure — already captured by subscription-scope queries.
+      if (
+        p.includes("azure") ||
+        p.includes("virtual machine") ||
+        p.includes("storage") ||
+        p.includes("bandwidth")
+      ) {
+        continue;
+      }
+      total += amount;
+    }
+
+    const rounded = Number(total.toFixed(2));
+    _m365CacheEntry = { result: rounded, expiresAt: Date.now() + COST_CACHE_TTL_MS };
+    logger.info({ billingAccountId, total: rounded }, "M365 monthly cost fetched");
+    return rounded;
+  } catch (err) {
+    logger.warn({ err, billingAccountId }, "M365 monthly cost query failed");
+    return 0;
+  }
+}
+
 export async function fetchMonthToDateCostWithFallback(
   app: AppRecord,
   opts: { bypassCache?: boolean; billingScope?: "rg" | "subscription" } = {},

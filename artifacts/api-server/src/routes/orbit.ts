@@ -35,6 +35,7 @@ import {
   fetchLastMonthComparableCostTotal,
   fetchCostByCostCategoryTag,
   fetchCostByApplicationTag,
+  fetchM365MonthlyCost,
   isGuid,
 } from "../lib/azureCost.js";
 import { fetchThirdPartyUsage } from "../lib/thirdPartyUsage.js";
@@ -1191,6 +1192,13 @@ function deriveTrendFromServices(
   return (avg >= 0 ? "+" : "") + avg.toFixed(1) + "%";
 }
 
+// Static mapping from app ID to the cost center label shown in the UI.
+// Microsoft365 is not an Azure app — it is always derived from the billing account.
+const APP_COST_CENTER: Record<string, string> = {
+  grailbabe: "Grailbabe",
+  "kinisis-labs": "Orbit",
+};
+
 router.get("/global/cost-summary", async (_req, res) => {
   // Ensure tag-based cost queries cover every app subscription, not just the
   // generic AZURE_SUBSCRIPTION_IDS list. App records carry their own specific
@@ -1198,11 +1206,12 @@ router.get("/global/cost-summary", async (_req, res) => {
   // general list.
   const allAppSubscriptionIds = [...new Set(APPS.map((a) => a.subscriptionId).filter(isGuid))];
 
-  const [costResults, byCategory, byApplicationTag] = await Promise.all([
+  const [costResults, taggedCostCenters, m365Cost, byApplicationTag] = await Promise.all([
     Promise.all(
       APPS.map((a) => fetchMonthToDateCostWithFallback(a, { billingScope: billingScope(a.id) })),
     ),
     fetchCostByCostCategoryTag({ subscriptionIds: allAppSubscriptionIds }),
+    fetchM365MonthlyCost(),
     fetchCostByApplicationTag({ subscriptionIds: allAppSubscriptionIds }),
   ]);
 
@@ -1241,6 +1250,33 @@ router.get("/global/cost-summary", async (_req, res) => {
 
   const total = byApp.reduce((sum, r) => sum + r.monthToDate, 0);
 
+  // Build byCategory from CostCenter-tag-based Azure query + billing account M365.
+  // taggedCostCenters groups Azure spend by the CostCenter tag on each resource.
+  // Microsoft365 is appended separately since M365 products cannot carry resource tags.
+  // If the tag query returned null (Azure not configured), fall back to per-app totals
+  // so the UI always shows all three cost centers.
+  const byCategoryMap = new Map<string, number>();
+  if (taggedCostCenters) {
+    for (const { category, monthToDate } of taggedCostCenters) {
+      byCategoryMap.set(category, (byCategoryMap.get(category) ?? 0) + monthToDate);
+    }
+  } else {
+    // Fallback: derive from per-app subscription totals when tag query unavailable.
+    for (const item of byApp) {
+      const label = APP_COST_CENTER[item.appId];
+      if (label) {
+        byCategoryMap.set(label, (byCategoryMap.get(label) ?? 0) + item.monthToDate);
+      }
+    }
+  }
+  // Always merge Microsoft365 from billing account — never derived from Azure tags.
+  if (m365Cost > 0) {
+    byCategoryMap.set("Microsoft365", (byCategoryMap.get("Microsoft365") ?? 0) + m365Cost);
+  }
+  const byCategory = [...byCategoryMap.entries()]
+    .map(([category, monthToDate]) => ({ category, monthToDate: Number(monthToDate.toFixed(2)) }))
+    .sort((a, b) => b.monthToDate - a.monthToDate);
+
   // Compute a spend-weighted global WoW trend from per-app trends.
   // Falls back to a simple average when all apps have zero/negligible MTD spend (e.g. mock mode).
   let globalWowTrend: string | null = null;
@@ -1272,7 +1308,7 @@ router.get("/global/cost-summary", async (_req, res) => {
       total: Number(total.toFixed(2)),
       currency: "USD",
       byApp,
-      ...(byCategory ? { byCategory } : {}),
+      ...(byCategory.length > 0 ? { byCategory } : {}),
       ...(byApplicationTag ? { byApplicationTag } : {}),
       dataSource: overallSource,
       ...(latestDataAsOf ? { dataAsOf: latestDataAsOf } : {}),
