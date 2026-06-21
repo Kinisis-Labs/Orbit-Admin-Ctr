@@ -1,34 +1,113 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useListUserActivity, useGetStaffStats, useListClerkEventSummary, useListClerkIdentities } from "@workspace/api-client-react";
 import type { ClerkIdentityRow } from "@workspace/api-client-react";
 import { useUpdatedAgo } from "@/hooks/use-updated-ago";
+import { useApps } from "@/hooks/use-apps";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TrendingDown, TrendingUp, ExternalLink, RefreshCw, Wifi, Shield, Users as UsersIcon } from "lucide-react";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { RefreshingBar } from "@/components/refreshing-bar";
-import { ScopeSelect } from "@/lib/scope";
-import { useScope } from "@/lib/scope-context";
+import { useSearch, useLocation } from "wouter";
+import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
+import type { AppSummary } from "@workspace/api-client-react";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-US").format(n);
 
-const BUSINESS_OPS_ID = "kinisis-labs";
+const APP_TAG_SCOPE_PARAM = "appTag";
+
+const APP_TAG_FILTERS = [
+  { value: "all", label: "All" },
+  { value: "orbit", label: "Orbit" },
+  { value: "grailbabe", label: "Grailbabe" },
+] as const;
+
+type AppTagFilterValue = (typeof APP_TAG_FILTERS)[number]["value"];
+
+function getApplicationTag(app: AppSummary): string | undefined {
+  const tags = app.tags as Record<string, string> | undefined;
+  return tags?.["Application"] ?? tags?.["application"];
+}
+
+function AppTagToggle({
+  value,
+  onChange,
+}: {
+  value: AppTagFilterValue;
+  onChange: (v: AppTagFilterValue) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <label className="text-[12px] text-muted-foreground font-medium">Scope</label>
+      <div className="flex items-center gap-1 rounded-sm border border-border bg-card p-0.5">
+        {APP_TAG_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            onClick={() => onChange(f.value)}
+            aria-pressed={value === f.value}
+            className={cn(
+              "text-[12px] px-2.5 py-1 rounded-sm transition-colors",
+              value === f.value
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted",
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function Users() {
-  const { scope } = useScope();
+  const { data: apps } = useApps();
   const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useListUserActivity();
   const { data: staffData, isLoading: staffLoading } = useGetStaffStats();
   const { data: eventsData, isLoading: eventsLoading } = useListClerkEventSummary();
 
-  const isGlobal = scope === "global";
-  const isBusinessOps = scope === BUSINESS_OPS_ID;
-  const isSpecificClerkApp = !isGlobal && !isBusinessOps;
-  const showEntra = isBusinessOps || isGlobal;
-  const showClerk = !isBusinessOps;
+  const search = useSearch();
+  const [location, navigate] = useLocation();
+
+  const appTagScope = useMemo((): AppTagFilterValue => {
+    const v = new URLSearchParams(search).get(APP_TAG_SCOPE_PARAM)?.toLowerCase();
+    if (v === "orbit" || v === "grailbabe") return v;
+    return "all";
+  }, [search]);
+
+  const setAppTagScope = useCallback(
+    (v: AppTagFilterValue) => {
+      const params = new URLSearchParams(search);
+      if (v === "all") {
+        params.delete(APP_TAG_SCOPE_PARAM);
+      } else {
+        params.set(APP_TAG_SCOPE_PARAM, v);
+      }
+      const qs = params.toString();
+      navigate(`${location}${qs ? `?${qs}` : ""}`, { replace: true });
+    },
+    [search, location, navigate],
+  );
+
+  const isGlobal = appTagScope === "all";
+  const showEntra = appTagScope === "all" || appTagScope === "orbit";
+  const showClerk = appTagScope === "all" || appTagScope === "grailbabe";
+
+  const taggedAppIds = useMemo(() => {
+    if (!apps || appTagScope === "all") return null;
+    return new Set(
+      apps
+        .filter((a) => getApplicationTag(a)?.toLowerCase() === appTagScope)
+        .map((a) => a.id),
+    );
+  }, [apps, appTagScope]);
 
   const activity = useMemo(() => data ?? [], [data]);
-  const scopedActivity = isGlobal ? activity : activity.filter((a) => a.appId === scope);
+  const scopedActivity = taggedAppIds
+    ? activity.filter((a) => taggedAppIds.has(a.appId))
+    : activity;
 
   const totals = scopedActivity.reduce(
     (acc, r) => ({
@@ -62,7 +141,7 @@ export default function Users() {
         right={
           <div className="flex items-center gap-2">
             {liveBadge}
-            <ScopeSelect />
+            <AppTagToggle value={appTagScope} onChange={setAppTagScope} />
           </div>
         }
       />
@@ -201,10 +280,7 @@ export default function Users() {
       </div>}
 
       {/* ── Account event log (Clerk lifecycle events) ─────────────── */}
-      {showClerk && <ClerkEventLog data={eventsData ?? []} isLoading={eventsLoading} scope={scope} isGlobal={isGlobal} />}
-
-      {/* ── Individual user identities — only for a specific Clerk app ── */}
-      {isSpecificClerkApp && <ClerkIdentityTable appId={scope} />}
+      {showClerk && <ClerkEventLog data={eventsData ?? []} isLoading={eventsLoading} taggedAppIds={taggedAppIds} isGlobal={isGlobal} />}
     </div>
   );
 }
@@ -307,29 +383,31 @@ function ClerkIdentityRowComponent({ user }: { user: ClerkIdentityRow }) {
 function ClerkEventLog({
   data,
   isLoading,
-  scope,
+  taggedAppIds,
   isGlobal,
 }: {
   data: import("@workspace/api-client-react").ClerkEventSummaryRow[];
   isLoading: boolean;
-  scope: string;
+  taggedAppIds: Set<string> | null;
   isGlobal: boolean;
 }) {
-  const row = isGlobal
-    ? data.reduce<import("@workspace/api-client-react").ClerkEventSummaryRow | null>((acc, r) => {
-        if (!acc) return r;
-        return {
-          ...acc,
-          signups7d: acc.signups7d + r.signups7d,
-          signups30d: acc.signups30d + r.signups30d,
-          updates7d: acc.updates7d + r.updates7d,
-          updates30d: acc.updates30d + r.updates30d,
-          deletions7d: acc.deletions7d + r.deletions7d,
-          deletions30d: acc.deletions30d + r.deletions30d,
-          daily: [],
-        };
-      }, null)
-    : data.find((r) => r.appId === scope);
+  const relevantRows = isGlobal || !taggedAppIds
+    ? data
+    : data.filter((r) => taggedAppIds.has(r.appId));
+
+  const row = relevantRows.reduce<import("@workspace/api-client-react").ClerkEventSummaryRow | null>((acc, r) => {
+    if (!acc) return r;
+    return {
+      ...acc,
+      signups7d: acc.signups7d + r.signups7d,
+      signups30d: acc.signups30d + r.signups30d,
+      updates7d: acc.updates7d + r.updates7d,
+      updates30d: acc.updates30d + r.updates30d,
+      deletions7d: acc.deletions7d + r.deletions7d,
+      deletions30d: acc.deletions30d + r.deletions30d,
+      daily: [],
+    };
+  }, null);
   const hasAny = row
     ? row.signups30d + row.updates30d + row.deletions30d > 0
     : false;
