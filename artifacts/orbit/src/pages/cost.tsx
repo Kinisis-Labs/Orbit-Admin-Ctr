@@ -881,12 +881,14 @@ function GlobalCost() {
         </div>
         <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
           <div className="text-[12px] text-muted-foreground font-medium mb-1">
-            Applications tracked
+            Cost Centers tracked
           </div>
           {isLoading ? (
             <Skeleton className="h-7 w-10 mt-1" />
           ) : (
-            <span className="text-xl font-semibold text-foreground mt-1">{apps?.length ?? 0}</span>
+            <span className="text-xl font-semibold text-foreground mt-1">
+              {globalCostSummary?.byCategory?.length ?? 0}
+            </span>
           )}
           <div className="text-[11px] text-muted-foreground mt-1">Across all environments</div>
         </div>
