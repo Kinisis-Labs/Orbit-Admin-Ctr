@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { listDeployments, getListDeploymentsQueryKey } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
@@ -6,15 +6,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Download, ExternalLink, RefreshCw, Search, GitBranch } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
-import { ScopeSelect } from "@/lib/scope";
-import { useScope } from "@/lib/scope-context";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { DataSourceBadge } from "@/components/data-source-badge";
 import { cn } from "@/lib/utils";
 import { useSearch, useLocation } from "wouter";
-import type { Deployment } from "@workspace/api-client-react";
+import type { Deployment, AppSummary } from "@workspace/api-client-react";
 
 type DeploymentStatus = Deployment["status"];
 type RunTypeFilter = "all" | "deploy" | "ci";
@@ -102,8 +101,19 @@ function parseTypeParam(search: string): RunTypeFilter | null {
   return null;
 }
 
+const APP_TAG_SCOPE_PARAM = "appTag";
+
+function getApplicationTag(app: AppSummary): string | undefined {
+  const tags = app.tags as Record<string, string> | undefined;
+  return tags?.["Application"] ?? tags?.["application"];
+}
+
+function formatAppTagLabel(tag: string): string {
+  if (tag === "all") return "All";
+  return tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase();
+}
+
 export default function Deployments() {
-  const { scope } = useScope();
   const { data: apps, isLoading: appsLoading } = useApps();
   const [filter, setFilter] = useState("");
 
@@ -135,15 +145,61 @@ export default function Deployments() {
     [search, location, navigate],
   );
 
-  const selectedApp = apps?.find((a) => a.id === scope);
+  const appTagScope = useMemo(() => {
+    const v = new URLSearchParams(search).get(APP_TAG_SCOPE_PARAM)?.toLowerCase();
+    return v || "all";
+  }, [search]);
 
-  const isGlobal = scope === "global";
+  useEffect(() => {
+    if (!apps || apps.length === 0) return;
+    const valid =
+      appTagScope === "all" ||
+      apps.some((a) => getApplicationTag(a)?.toLowerCase() === appTagScope);
+    if (!valid) {
+      const params = new URLSearchParams(search);
+      params.delete(APP_TAG_SCOPE_PARAM);
+      const qs = params.toString();
+      navigate(`${location}${qs ? `?${qs}` : ""}`, { replace: true });
+    }
+  }, [apps, appTagScope, search, location, navigate]);
+
+  const setAppTagScope = useCallback(
+    (v: string) => {
+      const params = new URLSearchParams(search);
+      if (v === "all") {
+        params.delete(APP_TAG_SCOPE_PARAM);
+      } else {
+        params.set(APP_TAG_SCOPE_PARAM, v);
+      }
+      const qs = params.toString();
+      navigate(`${location}${qs ? `?${qs}` : ""}`, { replace: true });
+    },
+    [search, location, navigate],
+  );
+
+  const appTagOptions = useMemo(() => {
+    const tags = new Set<string>();
+    (apps ?? []).forEach((a) => {
+      const tag = getApplicationTag(a);
+      if (tag) tags.add(tag.toLowerCase());
+    });
+    return ["all", ...Array.from(tags).sort()];
+  }, [apps]);
+
+  const appTagById = useMemo(() => {
+    const map = new Map<string, string>();
+    (apps ?? []).forEach((a) => {
+      const tag = getApplicationTag(a);
+      if (tag) map.set(a.id, tag);
+    });
+    return map;
+  }, [apps]);
 
   const appsToQuery = useMemo(() => {
     if (!apps) return [];
-    if (isGlobal) return apps;
-    return apps.filter((a) => a.id === scope);
-  }, [apps, scope, isGlobal]);
+    if (appTagScope === "all") return apps;
+    return apps.filter((a) => getApplicationTag(a)?.toLowerCase() === appTagScope);
+  }, [apps, appTagScope]);
 
   const deploymentQueries = useQueries({
     queries: appsToQuery.map((app) => ({
@@ -179,13 +235,14 @@ export default function Deployments() {
     const f = filter.toLowerCase();
     return deployments.filter(
       (d) =>
+        (appTagById.get(d.appId) ?? d.appName).toLowerCase().includes(f) ||
         d.appName.toLowerCase().includes(f) ||
         d.version.toLowerCase().includes(f) ||
         d.triggeredBy.toLowerCase().includes(f) ||
         d.commitSha.includes(f) ||
         d.pipeline.toLowerCase().includes(f),
     );
-  }, [deployments, filter]);
+  }, [deployments, filter, appTagById]);
 
   const tableRows = useMemo(() => {
     if (runTypeFilter === "all") return filtered;
@@ -205,13 +262,45 @@ export default function Deployments() {
     <div className="space-y-4">
       <PageHeader
         title="Deployments"
-        subtitle={isGlobal ? "Release activity — all apps" : selectedApp ? `Release activity for ${selectedApp.name}` : "Release activity"}
+        subtitle={
+          appTagScope === "all"
+            ? "Release activity — all apps"
+            : `Release activity for ${formatAppTagLabel(appTagScope)}`
+        }
         right={
           <div className="flex items-center gap-2">
             {!isLoading && dataSource && (
-              <DataSourceBadge dataSource={dataSource} dataAsOf={fetchedAt} label="GitHub Actions" />
+              <DataSourceBadge
+                dataSource={dataSource}
+                dataAsOf={fetchedAt}
+                label="GitHub Actions"
+              />
             )}
-            <ScopeSelect allowGlobal />
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="deployment-app-tag-scope"
+                className="text-[12px] text-muted-foreground font-medium"
+              >
+                Scope
+              </label>
+              <Select value={appTagScope} onValueChange={setAppTagScope}>
+                <SelectTrigger
+                  id="deployment-app-tag-scope"
+                  aria-label="Deployment scope"
+                  data-testid="deployment-scope-select"
+                  className="h-8 w-[260px] rounded-sm border-border bg-card text-[13px]"
+                >
+                  <span>{formatAppTagLabel(appTagScope)}</span>
+                </SelectTrigger>
+                <SelectContent>
+                  {appTagOptions.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {formatAppTagLabel(value)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         }
       />
@@ -315,7 +404,9 @@ export default function Deployments() {
                         isFailedCi && "bg-destructive/5 hover:bg-destructive/10",
                       )}
                     >
-                      <TableCell className="py-1 font-medium text-primary">{d.appName}</TableCell>
+                      <TableCell className="py-1 font-medium text-primary">
+                        {appTagById.get(d.appId) ?? d.appName}
+                      </TableCell>
                       <TableCell className="py-1">
                         <RunTypeBadge runType={d.runType as "deploy" | "ci"} status={d.status} />
                       </TableCell>
