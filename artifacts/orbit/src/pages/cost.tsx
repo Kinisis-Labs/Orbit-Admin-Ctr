@@ -11,6 +11,7 @@ import {
   useGetGlobalHealth,
   getGetGlobalHealthQueryKey,
   getListAppsQueryKey,
+  type OpsCostSummary,
 } from "@workspace/api-client-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUnacknowledgedBudgetAlerts } from "@/hooks/use-unacknowledged-budget-alerts";
@@ -161,42 +162,6 @@ export function detectRecentAnomaly(
 const LS_KEY_PREFIX = "orbit-cost-anomaly-dismissed-";
 const LS_DAILY_TABLE_KEY = (scope: string) => `orbit-cost-daily-table-${scope}`;
 const LS_SERVICE_SORT_KEY = (scope: string) => `orbit-cost-service-sort-${scope}`;
-const LS_COST_VIEW_MODE = "orbit-cost-view-mode";
-
-type CostViewMode = "application" | "costCenter";
-
-function CostViewSelector({
-  value,
-  onChange,
-}: {
-  value: CostViewMode;
-  onChange: (v: CostViewMode) => void;
-}) {
-  const options: { value: CostViewMode; label: string; icon: typeof Users }[] = [
-    { value: "application", label: "Application", icon: Users },
-    { value: "costCenter", label: "Cost Center", icon: Building2 },
-  ];
-
-  return (
-    <div className="flex items-center bg-muted rounded-md p-0.5">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-sm transition-colors ${
-            value === opt.value
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <opt.icon className="h-3 w-3" />
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 type ServiceSortCol = "amount" | "trend";
 type SortDir = "asc" | "desc";
@@ -401,24 +366,6 @@ export default function Cost() {
   const selectedApp = apps?.find((a) => a.id === scope);
   const isGlobal = scope === "global";
 
-  const [viewMode, setViewMode] = useState<CostViewMode>(() => {
-    try {
-      const raw = localStorage.getItem(LS_COST_VIEW_MODE);
-      if (raw === "application" || raw === "costCenter") return raw;
-    } catch {
-      /* ignore */
-    }
-    return "costCenter";
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(LS_COST_VIEW_MODE, viewMode);
-    } catch {
-      /* ignore */
-    }
-  }, [viewMode]);
-
   const { data: globalCostSummary, isLoading: globalCostLoading } = useGetGlobalCostSummary({
     query: {
       queryKey: getGetGlobalCostSummaryQueryKey(),
@@ -441,7 +388,6 @@ export default function Cost() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {isGlobal && <CostViewSelector value={viewMode} onChange={setViewMode} />}
           {isGlobal && !globalCostLoading && globalCostSummary && (
             <DataSourceBadge
               dataSource={globalCostSummary.dataSource}
@@ -455,7 +401,7 @@ export default function Cost() {
 
       {isGlobal ? (
         <>
-          <GlobalCostPanel viewMode={viewMode} />
+          <GlobalCostPanel />
           <GlobalCost />
         </>
       ) : (
@@ -537,7 +483,7 @@ function GlobalCostPanelRow({
   );
 }
 
-function GlobalCostPanel({ viewMode }: { viewMode: CostViewMode }) {
+function GlobalCostPanel() {
   const { data, isLoading } = useGetGlobalCostSummary({
     query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
   });
@@ -564,47 +510,34 @@ function GlobalCostPanel({ viewMode }: { viewMode: CostViewMode }) {
     return isNaN(n) ? -Infinity : n;
   }
 
-  // The dashboard now only reflects Azure tag data, never the app name list.
-  // "application" uses the Application tag; "costCenter" uses the CostCategory tag.
-  const isCostCenterMode = viewMode === "costCenter";
-  const appTagRows = useMemo(() => data?.byApplicationTag ?? [], [data?.byApplicationTag]);
   const costCenterRows = useMemo(() => data?.byCategory ?? [], [data?.byCategory]);
 
-  const activeRows = isCostCenterMode ? costCenterRows : appTagRows;
-  const totalRows = activeRows.length;
-  const rowLabel = isCostCenterMode ? "cost center" : "application";
+  const totalRows = costCenterRows.length;
+  const rowLabel = "cost center";
 
   const maxMtd = useMemo(() => {
-    return activeRows.reduce((m, r) => Math.max(m, r.monthToDate), 0);
-  }, [activeRows]);
+    return costCenterRows.reduce((m, r) => Math.max(m, r.monthToDate), 0);
+  }, [costCenterRows]);
 
   const displayCategory = useCallback(
-    (category: string) => (isCostCenterMode && category === "Other" ? "Microsoft365" : category),
-    [isCostCenterMode],
+    (category: string) => (category === "Other" ? "Microsoft365" : category),
+    [],
   );
 
   const sortedRows = useMemo(() => {
-    const rows = isCostCenterMode
-      ? costCenterRows.map((r) => ({
-          appId: r.category,
-          appName: displayCategory(r.category),
-          environment: "",
-          monthToDate: r.monthToDate,
-          trend: null,
-        }))
-      : appTagRows.map((r) => ({
-          appId: r.application,
-          appName: r.application,
-          environment: r.environment ?? "",
-          monthToDate: r.monthToDate,
-          trend: r.wowTrend ?? null,
-        }));
+    const rows = costCenterRows.map((r) => ({
+      appId: r.category,
+      appName: displayCategory(r.category),
+      environment: "",
+      monthToDate: r.monthToDate,
+      trend: null,
+    }));
     if (sortCol === "amount")
       rows.sort((a, b) =>
         sortDir === "desc" ? b.monthToDate - a.monthToDate : a.monthToDate - b.monthToDate,
       );
     return rows;
-  }, [appTagRows, costCenterRows, displayCategory, isCostCenterMode, sortCol, sortDir]);
+  }, [costCenterRows, displayCategory, sortCol, sortDir]);
 
   function SortIcon({ col }: { col: GlobalSortCol }) {
     if (sortCol !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
@@ -615,15 +548,11 @@ function GlobalCostPanel({ viewMode }: { viewMode: CostViewMode }) {
     );
   }
 
-  const panelTitle = isCostCenterMode ? "Cost by Cost Center" : "Cost by Application";
-
   return (
-    <Panel title={panelTitle}>
+    <Panel title="Cost by Cost Center">
       <Table className="text-[13px]">
         <THead>
-          <TableHead className="h-8 font-semibold text-foreground">
-            {isCostCenterMode ? "Cost Center" : "Application"}
-          </TableHead>
+          <TableHead className="h-8 font-semibold text-foreground">Cost Center</TableHead>
           <TableHead className="h-8 font-semibold text-foreground">Env</TableHead>
           <TableHead className="h-8 font-semibold text-foreground text-right w-[130px]">
             <button
@@ -2049,20 +1978,7 @@ function OpsCostsPanel({
   currency,
   isLoading,
 }: {
-  opsCosts: {
-    totalMonthly: number;
-    byCategory: {
-      category: string;
-      totalMonthly: number;
-      items: {
-        id: string;
-        name: string;
-        amountMonthly: number;
-        billingCycle: string;
-        active: boolean;
-      }[];
-    }[];
-  };
+  opsCosts: OpsCostSummary;
   currency: string;
   isLoading: boolean;
 }) {
@@ -2086,10 +2002,10 @@ function OpsCostsPanel({
           <div key={cat.category} className="p-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[12px] font-semibold text-foreground">
-                {OPS_COST_CATEGORY_LABELS[cat.category] ?? cat.category}
+                {OPS_COST_CATEGORY_LABELS[cat.category] ?? cat.label ?? cat.category}
               </span>
               <span className="text-[12px] font-mono font-semibold text-foreground tabular-nums">
-                {fmt(cat.totalMonthly, currency)}
+                {fmt(cat.total, currency)}
                 <span className="text-[10px] text-muted-foreground font-normal ml-0.5">/mo</span>
               </span>
             </div>
@@ -2103,7 +2019,7 @@ function OpsCostsPanel({
                 <TableHead className="h-7 w-[60px]"></TableHead>
               </THead>
               <TableBody>
-                {cat.items.map((item) => (
+                {(cat.items ?? []).map((item) => (
                   <TableRow
                     key={item.id}
                     className="h-7 border-b border-border/50 hover:bg-muted/40"
