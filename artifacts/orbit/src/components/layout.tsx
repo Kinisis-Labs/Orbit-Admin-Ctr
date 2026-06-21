@@ -32,6 +32,7 @@ import {
   ToggleLeft,
   RefreshCw,
   CreditCard,
+  Sparkles,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/admin/feature-flags": "Feature flags",
   "/resources": "All resources",
   "/apps": "App Services",
+  "/constellation": "Constellation",
 };
 
 function getInitialTheme(): Theme {
@@ -461,6 +463,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   icon={<Users className="h-[18px] w-[18px]" />}
                   label="Identity & access"
                   active={location === "/access"}
+                  collapsed={navCollapsed}
+                />
+              </NavSection>
+
+              <NavSection sectionKey="enterprise" label="Enterprise Mgmt" navCollapsed={navCollapsed}>
+                <NavItem
+                  href="/constellation"
+                  icon={<Sparkles className="h-[18px] w-[18px]" />}
+                  label="Constellation"
+                  active={location === "/constellation"}
                   collapsed={navCollapsed}
                 />
               </NavSection>

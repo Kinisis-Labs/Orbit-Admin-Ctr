@@ -31,6 +31,7 @@ import Users from "@/pages/users";
 import Preferences from "@/pages/preferences";
 import FeatureFlags from "@/pages/feature-flags";
 import Resources from "@/pages/resources";
+import ConstellationPage from "@/pages/constellation";
 import NotFound from "@/pages/not-found";
 import SignedOut from "@/pages/signed-out";
 
@@ -66,6 +67,7 @@ function Router() {
         <Route path="/apple-subscriptions"><Gated><AppleSubscriptions /></Gated></Route>
         <Route path="/stripe-subscriptions"><Gated><StripeSubscriptions /></Gated></Route>
         <Route path="/store-reports"><Gated><StoreReports /></Gated></Route>
+        <Route path="/constellation" component={ConstellationPage} />
         <Route path="/resources" component={Resources} />
         <Route path="/subscriptions" component={Subscriptions} />
         <Route path="/tags" component={Tags} />
