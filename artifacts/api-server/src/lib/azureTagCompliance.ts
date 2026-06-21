@@ -150,7 +150,8 @@ export async function fetchTagCompliance({
           'microsoft.network/privatelinkservices/privateendpointconnections',
           'microsoft.compute/snapshots',
           'microsoft.compute/restorepointcollections',
-          'microsoft.compute/restorepointcollections/restorepoints'
+          'microsoft.compute/restorepointcollections/restorepoints',
+          'microsoft.cdn/profiles/afdendpoints'
         )
       | project id, name, type, subscriptionId, resourceGroup, tags
       | order by type asc
