@@ -72,7 +72,7 @@ import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { useCsvExport } from "@/hooks/use-csv-export";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import {
   DailySpendChart,
   type DailyCostPoint,
@@ -578,11 +578,16 @@ function GlobalCostPanel({ viewMode }: { viewMode: CostViewMode }) {
     return activeRows.reduce((m, r) => Math.max(m, r.monthToDate), 0);
   }, [activeRows]);
 
+  const displayCategory = useCallback(
+    (category: string) => (isCostCenterMode && category === "Other" ? "Microsoft365" : category),
+    [isCostCenterMode],
+  );
+
   const sortedRows = useMemo(() => {
     const rows = isCostCenterMode
       ? costCenterRows.map((r) => ({
           appId: r.category,
-          appName: r.category,
+          appName: displayCategory(r.category),
           environment: "",
           monthToDate: r.monthToDate,
           trend: null,
@@ -599,7 +604,7 @@ function GlobalCostPanel({ viewMode }: { viewMode: CostViewMode }) {
         sortDir === "desc" ? b.monthToDate - a.monthToDate : a.monthToDate - b.monthToDate,
       );
     return rows;
-  }, [appTagRows, costCenterRows, isCostCenterMode, sortCol, sortDir]);
+  }, [appTagRows, costCenterRows, displayCategory, isCostCenterMode, sortCol, sortDir]);
 
   function SortIcon({ col }: { col: GlobalSortCol }) {
     if (sortCol !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
