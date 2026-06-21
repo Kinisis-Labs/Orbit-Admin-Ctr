@@ -281,6 +281,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
             className={`${navCollapsed ? "w-[48px]" : "w-[220px]"} border-r border-sidebar-border shrink-0 flex flex-col py-2 transition-all duration-[200ms] ease-in-out z-10 overflow-y-auto group`}
           >
             <nav className="flex flex-col gap-0.5 w-full px-1">
+              <NavSection sectionKey="enterprise" label="Enterprise Mgmt" navCollapsed={navCollapsed}>
+                <NavItem
+                  href="/constellation"
+                  icon={<Sparkles className="h-[18px] w-[18px]" />}
+                  label="Constellation"
+                  active={location === "/constellation"}
+                  collapsed={navCollapsed}
+                />
+              </NavSection>
+
               <NavSection sectionKey="monitoring" label="Monitoring" navCollapsed={navCollapsed}>
                 <NavItem
                   href="/"
@@ -463,16 +473,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   icon={<Users className="h-[18px] w-[18px]" />}
                   label="Identity & access"
                   active={location === "/access"}
-                  collapsed={navCollapsed}
-                />
-              </NavSection>
-
-              <NavSection sectionKey="enterprise" label="Enterprise Mgmt" navCollapsed={navCollapsed}>
-                <NavItem
-                  href="/constellation"
-                  icon={<Sparkles className="h-[18px] w-[18px]" />}
-                  label="Constellation"
-                  active={location === "/constellation"}
                   collapsed={navCollapsed}
                 />
               </NavSection>
