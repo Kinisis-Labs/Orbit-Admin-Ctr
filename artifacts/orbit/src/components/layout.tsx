@@ -15,7 +15,6 @@ import {
   Moon,
   Lock,
   Rocket,
-  AlertOctagon,
   Activity,
   HeartPulse,
   Network,
@@ -314,13 +313,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   icon={<Rocket className="h-[18px] w-[18px]" />}
                   label="Deployments"
                   active={location === "/deployments"}
-                  collapsed={navCollapsed}
-                />
-                <NavItem
-                  href="/incidents"
-                  icon={<AlertOctagon className="h-[18px] w-[18px]" />}
-                  label="Incidents"
-                  active={location === "/incidents"}
                   collapsed={navCollapsed}
                 />
                 <NavItem

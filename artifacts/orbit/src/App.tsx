@@ -13,7 +13,6 @@ import Alerts from "@/pages/alerts";
 import Cost from "@/pages/cost";
 import AppDetail from "@/pages/app-detail";
 import Deployments from "@/pages/deployments";
-import Incidents from "@/pages/incidents";
 import ActivityLog from "@/pages/activity";
 import Health from "@/pages/health";
 import NetworkPage from "@/pages/network";
@@ -54,7 +53,6 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/alerts" component={Alerts} />
         <Route path="/deployments" component={Deployments} />
-        <Route path="/incidents" component={Incidents} />
         <Route path="/activity" component={ActivityLog} />
         <Route path="/health" component={Health} />
         <Route path="/network" component={NetworkPage} />
