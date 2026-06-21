@@ -135,7 +135,7 @@ export const APPS: AppRecord[] = [
       "Kinisis platform — Orbit admin center and kinisislabs.com, sharing the platform subscription (sub-sharedplatform-prod).",
     tags: {
       CostCategory: "BusinessOps",
-      Application: "KinisisLabsPlatform",
+      Application: "Orbit",
       Environment: "prod",
       Owner: "Ryan Gutridge",
       workload: "Platform",

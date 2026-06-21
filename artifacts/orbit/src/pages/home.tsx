@@ -1,19 +1,16 @@
 import { useState, useMemo, useEffect } from "react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
-import { getListAppsQueryKey, getGetCostQueryKey, getCost, getGetAppQueryKey, getApp, useGetGlobalHealth, getGetGlobalHealthQueryKey, useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey, useGetCost } from "@workspace/api-client-react";
+import { getListAppsQueryKey, getGetCostQueryKey, getCost, getGetAppQueryKey, getApp, useGetGlobalHealth, getGetGlobalHealthQueryKey, useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey } from "@workspace/api-client-react";
 import type { AppSummary, AppDetail } from "@workspace/api-client-react";
 import type { UserAuthType } from "@workspace/api-client-react";
 import type { DailyCostPoint } from "@/components/daily-spend-utils";
 import { useApps } from "@/hooks/use-apps";
-import { useApp } from "@/hooks/use-app";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, Bell, TrendingUp, TrendingDown, X, TriangleAlert, Wifi, Smartphone, ExternalLink, LayoutGrid, AlertCircle, DollarSign, TrendingUp as BudgetIcon, HeartPulse, ShieldCheck } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ScopeSelect } from "@/lib/scope";
-import { useScope } from "@/lib/scope-context";
 import { RefreshCw } from "lucide-react";
 import { AuthBadge } from "@/components/auth-badge";
 import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
@@ -232,10 +229,61 @@ const AUTH_TYPES: { value: UserAuthType; label: string }[] = [
   { value: "none", label: "Public" },
 ];
 
+const APP_TAG_FILTERS = [
+  { value: "all", label: "All" },
+  { value: "shared", label: "Shared" },
+  { value: "orbit", label: "Orbit" },
+  { value: "grailbabe", label: "Grailbabe" },
+] as const;
+
+type AppTagFilterValue = (typeof APP_TAG_FILTERS)[number]["value"];
+
+function getApplicationTag(app: AppSummary): string | undefined {
+  const tags = app.tags as Record<string, string> | undefined;
+  return tags?.["Application"] ?? tags?.["application"];
+}
+
+function appMatchesTag(app: AppSummary, tag: AppTagFilterValue): boolean {
+  if (tag === "all") return true;
+  const appTag = getApplicationTag(app);
+  return appTag?.toLowerCase() === tag.toLowerCase();
+}
+
+function ApplicationTagFilter({
+  value,
+  onChange,
+}: {
+  value: AppTagFilterValue;
+  onChange: (value: AppTagFilterValue) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <label htmlFor="app-tag-filter" className="text-[12px] text-muted-foreground font-medium">
+        Application
+      </label>
+      <div className="flex items-center gap-1 rounded-sm border border-border bg-card p-0.5">
+        {APP_TAG_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            id={f.value === value ? "app-tag-filter" : undefined}
+            onClick={() => onChange(f.value)}
+            className={`text-[12px] px-2.5 py-1 rounded-sm transition-colors ${
+              value === f.value
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
-  const { scope } = useScope();
   const [location, navigate] = useLocation();
-  const isGlobal = scope === "global";
   const { hasGroup } = useAuth();
   const canSeeCost = hasGroup(COST_READER_GROUP.id);
   const recentAlerts = useRecentBudgetAlerts(canSeeCost);
@@ -243,24 +291,22 @@ export default function Home() {
   const queryClient = useQueryClient();
 
   const { data: apps, isFetching: appsFetching } = useApps();
-  const appAnomalies = useAppAnomalies(apps, canSeeCost);
 
-  const allAppDetails = useAllAppDetails(apps, isGlobal);
+  const [appTagFilter, setAppTagFilter] = useState<AppTagFilterValue>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlVal = params.get("appTag");
+    if ((APP_TAG_FILTERS as unknown as { value: string }[]).map((f) => f.value).includes(urlVal ?? "")) {
+      return urlVal as AppTagFilterValue;
+    }
+    return "all";
+  });
 
-  const { data: appDetail, isLoading: appDetailLoading, queryKey: appQueryKey } = useApp(isGlobal ? undefined : (scope || undefined));
+  const filteredApps = useMemo(() => {
+    return apps?.filter((a) => appMatchesTag(a, appTagFilter));
+  }, [apps, appTagFilter]);
 
-  const selectedApp = isGlobal ? undefined : apps?.find((a) => a.id === scope);
-
-  const { data: appCost, isLoading: appCostLoading } = useGetCost(
-    scope ?? "",
-    {},
-    { query: { queryKey: getGetCostQueryKey(scope ?? ""), enabled: !isGlobal && !!scope && canSeeCost, staleTime: 5 * 60 * 1000 } },
-  );
-
-  const appWoWTrend = useMemo(() => {
-    if (!appCost?.byService) return null;
-    return deriveTrendFromServices(appCost.byService);
-  }, [appCost?.byService]);
+  const appAnomalies = useAppAnomalies(filteredApps, canSeeCost);
+  const allAppDetails = useAllAppDetails(filteredApps, true);
 
   const search = useSearch();
 
@@ -318,6 +364,11 @@ export default function Home() {
       // ignore
     }
     const params = new URLSearchParams(window.location.search);
+    if (appTagFilter && appTagFilter !== "all") {
+      params.set("appTag", appTagFilter);
+    } else {
+      params.delete("appTag");
+    }
     if (authFilter) {
       params.set("auth", authFilter);
     } else {
@@ -331,7 +382,7 @@ export default function Home() {
     const qs = params.toString();
     const next = qs ? `?${qs}` : window.location.pathname;
     navigate(next, { replace: true });
-  }, [authFilter, budgetBreachFilter]);
+  }, [appTagFilter, authFilter, budgetBreachFilter, navigate]);
 
   function toggleBudgetBreachFilter() {
     setBudgetBreachFilter((prev) => !prev);
@@ -346,16 +397,15 @@ export default function Home() {
   }
 
   const authCounts = useMemo(() => {
-    if (!apps) return {} as Record<UserAuthType, number>;
-    return apps.reduce<Record<string, number>>((acc, a) => {
+    if (!filteredApps) return {} as Record<UserAuthType, number>;
+    return filteredApps.reduce<Record<string, number>>((acc, a) => {
       acc[a.userAuth] = (acc[a.userAuth] ?? 0) + 1;
       return acc;
     }, {});
-  }, [apps]);
+  }, [filteredApps]);
 
   function handleRefresh() {
     queryClient.invalidateQueries({ queryKey: getListAppsQueryKey() });
-    queryClient.invalidateQueries({ queryKey: appQueryKey });
   }
 
   const globalTotalAlerts = useMemo(
@@ -363,12 +413,12 @@ export default function Home() {
     [allAppDetails],
   );
   const globalTotalMTD = useMemo(
-    () => (apps ?? []).reduce((sum, a) => sum + a.monthToDateCost, 0),
-    [apps],
+    () => (filteredApps ?? []).reduce((sum, a) => sum + a.monthToDateCost, 0),
+    [filteredApps],
   );
   const globalAppsOverBudget = useMemo(
-    () => (apps ?? []).filter((a) => a.forecastOverBudget).length,
-    [apps],
+    () => (filteredApps ?? []).filter((a) => a.forecastOverBudget).length,
+    [filteredApps],
   );
   const fleetHealth = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -379,107 +429,61 @@ export default function Home() {
     return counts;
   }, [allAppDetails]);
 
+  const filterLabel = APP_TAG_FILTERS.find((f) => f.value === appTagFilter)?.label ?? "All";
+
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold text-foreground tracking-tight">
-            {isGlobal ? "Dashboard — All Applications" : "Dashboard"}
+            {appTagFilter === "all" ? "Dashboard — All Applications" : `Dashboard — ${filterLabel}`}
           </h1>
           <p className="text-[12px] text-muted-foreground mt-0.5">
-            {isGlobal
+            {appTagFilter === "all"
               ? "Organisation-wide fleet overview"
-              : selectedApp
-              ? `Scoped to ${selectedApp.name}`
-              : "Select an application"}
+              : `Filtered to Application tag: ${filterLabel}`}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <ScopeSelect allowGlobal={true} />
+          <ApplicationTagFilter value={appTagFilter} onChange={setAppTagFilter} />
         </div>
       </div>
 
-      {isGlobal ? (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <Tile
-              title="Total Apps"
-              value={apps == null ? null : apps.length}
-              sub="Tracked in this fleet"
-              icon={<LayoutGrid className="h-4 w-4" />}
-              iconColor="#7C3AED"
-            />
-            <Tile
-              title="Active Alerts"
-              value={allAppDetails.length === 0 && apps && apps.length > 0 ? null : globalTotalAlerts}
-              sub="Open across all apps"
-              icon={<AlertCircle className="h-4 w-4" />}
-              iconColor="#06B6D4"
-            />
-            <Tile
-              title="MTD Spend"
-              value={apps == null ? null : fmt(globalTotalMTD)}
-              sub="Sum of month-to-date cost"
-              icon={<DollarSign className="h-4 w-4" />}
-              iconColor="#10B981"
-            />
-            <Tile
-              title="Apps Over Budget"
-              value={apps == null ? null : globalAppsOverBudget}
-              sub={globalAppsOverBudget === 1 ? "App forecast exceeds budget" : "Apps forecast over budget"}
-              icon={<BudgetIcon className="h-4 w-4" />}
-              iconColor="#F59E0B"
-            />
-          </div>
-          <GlobalStrips apps={apps} fleetHealth={fleetHealth} authCounts={authCounts} />
-        </>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <Tile
-            title="Status"
-            value={appDetailLoading ? null : appDetail ? <StatusBadge status={appDetail.status} /> : "—"}
-            sub={selectedApp ? `${selectedApp.environment} · ${selectedApp.region}` : ""}
-          />
-          <Tile title="Active Alerts" value={appDetailLoading ? null : appDetail?.activeAlerts ?? 0} sub="Open on this application" />
-          {canSeeCost ? (
-            <Tile
-              title="MTD Spend"
-              value={
-                appCostLoading
-                  ? null
-                  : appCost
-                  ? (
-                    <span className="flex items-center gap-2 flex-wrap">
-                      <span>{fmt(appCost.monthToDate)}</span>
-                      <WoWTrendBadge trend={appWoWTrend} label="Week-over-week spend trend (this app)" />
-                    </span>
-                  )
-                  : "—"
-              }
-              sub="Month-to-date cost"
-            />
-          ) : (
-            <Tile
-              title="Region"
-              value={selectedApp ? selectedApp.region : "—"}
-              sub={selectedApp ? `${selectedApp.environment} environment` : ""}
-            />
-          )}
-          <Tile
-            title="Resource Group"
-            value={appDetailLoading ? null : appDetail?.resourceGroup ?? "—"}
-            sub={
-              appDetail?.subscriptionId
-                ? `Sub: ${appDetail.subscriptionName ?? appDetail.subscriptionId}`
-                : ""
-            }
-          />
-        </div>
-      )}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <Tile
+          title="Total Apps"
+          value={filteredApps == null ? null : filteredApps.length}
+          sub="Tracked in this fleet"
+          icon={<LayoutGrid className="h-4 w-4" />}
+          iconColor="#7C3AED"
+        />
+        <Tile
+          title="Active Alerts"
+          value={allAppDetails.length === 0 && filteredApps && filteredApps.length > 0 ? null : globalTotalAlerts}
+          sub="Open across all apps"
+          icon={<AlertCircle className="h-4 w-4" />}
+          iconColor="#06B6D4"
+        />
+        <Tile
+          title="MTD Spend"
+          value={filteredApps == null ? null : fmt(globalTotalMTD)}
+          sub="Sum of month-to-date cost"
+          icon={<DollarSign className="h-4 w-4" />}
+          iconColor="#10B981"
+        />
+        <Tile
+          title="Apps Over Budget"
+          value={filteredApps == null ? null : globalAppsOverBudget}
+          sub={globalAppsOverBudget === 1 ? "App forecast exceeds budget" : "Apps forecast over budget"}
+          icon={<BudgetIcon className="h-4 w-4" />}
+          iconColor="#F59E0B"
+        />
+      </div>
+      <GlobalStrips apps={filteredApps} fleetHealth={fleetHealth} authCounts={authCounts} />
 
-      {canSeeCost && isGlobal && (
+      {canSeeCost && (
         <BudgetSummaryWidget
-          apps={apps}
+          apps={filteredApps}
           isFetching={appsFetching}
           recentAlerts={recentAlerts}
           anomalousApps={appAnomalies}
@@ -492,131 +496,6 @@ export default function Home() {
             setBudgetBreachFilter(false);
           }}
         />
-      )}
-
-      {canSeeCost && !isGlobal && selectedApp && (
-        <PerAppBudgetPanel app={selectedApp} recentAlerts={recentAlerts} />
-      )}
-
-      {!isGlobal && (
-        <div className="bg-card border border-border shadow-sm flex flex-col">
-          <div className="flex items-center justify-between p-2 border-b border-border bg-card">
-            <div className="flex items-center gap-2 px-2">
-              <h2 className="text-sm font-semibold">Application Details — {selectedApp?.name ?? ""}</h2>
-              {canSeeCost && scope && recentAlerts.has(scope) && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex items-center">
-                        <Bell className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Budget alert sent{" "}
-                      {formatDistanceToNow(recentAlerts.get(scope)!, { addSuffix: true })}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-            <div className="flex items-center gap-1 pr-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs px-2 rounded-sm text-primary hover:text-primary hover:bg-primary/10"
-                onClick={handleRefresh}
-                disabled={appsFetching}
-              >
-                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${appsFetching ? "animate-spin" : ""}`} />
-                Refresh
-              </Button>
-              <Link
-                href={`/apps/${scope}?tab=${readLastTab(scope)}`}
-                className="text-[12px] text-primary hover:underline"
-              >
-                Open application →
-              </Link>
-            </div>
-          </div>
-          <div className="p-4 text-[13px]">
-            {appDetailLoading || !appDetail ? (
-              <div className="space-y-2">
-                <Skeleton className="h-5 w-1/3" />
-                <Skeleton className="h-5 w-1/2" />
-                <Skeleton className="h-5 w-1/4" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
-                <Field label="Resource group" value={appDetail.resourceGroup} mono />
-                <Field
-                  label="Subscription"
-                  value={
-                    (appDetail.subscriptionId || appDetail.subscriptionName) ? (
-                      appDetail.subscriptionId && /^[0-9a-f-]{36}$/i.test(appDetail.subscriptionId) ? (
-                        <a
-                          href={`https://portal.azure.com/#resource/subscriptions/${appDetail.subscriptionId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-primary hover:underline"
-                        >
-                          {appDetail.subscriptionName ? (
-                            <>
-                              <span className="font-medium">{appDetail.subscriptionName}</span>
-                              <span className="font-mono text-[11px] text-muted-foreground ml-1.5">{appDetail.subscriptionId}</span>
-                            </>
-                          ) : (
-                            <span className="font-mono">{appDetail.subscriptionId}</span>
-                          )}
-                          <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
-                        </a>
-                      ) : (
-                        <span className="font-medium">{appDetail.subscriptionName ?? appDetail.subscriptionId}</span>
-                      )
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )
-                  }
-                />
-                <Field label="Location" value={appDetail.region} />
-                <Field label="Environment" value={appDetail.environment} />
-                <Field
-                  label="Auth type"
-                  value={
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="inline-flex">
-                            <AuthBadge
-                              userAuth={appDetail.userAuth}
-                              active={authFilter === appDetail.userAuth}
-                              onClick={() => toggleAuthFilter(appDetail.userAuth)}
-                            />
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {authFilter === appDetail.userAuth
-                            ? "Click to clear auth filter"
-                            : "Click to filter apps by this auth type"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  }
-                />
-                <Field label="Owners" value={appDetail.owners?.join(", ") || "Unassigned"} />
-                <Field
-                  label="Tags"
-                  value={
-                    Object.entries(appDetail.tags || {}).length > 0
-                      ? Object.entries(appDetail.tags || {})
-                          .map(([k, v]) => `${k}: ${v}`)
-                          .join(" · ")
-                      : "None"
-                  }
-                />
-              </div>
-            )}
-          </div>
-        </div>
       )}
     </div>
   );
@@ -789,7 +668,6 @@ function BudgetSummaryWidget({
   onToggleBudgetBreach: () => void;
   onClearAllFilters: () => void;
 }) {
-  const { setScope } = useScope();
   const [, navigate] = useLocation();
 
   const { entries: violationEntries } = useViolationLog();
@@ -931,8 +809,7 @@ function BudgetSummaryWidget({
     });
   }, [apps, authFilter, envFilter, budgetBreachFilter, thresholdVersion, sortCol, sortDir, trendByAppId, dailySpend]);
 
-  function goToCost(appId: string) {
-    setScope(appId);
+  function goToCost() {
     if (isFiltered && filterSummary) {
       navigate(`/cost?from=${encodeURIComponent(filterSummary)}`);
     } else {
@@ -1264,7 +1141,7 @@ function BudgetSummaryWidget({
                   <tr
                     key={app.id}
                     className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
-                    onClick={() => goToCost(app.id)}
+                    onClick={() => goToCost()}
                   >
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-1.5">

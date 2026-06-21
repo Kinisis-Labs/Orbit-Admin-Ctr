@@ -9,7 +9,6 @@ import { RequireGroup } from "@/components/access-denied";
 import { COST_READER_GROUP } from "@/lib/auth-groups";
 
 import Home from "@/pages/home";
-import Overview from "@/pages/overview";
 import Alerts from "@/pages/alerts";
 import Cost from "@/pages/cost";
 import AppDetail from "@/pages/app-detail";
@@ -50,7 +49,6 @@ function Router() {
   return (
     <Layout>
       <Switch>
-        <Route path="/overview" component={Overview} />
         <Route path="/" component={Home} />
         <Route path="/alerts" component={Alerts} />
         <Route path="/deployments" component={Deployments} />

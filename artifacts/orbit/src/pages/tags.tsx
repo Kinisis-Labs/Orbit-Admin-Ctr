@@ -885,33 +885,16 @@ function CostCategoryRollupPanel({ apps, isLoading }: { apps: AppSummary[]; isLo
 }
 
 function CoverageCard({ apps }: { apps: AppSummary[] }) {
-  const { data: compliance } = useGetTagCompliance();
-
-  // Prefer resource-level coverage from compliance scan (tagCoverageByKey covers ALL resources).
-  // Fall back to app-level tag lookup when compliance data isn't available.
-  const { coverage, total, unit } = (() => {
-    const byKey = compliance?.tagCoverageByKey;
-    const scanned = compliance?.totalScanned ?? 0;
-    if (byKey && scanned > 0) {
-      return {
-        coverage: KNOWN_TAGS.map((tag) => ({
-          tag,
-          tagged: byKey[tag] ?? 0,
-          pct: Math.round(((byKey[tag] ?? 0) / scanned) * 100),
-        })),
-        total: scanned,
-        unit: "resources",
-      };
-    }
-    return {
-      coverage: KNOWN_TAGS.map((tag) => {
-        const tagged = apps.filter((a) => !!getTag(a, tag)).length;
-        return { tag, tagged, pct: apps.length > 0 ? Math.round((tagged / apps.length) * 100) : 0 };
-      }),
-      total: apps.length,
-      unit: "apps",
-    };
-  })();
+  // Use app-level tag lookup for coverage. The backend TagComplianceResponse no longer
+  // includes a tagCoverageByKey field, so we rely on the app-level fallback.
+  const { coverage, total, unit } = {
+    coverage: KNOWN_TAGS.map((tag) => {
+      const tagged = apps.filter((a) => !!getTag(a, tag)).length;
+      return { tag, tagged, pct: apps.length > 0 ? Math.round((tagged / apps.length) * 100) : 0 };
+    }),
+    total: apps.length,
+    unit: "apps",
+  };
 
   return (
     <div className="bg-card border border-border shadow-sm">

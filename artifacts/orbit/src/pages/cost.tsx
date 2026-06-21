@@ -1632,14 +1632,12 @@ function OpsCostsPanel({
 }: {
   opsCosts: {
     totalMonthly: number;
-    categories: {
+    byCategory: {
       category: string;
-      label: string;
       totalMonthly: number;
       items: {
         id: string;
         name: string;
-        vendor?: string | null;
         amountMonthly: number;
         billingCycle: string;
         active: boolean;
@@ -1665,11 +1663,11 @@ function OpsCostsPanel({
       }
     >
       <div className="divide-y divide-border">
-        {opsCosts.categories.map((cat) => (
+        {opsCosts.byCategory.map((cat) => (
           <div key={cat.category} className="p-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[12px] font-semibold text-foreground">
-                {OPS_COST_CATEGORY_LABELS[cat.category] ?? cat.label}
+                {OPS_COST_CATEGORY_LABELS[cat.category] ?? cat.category}
               </span>
               <span className="text-[12px] font-mono font-semibold text-foreground tabular-nums">
                 {fmt(cat.totalMonthly, currency)}
@@ -1679,7 +1677,6 @@ function OpsCostsPanel({
             <Table className="text-[12px]">
               <THead>
                 <TableHead className="h-7 font-medium text-muted-foreground">Name</TableHead>
-                <TableHead className="h-7 font-medium text-muted-foreground">Vendor</TableHead>
                 <TableHead className="h-7 font-medium text-muted-foreground">Billing</TableHead>
                 <TableHead className="h-7 font-medium text-muted-foreground text-right w-[110px]">Monthly</TableHead>
                 <TableHead className="h-7 w-[60px]"></TableHead>
@@ -1689,9 +1686,6 @@ function OpsCostsPanel({
                   <TableRow key={item.id} className="h-7 border-b border-border/50 hover:bg-muted/40">
                     <TableCell className="py-1 font-medium">
                       {item.name}
-                    </TableCell>
-                    <TableCell className="py-1 text-muted-foreground text-[11px]">
-                      {item.vendor ?? <span className="opacity-40">—</span>}
                     </TableCell>
                     <TableCell className="py-1 text-muted-foreground text-[11px] capitalize">
                       {item.billingCycle}
