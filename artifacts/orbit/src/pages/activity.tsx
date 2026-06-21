@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { listActivityLog, getListActivityLogQueryKey } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
@@ -9,9 +9,56 @@ import { Search, Download, RefreshCw, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { PageHeader, StatusPill } from "@/components/page-header";
-import { ScopeSelect } from "@/lib/scope";
-import { useScope } from "@/lib/scope-context";
-import type { ActivityEntry } from "@workspace/api-client-react";
+import { useSearch, useLocation } from "wouter";
+import { cn } from "@/lib/utils";
+import type { ActivityEntry, AppSummary } from "@workspace/api-client-react";
+
+const APP_TAG_SCOPE_PARAM = "appTag";
+
+const APP_TAG_FILTERS = [
+  { value: "all", label: "All" },
+  { value: "orbit", label: "Orbit" },
+  { value: "grailbabe", label: "Grailbabe" },
+] as const;
+
+type AppTagFilterValue = (typeof APP_TAG_FILTERS)[number]["value"];
+
+function getApplicationTag(app: AppSummary): string | undefined {
+  const tags = app.tags as Record<string, string> | undefined;
+  return tags?.["Application"] ?? tags?.["application"];
+}
+
+function AppTagToggle({
+  value,
+  onChange,
+}: {
+  value: AppTagFilterValue;
+  onChange: (v: AppTagFilterValue) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <label className="text-[12px] text-muted-foreground font-medium">Scope</label>
+      <div className="flex items-center gap-1 rounded-sm border border-border bg-card p-0.5">
+        {APP_TAG_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            onClick={() => onChange(f.value)}
+            aria-pressed={value === f.value}
+            className={cn(
+              "text-[12px] px-2.5 py-1 rounded-sm transition-colors",
+              value === f.value
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted",
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const STATUS_TONE: Record<ActivityEntry["status"], "ok" | "warn" | "bad"> = {
   Succeeded: "ok",
@@ -28,17 +75,37 @@ function categoryTone(category: string): "info" | "warn" | "ok" | "muted" | "bad
 }
 
 export default function ActivityLog() {
-  const { scope } = useScope();
   const { data: apps, isLoading: appsLoading } = useApps();
   const [filter, setFilter] = useState("");
 
-  const isGlobal = scope === "global";
+  const search = useSearch();
+  const [location, navigate] = useLocation();
+
+  const appTagScope = useMemo((): AppTagFilterValue => {
+    const v = new URLSearchParams(search).get(APP_TAG_SCOPE_PARAM)?.toLowerCase();
+    if (v === "orbit" || v === "grailbabe") return v;
+    return "all";
+  }, [search]);
+
+  const setAppTagScope = useCallback(
+    (v: AppTagFilterValue) => {
+      const params = new URLSearchParams(search);
+      if (v === "all") {
+        params.delete(APP_TAG_SCOPE_PARAM);
+      } else {
+        params.set(APP_TAG_SCOPE_PARAM, v);
+      }
+      const qs = params.toString();
+      navigate(`${location}${qs ? `?${qs}` : ""}`, { replace: true });
+    },
+    [search, location, navigate],
+  );
 
   const appsToQuery = useMemo(() => {
     if (!apps) return [];
-    if (isGlobal) return apps;
-    return apps.filter((a) => a.id === scope);
-  }, [apps, scope, isGlobal]);
+    if (appTagScope === "all") return apps;
+    return apps.filter((a) => getApplicationTag(a)?.toLowerCase() === appTagScope);
+  }, [apps, appTagScope]);
 
   const activityQueries = useQueries({
     queries: appsToQuery.map((app) => ({
@@ -54,6 +121,8 @@ export default function ActivityLog() {
     !isLoading &&
     appsToQuery.length > 0 &&
     activityQueries.every((q) => !q.isLoading && (q.data?.length ?? 0) === 0);
+
+  const isGlobal = appTagScope === "all";
 
   function handleRefresh() {
     activityQueries.forEach((q) => void q.refetch());
@@ -80,14 +149,12 @@ export default function ActivityLog() {
     );
   }, [entries, filter]);
 
-  const selectedApp = apps?.find((a) => a.id === scope);
-
   return (
     <div className="space-y-4">
       <PageHeader
         title="Activity log"
-        subtitle={selectedApp ? `Audit trail of operator and automation actions for ${selectedApp.name}` : "Audit trail of operator and automation actions"}
-        right={<ScopeSelect allowGlobal />}
+        subtitle={appTagScope === "all" ? "Audit trail of operator and automation actions" : `Audit trail for ${appTagScope.charAt(0).toUpperCase() + appTagScope.slice(1)}`}
+        right={<AppTagToggle value={appTagScope} onChange={setAppTagScope} />}
       />
 
       <div className="bg-card border border-border shadow-sm">
