@@ -624,6 +624,20 @@ function normalizeEntity(value: string): "Orbit" | "Grailbabe" | "Other" {
   return "Other";
 }
 
+/** Extract the cost-center tag value from a tags object, case-insensitive. */
+function extractCostCenterTag(tags: Record<string, unknown>): string | null {
+  const lower = new Map(Object.entries(tags).map(([k, v]) => [k.toLowerCase(), v]));
+  const cat = String(
+    lower.get("costcenter") ??
+      lower.get("cost center") ??
+      lower.get("cost-category") ??
+      lower.get("costcategory") ??
+      lower.get("cost category") ??
+      "",
+  ).trim();
+  return cat || null;
+}
+
 export async function fetchCostByApplicationTag({
   bypassCache = false,
 }: { bypassCache?: boolean } = {}): Promise<AppTagCostItem[] | null> {
@@ -897,6 +911,46 @@ export async function fetchCostByCostCategoryTag({
         ];
 
         const resourceTagMap = new Map<string, string>(); // resourceId.toLowerCase() → CostCategory
+        // Build a resource group → CostCenter tag map so resources without a
+        // resource-level tag can inherit from their resource group.
+        const rgTagMap = new Map<string, string>();
+        try {
+          const rgQuery = `
+            resourcecontainers
+            | where type == 'microsoft.resources/subscriptions/resourcegroups'
+            | project name=tolower(name), tags
+          `;
+          const rgResult = await getGraphClient().resources({
+            query: rgQuery,
+            subscriptions: [subId],
+          });
+          const rgRows = normalizeResourceGraphRows(rgResult.data);
+          for (const row of rgRows) {
+            const rgName = String(row["name"] ?? "").toLowerCase();
+            const tags = row["tags"];
+            const tagObj: Record<string, unknown> =
+              tags && typeof tags === "object"
+                ? (tags as Record<string, unknown>)
+                : typeof tags === "string"
+                  ? (() => {
+                      try {
+                        return JSON.parse(tags) as Record<string, unknown>;
+                      } catch {
+                        return {};
+                      }
+                    })()
+                  : {};
+            const cat = extractCostCenterTag(tagObj);
+            if (cat) rgTagMap.set(rgName, cat);
+          }
+          logger.info(
+            { subId, taggedGroups: rgTagMap.size },
+            "Resource group CostCenter tag map built",
+          );
+        } catch (err) {
+          logger.warn({ err, subId }, "Resource group CostCenter tag lookup failed");
+        }
+
         if (resourceIds.length > 0) {
           try {
             // Resource Graph supports up to 1000 results; batch if needed
@@ -907,7 +961,7 @@ export async function fetchCostByCostCategoryTag({
               const query = `
                 resources
                 | where tolower(id) in (${idList})
-                | project id, tags
+                | project id, resourceGroup, tags
               `;
               const graphResult = await getGraphClient().resources({
                 query,
@@ -929,21 +983,20 @@ export async function fetchCostByCostCategoryTag({
                           }
                         })()
                       : {};
-                const lower = new Map(Object.entries(tagObj).map(([k, v]) => [k.toLowerCase(), v]));
-                const cat = String(
-                  lower.get("costcenter") ??
-                    lower.get("cost center") ??
-                    lower.get("cost-category") ??
-                    lower.get("costcategory") ??
-                    lower.get("cost category") ??
-                    "",
-                ).trim();
-                if (cat) resourceTagMap.set(rid, cat);
+                const cat = extractCostCenterTag(tagObj);
+                if (cat) {
+                  resourceTagMap.set(rid, cat);
+                } else {
+                  // Inherit from resource group tag if present.
+                  const rgName = String(row["resourceGroup"] ?? "").toLowerCase();
+                  const rgCat = rgTagMap.get(rgName);
+                  if (rgCat) resourceTagMap.set(rid, rgCat);
+                }
               }
             }
             logger.info(
               { subId, taggedCount: resourceTagMap.size, totalResources: resourceIds.length },
-              "Resource→CostCategory tag map built",
+              "Resource→CostCenter tag map built",
             );
           } catch (err) {
             logger.warn(
@@ -963,7 +1016,7 @@ export async function fetchCostByCostCategoryTag({
           if (raw) subCategories.add(cat);
           catMap.set(cat, (catMap.get(cat) ?? 0) + amount);
         }
-        logger.info({ subId, categories: [...subCategories] }, "CostCategory aggregation complete");
+        logger.info({ subId, categories: [...subCategories] }, "CostCenter aggregation complete");
       } catch (err) {
         logger.warn({ err, subId }, "CostCategory by-ResourceId query failed for subscription");
       }
