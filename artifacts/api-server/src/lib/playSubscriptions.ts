@@ -1,6 +1,19 @@
 import { logger } from "./logger";
 import { playApps, type AppRecord } from "../routes/orbit";
 
+// RevenueCat API response types
+interface RevenueCatMetrics {
+  active_subscribers: number;
+  canceled_subscribers: number;
+  expired_subscribers: number;
+  monthly_recurring_revenue: number;
+  active_subscribers_trend_percent: number;
+}
+
+interface RevenueCatRevenue {
+  total: number;
+}
+
 // Anonymous, aggregate Google Play subscription metrics per tracked Android app.
 // Mirrors the Clerk-activity / Entra patterns: a config-gated real connection
 // that, until provisioned, serves stable placeholder data so the dashboard stays
@@ -26,21 +39,11 @@ export type PlaySubscriptionRow = {
   dataAsOf?: string;
 };
 
-// The real Google Play connection activates only when all of these are present,
-// exactly like isEntraConfigured() gates real staff sign-in. Until then the
-// surface runs on placeholder data. These get set when keyless Workload Identity
-// Federation to the Play Developer APIs is provisioned.
-const PLAY_ENV = [
-  "GOOGLE_PLAY_SA_EMAIL",
-  "GOOGLE_PLAY_WIF_AUDIENCE",
-  "GOOGLE_PLAY_DEVELOPER_ID",
-] as const;
-
+// The real RevenueCat connection activates when the Google API key is configured.
+// This replaces the Google Play Developer API approach with direct RevenueCat integration.
 export function isPlayConfigured(): boolean {
-  return PLAY_ENV.every((k) => {
-    const v = process.env[k];
-    return typeof v === "string" && v.trim().length > 0;
-  });
+  const apiKey = process.env.REVENUECAT_API_KEY_GOOG;
+  return typeof apiKey === "string" && apiKey.trim().length > 0;
 }
 
 // Deterministic pseudo-random so placeholder figures stay stable across requests
@@ -96,12 +99,87 @@ function placeholderRow(app: AppRecord): PlaySubscriptionRow {
   };
 }
 
-// Real ingestion seam. When keyless WIF + the Play Developer / Android Publisher
-// APIs are wired, this pulls live subscriber states (RTDN-backed) and revenue
-// (earnings reports). Not implemented yet — it deliberately throws so the caller
-// falls back to placeholder data instead of silently serving fake "live" rows.
+// Real RevenueCat API integration for Google Play subscriptions.
+// Pulls live subscriber states and revenue from RevenueCat API.
 async function fetchLivePlaySubscriptions(): Promise<PlaySubscriptionRow[]> {
-  throw new Error("Google Play live ingestion not implemented yet");
+  const REVENUECAT_API_KEY_GOOG = process.env.REVENUECAT_API_KEY_GOOG;
+  if (!REVENUECAT_API_KEY_GOOG) {
+    throw new Error("REVENUECAT_API_KEY_GOOG not configured");
+  }
+
+  const apps = playApps();
+  const results: PlaySubscriptionRow[] = [];
+
+  for (const app of apps) {
+    if (!app.androidPackage) continue;
+
+    try {
+      // Fetch subscriber metrics from RevenueCat
+      const metricsUrl = `https://api.revenuecat.com/v1/apps/${app.androidPackage}/metrics`;
+      const metricsResponse = await fetch(metricsUrl, {
+        headers: {
+          'Authorization': `Bearer ${REVENUECAT_API_KEY_GOOG}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!metricsResponse.ok) {
+        logger.warn(
+          { app: app.id, status: metricsResponse.status },
+          "Failed to fetch RevenueCat metrics for app"
+        );
+        continue;
+      }
+
+      const metricsData = await metricsResponse.json() as RevenueCatMetrics;
+      
+      // Fetch revenue data from RevenueCat
+      const revenueUrl = `https://api.revenuecat.com/v1/apps/${app.androidPackage}/revenue?period=30d`;
+      const revenueResponse = await fetch(revenueUrl, {
+        headers: {
+          'Authorization': `Bearer ${REVENUECAT_API_KEY_GOOG}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      let revenueLast30d = 0;
+      if (revenueResponse.ok) {
+        const revenueData = await revenueResponse.json() as RevenueCatRevenue;
+        revenueLast30d = revenueData.total || 0;
+      }
+
+      // Get Play console IDs
+      const playIds = playConsoleIds(app);
+
+      // Transform RevenueCat data to our format
+      const row: PlaySubscriptionRow = {
+        appId: app.id,
+        appName: app.name,
+        environment: app.environment,
+        packageName: app.androidPackage,
+        ...playIds,
+        activeSubscribers: metricsData.active_subscribers || 0,
+        canceledSubscribers: metricsData.canceled_subscribers || 0,
+        expiredSubscribers: metricsData.expired_subscribers || 0,
+        mrr: metricsData.monthly_recurring_revenue || 0,
+        revenueLast30d,
+        currency: "USD",
+        activeTrendPct: metricsData.active_subscribers_trend_percent || 0,
+        dataSource: "live",
+        dataAsOf: new Date().toISOString(),
+      };
+
+      results.push(row);
+    } catch (error) {
+      logger.warn(
+        { app: app.id, error: (error as Error).message },
+        "Error fetching RevenueCat data for app"
+      );
+      continue;
+    }
+  }
+
+  return results;
 }
 
 // In-memory snapshot of the last successful live fetch. If a subsequent live
@@ -123,7 +201,7 @@ export async function getPlaySubscriptions(): Promise<PlaySubscriptionRow[]> {
     } catch (err) {
       logger.warn(
         { err: (err as Error).message },
-        "Google Play configured but live ingestion failed; serving cached snapshot if available",
+        "RevenueCat configured but live ingestion failed; serving cached snapshot if available",
       );
       if (snapshot) {
         return snapshot.rows.map((r) => ({
@@ -134,5 +212,6 @@ export async function getPlaySubscriptions(): Promise<PlaySubscriptionRow[]> {
       }
     }
   }
-  return playApps().map(placeholderRow);
+  // Return empty array when not configured - no placeholder data
+  return [];
 }

@@ -48,7 +48,7 @@ interface SubscriptionRow {
   revenueLast30d: number;
   currency: string;
   activeTrendPct: number;
-  dataSource: "placeholder" | "live" | "cached";
+  dataSource: "live" | "cached";
   dataAsOf?: string;
   managementUrl?: string;
 }
@@ -65,10 +65,9 @@ interface StoreSection {
     mrr: number;
     revenue: number;
   };
-  isPlaceholder: boolean;
   isLive: boolean;
   isCached: boolean;
-  badgeDataSource?: "placeholder" | "live" | "cached";
+  badgeDataSource?: "live" | "cached";
   staleCachedRow?: SubscriptionRow;
   earliestDataAsOf?: string;
   dataUpdatedAt?: number;
@@ -102,54 +101,58 @@ export default function UnifiedSubscriptions() {
   // Transform Apple data
   const appleRows = useMemo(() => {
     if (!appleData) return [];
-    return appleData.map(
-      (row): SubscriptionRow => ({
-        appId: row.appId,
-        appName: row.appName,
-        environment: row.environment,
-        storeType: "apple",
-        identifier: row.bundleId,
-        activeSubscribers: row.activeSubscribers,
-        canceledSubscribers: row.canceledSubscribers,
-        expiredSubscribers: row.expiredSubscribers,
-        mrr: row.mrr,
-        revenueLast30d: row.revenueLast30d,
-        currency: row.currency,
-        activeTrendPct: row.activeTrendPct,
-        dataSource: row.dataSource,
-        dataAsOf: row.dataAsOf,
-        managementUrl: row.appleAppId
-          ? `https://appstoreconnect.apple.com/apps/${row.appleAppId}/distribution/subscriptions`
-          : undefined,
-      }),
-    );
+    return appleData
+      .filter((row) => row.dataSource !== "placeholder")
+      .map(
+        (row): SubscriptionRow => ({
+          appId: row.appId,
+          appName: row.appName,
+          environment: row.environment,
+          storeType: "apple",
+          identifier: row.bundleId,
+          activeSubscribers: row.activeSubscribers,
+          canceledSubscribers: row.canceledSubscribers,
+          expiredSubscribers: row.expiredSubscribers,
+          mrr: row.mrr,
+          revenueLast30d: row.revenueLast30d,
+          currency: row.currency,
+          activeTrendPct: row.activeTrendPct,
+          dataSource: row.dataSource as "live" | "cached",
+          dataAsOf: row.dataAsOf,
+          managementUrl: row.appleAppId
+            ? `https://appstoreconnect.apple.com/apps/${row.appleAppId}/distribution/subscriptions`
+            : undefined,
+        }),
+      );
   }, [appleData]);
 
   // Transform Play data
   const playRows = useMemo(() => {
     if (!playData) return [];
-    return playData.map(
-      (row): SubscriptionRow => ({
-        appId: row.appId,
-        appName: row.appName,
-        environment: row.environment,
-        storeType: "play",
-        identifier: row.packageName,
-        activeSubscribers: row.activeSubscribers,
-        canceledSubscribers: row.canceledSubscribers,
-        expiredSubscribers: row.expiredSubscribers,
-        mrr: row.mrr,
-        revenueLast30d: row.revenueLast30d,
-        currency: row.currency,
-        activeTrendPct: row.activeTrendPct,
-        dataSource: row.dataSource,
-        dataAsOf: row.dataAsOf,
-        managementUrl:
-          row.playAppId && row.playDeveloperId
-            ? `https://play.google.com/console/developers/${row.playDeveloperId}/app/${row.playAppId}/subscriptions`
-            : undefined,
-      }),
-    );
+    return playData
+      .filter((row) => row.dataSource !== "placeholder")
+      .map(
+        (row): SubscriptionRow => ({
+          appId: row.appId,
+          appName: row.appName,
+          environment: row.environment,
+          storeType: "play",
+          identifier: row.packageName,
+          activeSubscribers: row.activeSubscribers,
+          canceledSubscribers: row.canceledSubscribers,
+          expiredSubscribers: row.expiredSubscribers,
+          mrr: row.mrr,
+          revenueLast30d: row.revenueLast30d,
+          currency: row.currency,
+          activeTrendPct: row.activeTrendPct,
+          dataSource: row.dataSource as "live" | "cached",
+          dataAsOf: row.dataAsOf,
+          managementUrl:
+            row.playAppId && row.playDeveloperId
+              ? `https://play.google.com/console/developers/${row.playDeveloperId}/app/${row.playAppId}/subscriptions`
+              : undefined,
+        }),
+      );
   }, [playData]);
 
   // Use all data since we're not filtering by scope
@@ -183,7 +186,6 @@ export default function UnifiedSubscriptions() {
   const storeSections: StoreSection[] = [];
 
   if (!isAppleDisabled) {
-    const appleIsPlaceholder = appleDataToShow.some((r) => r.dataSource === "placeholder");
     const appleIsLive = appleDataToShow.some((r) => r.dataSource === "live");
     const appleIsCached = appleDataToShow.some((r) => r.dataSource === "cached");
     const appleBadgeDataSource =
@@ -193,9 +195,7 @@ export default function UnifiedSubscriptions() {
           ? "live"
           : appleIsCached
             ? "cached"
-            : appleIsPlaceholder
-              ? "placeholder"
-              : undefined;
+            : undefined;
 
     const appleStaleCachedRow = (() => {
       const cached = appleDataToShow.filter((r) => r.dataSource === "cached" && !!r.dataAsOf);
@@ -219,7 +219,6 @@ export default function UnifiedSubscriptions() {
       icon: <Apple className="h-4 w-4" />,
       data: appleDataToShow,
       totals: appleTotals,
-      isPlaceholder: appleIsPlaceholder,
       isLive: appleIsLive,
       isCached: appleIsCached,
       badgeDataSource: appleBadgeDataSource,
@@ -232,7 +231,6 @@ export default function UnifiedSubscriptions() {
   }
 
   if (!isPlayDisabled) {
-    const playIsPlaceholder = playDataToShow.some((r) => r.dataSource === "placeholder");
     const playIsLive = playDataToShow.some((r) => r.dataSource === "live");
     const playIsCached = playDataToShow.some((r) => r.dataSource === "cached");
     const playBadgeDataSource =
@@ -242,9 +240,7 @@ export default function UnifiedSubscriptions() {
           ? "live"
           : playIsCached
             ? "cached"
-            : playIsPlaceholder
-              ? "placeholder"
-              : undefined;
+            : undefined;
 
     const playStaleCachedRow = (() => {
       const cached = playDataToShow.filter((r) => r.dataSource === "cached" && !!r.dataAsOf);
@@ -268,7 +264,6 @@ export default function UnifiedSubscriptions() {
       icon: <Smartphone className="h-4 w-4" />,
       data: playDataToShow,
       totals: playTotals,
-      isPlaceholder: playIsPlaceholder,
       isLive: playIsLive,
       isCached: playIsCached,
       badgeDataSource: playBadgeDataSource,
@@ -547,7 +542,6 @@ function StoreSection({ section }: { section: StoreSection }) {
   const {
     dataUpdatedAt,
     earliestDataAsOf,
-    isPlaceholder,
     isLive,
     staleCachedRow,
     badgeDataSource,
@@ -560,7 +554,6 @@ function StoreSection({ section }: { section: StoreSection }) {
     <div className="space-y-4">
       <StoreBanner
         storeType={section.storeType}
-        placeholder={isPlaceholder}
         isLive={isLive}
         dataUpdatedAt={dataUpdatedAt ?? 0}
         dataAsOf={earliestDataAsOf}
@@ -594,13 +587,11 @@ function StoreSection({ section }: { section: StoreSection }) {
 
 function StoreBanner({
   storeType,
-  placeholder,
   isLive,
   dataUpdatedAt,
   dataAsOf,
 }: {
   storeType: "apple" | "play";
-  placeholder: boolean;
   isLive: boolean;
   dataUpdatedAt: number;
   dataAsOf?: string;
@@ -629,7 +620,7 @@ function StoreBanner({
         minute: "2-digit",
         second: "2-digit",
       });
-      return { text: `${placeholder ? "Generated" : "Fetched"} at ${time}`, stale: false };
+      return { text: `Fetched at ${time}`, stale: false };
     }
     return null;
   })();
@@ -638,19 +629,17 @@ function StoreBanner({
     storeType === "apple"
       ? {
           icon: "AS",
-          title: "App Store Connect",
-          description: placeholder
-            ? "These figures are representative placeholders. The real feed activates automatically once three App Store Connect credentials are set: APPLE_CONNECT_ISSUER_ID, APPLE_CONNECT_KEY_ID, and APPLE_CONNECT_PRIVATE_KEY."
-            : "Subscriber states and revenue are pulled live from the App Store Connect API for each tracked iOS app.",
-          url: "https://appstoreconnect.apple.com",
+          title: "RevenueCat",
+          description:
+            "Subscriber states and revenue are pulled live from RevenueCat for each tracked iOS app.",
+          url: "https://app.revenuecat.com",
         }
       : {
           icon: "GP",
-          title: "Google Play",
-          description: placeholder
-            ? "GrailBabe is still in Google Play testing, so these figures are representative placeholders. The real feed activates automatically once the keyless Google Play connection is provisioned."
-            : "Subscriber states and revenue are pulled live from the Google Play Developer APIs for each tracked Android app.",
-          url: "https://play.google.com/console",
+          title: "RevenueCat",
+          description:
+            "Subscriber states and revenue are pulled live from RevenueCat for each tracked Android app.",
+          url: "https://app.revenuecat.com",
         };
 
   return (
@@ -660,9 +649,7 @@ function StoreBanner({
       </div>
       <div className="flex-1 text-[12px] text-muted-foreground">
         <span className="inline-flex items-center gap-2">
-          <span className="text-foreground font-semibold">
-            {placeholder ? "Placeholder data." : `${storeInfo.title}–sourced.`}
-          </span>
+          <span className="text-foreground font-semibold">{`${storeInfo.title}–sourced.`}</span>
           {isLive && (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />

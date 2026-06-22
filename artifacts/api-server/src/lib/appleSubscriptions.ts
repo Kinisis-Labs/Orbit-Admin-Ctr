@@ -1,6 +1,19 @@
 import { logger } from "./logger";
 import { appStoreApps, type AppRecord } from "../routes/orbit";
 
+// RevenueCat API response types
+interface RevenueCatMetrics {
+  active_subscribers: number;
+  canceled_subscribers: number;
+  expired_subscribers: number;
+  monthly_recurring_revenue: number;
+  active_subscribers_trend_percent: number;
+}
+
+interface RevenueCatRevenue {
+  total: number;
+}
+
 // Anonymous, aggregate Apple App Store subscription metrics per tracked iOS app.
 // Mirrors the Play subscriptions pattern: a config-gated real connection that,
 // until provisioned, serves stable placeholder data so the dashboard stays
@@ -24,24 +37,11 @@ export type AppleSubscriptionRow = {
   dataAsOf?: string;
 };
 
-// The real App Store Connect connection activates only when all of these are
-// present, exactly like isEntraConfigured() gates real staff sign-in and
-// isPlayConfigured() gates Play data. Until provisioned, placeholder data is served.
-//
-// APPLE_CONNECT_ISSUER_ID   — Issuer ID from App Store Connect → Users and Access → Keys
-// APPLE_CONNECT_KEY_ID      — Key ID of the .p8 API key
-// APPLE_CONNECT_PRIVATE_KEY — Contents of the .p8 file (PEM string, single-download)
-const APPLE_ENV = [
-  "APPLE_CONNECT_ISSUER_ID",
-  "APPLE_CONNECT_KEY_ID",
-  "APPLE_CONNECT_PRIVATE_KEY",
-] as const;
-
+// The real RevenueCat connection activates when the Apple API key is configured.
+// This replaces the App Store Connect API approach with direct RevenueCat integration.
 export function isAppleConfigured(): boolean {
-  return APPLE_ENV.every((k) => {
-    const v = process.env[k];
-    return typeof v === "string" && v.trim().length > 0;
-  });
+  const apiKey = process.env.REVENUECAT_API_KEY_APPL;
+  return typeof apiKey === "string" && apiKey.trim().length > 0;
 }
 
 // Deterministic pseudo-random so placeholder figures stay stable across requests
@@ -90,12 +90,84 @@ function placeholderRow(app: AppRecord): AppleSubscriptionRow {
   };
 }
 
-// Real ingestion seam. When App Store Connect API credentials are provisioned,
-// this will pull live subscriber states and revenue. Not implemented yet — it
-// deliberately throws so the caller falls back to placeholder data instead of
-// silently serving fake "live" rows.
+// Real RevenueCat API integration for Apple subscriptions.
+// Pulls live subscriber states and revenue from RevenueCat API.
 async function fetchLiveAppleSubscriptions(): Promise<AppleSubscriptionRow[]> {
-  throw new Error("App Store Connect live ingestion not implemented yet");
+  const REVENUECAT_API_KEY_APPL = process.env.REVENUECAT_API_KEY_APPL;
+  if (!REVENUECAT_API_KEY_APPL) {
+    throw new Error("REVENUECAT_API_KEY_APPL not configured");
+  }
+
+  const apps = appStoreApps();
+  const results: AppleSubscriptionRow[] = [];
+
+  for (const app of apps) {
+    if (!app.iosBundle) continue;
+
+    try {
+      // Fetch subscriber metrics from RevenueCat
+      const metricsUrl = `https://api.revenuecat.com/v1/apps/${app.iosBundle}/metrics`;
+      const metricsResponse = await fetch(metricsUrl, {
+        headers: {
+          'Authorization': `Bearer ${REVENUECAT_API_KEY_APPL}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!metricsResponse.ok) {
+        logger.warn(
+          { app: app.id, status: metricsResponse.status },
+          "Failed to fetch RevenueCat metrics for app"
+        );
+        continue;
+      }
+
+      const metricsData = await metricsResponse.json() as RevenueCatMetrics;
+      
+      // Fetch revenue data from RevenueCat
+      const revenueUrl = `https://api.revenuecat.com/v1/apps/${app.iosBundle}/revenue?period=30d`;
+      const revenueResponse = await fetch(revenueUrl, {
+        headers: {
+          'Authorization': `Bearer ${REVENUECAT_API_KEY_APPL}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      let revenueLast30d = 0;
+      if (revenueResponse.ok) {
+        const revenueData = await revenueResponse.json() as RevenueCatRevenue;
+        revenueLast30d = revenueData.total || 0;
+      }
+
+      // Transform RevenueCat data to our format
+      const row: AppleSubscriptionRow = {
+        appId: app.id,
+        appName: app.name,
+        environment: app.environment,
+        bundleId: app.iosBundle,
+        ...(app.appleAppId ? { appleAppId: app.appleAppId } : {}),
+        activeSubscribers: metricsData.active_subscribers || 0,
+        canceledSubscribers: metricsData.canceled_subscribers || 0,
+        expiredSubscribers: metricsData.expired_subscribers || 0,
+        mrr: metricsData.monthly_recurring_revenue || 0,
+        revenueLast30d,
+        currency: "USD",
+        activeTrendPct: metricsData.active_subscribers_trend_percent || 0,
+        dataSource: "live",
+        dataAsOf: new Date().toISOString(),
+      };
+
+      results.push(row);
+    } catch (error) {
+      logger.warn(
+        { app: app.id, error: (error as Error).message },
+        "Error fetching RevenueCat data for app"
+      );
+      continue;
+    }
+  }
+
+  return results;
 }
 
 // In-memory snapshot of the last successful live fetch. If a subsequent live
@@ -117,7 +189,7 @@ export async function getAppleSubscriptions(): Promise<AppleSubscriptionRow[]> {
     } catch (err) {
       logger.warn(
         { err: (err as Error).message },
-        "App Store Connect configured but live ingestion failed; serving cached snapshot if available",
+        "RevenueCat configured but live ingestion failed; serving cached snapshot if available",
       );
       if (snapshot) {
         return snapshot.rows.map((r) => ({
@@ -128,5 +200,6 @@ export async function getAppleSubscriptions(): Promise<AppleSubscriptionRow[]> {
       }
     }
   }
-  return appStoreApps().map(placeholderRow);
+  // Return empty array when not configured - no placeholder data
+  return [];
 }
