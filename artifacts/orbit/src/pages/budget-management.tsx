@@ -374,11 +374,12 @@ export default function BudgetManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: entries, isLoading } = useQuery({
+  const { data: entries, isLoading, error: fetchError } = useQuery({
     queryKey: ["budget-management"],
     queryFn: fetchBudgetManagement,
     staleTime: 2 * 60 * 1000,
     enabled: canView,
+    retry: 1,
   });
 
   const { data: appsData } = useApps();
@@ -386,6 +387,38 @@ export default function BudgetManagement() {
   const mtdByAppId = new Map<string, number>(
     (appsData ?? []).map((a) => [a.id, a.monthToDateCost ?? 0]),
   );
+
+  // When the budget API isn't deployed yet, synthesize stub entries from
+  // the apps list so the page is never completely blank.
+  const VIRTUAL_APP_IDS = ["microsoft365"];
+  const VIRTUAL_APP_NAMES: Record<string, string> = { microsoft365: "Microsoft 365 Applications" };
+  const now = new Date();
+  const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
+  const elapsedDays = now.getUTCDate();
+  const meta = { daysInMonth, elapsedDays };
+
+  const displayEntries: BudgetEntry[] = entries ?? [
+    ...(appsData ?? []).map((a) => ({
+      appId: a.id,
+      appName: a.name,
+      monthlyBudget: null,
+      notes: null,
+      updatedAt: null,
+      updatedBy: null,
+      isVirtual: false,
+      meta,
+    })),
+    ...VIRTUAL_APP_IDS.map((id) => ({
+      appId: id,
+      appName: VIRTUAL_APP_NAMES[id] ?? id,
+      monthlyBudget: null,
+      notes: null,
+      updatedAt: null,
+      updatedBy: null,
+      isVirtual: true,
+      meta,
+    })),
+  ];
 
   const mutation = useMutation({
     mutationFn: ({ appId, budget, notes }: { appId: string; budget: number; notes: string | null }) =>
@@ -406,10 +439,6 @@ export default function BudgetManagement() {
     [mutation],
   );
 
-  const now = new Date();
-  const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
-  const elapsedDays = now.getUTCDate();
-
   return (
     <div className="space-y-5 max-w-4xl">
       <div>
@@ -425,7 +454,7 @@ export default function BudgetManagement() {
           <AlertTriangle className="h-4 w-4 shrink-0" />
           You need Cost Reader access to view budget information.
         </div>
-      ) : isLoading ? (
+      ) : isLoading && !appsData ? (
         <div className="space-y-3">
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-36 w-full" />
@@ -433,7 +462,13 @@ export default function BudgetManagement() {
         </div>
       ) : (
         <div className="space-y-3">
-          {(entries ?? []).map((entry) => (
+          {fetchError && (
+            <div className="flex items-center gap-2 text-[12px] text-amber-500 border border-amber-500/30 bg-amber-500/5 rounded-sm px-3 py-2">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              Budget data unavailable — the API may not be deployed yet. Budgets are shown as unset below.
+            </div>
+          )}
+          {displayEntries.map((entry) => (
             <BudgetRow
               key={entry.appId}
               entry={entry}
