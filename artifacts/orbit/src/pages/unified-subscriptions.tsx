@@ -21,8 +21,6 @@ import {
   Apple,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { ScopeSelect } from "@/lib/scope";
-import { useScope } from "@/lib/scope-context";
 import { useCsvExport } from "@/hooks/use-csv-export";
 import { useToast } from "@/hooks/use-toast";
 import { CsvToolbar } from "@/components/csv-toolbar";
@@ -80,7 +78,6 @@ interface StoreSection {
 
 export default function UnifiedSubscriptions() {
   const { toast } = useToast();
-  const { scope } = useScope();
 
   const {
     data: appleData,
@@ -155,12 +152,12 @@ export default function UnifiedSubscriptions() {
     );
   }, [playData]);
 
-  // Filter by scope
-  const appleScoped = appleRows.filter((r) => r.appId === scope);
-  const playScoped = playRows.filter((r) => r.appId === scope);
+  // Use all data since we're not filtering by scope
+  const appleDataToShow = appleRows;
+  const playDataToShow = playRows;
 
   // Calculate totals for each store
-  const appleTotals = appleScoped.reduce(
+  const appleTotals = appleDataToShow.reduce(
     (acc, r) => ({
       active: acc.active + r.activeSubscribers,
       canceled: acc.canceled + r.canceledSubscribers,
@@ -171,7 +168,7 @@ export default function UnifiedSubscriptions() {
     { active: 0, canceled: 0, expired: 0, mrr: 0, revenue: 0 },
   );
 
-  const playTotals = playScoped.reduce(
+  const playTotals = playDataToShow.reduce(
     (acc, r) => ({
       active: acc.active + r.activeSubscribers,
       canceled: acc.canceled + r.canceledSubscribers,
@@ -186,11 +183,11 @@ export default function UnifiedSubscriptions() {
   const storeSections: StoreSection[] = [];
 
   if (!isAppleDisabled) {
-    const appleIsPlaceholder = appleScoped.some((r) => r.dataSource === "placeholder");
-    const appleIsLive = appleScoped.some((r) => r.dataSource === "live");
-    const appleIsCached = appleScoped.some((r) => r.dataSource === "cached");
+    const appleIsPlaceholder = appleDataToShow.some((r) => r.dataSource === "placeholder");
+    const appleIsLive = appleDataToShow.some((r) => r.dataSource === "live");
+    const appleIsCached = appleDataToShow.some((r) => r.dataSource === "cached");
     const appleBadgeDataSource =
-      appleScoped.length === 0
+      appleDataToShow.length === 0
         ? undefined
         : appleIsLive
           ? "live"
@@ -201,7 +198,7 @@ export default function UnifiedSubscriptions() {
               : undefined;
 
     const appleStaleCachedRow = (() => {
-      const cached = appleScoped.filter((r) => r.dataSource === "cached" && !!r.dataAsOf);
+      const cached = appleDataToShow.filter((r) => r.dataSource === "cached" && !!r.dataAsOf);
       if (cached.length === 0) return undefined;
       return cached.reduce((oldest, r) =>
         new Date(r.dataAsOf!).getTime() < new Date(oldest.dataAsOf!).getTime() ? r : oldest,
@@ -209,7 +206,7 @@ export default function UnifiedSubscriptions() {
     })();
 
     const appleEarliestDataAsOf = (() => {
-      const withDate = appleScoped.filter((r) => !!r.dataAsOf);
+      const withDate = appleDataToShow.filter((r) => !!r.dataAsOf);
       if (withDate.length === 0) return undefined;
       return withDate.reduce((oldest, r) =>
         new Date(r.dataAsOf!).getTime() < new Date(oldest.dataAsOf!).getTime() ? r : oldest,
@@ -220,7 +217,7 @@ export default function UnifiedSubscriptions() {
       storeType: "apple",
       title: "App Store",
       icon: <Apple className="h-4 w-4" />,
-      data: appleScoped,
+      data: appleDataToShow,
       totals: appleTotals,
       isPlaceholder: appleIsPlaceholder,
       isLive: appleIsLive,
@@ -235,11 +232,11 @@ export default function UnifiedSubscriptions() {
   }
 
   if (!isPlayDisabled) {
-    const playIsPlaceholder = playScoped.some((r) => r.dataSource === "placeholder");
-    const playIsLive = playScoped.some((r) => r.dataSource === "live");
-    const playIsCached = playScoped.some((r) => r.dataSource === "cached");
+    const playIsPlaceholder = playDataToShow.some((r) => r.dataSource === "placeholder");
+    const playIsLive = playDataToShow.some((r) => r.dataSource === "live");
+    const playIsCached = playDataToShow.some((r) => r.dataSource === "cached");
     const playBadgeDataSource =
-      playScoped.length === 0
+      playDataToShow.length === 0
         ? undefined
         : playIsLive
           ? "live"
@@ -250,7 +247,7 @@ export default function UnifiedSubscriptions() {
               : undefined;
 
     const playStaleCachedRow = (() => {
-      const cached = playScoped.filter((r) => r.dataSource === "cached" && !!r.dataAsOf);
+      const cached = playDataToShow.filter((r) => r.dataSource === "cached" && !!r.dataAsOf);
       if (cached.length === 0) return undefined;
       return cached.reduce((oldest, r) =>
         new Date(r.dataAsOf!).getTime() < new Date(oldest.dataAsOf!).getTime() ? r : oldest,
@@ -258,7 +255,7 @@ export default function UnifiedSubscriptions() {
     })();
 
     const playEarliestDataAsOf = (() => {
-      const withDate = playScoped.filter((r) => !!r.dataAsOf);
+      const withDate = playDataToShow.filter((r) => !!r.dataAsOf);
       if (withDate.length === 0) return undefined;
       return withDate.reduce((oldest, r) =>
         new Date(r.dataAsOf!).getTime() < new Date(oldest.dataAsOf!).getTime() ? r : oldest,
@@ -269,7 +266,7 @@ export default function UnifiedSubscriptions() {
       storeType: "play",
       title: "Google Play",
       icon: <Smartphone className="h-4 w-4" />,
-      data: playScoped,
+      data: playDataToShow,
       totals: playTotals,
       isPlaceholder: playIsPlaceholder,
       isLive: playIsLive,
@@ -284,7 +281,7 @@ export default function UnifiedSubscriptions() {
   }
 
   const isLoading = appleLoading || playLoading;
-  const allData = [...appleScoped, ...playScoped];
+  const allData = [...appleDataToShow, ...playDataToShow];
   const overallTotals = allData.reduce(
     (acc, r) => ({
       active: acc.active + r.activeSubscribers,
@@ -329,7 +326,7 @@ export default function UnifiedSubscriptions() {
       "Revenue (30d)",
       "Active trend %",
     ],
-    `unified-subscriptions-${scope}`,
+    `unified-subscriptions-all-apps`,
     () =>
       toast({
         title: "No data to export",
@@ -343,12 +340,7 @@ export default function UnifiedSubscriptions() {
         <PageHeader
           title="App Store Subscriptions"
           subtitle="Subscription financials and subscriber states across all app stores."
-          right={
-            <div className="flex items-center gap-2">
-              <AdminAccessBadge />
-              <ScopeSelect />
-            </div>
-          }
+          right={<AdminAccessBadge />}
         />
         <SurfaceDisabled
           icon="ALL"
@@ -364,12 +356,7 @@ export default function UnifiedSubscriptions() {
       <PageHeader
         title="App Store Subscriptions"
         subtitle="Subscription financials and subscriber states across all app stores."
-        right={
-          <div className="flex items-center gap-2">
-            <AdminAccessBadge />
-            <ScopeSelect />
-          </div>
-        }
+        right={<AdminAccessBadge />}
       />
 
       {/* Overall summary tiles */}
@@ -544,7 +531,7 @@ export default function UnifiedSubscriptions() {
               {allData.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={11} className="text-center py-6 text-muted-foreground">
-                    No subscription apps in scope.
+                    No subscription apps found.
                   </TableCell>
                 </TableRow>
               )}

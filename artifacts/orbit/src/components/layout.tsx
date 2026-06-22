@@ -68,8 +68,6 @@ const ROUTE_LABELS: Record<string, string> = {
   "/users": "Users & activity",
   "/cost": "Cost Management",
   "/unified-subscriptions": "App Store Subscriptions",
-  "/play-subscriptions": "Google Play (Legacy)",
-  "/apple-subscriptions": "App Store (Legacy)",
   "/stripe-subscriptions": "Stripe Subscriptions",
   "/subscriptions": "Subscriptions",
   "/tags": "Tags",
@@ -284,7 +282,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
             className={`${navCollapsed ? "w-[48px]" : "w-[220px]"} border-r border-sidebar-border shrink-0 flex flex-col py-2 transition-all duration-[200ms] ease-in-out z-10 overflow-y-auto group`}
           >
             <nav className="flex flex-col gap-0.5 w-full px-1">
-              <NavSection sectionKey="enterprise" label="Enterprise Mgmt" navCollapsed={navCollapsed}>
+              <NavSection
+                sectionKey="enterprise"
+                label="Enterprise Mgmt"
+                navCollapsed={navCollapsed}
+              >
                 <NavItem
                   href="/constellation"
                   icon={<Sparkles className="h-[18px] w-[18px]" />}
@@ -379,21 +381,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
               <NavSection sectionKey="cost" label="Cost & Revenue" navCollapsed={navCollapsed}>
                 <NavItem
-                  href="/budget-management"
-                  icon={<BarChart3 className="h-[18px] w-[18px]" />}
-                  label="Budget Management"
-                  active={location === "/budget-management"}
-                  collapsed={navCollapsed}
-                  trailingIcon={
-                    !canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined
-                  }
-                  trailingTitle={
-                    !canSeeCost
-                      ? `Restricted to members of ${COST_READER_GROUP.displayName}`
-                      : undefined
-                  }
-                />
-                <NavItem
                   href="/cost"
                   icon={<DollarSign className="h-[18px] w-[18px]" />}
                   label="Cost Management"
@@ -410,40 +397,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   unacknowledgedBudgetAlerts={canSeeCost ? unacknowledgedBudgetAlerts : 0}
                 />
                 <NavItem
+                  href="/budget-management"
+                  icon={<BarChart3 className="h-[18px] w-[18px]" />}
+                  label="Budget Management"
+                  active={location === "/budget-management"}
+                  collapsed={navCollapsed}
+                  trailingIcon={
+                    !canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined
+                  }
+                  trailingTitle={
+                    !canSeeCost
+                      ? `Restricted to members of ${COST_READER_GROUP.displayName}`
+                      : undefined
+                  }
+                />
+                <NavItem
                   href="/unified-subscriptions"
                   icon={<Smartphone className="h-[18px] w-[18px]" />}
                   label="App Store Subscriptions"
                   active={location === "/unified-subscriptions"}
-                  collapsed={navCollapsed}
-                  trailingIcon={
-                    !canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined
-                  }
-                  trailingTitle={
-                    !canSeeCost
-                      ? `Restricted to members of ${COST_READER_GROUP.displayName}`
-                      : undefined
-                  }
-                />
-                <NavItem
-                  href="/play-subscriptions"
-                  icon={<Smartphone className="h-[18px] w-[18px]" />}
-                  label="Google Play (Legacy)"
-                  active={location === "/play-subscriptions"}
-                  collapsed={navCollapsed}
-                  trailingIcon={
-                    !canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined
-                  }
-                  trailingTitle={
-                    !canSeeCost
-                      ? `Restricted to members of ${COST_READER_GROUP.displayName}`
-                      : undefined
-                  }
-                />
-                <NavItem
-                  href="/apple-subscriptions"
-                  icon={<Smartphone className="h-[18px] w-[18px]" />}
-                  label="App Store (Legacy)"
-                  active={location === "/apple-subscriptions"}
                   collapsed={navCollapsed}
                   trailingIcon={
                     !canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined
@@ -509,7 +481,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   collapsed={navCollapsed}
                 />
               </NavSection>
-
             </nav>
           </aside>
 
