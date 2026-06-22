@@ -750,6 +750,23 @@ function BudgetSummaryWidget({
     return map;
   }, [globalCostSummary?.byApp]);
 
+  // Add Microsoft365 cost center data to match cost page behavior
+  const costCenterData = useMemo(() => {
+    const categories = globalCostSummary?.byCategory ?? [];
+    return categories.map(cat => ({
+      id: `cost-center-${cat.category}`,
+      name: cat.category === "Other" ? "Microsoft365" : cat.category,
+      category: cat.category,
+      monthToDateCost: cat.monthToDate,
+      budget: null, // Cost centers typically don't have budgets
+      forecast: null, // Cost centers typically don't have forecasts
+      forecastOverBudget: false,
+      userAuth: "none" as const,
+      environment: "cost-center" as const,
+      costDataSource: globalCostSummary?.dataSource,
+    }));
+  }, [globalCostSummary?.byCategory, globalCostSummary?.dataSource]);
+
   const [envFilter, setEnvFilterRaw] = useState<EnvFilter>(() => {
     try {
       const stored = localStorage.getItem("orbit-budget-env-filter");
@@ -843,6 +860,20 @@ function BudgetSummaryWidget({
     });
   }, [apps, authFilter, envFilter, budgetBreachFilter, thresholdVersion, sortCol, sortDir, trendByAppId, dailySpend, costQueries]);
 
+  // Combine apps and cost centers for budget calculations
+  const allBudgetItems = useMemo(() => {
+    if (!filteredApps) return undefined;
+    const appItems = filteredApps.map(app => ({
+      ...app,
+      isCostCenter: false,
+    }));
+    const centerItems = costCenterData.map(center => ({
+      ...center,
+      isCostCenter: true,
+    }));
+    return [...appItems, ...centerItems];
+  }, [filteredApps, costCenterData]);
+
   function goToCost() {
     if (isFiltered && filterSummary) {
       navigate(`/cost?from=${encodeURIComponent(filterSummary)}`);
@@ -877,15 +908,22 @@ function BudgetSummaryWidget({
     }).length ?? 0;
   }, [filteredApps, thresholdVersion, costQueries]);
 
-  // Use real cost data from cost API instead of placeholder app summary data
+  // Use real cost data from cost API and cost centers instead of placeholder app summary data
   const totalSpentMTD = useMemo(() => {
-    if (!filteredApps) return 0;
-    return filteredApps.reduce((total, app, index) => {
-      const costData = costQueries[index]?.data;
-      const cost = costData?.monthToDate ?? app.monthToDateCost; // Fallback to app summary if cost data unavailable
-      return total + cost;
+    if (!allBudgetItems) return 0;
+    return allBudgetItems.reduce((total, item) => {
+      if (item.isCostCenter) {
+        // Cost centers use their monthToDateCost directly
+        return total + item.monthToDateCost;
+      } else {
+        // Apps use cost API data with fallback to app summary
+        const appIndex = filteredApps?.findIndex(app => app.id === item.id);
+        const costData = appIndex !== -1 && appIndex !== undefined ? costQueries[appIndex]?.data : null;
+        const cost = costData?.monthToDate ?? item.monthToDateCost;
+        return total + cost;
+      }
     }, 0);
-  }, [filteredApps, costQueries]);
+  }, [allBudgetItems, filteredApps, costQueries]);
 
   const topSpenderId = useMemo(() => {
     if (!filteredApps || filteredApps.length < 2) return null;
@@ -898,29 +936,34 @@ function BudgetSummaryWidget({
     }, filteredApps[0]).id;
   }, [filteredApps, costQueries]);
 
-  // Use real budget and forecast data from cost API
+  // Use real budget and forecast data from cost API (cost centers typically don't have budgets)
   const budgetedApps = useMemo(() => {
-    if (!filteredApps) return [];
-    return filteredApps.filter((a, index) => {
-      const costData = costQueries[index]?.data;
-      return (costData?.budget ?? a.budget) != null;
+    if (!allBudgetItems) return [];
+    return allBudgetItems.filter((item) => {
+      if (item.isCostCenter) {
+        return false; // Cost centers typically don't have budgets
+      } else {
+        const appIndex = filteredApps?.findIndex(app => app.id === item.id);
+        const costData = appIndex !== -1 && appIndex !== undefined ? costQueries[appIndex]?.data : null;
+        return (costData?.budget ?? item.budget) != null;
+      }
     });
-  }, [filteredApps, costQueries]);
+  }, [allBudgetItems, filteredApps, costQueries]);
 
   const totalBudget = useMemo(() => {
-    return budgetedApps.reduce((total, app) => {
-      const index = filteredApps?.indexOf(app);
-      const costData = index !== undefined && index >= 0 ? costQueries[index]?.data : null;
-      const budget = costData?.budget ?? app.budget;
+    return budgetedApps.reduce((total, item) => {
+      const appIndex = filteredApps?.findIndex(app => app.id === item.id);
+      const costData = appIndex !== -1 && appIndex !== undefined ? costQueries[appIndex]?.data : null;
+      const budget = costData?.budget ?? item.budget;
       return total + (budget ?? 0);
     }, 0);
   }, [budgetedApps, filteredApps, costQueries]);
 
   const totalForecast = useMemo(() => {
-    return budgetedApps.reduce((total, app) => {
-      const index = filteredApps?.indexOf(app);
-      const costData = index !== undefined && index >= 0 ? costQueries[index]?.data : null;
-      const forecast = costData?.forecast ?? app.forecast;
+    return budgetedApps.reduce((total, item) => {
+      const appIndex = filteredApps?.findIndex(app => app.id === item.id);
+      const costData = appIndex !== -1 && appIndex !== undefined ? costQueries[appIndex]?.data : null;
+      const forecast = costData?.forecast ?? item.forecast;
       return total + (forecast ?? 0);
     }, 0);
   }, [budgetedApps, filteredApps, costQueries]);
@@ -983,8 +1026,10 @@ function BudgetSummaryWidget({
 
   const csvHeaders = ["Application", "Environment", "Auth", "Spent MTD (USD)", "Budget (USD)", "Forecast (USD)", "Utilization %", "Status", "Budget breach", "WoW Trend"];
   const csvRows = useMemo(() => {
-    if (!filteredApps || !apps) return null;
-    const appRows = filteredApps.map((app) => {
+    if (!allBudgetItems || !apps) return null;
+    
+    // App rows
+    const appRows = filteredApps?.map((app) => {
       const appIndex = apps.indexOf(app);
       const costData = costQueries[appIndex]?.data;
       const status = budgetStatus(app, getBudgetThreshold(app.id), costData);
@@ -1009,12 +1054,29 @@ function BudgetSummaryWidget({
         forecastOverBudget ? "Yes" : "No",
         trendByAppId.get(app.id) ?? "",
       ];
+    }) ?? [];
+
+    // Cost center rows (Microsoft365, etc.)
+    const costCenterRows = costCenterData.map((center) => {
+      return [
+        center.name,
+        center.environment,
+        center.userAuth,
+        center.monthToDateCost.toFixed(2),
+        "", // No budget for cost centers
+        "", // No forecast for cost centers
+        "", // No utilization for cost centers
+        "No budget", // Status for cost centers
+        "No", // No budget breach for cost centers
+        "", // No trend for cost centers
+      ];
     });
 
-    const unbudgetedCount = filteredApps.filter((a, index) => {
+    const allRows = [...appRows, ...costCenterRows];
+    const unbudgetedCount = filteredApps?.filter((a, index) => {
       const costData = costQueries[index]?.data;
       return (costData?.budget ?? a.budget) == null;
-    }).length;
+    }).length ?? 0;
     const totalRow = [
       "Total",
       "",
@@ -1028,7 +1090,7 @@ function BudgetSummaryWidget({
       globalCostSummary?.wowTrend ?? "",
     ];
 
-    const rows: string[][] = [...appRows, totalRow];
+    const rows: string[][] = [...allRows, totalRow];
     if (unbudgetedCount > 0) {
       rows.push([
         `Note: ${unbudgetedCount} app${unbudgetedCount === 1 ? "" : "s"} not included in budget/forecast totals (no budget set)`,
@@ -1036,7 +1098,7 @@ function BudgetSummaryWidget({
       ]);
     }
     return rows;
-  }, [filteredApps, totalSpentMTD, totalBudget, totalForecast, totalUtilizationPct, totalUtilizationStatus, trendByAppId, globalCostSummary?.wowTrend]);
+  }, [allBudgetItems, filteredApps, costCenterData, costQueries, totalSpentMTD, totalBudget, totalForecast, totalUtilizationPct, totalUtilizationStatus, trendByAppId, globalCostSummary?.wowTrend]);
 
   const { copied, disabled: csvDisabled, handleExport, handleCopy } = useCsvExport(csvRows, csvHeaders, "app-services-budget");
 
