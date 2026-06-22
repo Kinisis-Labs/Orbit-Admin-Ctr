@@ -68,6 +68,22 @@ const { startBudgetAlertScheduler } = await import("./lib/budgetAlerts.js");
 const { startCostSnapshotRefresh } = await import("./lib/costSnapshotRefresh.js");
 const { startAnomalyDismissalCleanup } = await import("./lib/anomalyDismissalCleanup.js");
 
+// Ensure new tables exist without requiring a manual drizzle-kit push on every deploy.
+const { pool } = await import("@workspace/db");
+try {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS manual_budgets (
+      app_id          TEXT PRIMARY KEY,
+      monthly_budget  NUMERIC(14,2) NOT NULL,
+      notes           TEXT,
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_by      TEXT
+    )
+  `);
+} catch (err) {
+  preLog("startup-migrate: manual_budgets table check failed", { err: String(err) });
+}
+
 function logAzureConfig(): void {
   const ids = process.env.AZURE_SUBSCRIPTION_IDS ?? "";
   logger.info(
