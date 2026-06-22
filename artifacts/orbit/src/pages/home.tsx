@@ -1292,31 +1292,50 @@ function BudgetSummaryWidget({
                 </td>
               </tr>
             ) : (
-              filteredApps.map((app) => {
-                const threshold = getBudgetThreshold(app.id);
-                const status = budgetStatus(app, threshold);
-                const pct = app.budget != null && app.budget > 0
-                  ? Math.min((app.monthToDateCost / app.budget) * 100, 100)
-                  : null;
-                const hasAlert = recentAlerts.has(app.id);
-                const hasAnomaly = anomalousApps.has(app.id);
-                const unseenViolations = unseenViolationsByApp.get(app.id) ?? 0;
+              allBudgetItems?.map((item) => {
+                const threshold = item.isCostCenter ? DEFAULT_BUDGET_THRESHOLD : getBudgetThreshold(item.id);
+                const status = item.isCostCenter ? "none" : (() => {
+                  const appIndex = filteredApps?.findIndex(app => app.id === item.id);
+                  const app = appIndex !== -1 && appIndex !== undefined ? filteredApps[appIndex] : null;
+                  return app ? budgetStatus(app, threshold, costQueries[appIndex]?.data) : "none";
+                })();
+                
+                let cost, budget, forecast, pct;
+                if (item.isCostCenter) {
+                  cost = item.monthToDateCost;
+                  budget = null;
+                  forecast = null;
+                  pct = null;
+                } else {
+                  const appIndex = filteredApps?.findIndex(app => app.id === item.id);
+                  const costData = appIndex !== -1 && appIndex !== undefined ? costQueries[appIndex]?.data : null;
+                  cost = costData?.monthToDate ?? item.monthToDateCost;
+                  budget = costData?.budget ?? item.budget;
+                  forecast = costData?.forecast ?? item.forecast;
+                  pct = budget != null && budget > 0
+                    ? Math.min((cost / budget) * 100, 100)
+                    : null;
+                }
+                
+                const hasAlert = !item.isCostCenter ? recentAlerts.has(item.id) : false;
+                const hasAnomaly = !item.isCostCenter ? anomalousApps.has(item.id) : false;
+                const unseenViolations = !item.isCostCenter ? (unseenViolationsByApp.get(item.id) ?? 0) : 0;
 
                 return (
                   <tr
-                    key={app.id}
+                    key={item.id}
                     className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
                     onClick={() => goToCost()}
                   >
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-medium text-foreground truncate max-w-[140px]">{app.name}</span>
-                        {app.androidPackage && (
+                        <span className="font-medium text-foreground truncate max-w-[140px]">{item.name}</span>
+                        {!item.isCostCenter && 'androidPackage' in item && item.androidPackage && (
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <a
-                                  href={`https://play.google.com/store/apps/details?id=${app.androidPackage}`}
+                                  href={`https://play.google.com/store/apps/details?id=${item.androidPackage}`}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="inline-flex items-center shrink-0 text-[#3DDC84] hover:opacity-70 transition-opacity"
@@ -1330,12 +1349,12 @@ function BudgetSummaryWidget({
                             </Tooltip>
                           </TooltipProvider>
                         )}
-                        {app.iosBundle && (
+                        {!item.isCostCenter && 'iosBundle' in item && item.iosBundle && (
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <a
-                                  href={`https://apps.apple.com/app/${app.iosBundle}`}
+                                  href={`https://apps.apple.com/app/${item.iosBundle}`}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="inline-flex items-center shrink-0 text-muted-foreground hover:opacity-70 transition-opacity"
@@ -1370,7 +1389,7 @@ function BudgetSummaryWidget({
                                 <Bell className="h-3 w-3 text-amber-500 shrink-0" />
                               </TooltipTrigger>
                               <TooltipContent>
-                                Budget alert sent {formatDistanceToNow(recentAlerts.get(app.id)!, { addSuffix: true })}
+                                Budget alert sent {formatDistanceToNow(recentAlerts.get(item.id)!, { addSuffix: true })}
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -1393,24 +1412,24 @@ function BudgetSummaryWidget({
                     </td>
                     <td
                       className="px-3 py-2.5"
-                      onClick={(e) => { e.stopPropagation(); onAuthBadgeClick(app.userAuth); }}
+                      onClick={(e) => { e.stopPropagation(); onAuthBadgeClick(item.userAuth); }}
                     >
                       <AuthBadge
-                        userAuth={app.userAuth}
-                        active={authFilter === app.userAuth}
-                        onClick={() => onAuthBadgeClick(app.userAuth)}
+                        userAuth={item.userAuth}
+                        active={authFilter === item.userAuth}
+                        onClick={() => onAuthBadgeClick(item.userAuth)}
                       />
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
                       <div className="flex items-center justify-end gap-1.5">
-                        {app.costDataSource && app.costDataSource !== "mock" && (
-                          <CostDataSourceBadge dataSource={app.costDataSource} />
+                        {item.costDataSource && item.costDataSource !== "mock" && (
+                          <CostDataSourceBadge dataSource={item.costDataSource} />
                         )}
                         <div className="flex flex-col items-end gap-0.5">
-                          {fmt(app.monthToDateCost)}
-                          {filteredApps.length >= 2 && totalSpentMTD > 0 && (() => {
-                            const sharePct = Math.round((app.monthToDateCost / totalSpentMTD) * 100);
-                            const isTop = app.id === topSpenderId;
+                          {fmt(cost)}
+                          {allBudgetItems && allBudgetItems.length >= 2 && totalSpentMTD > 0 && (() => {
+                            const sharePct = Math.round((cost / totalSpentMTD) * 100);
+                            const isTop = !item.isCostCenter && item.id === topSpenderId;
                             return (
                               <div className="flex items-center gap-1">
                                 {isTop && (
@@ -1446,10 +1465,10 @@ function BudgetSummaryWidget({
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
-                      {app.budget != null ? fmt(app.budget) : <span className="text-muted-foreground/50">—</span>}
+                      {budget != null ? fmt(budget) : <span className="text-muted-foreground/50">—</span>}
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
-                      {app.forecast != null ? fmt(app.forecast) : <span className="text-muted-foreground/50">—</span>}
+                      {forecast != null ? fmt(forecast) : <span className="text-muted-foreground/50">—</span>}
                     </td>
                     <td className="px-3 py-2.5">
                       {pct !== null ? (
@@ -1496,7 +1515,7 @@ function BudgetSummaryWidget({
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums" onClick={(e) => e.stopPropagation()}>
                       {(() => {
-                        const trend = trendByAppId.get(app.id) ?? null;
+                        const trend = trendByAppId.get(item.id) ?? null;
                         if (!trend) return <span className="text-muted-foreground/50 text-[11px]">—</span>;
                         const isPos = trend.startsWith("+");
                         const isNeg = trend.startsWith("-");
@@ -1518,7 +1537,7 @@ function BudgetSummaryWidget({
                       })()}
                     </td>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <BudgetSparkline data={dailySpend.get(app.id)} status={status} />
+                      <BudgetSparkline data={dailySpend.get(item.id)} status={status} />
                     </td>
                     <td className="px-2 py-2.5 text-muted-foreground/40">
                       <ChevronRight className="h-3.5 w-3.5" />
@@ -1528,17 +1547,15 @@ function BudgetSummaryWidget({
               })
             )}
           </tbody>
-          {filteredApps && filteredApps.length > 0 && (
+          {allBudgetItems && allBudgetItems.length > 0 && (
             <tfoot>
               <tr className="border-t-2 border-border bg-muted/40">
                 <td className="px-4 py-2.5">
                   <div className="flex flex-col gap-0.5">
                     <span className="font-semibold text-foreground">Total</span>
-                    {budgetedAppCount < filteredApps.length && (
-                      <span className="text-[10px] text-muted-foreground">
-                        {budgetedAppCount} of {filteredApps.length} apps budgeted
-                      </span>
-                    )}
+                    <span className="text-[10px] text-muted-foreground">
+                      {filteredApps?.length ?? 0} apps, {costCenterData.length} cost centers
+                    </span>
                   </div>
                 </td>
                 <td className="px-3 py-2.5" />
