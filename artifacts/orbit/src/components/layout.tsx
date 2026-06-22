@@ -67,8 +67,9 @@ const ROUTE_LABELS: Record<string, string> = {
   "/service-health": "Service health",
   "/users": "Users & activity",
   "/cost": "Cost Management",
-  "/play-subscriptions": "Google Subscriptions",
-  "/apple-subscriptions": "Apple Subscriptions",
+  "/unified-subscriptions": "App Store Subscriptions",
+  "/play-subscriptions": "Google Play (Legacy)",
+  "/apple-subscriptions": "App Store (Legacy)",
   "/stripe-subscriptions": "Stripe Subscriptions",
   "/subscriptions": "Subscriptions",
   "/tags": "Tags",
@@ -409,9 +410,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   unacknowledgedBudgetAlerts={canSeeCost ? unacknowledgedBudgetAlerts : 0}
                 />
                 <NavItem
+                  href="/unified-subscriptions"
+                  icon={<Smartphone className="h-[18px] w-[18px]" />}
+                  label="App Store Subscriptions"
+                  active={location === "/unified-subscriptions"}
+                  collapsed={navCollapsed}
+                  trailingIcon={
+                    !canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined
+                  }
+                  trailingTitle={
+                    !canSeeCost
+                      ? `Restricted to members of ${COST_READER_GROUP.displayName}`
+                      : undefined
+                  }
+                />
+                <NavItem
                   href="/play-subscriptions"
                   icon={<Smartphone className="h-[18px] w-[18px]" />}
-                  label="Google Subscriptions"
+                  label="Google Play (Legacy)"
                   active={location === "/play-subscriptions"}
                   collapsed={navCollapsed}
                   trailingIcon={
@@ -426,7 +442,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <NavItem
                   href="/apple-subscriptions"
                   icon={<Smartphone className="h-[18px] w-[18px]" />}
-                  label="Apple Subscriptions"
+                  label="App Store (Legacy)"
                   active={location === "/apple-subscriptions"}
                   collapsed={navCollapsed}
                   trailingIcon={

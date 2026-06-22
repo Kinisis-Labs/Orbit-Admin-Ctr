@@ -20,6 +20,7 @@ import TelemetryPage from "@/pages/telemetry";
 import Logs from "@/pages/logs";
 import ServiceHealth from "@/pages/service-health";
 import Subscriptions from "@/pages/subscriptions";
+import UnifiedSubscriptions from "@/pages/unified-subscriptions";
 import PlaySubscriptions from "@/pages/play-subscriptions";
 import AppleSubscriptions from "@/pages/apple-subscriptions";
 import StripeSubscriptions from "@/pages/stripe-subscriptions";
@@ -63,6 +64,7 @@ function Router() {
         <Route path="/users" component={Users} />
         <Route path="/cost"><Gated><Cost /></Gated></Route>
         <Route path="/budget-management"><Gated><BudgetManagement /></Gated></Route>
+        <Route path="/unified-subscriptions"><Gated><UnifiedSubscriptions /></Gated></Route>
         <Route path="/play-subscriptions"><Gated><PlaySubscriptions /></Gated></Route>
         <Route path="/apple-subscriptions"><Gated><AppleSubscriptions /></Gated></Route>
         <Route path="/stripe-subscriptions"><Gated><StripeSubscriptions /></Gated></Route>
