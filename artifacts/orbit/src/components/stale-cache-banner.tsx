@@ -19,17 +19,18 @@ export function fmtStaleCacheAsOf(iso: string | undefined | null): string | null
   }
 }
 
-const SOURCE_LABELS: Record<"play" | "apple" | "azure-cost", { label: string; liveText: string }> = {
+const SOURCE_LABELS: Record<"play" | "apple" | "azure-cost" | "stripe", { label: string; liveText: string }> = {
   play: { label: "Google Play", liveText: "live subscriber counts may differ" },
   apple: { label: "App Store Connect", liveText: "live subscriber counts may differ" },
   "azure-cost": { label: "Azure Cost Management", liveText: "live costs may differ" },
+  stripe: { label: "Stripe", liveText: "live subscriber counts may differ" },
 };
 
 type StaleCacheBannerProps = {
   dataSource?: "live" | "cached" | "mock" | undefined;
   dataAsOf?: string | null;
 } & (
-  | { source: "play" | "apple" | "azure-cost"; label?: string; liveText?: string }
+  | { source: "play" | "apple" | "azure-cost" | "stripe"; label?: string; liveText?: string }
   | { source?: never; label: string; liveText: string }
 );
 

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useListAppleSubscriptions, useListPlaySubscriptions } from "@workspace/api-client-react";
+import { useListAppleSubscriptions, useListPlaySubscriptions, useListStripeSubscriptions } from "@workspace/api-client-react";
 import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -19,6 +19,7 @@ import {
   PowerOff,
   Smartphone,
   Apple,
+  CreditCard,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { useCsvExport } from "@/hooks/use-csv-export";
@@ -39,11 +40,13 @@ interface SubscriptionRow {
   appId: string;
   appName: string;
   environment: string;
-  storeType: "apple" | "play";
-  identifier: string; // bundleId or packageName
+  storeType: "apple" | "play" | "stripe";
+  identifier: string; // bundleId, packageName, or appId for Stripe
   activeSubscribers: number;
   canceledSubscribers: number;
   expiredSubscribers: number;
+  trialingSubscribers?: number; // Stripe only
+  pastDueSubscribers?: number; // Stripe only
   mrr: number;
   revenueLast30d: number;
   currency: string;
@@ -54,7 +57,7 @@ interface SubscriptionRow {
 }
 
 interface StoreSection {
-  storeType: "apple" | "play";
+  storeType: "apple" | "play" | "stripe";
   title: string;
   icon: React.ReactNode;
   data: SubscriptionRow[];
@@ -62,6 +65,8 @@ interface StoreSection {
     active: number;
     canceled: number;
     expired: number;
+    trialing?: number; // Stripe only
+    pastDue?: number; // Stripe only
     mrr: number;
     revenue: number;
   };
@@ -94,9 +99,18 @@ export default function UnifiedSubscriptions() {
     dataUpdatedAt: playDataUpdatedAt,
   } = useListPlaySubscriptions();
 
+  const {
+    data: stripeData,
+    isLoading: stripeLoading,
+    isError: stripeError,
+    error: stripeErrorObj,
+    dataUpdatedAt: stripeDataUpdatedAt,
+  } = useListStripeSubscriptions();
+
   const isAppleDisabled =
     appleError && (appleErrorObj as { status?: number } | null)?.status === 404;
   const isPlayDisabled = playError && (playErrorObj as { status?: number } | null)?.status === 404;
+  const isStripeDisabled = stripeError && (stripeErrorObj as { status?: number } | null)?.status === 404;
 
   // Transform Apple data
   const appleRows = useMemo(() => {
@@ -155,9 +169,36 @@ export default function UnifiedSubscriptions() {
       );
   }, [playData]);
 
+  // Transform Stripe data
+  const stripeRows = useMemo(() => {
+    if (!stripeData) return [];
+    return stripeData.map(
+      (row): SubscriptionRow => ({
+        appId: row.appId,
+        appName: row.appName,
+        environment: row.environment,
+        storeType: "stripe",
+        identifier: row.appId, // Use appId as identifier for Stripe
+        activeSubscribers: row.activeSubscribers,
+        canceledSubscribers: row.canceledSubscribers,
+        expiredSubscribers: 0, // Stripe doesn't have expired, only canceled
+        trialingSubscribers: row.trialingSubscribers,
+        pastDueSubscribers: row.pastDueSubscribers,
+        mrr: row.mrr,
+        revenueLast30d: row.revenueLast30d,
+        currency: row.currency,
+        activeTrendPct: row.activeTrendPct,
+        dataSource: row.dataSource as "live" | "cached",
+        dataAsOf: row.dataAsOf,
+        managementUrl: row.stripeDashboardUrl,
+      }),
+    );
+  }, [stripeData]);
+
   // Use all data since we're not filtering by scope
   const appleDataToShow = appleRows;
   const playDataToShow = playRows;
+  const stripeDataToShow = stripeRows;
 
   // Calculate totals for each store
   const appleTotals = appleDataToShow.reduce(
@@ -180,6 +221,19 @@ export default function UnifiedSubscriptions() {
       revenue: acc.revenue + r.revenueLast30d,
     }),
     { active: 0, canceled: 0, expired: 0, mrr: 0, revenue: 0 },
+  );
+
+  const stripeTotals = stripeDataToShow.reduce(
+    (acc, r) => ({
+      active: acc.active + r.activeSubscribers,
+      canceled: acc.canceled + r.canceledSubscribers,
+      expired: acc.expired + r.expiredSubscribers,
+      trialing: (acc.trialing || 0) + (r.trialingSubscribers || 0),
+      pastDue: (acc.pastDue || 0) + (r.pastDueSubscribers || 0),
+      mrr: acc.mrr + r.mrr,
+      revenue: acc.revenue + r.revenueLast30d,
+    }),
+    { active: 0, canceled: 0, expired: 0, trialing: 0, pastDue: 0, mrr: 0, revenue: 0 },
   );
 
   // Store sections data
@@ -275,28 +329,77 @@ export default function UnifiedSubscriptions() {
     });
   }
 
-  const isLoading = appleLoading || playLoading;
-  const allData = [...appleDataToShow, ...playDataToShow];
+  if (!isStripeDisabled) {
+    const stripeIsLive = stripeDataToShow.some((r) => r.dataSource === "live");
+    const stripeIsCached = stripeDataToShow.some((r) => r.dataSource === "cached");
+    const stripeBadgeDataSource =
+      stripeDataToShow.length === 0
+        ? undefined
+        : stripeIsLive
+          ? "live"
+          : stripeIsCached
+            ? "cached"
+            : undefined;
+
+    const stripeStaleCachedRow = (() => {
+      const cached = stripeDataToShow.filter((r) => r.dataSource === "cached" && !!r.dataAsOf);
+      if (cached.length === 0) return undefined;
+      return cached.reduce((oldest, r) =>
+        new Date(r.dataAsOf!).getTime() < new Date(oldest.dataAsOf!).getTime() ? r : oldest,
+      );
+    })();
+
+    const stripeEarliestDataAsOf = (() => {
+      const withDate = stripeDataToShow.filter((r) => !!r.dataAsOf);
+      if (withDate.length === 0) return undefined;
+      return withDate.reduce((oldest, r) =>
+        new Date(r.dataAsOf!).getTime() < new Date(oldest.dataAsOf!).getTime() ? r : oldest,
+      ).dataAsOf;
+    })();
+
+    storeSections.push({
+      storeType: "stripe",
+      title: "Stripe",
+      icon: <CreditCard className="h-4 w-4" />,
+      data: stripeDataToShow,
+      totals: stripeTotals,
+      isLive: stripeIsLive,
+      isCached: stripeIsCached,
+      badgeDataSource: stripeBadgeDataSource,
+      staleCachedRow: stripeStaleCachedRow,
+      earliestDataAsOf: stripeEarliestDataAsOf,
+      dataUpdatedAt: stripeDataUpdatedAt,
+      isError: stripeError,
+      error: stripeErrorObj,
+    });
+  }
+
+  const isLoading = appleLoading || playLoading || stripeLoading;
+  const allData = [...appleDataToShow, ...playDataToShow, ...stripeDataToShow];
   const overallTotals = allData.reduce(
     (acc, r) => ({
       active: acc.active + r.activeSubscribers,
       canceled: acc.canceled + r.canceledSubscribers,
       expired: acc.expired + r.expiredSubscribers,
+      trialing: (acc.trialing || 0) + (r.trialingSubscribers || 0),
+      pastDue: (acc.pastDue || 0) + (r.pastDueSubscribers || 0),
       mrr: acc.mrr + r.mrr,
       revenue: acc.revenue + r.revenueLast30d,
     }),
-    { active: 0, canceled: 0, expired: 0, mrr: 0, revenue: 0 },
+    { active: 0, canceled: 0, expired: 0, trialing: 0, pastDue: 0, mrr: 0, revenue: 0 },
   );
 
   // CSV export for combined data
   const csvRows = allData.map((r) => [
     r.appName,
-    r.storeType === "apple" ? "App Store" : "Google Play",
+    r.storeType === "apple" ? "App Store" : r.storeType === "play" ? "Google Play" : "Stripe",
     r.identifier,
     r.environment,
     String(r.activeSubscribers),
     String(r.canceledSubscribers),
     String(r.expiredSubscribers),
+    String(r.trialingSubscribers || 0),
+    String(r.pastDueSubscribers || 0),
     r.mrr.toFixed(2),
     r.revenueLast30d.toFixed(2),
     String(r.activeTrendPct),
@@ -317,6 +420,8 @@ export default function UnifiedSubscriptions() {
       "Active",
       "Canceled",
       "Expired",
+      "Trialing",
+      "Past Due",
       "MRR",
       "Revenue (30d)",
       "Active trend %",
@@ -329,7 +434,7 @@ export default function UnifiedSubscriptions() {
       }),
   );
 
-  if (isAppleDisabled && isPlayDisabled) {
+  if (isAppleDisabled && isPlayDisabled && isStripeDisabled) {
     return (
       <div className="space-y-4">
         <PageHeader
@@ -340,7 +445,7 @@ export default function UnifiedSubscriptions() {
         <SurfaceDisabled
           icon="ALL"
           title="All subscription surfaces are disabled"
-          description="Both Apple App Store and Google Play subscription surfaces have been turned off via feature flags in Azure App Configuration. To re-enable them, set the flags back on and redeploy (or wait for the next config refresh)."
+          description="Apple App Store, Google Play, and Stripe subscription surfaces have been turned off via feature flags in Azure App Configuration. To re-enable them, set the flags back on and redeploy (or wait for the next config refresh)."
         />
       </div>
     );
@@ -576,7 +681,14 @@ function StoreSection({ section }: { section: StoreSection }) {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           <Tile title="Active subscribers" value={num(totals.active)} sub="Currently paying" />
           <Tile title="Canceled" value={num(totals.canceled)} sub="Auto-renew off, still in term" />
-          <Tile title="Expired" value={num(totals.expired)} sub="Lapsed / inactive" />
+          {section.storeType === "stripe" ? (
+            <>
+              <Tile title="Trialing" value={num(totals.trialing || 0)} sub="Free trial period" />
+              <Tile title="Past due" value={num(totals.pastDue || 0)} sub="Payment failed" />
+            </>
+          ) : (
+            <Tile title="Expired" value={num(totals.expired)} sub="Lapsed / inactive" />
+          )}
           <Tile title="MRR" value={usd(totals.mrr)} sub="Monthly recurring revenue" />
           <Tile title="Revenue (30d)" value={usd(totals.revenue)} sub="Trailing 30 days" />
         </div>
@@ -591,7 +703,7 @@ function StoreBanner({
   dataUpdatedAt,
   dataAsOf,
 }: {
-  storeType: "apple" | "play";
+  storeType: "apple" | "play" | "stripe";
   isLive: boolean;
   dataUpdatedAt: number;
   dataAsOf?: string;
@@ -634,12 +746,20 @@ function StoreBanner({
             "Subscriber states and revenue are pulled live from RevenueCat for each tracked iOS app.",
           url: "https://app.revenuecat.com",
         }
-      : {
+      : storeType === "play"
+      ? {
           icon: "GP",
           title: "RevenueCat",
           description:
             "Subscriber states and revenue are pulled live from RevenueCat for each tracked Android app.",
           url: "https://app.revenuecat.com",
+        }
+      : {
+          icon: "ST",
+          title: "Stripe",
+          description:
+            "Subscriber states and revenue are pulled live from Stripe for each tracked web app.",
+          url: "https://dashboard.stripe.com",
         };
 
   return (
