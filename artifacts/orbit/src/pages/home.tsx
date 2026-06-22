@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
-import { getListAppsQueryKey, getGetCostQueryKey, getCost, getGetAppQueryKey, getApp, useGetGlobalHealth, getGetGlobalHealthQueryKey, useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey } from "@workspace/api-client-react";
+import { getListAppsQueryKey, getGetCostQueryKey, getCost, getGetAppQueryKey, getApp, useGetGlobalHealth, getGetGlobalHealthQueryKey, useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey, useListOpsCostItems } from "@workspace/api-client-react";
 import type { AppSummary, AppDetail } from "@workspace/api-client-react";
 import type { UserAuthType } from "@workspace/api-client-react";
 import type { DailyCostPoint } from "@/components/daily-spend-utils";
@@ -742,6 +742,9 @@ function BudgetSummaryWidget({
   const { data: globalCostSummary } = useGetGlobalCostSummary({
     query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
   });
+
+  // Fetch operational costs data for Microsoft365 fallback
+  const { data: opsCostsData } = useListOpsCostItems("kinisis-labs");
   const trendByAppId = useMemo(() => {
     const map = new Map<string, string>();
     for (const item of globalCostSummary?.byApp ?? []) {
@@ -753,19 +756,34 @@ function BudgetSummaryWidget({
   // Add Microsoft365 cost center data to match cost page behavior
   const costCenterData = useMemo(() => {
     const categories = globalCostSummary?.byCategory ?? [];
-    return categories.map(cat => ({
-      id: `cost-center-${cat.category}`,
-      name: cat.category === "Other" ? "Microsoft365" : cat.category,
-      category: cat.category,
-      monthToDateCost: cat.monthToDate,
-      budget: null, // Cost centers typically don't have budgets
-      forecast: null, // Cost centers typically don't have forecasts
-      forecastOverBudget: false,
-      userAuth: "none" as const,
-      environment: "cost-center" as const,
-      costDataSource: globalCostSummary?.dataSource,
-    }));
-  }, [globalCostSummary?.byCategory, globalCostSummary?.dataSource]);
+    
+    // Calculate Microsoft365 operational costs total for fallback
+    const microsoft365OpsCost = opsCostsData
+      ?.filter(item => item.category === "m365-licenses" && item.active)
+      ?.reduce((total, item) => total + item.amountMonthly, 0) ?? 0;
+    
+    return categories.map(cat => {
+      let monthToDateCost = cat.monthToDate;
+      
+      // Apply fallback logic for Microsoft365 when current month data is zero
+      if (cat.category === "Other" && monthToDateCost === 0 && microsoft365OpsCost > 0) {
+        monthToDateCost = microsoft365OpsCost;
+      }
+      
+      return {
+        id: `cost-center-${cat.category}`,
+        name: cat.category === "Other" ? "Microsoft365" : cat.category,
+        category: cat.category,
+        monthToDateCost,
+        budget: null, // Cost centers typically don't have budgets
+        forecast: null, // Cost centers typically don't have forecasts
+        forecastOverBudget: false,
+        userAuth: "none" as const,
+        environment: "cost-center" as const,
+        costDataSource: globalCostSummary?.dataSource,
+      };
+    });
+  }, [globalCostSummary?.byCategory, globalCostSummary?.dataSource, opsCostsData]);
 
   const [envFilter, setEnvFilterRaw] = useState<EnvFilter>(() => {
     try {
