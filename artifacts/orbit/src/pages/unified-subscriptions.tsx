@@ -1,5 +1,9 @@
 import { useMemo } from "react";
-import { useListAppleSubscriptions, useListPlaySubscriptions, useListStripeSubscriptions } from "@workspace/api-client-react";
+import {
+  useListAppleSubscriptions,
+  useListPlaySubscriptions,
+  useListStripeSubscriptions,
+} from "@workspace/api-client-react";
 import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -110,7 +114,8 @@ export default function UnifiedSubscriptions() {
   const isAppleDisabled =
     appleError && (appleErrorObj as { status?: number } | null)?.status === 404;
   const isPlayDisabled = playError && (playErrorObj as { status?: number } | null)?.status === 404;
-  const isStripeDisabled = stripeError && (stripeErrorObj as { status?: number } | null)?.status === 404;
+  const isStripeDisabled =
+    stripeError && (stripeErrorObj as { status?: number } | null)?.status === 404;
 
   // Transform Apple data
   const appleRows = useMemo(() => {
@@ -747,20 +752,20 @@ function StoreBanner({
           url: "https://app.revenuecat.com",
         }
       : storeType === "play"
-      ? {
-          icon: "GP",
-          title: "RevenueCat",
-          description:
-            "Subscriber states and revenue are pulled live from RevenueCat for each tracked Android app.",
-          url: "https://app.revenuecat.com",
-        }
-      : {
-          icon: "ST",
-          title: "Stripe",
-          description:
-            "Subscriber states and revenue are pulled live from Stripe for each tracked web app.",
-          url: "https://dashboard.stripe.com",
-        };
+        ? {
+            icon: "GP",
+            title: "RevenueCat",
+            description:
+              "Subscriber states and revenue are pulled live from RevenueCat for each tracked Android app.",
+            url: "https://app.revenuecat.com",
+          }
+        : {
+            icon: "ST",
+            title: "Stripe",
+            description:
+              "Subscriber states and revenue are pulled live from Stripe for each tracked web app.",
+            url: "https://dashboard.stripe.com",
+          };
 
   return (
     <div className="bg-card border border-border shadow-sm p-3 flex items-start gap-3">
