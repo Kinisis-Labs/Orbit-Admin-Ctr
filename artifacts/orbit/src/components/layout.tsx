@@ -8,6 +8,7 @@ import {
   Home,
   Bell,
   DollarSign,
+  LayoutDashboard,
   ChevronRight,
   Menu,
   Sun,
@@ -340,6 +341,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   icon={<Telescope className="h-[18px] w-[18px]" />}
                   label="Telemetry"
                   active={location === "/telemetry"}
+                  collapsed={navCollapsed}
+                />
+                <NavItem
+                  href="/resources"
+                  icon={<LayoutDashboard className="h-[18px] w-[18px]" />}
+                  label="All resources"
+                  active={location === "/resources"}
                   collapsed={navCollapsed}
                 />
                 <NavItem
