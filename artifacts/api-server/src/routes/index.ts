@@ -15,6 +15,7 @@ import anomalyDismissalsRouter from "./anomalyDismissals";
 import alertSseRouter from "./alertSse";
 import featureFlagsRouter from "./featureFlags";
 import tagComplianceRouter from "./tagCompliance";
+import budgetManagementRouter from "./budgetManagement";
 import { requireAuth, requireCostReader } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -49,5 +50,7 @@ router.use(requireAuth, alertSseRouter);
 router.use(featureFlagsRouter);
 // Tag compliance scan — requireAuth only (operational, not financial).
 router.use(requireAuth, tagComplianceRouter);
+// Manual budget management — cost reader for reads, admin for writes (enforced inside router).
+router.use(requireAuth, budgetManagementRouter);
 
 export default router;

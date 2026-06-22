@@ -32,6 +32,7 @@ import {
   RefreshCw,
   CreditCard,
   Sparkles,
+  BarChart3,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,8 @@ const ROUTE_LABELS: Record<string, string> = {
   "/resources": "All resources",
   "/apps": "App Services",
   "/constellation": "Constellation",
+  "/budget-management": "Budget Management",
+  "/store-reports": "Store ingestion",
 };
 
 function getInitialTheme(): Theme {
@@ -373,7 +376,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 />
               </NavSection>
 
-              <NavSection sectionKey="cost" label="Cost" navCollapsed={navCollapsed}>
+              <NavSection sectionKey="cost" label="Cost & Revenue" navCollapsed={navCollapsed}>
+                <NavItem
+                  href="/budget-management"
+                  icon={<BarChart3 className="h-[18px] w-[18px]" />}
+                  label="Budget Management"
+                  active={location === "/budget-management"}
+                  collapsed={navCollapsed}
+                  trailingIcon={
+                    !canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined
+                  }
+                  trailingTitle={
+                    !canSeeCost
+                      ? `Restricted to members of ${COST_READER_GROUP.displayName}`
+                      : undefined
+                  }
+                />
                 <NavItem
                   href="/cost"
                   icon={<DollarSign className="h-[18px] w-[18px]" />}
