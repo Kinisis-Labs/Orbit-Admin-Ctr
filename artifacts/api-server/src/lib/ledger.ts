@@ -553,19 +553,18 @@ export async function ingestSale(
 /**
  * Current-month gross revenue for a workload, split by channel.
  *
- * Sums all posted credit entries to account 4000 (sale revenue) for the
- * current calendar month. Used by the cost route to surface live revenue
- * instead of the old REVENUE_BY_APP constant.
+ * Uses RevenueCat for App Store and Play Store revenue, and ledger data for Stripe.
+ * RevenueCat provides real-time subscription revenue data directly from the app stores.
  *
- * Returns zeroed object when no ledger entries exist (e.g. before any Stripe
- * sync has run or before the app goes live).
+ * Returns zeroed object when no data exists (e.g. before any Stripe sync has run
+ * or before RevenueCat API keys are configured).
  */
 export async function getLedgerMonthRevenue(workloadId: string): Promise<{
   stripe: number;
   appStore: number;
   playStore: number;
 }> {
-
+  // Get Stripe revenue from ledger (existing behavior)
   const now = new Date();
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
@@ -586,15 +585,43 @@ export async function getLedgerMonthRevenue(workloadId: string): Promise<{
     );
 
   let stripe = 0;
-  let appStore = 0;
-  let playStore = 0;
-
   for (const row of rows) {
     const amt = parseFloat(String(row.amount));
     if (isNaN(amt)) continue;
     if (row.source === "stripe") stripe += amt;
-    else if (row.source === "app_store") appStore += amt;
-    else if (row.source === "play_store") playStore += amt;
+  }
+
+  // Get App Store and Play Store revenue from RevenueCat
+  let appStore = 0;
+  let playStore = 0;
+
+  try {
+    // Import RevenueCat functions dynamically to avoid circular dependencies
+    const { getAppleSubscriptions } = await import("./appleSubscriptions.js");
+    const { getPlaySubscriptions } = await import("./playSubscriptions.js");
+
+    // Get Apple App Store revenue from RevenueCat
+    const appleData = await getAppleSubscriptions();
+    appStore = appleData
+      .filter(sub => sub.appId === workloadId)
+      .reduce((total, sub) => total + sub.revenueLast30d, 0);
+
+    // Get Google Play revenue from RevenueCat  
+    const playData = await getPlaySubscriptions();
+    playStore = playData
+      .filter(sub => sub.appId === workloadId)
+      .reduce((total, sub) => total + sub.revenueLast30d, 0);
+  } catch (error) {
+    // Log error but don't fail - fall back to ledger data
+    console.warn(`Failed to fetch RevenueCat data for ${workloadId}:`, error);
+    
+    // Fallback to ledger data for app_store and play_store
+    for (const row of rows) {
+      const amt = parseFloat(String(row.amount));
+      if (isNaN(amt)) continue;
+      if (row.source === "app_store") appStore += amt;
+      else if (row.source === "play_store") playStore += amt;
+    }
   }
 
   return {
