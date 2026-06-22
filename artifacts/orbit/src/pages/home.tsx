@@ -545,10 +545,14 @@ type SortDir = "asc" | "desc";
 
 const BUDGET_STATUS_RANK: Record<BudgetStatus, number> = { over: 0, warning: 1, ok: 2, none: 3 };
 
-function budgetStatus(app: AppSummary, threshold: number = DEFAULT_BUDGET_THRESHOLD): BudgetStatus {
-  if (app.budget == null) return "none";
-  if (app.forecastOverBudget) return "over";
-  const pct = app.budget > 0 ? (app.monthToDateCost / app.budget) * 100 : 0;
+function budgetStatus(app: AppSummary, threshold: number = DEFAULT_BUDGET_THRESHOLD, costData?: any): BudgetStatus {
+  const budget = costData?.budget ?? app.budget;
+  const forecastOverBudget = costData?.forecastOverBudget ?? app.forecastOverBudget;
+  const monthToDateCost = costData?.monthToDate ?? app.monthToDateCost;
+  
+  if (budget == null) return "none";
+  if (forecastOverBudget) return "over";
+  const pct = budget > 0 ? (monthToDateCost / budget) * 100 : 0;
   if (pct >= threshold) return "warning";
   return "ok";
 }
@@ -726,6 +730,15 @@ function BudgetSummaryWidget({
 
   const dailySpend = useAppDailySpend(apps, true, sparklineRange);
 
+  // Fetch real cost data for each app (same as cost management tab)
+  const costQueries = useQueries({
+    queries: (apps ?? []).map((app) => ({
+      queryKey: getGetCostQueryKey(app.id),
+      queryFn: () => getCost(app.id),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+
   const { data: globalCostSummary } = useGetGlobalCostSummary({
     query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
   });
@@ -762,38 +775,60 @@ function BudgetSummaryWidget({
 
   const filteredApps = useMemo(() => {
     if (!apps) return undefined;
-    const filtered = apps.filter((a) => {
+    const filtered = apps.filter((a, index) => {
+      const costData = costQueries[index]?.data;
+      const forecast = costData?.forecast ?? a.forecast;
+      const budget = costData?.budget ?? a.budget;
+      const forecastOverBudget = (forecast != null && budget != null) ? forecast > budget : a.forecastOverBudget;
+      
       if (authFilter !== null && a.userAuth !== authFilter) return false;
       if (envFilter !== "all" && a.environment !== envFilter) return false;
-      if (budgetBreachFilter && !a.forecastOverBudget) return false;
+      if (budgetBreachFilter && !forecastOverBudget) return false;
       return true;
     });
     return [...filtered].sort((a, b) => {
+      const costDataA = costQueries[apps.indexOf(a)]?.data;
+      const costDataB = costQueries[apps.indexOf(b)]?.data;
+      
       let diff = 0;
       if (sortCol === "status") {
         diff =
-          BUDGET_STATUS_RANK[budgetStatus(a, getBudgetThreshold(a.id))] -
-          BUDGET_STATUS_RANK[budgetStatus(b, getBudgetThreshold(b.id))];
-        if (diff === 0) diff = b.monthToDateCost - a.monthToDateCost;
+          BUDGET_STATUS_RANK[budgetStatus(a, getBudgetThreshold(a.id), costDataA)] -
+          BUDGET_STATUS_RANK[budgetStatus(b, getBudgetThreshold(b.id), costDataB)];
+        if (diff === 0) {
+          const costA = costDataA?.monthToDate ?? a.monthToDateCost;
+          const costB = costDataB?.monthToDate ?? b.monthToDateCost;
+          diff = costB - costA;
+        }
       } else if (sortCol === "name") {
         diff = a.name.localeCompare(b.name);
       } else if (sortCol === "auth") {
         diff = a.userAuth.localeCompare(b.userAuth);
       } else if (sortCol === "spent") {
-        diff = a.monthToDateCost - b.monthToDateCost;
+        const costA = costDataA?.monthToDate ?? a.monthToDateCost;
+        const costB = costDataB?.monthToDate ?? b.monthToDateCost;
+        diff = costA - costB;
       } else if (sortCol === "budget") {
-        if (a.budget == null && b.budget == null) diff = 0;
-        else if (a.budget == null) diff = 1;
-        else if (b.budget == null) diff = -1;
-        else diff = a.budget - b.budget;
+        const budgetA = costDataA?.budget ?? a.budget;
+        const budgetB = costDataB?.budget ?? b.budget;
+        if (budgetA == null && budgetB == null) diff = 0;
+        else if (budgetA == null) diff = 1;
+        else if (budgetB == null) diff = -1;
+        else diff = budgetA - budgetB;
       } else if (sortCol === "forecast") {
-        if (a.forecast == null && b.forecast == null) diff = 0;
-        else if (a.forecast == null) diff = 1;
-        else if (b.forecast == null) diff = -1;
-        else diff = a.forecast - b.forecast;
+        const forecastA = costDataA?.forecast ?? a.forecast;
+        const forecastB = costDataB?.forecast ?? b.forecast;
+        if (forecastA == null && forecastB == null) diff = 0;
+        else if (forecastA == null) diff = 1;
+        else if (forecastB == null) diff = -1;
+        else diff = forecastA - forecastB;
       } else if (sortCol === "utilization") {
-        const pctA = a.budget != null && a.budget > 0 ? (a.monthToDateCost / a.budget) * 100 : -1;
-        const pctB = b.budget != null && b.budget > 0 ? (b.monthToDateCost / b.budget) * 100 : -1;
+        const costA = costDataA?.monthToDate ?? a.monthToDateCost;
+        const costB = costDataB?.monthToDate ?? b.monthToDateCost;
+        const budgetA = costDataA?.budget ?? a.budget;
+        const budgetB = costDataB?.budget ?? b.budget;
+        const pctA = budgetA != null && budgetA > 0 ? (costA / budgetA) * 100 : -1;
+        const pctB = budgetB != null && budgetB > 0 ? (costB / budgetB) * 100 : -1;
         diff = pctA - pctB;
       } else if (sortCol === "wow") {
         diff = parseTrend(trendByAppId.get(a.id)) - parseTrend(trendByAppId.get(b.id));
@@ -806,7 +841,7 @@ function BudgetSummaryWidget({
       }
       return sortDir === "asc" ? diff : -diff;
     });
-  }, [apps, authFilter, envFilter, budgetBreachFilter, thresholdVersion, sortCol, sortDir, trendByAppId, dailySpend]);
+  }, [apps, authFilter, envFilter, budgetBreachFilter, thresholdVersion, sortCol, sortDir, trendByAppId, dailySpend, costQueries]);
 
   function goToCost() {
     if (isFiltered && filterSummary) {
@@ -816,22 +851,80 @@ function BudgetSummaryWidget({
     }
   }
 
-  const overCount = filteredApps?.filter((a) => a.forecastOverBudget).length ?? 0;
+  // Use real cost data for budget status calculations
+  const overCount = useMemo(() => {
+    return filteredApps?.filter((a, index) => {
+      const costData = costQueries[index]?.data;
+      const forecast = costData?.forecast ?? a.forecast;
+      const budget = costData?.budget ?? a.budget;
+      return (forecast != null && budget != null) ? forecast > budget : a.forecastOverBudget;
+    }).length ?? 0;
+  }, [filteredApps, costQueries]);
+
   const warningCount = useMemo(() => {
-    return filteredApps?.filter((a) => {
-      if (a.forecastOverBudget || a.budget == null) return false;
-      const pct = a.budget > 0 ? (a.monthToDateCost / a.budget) * 100 : 0;
+    return filteredApps?.filter((a, index) => {
+      const costData = costQueries[index]?.data;
+      const forecast = costData?.forecast ?? a.forecast;
+      const budget = costData?.budget ?? a.budget;
+      const forecastOverBudget = (forecast != null && budget != null) ? forecast > budget : a.forecastOverBudget;
+      if (forecastOverBudget) return false;
+      
+      if (budget == null) return false;
+      
+      const cost = costData?.monthToDate ?? a.monthToDateCost;
+      const pct = budget > 0 ? (cost / budget) * 100 : 0;
       return pct >= getBudgetThreshold(a.id);
     }).length ?? 0;
-  }, [filteredApps, thresholdVersion]);
+  }, [filteredApps, thresholdVersion, costQueries]);
 
-  const totalSpentMTD = filteredApps?.reduce((s, a) => s + a.monthToDateCost, 0) ?? 0;
-  const topSpenderId = filteredApps && filteredApps.length >= 2
-    ? filteredApps.reduce((top, a) => a.monthToDateCost > top.monthToDateCost ? a : top, filteredApps[0]).id
-    : null;
-  const budgetedApps = filteredApps?.filter((a) => a.budget != null) ?? [];
-  const totalBudget = budgetedApps.reduce((s, a) => s + (a.budget ?? 0), 0);
-  const totalForecast = budgetedApps.reduce((s, a) => s + (a.forecast ?? 0), 0);
+  // Use real cost data from cost API instead of placeholder app summary data
+  const totalSpentMTD = useMemo(() => {
+    if (!filteredApps) return 0;
+    return filteredApps.reduce((total, app, index) => {
+      const costData = costQueries[index]?.data;
+      const cost = costData?.monthToDate ?? app.monthToDateCost; // Fallback to app summary if cost data unavailable
+      return total + cost;
+    }, 0);
+  }, [filteredApps, costQueries]);
+
+  const topSpenderId = useMemo(() => {
+    if (!filteredApps || filteredApps.length < 2) return null;
+    return filteredApps.reduce((top, app, index) => {
+      const costData = costQueries[index]?.data;
+      const cost = costData?.monthToDate ?? app.monthToDateCost;
+      const topCostData = costQueries[filteredApps.indexOf(top)]?.data;
+      const topCost = topCostData?.monthToDate ?? top.monthToDateCost;
+      return cost > topCost ? app : top;
+    }, filteredApps[0]).id;
+  }, [filteredApps, costQueries]);
+
+  // Use real budget and forecast data from cost API
+  const budgetedApps = useMemo(() => {
+    if (!filteredApps) return [];
+    return filteredApps.filter((a, index) => {
+      const costData = costQueries[index]?.data;
+      return (costData?.budget ?? a.budget) != null;
+    });
+  }, [filteredApps, costQueries]);
+
+  const totalBudget = useMemo(() => {
+    return budgetedApps.reduce((total, app) => {
+      const index = filteredApps?.indexOf(app);
+      const costData = index !== undefined && index >= 0 ? costQueries[index]?.data : null;
+      const budget = costData?.budget ?? app.budget;
+      return total + (budget ?? 0);
+    }, 0);
+  }, [budgetedApps, filteredApps, costQueries]);
+
+  const totalForecast = useMemo(() => {
+    return budgetedApps.reduce((total, app) => {
+      const index = filteredApps?.indexOf(app);
+      const costData = index !== undefined && index >= 0 ? costQueries[index]?.data : null;
+      const forecast = costData?.forecast ?? app.forecast;
+      return total + (forecast ?? 0);
+    }, 0);
+  }, [budgetedApps, filteredApps, costQueries]);
+
   const totalVariance = totalBudget > 0 ? totalBudget - totalForecast : null;
   const budgetedAppCount = budgetedApps.length;
   const totalUtilizationPct = totalBudget > 0 ? Math.min((totalSpentMTD / totalBudget) * 100, 100) : null;
@@ -890,27 +983,38 @@ function BudgetSummaryWidget({
 
   const csvHeaders = ["Application", "Environment", "Auth", "Spent MTD (USD)", "Budget (USD)", "Forecast (USD)", "Utilization %", "Status", "Budget breach", "WoW Trend"];
   const csvRows = useMemo(() => {
-    if (!filteredApps) return null;
+    if (!filteredApps || !apps) return null;
     const appRows = filteredApps.map((app) => {
-      const status = budgetStatus(app, getBudgetThreshold(app.id));
-      const pct = app.budget != null && app.budget > 0
-        ? Math.round(Math.min((app.monthToDateCost / app.budget) * 100, 100))
+      const appIndex = apps.indexOf(app);
+      const costData = costQueries[appIndex]?.data;
+      const status = budgetStatus(app, getBudgetThreshold(app.id), costData);
+      
+      const cost = costData?.monthToDate ?? app.monthToDateCost;
+      const budget = costData?.budget ?? app.budget;
+      const forecast = costData?.forecast ?? app.forecast;
+      const forecastOverBudget = (forecast != null && budget != null) ? forecast > budget : app.forecastOverBudget;
+      
+      const pct = budget != null && budget > 0
+        ? Math.round(Math.min((cost / budget) * 100, 100))
         : null;
       return [
         app.name,
         app.environment,
         app.userAuth,
-        app.monthToDateCost.toFixed(2),
-        app.budget != null ? app.budget.toFixed(2) : "",
-        app.forecast != null ? app.forecast.toFixed(2) : "",
+        cost.toFixed(2),
+        budget != null ? budget.toFixed(2) : "",
+        forecast != null ? forecast.toFixed(2) : "",
         pct != null ? String(pct) : "",
         status,
-        app.forecastOverBudget ? "Yes" : "No",
+        forecastOverBudget ? "Yes" : "No",
         trendByAppId.get(app.id) ?? "",
       ];
     });
 
-    const unbudgetedCount = filteredApps.filter((a) => a.budget == null).length;
+    const unbudgetedCount = filteredApps.filter((a, index) => {
+      const costData = costQueries[index]?.data;
+      return (costData?.budget ?? a.budget) == null;
+    }).length;
     const totalRow = [
       "Total",
       "",
