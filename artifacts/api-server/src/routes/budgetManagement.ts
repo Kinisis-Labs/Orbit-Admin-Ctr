@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, manualBudgetsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { requireCostReader, requireAdmin } from "../middlewares/auth.js";
+import { requireCostReader } from "../middlewares/auth.js";
 import { APPS } from "./orbit.js";
 
 const router: IRouter = Router();
@@ -64,7 +64,7 @@ router.get("/budget-management", requireCostReader, async (req, res) => {
 });
 
 /** PUT /api/budget-management/:appId — upsert a manual budget for one app */
-router.put("/budget-management/:appId", requireAdmin, async (req, res) => {
+router.put("/budget-management/:appId", requireCostReader, async (req, res) => {
   const appId = req.params["appId"] as string;
 
   if (!ALL_BUDGET_APP_IDS.has(appId)) {
@@ -110,7 +110,7 @@ router.put("/budget-management/:appId", requireAdmin, async (req, res) => {
 });
 
 /** DELETE /api/budget-management/:appId — remove a manual budget entry */
-router.delete("/budget-management/:appId", requireAdmin, async (req, res) => {
+router.delete("/budget-management/:appId", requireCostReader, async (req, res) => {
   const appId = req.params["appId"] as string;
 
   if (!ALL_BUDGET_APP_IDS.has(appId)) {

@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
-import { ADMIN_GROUP, COST_READER_GROUP } from "@/lib/auth-groups";
+import { COST_READER_GROUP } from "@/lib/auth-groups";
 import { useToast } from "@/hooks/use-toast";
 import { useApps } from "@/hooks/use-apps";
 
@@ -48,14 +48,16 @@ function fetchBudgetManagement(): Promise<BudgetEntry[]> {
   });
 }
 
-function saveBudget(appId: string, monthlyBudget: number, notes: string | null): Promise<void> {
-  return fetch(`/api/budget-management/${appId}`, {
+async function saveBudget(appId: string, monthlyBudget: number, notes: string | null): Promise<void> {
+  const r = await fetch(`/api/budget-management/${appId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ monthlyBudget, notes }),
-  }).then((r) => {
-    if (!r.ok) throw new Error(`${r.status}`);
   });
+  if (!r.ok) {
+    const body = await r.text().catch(() => "");
+    throw new Error(`${r.status}${body ? `: ${body.slice(0, 120)}` : ""}`);
+  }
 }
 
 function computeForecast(mtd: number, elapsedDays: number, daysInMonth: number): number {
@@ -369,7 +371,7 @@ function BudgetRow({
 
 export default function BudgetManagement() {
   const { hasGroup } = useAuth();
-  const canEdit = hasGroup(ADMIN_GROUP.id);
+  const canEdit = hasGroup(COST_READER_GROUP.id);
   const canView = hasGroup(COST_READER_GROUP.id);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -427,8 +429,9 @@ export default function BudgetManagement() {
       void queryClient.invalidateQueries({ queryKey: ["budget-management"] });
       toast({ title: "Budget saved", description: `Budget updated for ${appId}` });
     },
-    onError: () => {
-      toast({ title: "Save failed", description: "Could not save budget. Try again.", variant: "destructive" });
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      toast({ title: "Save failed", description: msg, variant: "destructive" });
     },
   });
 
