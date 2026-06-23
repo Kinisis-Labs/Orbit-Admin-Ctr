@@ -4,10 +4,9 @@ import { useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey, useGetGlobalH
 import { useQueryClient, useQueries, useQuery } from "@tanstack/react-query";
 import { getCost, getGetCostQueryKey } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
-import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { TrendingUp, TrendingDown, Minus, HeartPulse, ShieldCheck, ChevronRight, DollarSign, BarChart3, ExternalLink, Wifi } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, HeartPulse, ShieldCheck, ChevronRight, DollarSign, BarChart3, Wifi } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { COST_READER_GROUP } from "@/lib/auth-groups";
@@ -235,38 +234,8 @@ function UserActivityWidgets() {
   const isLoaded = !isLoading && activity != null;
   const isLive = isLoaded && activity.some((a) => a.dataSource === "live");
 
-  const ago = useUpdatedAgo(dataUpdatedAt);
-  const timestampLabel = dataUpdatedAt > 0
-    ? `Data as of ${new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
-    : null;
-
   return (
     <div className="space-y-2">
-      {/* Clerk Banner */}
-      <div className="bg-card border border-border shadow-sm p-3 flex items-start gap-3">
-        <div className="shrink-0 h-8 w-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center text-[11px] font-semibold">CK</div>
-        <div className="flex-1 text-[12px] text-muted-foreground">
-          <span className="text-foreground font-semibold">Clerk-sourced.</span> Each consumer app's end users sign in via{" "}
-          <span className="font-mono text-foreground">Clerk</span>. DAU / WAU / MAU are ingested in real time from Clerk{" "}
-          <span className="font-mono text-foreground">webhooks</span>. Email addresses are captured from{" "}
-          <span className="font-mono text-foreground">user.created</span> and{" "}
-          <span className="font-mono text-foreground">user.updated</span> events and stored in Orbit's database.
-          {timestampLabel && (
-            <span className="block mt-1 text-[11px] text-muted-foreground/70 tabular-nums">
-              {timestampLabel}{ago ? <span className="text-muted-foreground/50"> · {ago}</span> : null}
-            </span>
-          )}
-        </div>
-        <a
-          href="https://dashboard.clerk.com"
-          target="_blank"
-          rel="noreferrer"
-          className="text-primary text-[12px] inline-flex items-center gap-1 hover:underline shrink-0"
-        >
-          Open Clerk dashboard <ExternalLink className="h-3 w-3" />
-        </a>
-      </div>
-
       {/* User Activity Tiles */}
       <div className="bg-card border border-border shadow-sm">
         <div className="flex items-center justify-between p-3 border-b border-border">
