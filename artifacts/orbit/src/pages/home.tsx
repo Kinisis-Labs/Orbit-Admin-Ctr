@@ -5,7 +5,7 @@ import type { AppSummary, AppDetail } from "@workspace/api-client-react";
 import type { UserAuthType } from "@workspace/api-client-react";
 import type { DailyCostPoint } from "@/components/daily-spend-utils";
 import { useApps } from "@/hooks/use-apps";
-import { useQueryClient, useQueries } from "@tanstack/react-query";
+import { useQueryClient, useQueries, useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, Bell, TrendingUp, TrendingDown, X, TriangleAlert, Wifi, Smartphone, ExternalLink, LayoutGrid, AlertCircle, DollarSign, TrendingUp as BudgetIcon, HeartPulse, ShieldCheck } from "lucide-react";
@@ -281,21 +281,16 @@ function ApplicationTagFilter({
   );
 }
 
-// Cost center budget configuration
-const COST_CENTER_BUDGETS: Record<string, number> = {
-  "Other": 5000, // Microsoft365 budget
-  "website-ops": 2000,
-  "network-ops": 1500,
-  // Add more cost center budgets as needed
-};
-
 // Helper functions for cost center calculations
-function getCostCenterBudget(category: string): number | null {
-  return COST_CENTER_BUDGETS[category] || null;
+function getCostCenterBudget(category: string, budgetData: any[]): number | null {
+  // Map category to budget app ID
+  const budgetAppId = category === "Other" ? "microsoft365" : category;
+  const budgetEntry = budgetData?.find(item => item.appId === budgetAppId);
+  return budgetEntry?.monthlyBudget ?? null;
 }
 
-function calculateCostCenterForecast(category: string, monthToDateCost: number): number | null {
-  const budget = getCostCenterBudget(category);
+function calculateCostCenterForecast(category: string, monthToDateCost: number, budgetData: any[]): number | null {
+  const budget = getCostCenterBudget(category, budgetData);
   if (budget == null) return null;
   
   // Simple forecast formula: current spend * (days in month / days elapsed)
@@ -312,13 +307,9 @@ function calculateCostCenterForecast(category: string, monthToDateCost: number):
 }
 
 function getCostCenterTrend(category: string): string {
-  // For now, return a simple trend - this could be enhanced with historical data
-  const trends: Record<string, string> = {
-    "Other": "+5.2%",
-    "website-ops": "-2.1%",
-    "network-ops": "+1.8%",
-  };
-  return trends[category] || "+0.0%";
+  // No trend data available for cost centers in current API
+  // This could be enhanced with historical data in the future
+  return "";
 }
 
 function getBudgetStatus(budget: number, spend: number): string {
@@ -793,6 +784,16 @@ function BudgetSummaryWidget({
 
   // Fetch operational costs data for Microsoft365 fallback
   const { data: opsCostsData } = useListOpsCostItems("kinisis-labs");
+
+  // Fetch budget management data for real budget values
+  const { data: budgetData } = useQuery({
+    queryKey: ["budget-management"],
+    queryFn: () => fetch("/api/budget-management").then((r) => {
+      if (!r.ok) throw new Error(`${r.status}`);
+      return r.json() as Promise<any[]>;
+    }),
+    staleTime: 5 * 60 * 1000,
+  });
   const trendByAppId = useMemo(() => {
     const map = new Map<string, string>();
     for (const item of globalCostSummary?.byApp ?? []) {
@@ -818,9 +819,9 @@ function BudgetSummaryWidget({
         monthToDateCost = microsoft365OpsCost;
       }
       
-      // Calculate budget and forecast for cost centers
-      const budget = getCostCenterBudget(cat.category);
-      const forecast = calculateCostCenterForecast(cat.category, monthToDateCost);
+      // Calculate budget and forecast for cost centers using real budget data
+      const budget = getCostCenterBudget(cat.category, budgetData || []);
+      const forecast = calculateCostCenterForecast(cat.category, monthToDateCost, budgetData || []);
       const forecastOverBudget = forecast != null && budget != null ? forecast > budget : false;
       const trend = getCostCenterTrend(cat.category);
       
@@ -838,7 +839,7 @@ function BudgetSummaryWidget({
         trend,
       };
     });
-  }, [globalCostSummary?.byCategory, globalCostSummary?.dataSource, opsCostsData]);
+  }, [globalCostSummary?.byCategory, globalCostSummary?.dataSource, opsCostsData, budgetData]);
 
   const [envFilter, setEnvFilterRaw] = useState<EnvFilter>(() => {
     try {
