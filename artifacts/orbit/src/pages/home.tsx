@@ -1,15 +1,39 @@
-import { useMemo } from "react";
-import { useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey } from "@workspace/api-client-react";
+import { useState, useMemo } from "react";
+import { useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey, useGetGlobalHealth, getGetGlobalHealthQueryKey } from "@workspace/api-client-react";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { getCost, getGetCostQueryKey } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, HeartPulse, ShieldCheck, ChevronRight, DollarSign } from "lucide-react";
+import { Link } from "wouter";
+import { useAuth } from "@/lib/auth";
+import { COST_READER_GROUP } from "@/lib/auth-groups";
+import { useRecentBudgetAlerts } from "@/hooks/use-recent-budget-alerts";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
 const num = (n: number) => new Intl.NumberFormat("en-US").format(n);
+
+const STATUS_ORDER = ["healthy", "degraded", "unhealthy", "unknown"] as const;
+const STATUS_LABELS: Record<string, string> = {
+  healthy: "Healthy",
+  degraded: "Degraded",
+  unhealthy: "Unhealthy",
+  unknown: "Unknown",
+};
+const STATUS_COLORS: Record<string, string> = {
+  healthy: "text-emerald-500",
+  degraded: "text-amber-500",
+  unhealthy: "text-red-500",
+  unknown: "text-muted-foreground",
+};
+
+const AUTH_LABELS: Record<string, string> = {
+  clerk: "Clerk",
+  entra: "Entra",
+  none: "None",
+};
 
 function WoWTrendBadge({ trend }: { trend: string | null }) {
   if (!trend) {
@@ -34,7 +58,156 @@ function WoWTrendBadge({ trend }: { trend: string | null }) {
   );
 }
 
-export default function Home() {
+function Tile({
+  title,
+  value,
+  sub,
+  href,
+  icon,
+  iconColor = "#7C3AED",
+}: {
+  title: string;
+  value: React.ReactNode;
+  sub: string;
+  href?: string;
+  icon?: React.ReactNode;
+  iconColor?: string;
+}) {
+  const inner = (
+    <>
+      <div className="flex items-start justify-between gap-2 mb-2">
+        {icon && (
+          <span
+            className="inline-flex items-center justify-center w-8 h-8 rounded-md shrink-0"
+            style={{
+              background: `${iconColor}22`,
+              border: `1px solid ${iconColor}44`,
+              color: iconColor,
+              boxShadow: `0 0 12px ${iconColor}33`,
+            }}
+          >
+            {icon}
+          </span>
+        )}
+        {href && <ChevronRight className="h-3 w-3 text-muted-foreground/40 shrink-0 mt-1 ml-auto" />}
+      </div>
+      {value === null ? (
+        <Skeleton className="h-7 w-20 mb-1" />
+      ) : (
+        <div className="text-2xl font-bold text-foreground mb-0.5 tabular-nums">{value}</div>
+      )}
+      <div className="text-[11px] text-muted-foreground truncate">{title}</div>
+      <div className="text-[10px] text-muted-foreground/60 truncate mt-0.5">{sub}</div>
+    </>
+  );
+
+  const cardClass = `relative overflow-hidden bg-card border border-border p-3 shadow-sm flex flex-col justify-between orbit-card-accent transition-colors`;
+  
+  if (href) {
+    return (
+      <Link href={href} className={`${cardClass} hover:bg-muted/40 hover:border-border/80 cursor-pointer`}>
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: `radial-gradient(80% 60% at 0% 0%, ${iconColor}0d 0%, transparent 70%)` }}
+        />
+        {inner}
+      </Link>
+    );
+  }
+
+  return (
+    <div className={cardClass}>
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: `radial-gradient(80% 60% at 0% 0%, ${iconColor}0d 0%, transparent 70%)` }}
+      />
+      {inner}
+    </div>
+  );
+}
+
+function GlobalStrips({
+  apps,
+  fleetHealth,
+  authCounts,
+}: {
+  apps: any[] | undefined;
+  fleetHealth: Record<string, number>;
+  authCounts: Record<string, number>;
+}) {
+  const hasHealthData = Object.keys(fleetHealth).length > 0;
+  const hasApps = apps != null;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <div className="relative overflow-hidden bg-card border border-border shadow-sm p-3 flex flex-col gap-2 orbit-card-accent">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(80% 60% at 0% 0%, #10B98110 0%, transparent 70%)" }}
+        />
+        <div className="flex items-center gap-2">
+          <span
+            className="inline-flex items-center justify-center w-6 h-6 rounded-md"
+            style={{ background: "#10B98122", border: "1px solid #10B98144", color: "#10B981" }}
+          >
+            <HeartPulse className="h-3.5 w-3.5" />
+          </span>
+          <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Fleet Health</div>
+        </div>
+        <div className="flex items-center gap-4 flex-wrap">
+          {!hasApps ? (
+            <Skeleton className="h-5 w-48" />
+          ) : !hasHealthData ? (
+            <span className="text-[12px] text-muted-foreground">Loading…</span>
+          ) : (
+            STATUS_ORDER.filter((s) => (fleetHealth[s] ?? 0) > 0).map((s) => (
+              <div key={s} className="flex items-center gap-1.5">
+                <span className={`text-lg font-semibold tabular-nums ${STATUS_COLORS[s]}`}>
+                  {fleetHealth[s] ?? 0}
+                </span>
+                <span className="text-[12px] text-muted-foreground">{STATUS_LABELS[s]}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="relative overflow-hidden bg-card border border-border shadow-sm p-3 flex flex-col gap-2 orbit-card-accent">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(80% 60% at 0% 0%, #7C3AED10 0%, transparent 70%)" }}
+        />
+        <div className="flex items-center gap-2">
+          <span
+            className="inline-flex items-center justify-center w-6 h-6 rounded-md"
+            style={{ background: "#7C3AED22", border: "1px solid #7C3AED44", color: "#A78BFA" }}
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+          </span>
+          <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Identity Landscape</div>
+        </div>
+        <div className="flex items-center gap-4 flex-wrap">
+          {!hasApps ? (
+            <Skeleton className="h-5 w-48" />
+          ) : (
+            (["clerk", "entra", "none"] as const)
+              .filter((t) => (authCounts[t] ?? 0) > 0)
+              .map((t) => (
+                <div key={t} className="flex items-center gap-1.5">
+                  <span className="text-lg font-semibold tabular-nums text-foreground">
+                    {authCounts[t] ?? 0}
+                  </span>
+                  <span className="text-[12px] text-muted-foreground">{AUTH_LABELS[t]}</span>
+                </div>
+              ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BudgetTile() {
   const { data: apps } = useApps();
   const queryClient = useQueryClient();
 
@@ -111,7 +284,7 @@ export default function Home() {
     <div className="bg-card border border-border shadow-sm">
       <div className="flex items-center justify-between p-3 border-b border-border">
         <div className="flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <DollarSign className="h-4 w-4 text-muted-foreground" />
           <h3 className="font-semibold text-sm">Budget Overview</h3>
         </div>
         <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -216,6 +389,103 @@ export default function Home() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+export default function Home() {
+  const { hasGroup } = useAuth();
+  const canSeeCost = hasGroup(COST_READER_GROUP.id);
+  const recentAlerts = useRecentBudgetAlerts(canSeeCost);
+
+  const { data: apps, isFetching: appsFetching } = useApps();
+  const { data: globalHealth } = useGetGlobalHealth({
+    query: { queryKey: getGetGlobalHealthQueryKey(), staleTime: 5 * 60 * 1000 },
+  });
+
+  // Calculate fleet health and auth counts
+  const fleetHealth = useMemo(() => {
+    if (!apps) return {};
+    return apps.reduce((acc, app) => {
+      const status = app.status || "unknown";
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [apps]);
+
+  const authCounts = useMemo(() => {
+    if (!apps) return {};
+    return apps.reduce((acc, app) => {
+      const auth = app.userAuth || "none";
+      acc[auth] = (acc[auth] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [apps]);
+
+  // Calculate app counts for tiles
+  const healthyApps = useMemo(() => {
+    return apps?.filter(app => app.status === "healthy").length ?? 0;
+  }, [apps]);
+
+  const degradedApps = useMemo(() => {
+    return apps?.filter(app => app.status === "degraded").length ?? 0;
+  }, [apps]);
+
+  const downApps = useMemo(() => {
+    return apps?.filter(app => app.status === "unhealthy").length ?? 0;
+  }, [apps]);
+
+  const globalAppsOverBudget = useMemo(() => {
+    if (!apps) return 0;
+    return apps.filter(app => {
+      if (app.budget == null || app.forecast == null) return false;
+      return app.forecast > app.budget;
+    }).length;
+  }, [apps]);
+
+  return (
+    <div className="space-y-2">
+      {/* Fleet Health and Identity Landscape Strips */}
+      <GlobalStrips apps={apps} fleetHealth={fleetHealth} authCounts={authCounts} />
+
+      {/* App Status Tiles */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <Tile
+          title="Healthy Apps"
+          value={appsFetching ? null : healthyApps}
+          sub="Applications running normally"
+          href="/apps"
+          icon={<HeartPulse className="h-4 w-4" />}
+          iconColor="#10B981"
+        />
+        <Tile
+          title="Degraded Apps"
+          value={appsFetching ? null : degradedApps}
+          sub="Applications with issues"
+          href="/apps"
+          icon={<TrendingUp className="h-4 w-4" />}
+          iconColor="#F59E0B"
+        />
+        <Tile
+          title="Down Apps"
+          value={appsFetching ? null : downApps}
+          sub="Applications unavailable"
+          href="/apps"
+          icon={<TrendingDown className="h-4 w-4" />}
+          iconColor="#EF4444"
+        />
+        <Tile
+          title="Over Budget"
+          value={appsFetching ? null : globalAppsOverBudget}
+          sub={globalAppsOverBudget === 1 ? "App forecast exceeds budget" : "Apps forecast over budget"}
+          href="/cost"
+          icon={<DollarSign className="h-4 w-4" />}
+          iconColor="#F59E0B"
+        />
+      </div>
+
+      {/* Budget Overview Tile */}
+      {canSeeCost && <BudgetTile />}
     </div>
   );
 }
