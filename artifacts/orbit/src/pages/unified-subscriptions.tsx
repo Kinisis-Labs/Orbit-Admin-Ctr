@@ -381,6 +381,21 @@ export default function UnifiedSubscriptions() {
 
   const isLoading = appleLoading || playLoading || stripeLoading;
   const allData = [...appleDataToShow, ...playDataToShow, ...stripeDataToShow];
+
+  // Debug logging to understand data issues
+  console.log("Unified Subscriptions Debug:", {
+    appleData: appleData?.length ?? 0,
+    playData: playData?.length ?? 0,
+    stripeData: stripeData?.length ?? 0,
+    appleDataToShow: appleDataToShow.length,
+    playDataToShow: playDataToShow.length,
+    stripeDataToShow: stripeDataToShow.length,
+    allDataLength: allData.length,
+    isLoading,
+    appleError,
+    playError,
+    stripeError,
+  });
   const overallTotals = allData.reduce(
     (acc, r) => ({
       active: acc.active + r.activeSubscribers,
