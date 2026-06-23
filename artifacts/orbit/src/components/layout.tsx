@@ -91,8 +91,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const isAdmin = hasGroup(ADMIN_GROUP.id);
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [navCollapsed, setNavCollapsed] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("orbit-nav-collapsed") === "1";
+    if (typeof window === "undefined") return true;
+    const stored = window.localStorage.getItem("orbit-nav-collapsed");
+    if (stored === "0") return false;
+    if (stored === "1") return true;
+    return true;
   });
 
   useEffect(() => {
