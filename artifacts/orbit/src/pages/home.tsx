@@ -1,10 +1,12 @@
 import { useState, useMemo } from "react";
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey, useGetGlobalHealth, getGetGlobalHealthQueryKey } from "@workspace/api-client-react";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { getCost, getGetCostQueryKey } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, TrendingDown, Minus, HeartPulse, ShieldCheck, ChevronRight, DollarSign } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { TrendingUp, TrendingDown, Minus, HeartPulse, ShieldCheck, ChevronRight, DollarSign, BarChart3 } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { COST_READER_GROUP } from "@/lib/auth-groups";
@@ -393,6 +395,199 @@ function BudgetTile() {
   );
 }
 
+function AzureSpendVsBudgetTile() {
+  const { data: apps } = useApps();
+
+  // Fetch cost data for all apps
+  const costQueries = useQueries({
+    queries: apps?.map(app => ({
+      queryKey: getGetCostQueryKey(app.id),
+      queryFn: () => getCost(app.id),
+      staleTime: 5 * 60 * 1000,
+    })) ?? [],
+  });
+
+  const { data: globalCostSummary } = useGetGlobalCostSummary({
+    query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
+  });
+
+  // Calculate spend vs budget data
+  const chartData = useMemo(() => {
+    if (!apps || !globalCostSummary) return [];
+
+    // Get cost center data
+    const costCenterData = globalCostSummary?.byCategory ?? [];
+    
+    // Combine apps and cost centers for chart
+    const data: Array<{
+      name: string;
+      type: string;
+      spent: number;
+      budget: number;
+      utilization: number;
+    }> = [];
+    
+    // Add cost centers
+    costCenterData.forEach(cat => {
+      data.push({
+        name: cat.category === "Other" ? "Microsoft365" : cat.category,
+        type: "Cost Center",
+        spent: cat.monthToDate,
+        budget: 0, // Cost centers don't have individual budgets
+        utilization: 0,
+      });
+    });
+    
+    // Add apps with budget data
+    apps?.forEach((app, index) => {
+      const costData = costQueries[index]?.data;
+      if (costData?.budget && costData?.monthToDate) {
+        const utilization = Math.min((costData.monthToDate / costData.budget) * 100, 100);
+        data.push({
+          name: app.name,
+          type: "App",
+          spent: costData.monthToDate,
+          budget: costData.budget,
+          utilization,
+        });
+      }
+    });
+    
+    // Sort by spent amount (descending) and take top 8
+    return data
+      .sort((a, b) => b.spent - a.spent)
+      .slice(0, 8);
+  }, [apps, costQueries, globalCostSummary]);
+
+  // Calculate totals
+  const totals = useMemo(() => {
+    if (!chartData.length) return { totalSpent: 0, totalBudget: 0, utilizationPct: 0 };
+    
+    const totalSpent = chartData.reduce((sum, item) => sum + item.spent, 0);
+    const totalBudget = chartData.reduce((sum, item) => sum + item.budget, 0);
+    const utilizationPct = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0;
+    
+    return { totalSpent, totalBudget, utilizationPct };
+  }, [chartData]);
+
+  const isLoading = apps === undefined || costQueries.some(q => q.isLoading) || !globalCostSummary;
+
+  return (
+    <div className="bg-card border border-border shadow-sm">
+      <div className="flex items-center justify-between p-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          <h3 className="font-semibold text-sm">Azure Spend vs Budget</h3>
+        </div>
+        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <span>{chartData.length} items</span>
+        </div>
+      </div>
+
+      <div className="p-3 space-y-4">
+        {/* Overall Utilization */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="text-[11px] text-muted-foreground">Overall Budget Utilization</div>
+            {isLoading ? (
+              <Skeleton className="h-4 w-12" />
+            ) : (
+              <div className="text-sm font-semibold tabular-nums">
+                {totals.utilizationPct.toFixed(1)}%
+              </div>
+            )}
+          </div>
+          {isLoading ? (
+            <Skeleton className="h-2 w-full" />
+          ) : (
+            <Progress 
+              value={totals.utilizationPct} 
+              className={`h-2 ${
+                totals.utilizationPct >= 90 ? "[&>div]:bg-red-500" :
+                totals.utilizationPct >= 75 ? "[&>div]:bg-amber-500" :
+                "[&>div]:bg-emerald-500"
+              }`}
+            />
+          )}
+        </div>
+
+        {/* Bar Chart */}
+        <div className="space-y-2">
+          <div className="text-[11px] text-muted-foreground">Top Spend Items (MTD)</div>
+          {isLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : (
+            <ResponsiveContainer width="100%" height={128}>
+              <BarChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fontSize: 10 }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                  stroke="hsl(var(--muted-foreground))"
+                />
+                <YAxis 
+                  tick={{ fontSize: 10 }}
+                  stroke="hsl(var(--muted-foreground))"
+                  tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "4px",
+                    fontSize: "11px"
+                  }}
+                  formatter={(value: number, name: string) => [
+                    fmt(value),
+                    name === "spent" ? "Spent" : "Budget"
+                  ]}
+                />
+                <Bar 
+                  dataKey="spent" 
+                  fill="hsl(var(--primary))"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar 
+                  dataKey="budget" 
+                  fill="hsl(var(--muted))"
+                  radius={[2, 2, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Summary Stats */}
+        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border">
+          <div className="space-y-1">
+            <div className="text-[11px] text-muted-foreground">Total Spent</div>
+            {isLoading ? (
+              <Skeleton className="h-5 w-16" />
+            ) : (
+              <div className="text-sm font-semibold tabular-nums text-foreground">
+                {fmt(totals.totalSpent)}
+              </div>
+            )}
+          </div>
+          <div className="space-y-1">
+            <div className="text-[11px] text-muted-foreground">Total Budget</div>
+            {isLoading ? (
+              <Skeleton className="h-5 w-16" />
+            ) : (
+              <div className="text-sm font-semibold tabular-nums text-foreground">
+                {totals.totalBudget > 0 ? fmt(totals.totalBudget) : "—"}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const { hasGroup } = useAuth();
   const canSeeCost = hasGroup(COST_READER_GROUP.id);
@@ -484,8 +679,13 @@ export default function Home() {
         />
       </div>
 
-      {/* Budget Overview Tile */}
-      {canSeeCost && <BudgetTile />}
+      {/* Budget Overview Tiles */}
+      {canSeeCost && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+          <BudgetTile />
+          <AzureSpendVsBudgetTile />
+        </div>
+      )}
     </div>
   );
 }
