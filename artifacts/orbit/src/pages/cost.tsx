@@ -753,7 +753,19 @@ function GlobalCost() {
     // Add Microsoft365 as a cost center row
     if (microsoft365Cost > 0) {
       rows.push({
-        app: { id: "microsoft365", name: "Microsoft365", environment: "N/A" as const },
+        app: { 
+          id: "microsoft365", 
+          name: "Microsoft365", 
+          environment: "prod" as const,
+          region: "global",
+          resourceGroup: "m365",
+          subscriptionId: "",
+          tags: {},
+          status: "healthy" as const,
+          activeAlerts: 0,
+          monthToDateCost: 0,
+          userAuth: "none" as const,
+        },
         cost: microsoft365Cost,
         stripe: 0,
         appStore: 0,
