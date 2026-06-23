@@ -327,27 +327,22 @@ function BudgetTile() {
     });
   }, [globalCostSummary?.byCategory, budgetManagement]);
 
-  // Calculate totals using real cost data and budget management data
+  // Calculate totals using budget management API as single source of truth for budgets
   const totals = useMemo(() => {
     // Use the correct total from global cost summary (sum of MTD spend across all apps)
     const totalSpent = globalCostSummary?.total ?? 0;
     
-    // Sum of all app budgets from individual app cost data
-    const appBudgetTotal = apps?.reduce((total, app, index) => {
-      const costData = costQueries[index]?.data;
-      return total + (costData?.budget ?? 0);
+    // Sum of ALL budgets from budget management API (both apps and cost centers)
+    const totalBudget = budgetManagement?.reduce((total: number, budget: any) => {
+      return total + (budget.monthlyBudget ?? 0);
     }, 0) ?? 0;
     
-    // Sum of all cost center budgets from budget management API
-    const costCenterBudgetTotal = costCenterData.reduce((total, center) => total + (center.budget ?? 0), 0);
-    
-    // Sum of all app forecasts
+    // Sum of all app forecasts from individual app cost data
     const appForecastTotal = apps?.reduce((total, app, index) => {
       const costData = costQueries[index]?.data;
       return total + (costData?.forecast ?? 0);
     }, 0) ?? 0;
 
-    const totalBudget = appBudgetTotal + costCenterBudgetTotal;
     const totalForecast = appForecastTotal;
     const variance = totalBudget > 0 ? totalBudget - totalForecast : null;
     const utilizationPct = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : null;
@@ -361,7 +356,7 @@ function BudgetTile() {
       costCenterCount: costCenterData.length,
       appCount: apps?.length ?? 0,
     };
-  }, [costCenterData, apps, costQueries, globalCostSummary]);
+  }, [costCenterData, apps, costQueries, globalCostSummary, budgetManagement]);
 
   const isLoading = apps === undefined || costQueries.some(q => q.isLoading) || !globalCostSummary;
 
