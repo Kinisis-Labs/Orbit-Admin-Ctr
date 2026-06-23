@@ -753,9 +753,9 @@ function GlobalCost() {
     // Add Microsoft365 as a cost center row
     if (microsoft365Cost > 0) {
       rows.push({
-        app: { 
-          id: "microsoft365", 
-          name: "Microsoft365", 
+        app: {
+          id: "microsoft365",
+          name: "Microsoft365",
           environment: "prod" as const,
           region: "global",
           resourceGroup: "m365",
