@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey, useGetGlobalHealth, getGetGlobalHealthQueryKey } from "@workspace/api-client-react";
+import { useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey, useGetGlobalHealth, getGetGlobalHealthQueryKey, useListUserActivity } from "@workspace/api-client-react";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { getCost, getGetCostQueryKey } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
+import { useUpdatedAgo } from "@/hooks/use-updated-ago";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { TrendingUp, TrendingDown, Minus, HeartPulse, ShieldCheck, ChevronRight, DollarSign, BarChart3 } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, HeartPulse, ShieldCheck, ChevronRight, DollarSign, BarChart3, ExternalLink, Wifi } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { COST_READER_GROUP } from "@/lib/auth-groups";
@@ -205,6 +206,108 @@ function GlobalStrips({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function UserActivityWidgets() {
+  const { data: activity, isLoading, isFetching, dataUpdatedAt } = useListUserActivity({
+    query: { queryKey: ["user-activity"], staleTime: 2 * 60 * 1000 },
+  });
+
+  const activityData = activity ?? [];
+  
+  // Calculate totals across all applications (similar to users page)
+  const totals = useMemo(() => {
+    return activityData.reduce(
+      (acc, r) => ({
+        members: acc.members + r.totalMembers,
+        dau: acc.dau + r.dau,
+        wau: acc.wau + r.wau,
+        mau: acc.mau + r.mau,
+        inactive: acc.inactive + r.inactive30d,
+      }),
+      { members: 0, dau: 0, wau: 0, mau: 0, inactive: 0 },
+    );
+  }, [activityData]);
+
+  const stickiness = totals.mau > 0 ? (totals.dau / totals.mau) * 100 : 0;
+  const isLoaded = !isLoading && activity != null;
+  const isLive = isLoaded && activity.some((a) => a.dataSource === "live");
+
+  const ago = useUpdatedAgo(dataUpdatedAt);
+  const timestampLabel = dataUpdatedAt > 0
+    ? `Data as of ${new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
+    : null;
+
+  return (
+    <div className="space-y-2">
+      {/* Clerk Banner */}
+      <div className="bg-card border border-border shadow-sm p-3 flex items-start gap-3">
+        <div className="shrink-0 h-8 w-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center text-[11px] font-semibold">CK</div>
+        <div className="flex-1 text-[12px] text-muted-foreground">
+          <span className="text-foreground font-semibold">Clerk-sourced.</span> Each consumer app's end users sign in via{" "}
+          <span className="font-mono text-foreground">Clerk</span>. DAU / WAU / MAU are ingested in real time from Clerk{" "}
+          <span className="font-mono text-foreground">webhooks</span>. Email addresses are captured from{" "}
+          <span className="font-mono text-foreground">user.created</span> and{" "}
+          <span className="font-mono text-foreground">user.updated</span> events and stored in Orbit's database.
+          {timestampLabel && (
+            <span className="block mt-1 text-[11px] text-muted-foreground/70 tabular-nums">
+              {timestampLabel}{ago ? <span className="text-muted-foreground/50"> · {ago}</span> : null}
+            </span>
+          )}
+        </div>
+        <a
+          href="https://dashboard.clerk.com"
+          target="_blank"
+          rel="noreferrer"
+          className="text-primary text-[12px] inline-flex items-center gap-1 hover:underline shrink-0"
+        >
+          Open Clerk dashboard <ExternalLink className="h-3 w-3" />
+        </a>
+      </div>
+
+      {/* User Activity Tiles */}
+      <div className="bg-card border border-border shadow-sm">
+        <div className="flex items-center justify-between p-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Wifi className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-semibold text-sm">User Activity Overview</h3>
+          </div>
+          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+            {isLive && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
+                <Wifi className="h-3 w-3" />
+                Live
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="p-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            <UserActivityTile title="Total members" value={isLoading ? null : num(totals.members)} sub="Across all applications" />
+            <UserActivityTile title="DAU" value={isLoading ? null : num(totals.dau)} sub="Active in the last 24h" />
+            <UserActivityTile title="WAU" value={isLoading ? null : num(totals.wau)} sub="Active in the last 7 days" />
+            <UserActivityTile title="MAU" value={isLoading ? null : num(totals.mau)} sub="Active in the last 30 days" />
+            <UserActivityTile
+              title="DAU / MAU stickiness"
+              value={isLoading ? null : `${stickiness.toFixed(1)}%`}
+              sub={stickiness >= 20 ? "Healthy (≥20%)" : "Below target"}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UserActivityTile({ title, value, sub }: { title: string; value: string | null; sub: string }) {
+  return (
+    <div className="bg-card border border-border p-3 shadow-sm flex flex-col justify-between">
+      <div className="text-[12px] text-muted-foreground font-medium mb-1 truncate">{title}</div>
+      {value === null ? <Skeleton className="h-7 w-20 mb-1" /> : <div className="text-xl font-semibold tabular-nums mb-1">{value}</div>}
+      <div className="text-[11px] text-muted-foreground truncate">{sub}</div>
     </div>
   );
 }
@@ -675,6 +778,9 @@ export default function Home() {
           iconColor="#F59E0B"
         />
       </div>
+
+      {/* User Activity Widgets */}
+      <UserActivityWidgets />
 
       {/* Budget Overview Tiles */}
       {canSeeCost && (
