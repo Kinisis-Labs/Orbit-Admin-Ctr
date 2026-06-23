@@ -521,10 +521,15 @@ function AzureSpendVsBudgetTile() {
       });
     });
     
-    // Add apps with budget data
+    // Add apps with budget data (but exclude apps that already exist as cost centers)
+    const costCenterNames = new Set(costCenterData.map(cat => 
+      cat.category === "Other" ? "Microsoft365" : cat.category
+    ));
+    
     apps?.forEach((app, index) => {
       const costData = costQueries[index]?.data;
-      if (costData?.budget && costData?.monthToDate) {
+      // Skip if app already exists as a cost center to avoid duplicates
+      if (costData?.budget && costData?.monthToDate && !costCenterNames.has(app.name)) {
         const utilization = Math.min((costData.monthToDate / costData.budget) * 100, 100);
         data.push({
           name: app.name,
