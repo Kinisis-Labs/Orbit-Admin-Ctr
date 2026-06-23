@@ -311,8 +311,16 @@ function BudgetTile() {
     const budgetByAppId = new Map(budgetManagement?.map((b: any) => [b.appId, b.monthlyBudget]) ?? []);
     
     return categories.map(cat => {
-      // Map cost center category to budget app ID
-      const budgetAppId = cat.category === "Other" ? "microsoft365" : cat.category.toLowerCase();
+      // Map cost center category to budget app ID with special handling for Orbit
+      let budgetAppId: string;
+      if (cat.category === "Other") {
+        budgetAppId = "microsoft365";
+      } else if (cat.category.toLowerCase() === "orbit") {
+        budgetAppId = "kinisis-labs"; // Orbit app uses "kinisis-labs" as ID in budget management
+      } else {
+        budgetAppId = cat.category.toLowerCase();
+      }
+      
       const budget = (budgetByAppId.get(budgetAppId) as number | null) ?? 0;
       
       return {
@@ -521,8 +529,16 @@ function AzureSpendVsBudgetTile() {
     const budgetByAppId = new Map(budgetManagement?.map((b: any) => [b.appId, b.monthlyBudget]) ?? []);
     
     costCenterData.forEach(cat => {
-      // Map cost center category to budget app ID
-      const budgetAppId = cat.category === "Other" ? "microsoft365" : cat.category.toLowerCase();
+      // Map cost center category to budget app ID with special handling for Orbit
+      let budgetAppId: string;
+      if (cat.category === "Other") {
+        budgetAppId = "microsoft365";
+      } else if (cat.category.toLowerCase() === "orbit") {
+        budgetAppId = "kinisis-labs"; // Orbit app uses "kinisis-labs" as ID in budget management
+      } else {
+        budgetAppId = cat.category.toLowerCase();
+      }
+      
       const budget = (budgetByAppId.get(budgetAppId) as number | null) ?? 0;
       const utilization = budget > 0 ? Math.min((cat.monthToDate / budget) * 100, 100) : 0;
       
