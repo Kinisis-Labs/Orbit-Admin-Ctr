@@ -720,9 +720,16 @@ function GlobalCost() {
 
   const currency = costQueries.find((q) => q.data)?.data?.currency ?? "USD";
 
+  const costQueriesDataUpdatedAt = costQueries.map((q) => q.dataUpdatedAt).join(",");
+
   const tableRows = useMemo(() => {
     if (!apps || isLoading) return null;
-    return apps.map((app, i) => {
+
+    // Get Microsoft365 cost from global cost summary
+    const microsoft365Cost =
+      globalCostSummary?.byCategory?.find((c) => c.category === "Other")?.monthToDate ?? 0;
+
+    const rows = apps.map((app, i) => {
       const costData = costQueries[i]?.data;
       const cost = costData?.monthToDate ?? app.monthToDateCost;
       const stripe = costData?.revenue.bySource.find((s) => s.source === "stripe")?.amount ?? 0;
@@ -736,8 +743,25 @@ function GlobalCost() {
       const momChangePct = costData?.momChangePct ?? null;
       return { app, cost, stripe, appStore, playStore, revenue, net, marginPct, momChangePct };
     });
+
+    // Add Microsoft365 as a cost center row
+    if (microsoft365Cost > 0) {
+      rows.push({
+        app: { id: "microsoft365", name: "Microsoft365", environment: "N/A" as const },
+        cost: microsoft365Cost,
+        stripe: 0,
+        appStore: 0,
+        playStore: 0,
+        revenue: 0,
+        net: -microsoft365Cost,
+        marginPct: null,
+        momChangePct: null,
+      });
+    }
+
+    return rows;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apps, isLoading, costQueries.map((q) => q.dataUpdatedAt).join(",")]);
+  }, [apps, isLoading, costQueriesDataUpdatedAt, globalCostSummary?.byCategory]);
 
   const totalMtd = tableRows ? tableRows.reduce((s, r) => s + r.cost, 0) : null;
   const momTrendPct = globalHealth?.momTrendPct ?? null;
