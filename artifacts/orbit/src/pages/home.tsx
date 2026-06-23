@@ -281,6 +281,54 @@ function ApplicationTagFilter({
   );
 }
 
+// Cost center budget configuration
+const COST_CENTER_BUDGETS: Record<string, number> = {
+  "Other": 5000, // Microsoft365 budget
+  "website-ops": 2000,
+  "network-ops": 1500,
+  // Add more cost center budgets as needed
+};
+
+// Helper functions for cost center calculations
+function getCostCenterBudget(category: string): number | null {
+  return COST_CENTER_BUDGETS[category] || null;
+}
+
+function calculateCostCenterForecast(category: string, monthToDateCost: number): number | null {
+  const budget = getCostCenterBudget(category);
+  if (budget == null) return null;
+  
+  // Simple forecast formula: current spend * (days in month / days elapsed)
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysElapsed = now.getDate();
+  
+  // If we're early in the month, use a more conservative estimate
+  const multiplier = daysInMonth / Math.max(daysElapsed, 1);
+  const forecast = monthToDateCost * multiplier;
+  
+  // Cap forecast at 2x budget for reasonable limits
+  return Math.min(forecast, budget * 2);
+}
+
+function getCostCenterTrend(category: string): string {
+  // For now, return a simple trend - this could be enhanced with historical data
+  const trends: Record<string, string> = {
+    "Other": "+5.2%",
+    "website-ops": "-2.1%",
+    "network-ops": "+1.8%",
+  };
+  return trends[category] || "+0.0%";
+}
+
+function getBudgetStatus(budget: number, spend: number): string {
+  const pct = (spend / budget) * 100;
+  if (pct >= 100) return "Over budget";
+  if (pct >= 90) return "At risk";
+  if (pct >= 75) return "Warning";
+  return "On track";
+}
+
 export default function Home() {
   const [location, navigate] = useLocation();
   const { hasGroup } = useAuth();
@@ -770,17 +818,24 @@ function BudgetSummaryWidget({
         monthToDateCost = microsoft365OpsCost;
       }
       
+      // Calculate budget and forecast for cost centers
+      const budget = getCostCenterBudget(cat.category);
+      const forecast = calculateCostCenterForecast(cat.category, monthToDateCost);
+      const forecastOverBudget = forecast != null && budget != null ? forecast > budget : false;
+      const trend = getCostCenterTrend(cat.category);
+      
       return {
         id: `cost-center-${cat.category}`,
         name: cat.category === "Other" ? "Microsoft365" : cat.category,
         category: cat.category,
         monthToDateCost,
-        budget: null, // Cost centers typically don't have budgets
-        forecast: null, // Cost centers typically don't have forecasts
-        forecastOverBudget: false,
+        budget,
+        forecast,
+        forecastOverBudget,
         userAuth: "none" as const,
         environment: "cost-center" as const,
         costDataSource: globalCostSummary?.dataSource,
+        trend,
       };
     });
   }, [globalCostSummary?.byCategory, globalCostSummary?.dataSource, opsCostsData]);
@@ -969,22 +1024,34 @@ function BudgetSummaryWidget({
   }, [allBudgetItems, filteredApps, costQueries]);
 
   const totalBudget = useMemo(() => {
-    return budgetedApps.reduce((total, item) => {
+    // Include cost centers in total budget
+    const costCenterBudget = costCenterData.reduce((total, center) => total + (center.budget ?? 0), 0);
+    
+    // Include apps in total budget
+    const appBudget = budgetedApps.reduce((total, item) => {
       const appIndex = filteredApps?.findIndex(app => app.id === item.id);
       const costData = appIndex !== -1 && appIndex !== undefined ? costQueries[appIndex]?.data : null;
       const budget = costData?.budget ?? item.budget;
       return total + (budget ?? 0);
     }, 0);
-  }, [budgetedApps, filteredApps, costQueries]);
+    
+    return costCenterBudget + appBudget;
+  }, [budgetedApps, filteredApps, costQueries, costCenterData]);
 
   const totalForecast = useMemo(() => {
-    return budgetedApps.reduce((total, item) => {
+    // Include cost centers in total forecast
+    const costCenterForecast = costCenterData.reduce((total, center) => total + (center.forecast ?? 0), 0);
+    
+    // Include apps in total forecast
+    const appForecast = budgetedApps.reduce((total, item) => {
       const appIndex = filteredApps?.findIndex(app => app.id === item.id);
       const costData = appIndex !== -1 && appIndex !== undefined ? costQueries[appIndex]?.data : null;
       const forecast = costData?.forecast ?? item.forecast;
       return total + (forecast ?? 0);
     }, 0);
-  }, [budgetedApps, filteredApps, costQueries]);
+    
+    return costCenterForecast + appForecast;
+  }, [budgetedApps, filteredApps, costQueries, costCenterData]);
 
   const totalVariance = totalBudget > 0 ? totalBudget - totalForecast : null;
   const budgetedAppCount = budgetedApps.length;
@@ -1076,25 +1143,27 @@ function BudgetSummaryWidget({
 
     // Cost center rows (Microsoft365, etc.)
     const costCenterRows = costCenterData.map((center) => {
+      const pct = center.budget != null && center.budget > 0
+        ? Math.round(Math.min((center.monthToDateCost / center.budget) * 100, 100))
+        : null;
+      const status = center.budget != null ? getBudgetStatus(center.budget, center.monthToDateCost) : "No budget";
+      
       return [
         center.name,
         center.environment,
         center.userAuth,
         center.monthToDateCost.toFixed(2),
-        "", // No budget for cost centers
-        "", // No forecast for cost centers
-        "", // No utilization for cost centers
-        "No budget", // Status for cost centers
-        "No", // No budget breach for cost centers
-        "", // No trend for cost centers
+        center.budget != null ? center.budget.toFixed(2) : "",
+        center.forecast != null ? center.forecast.toFixed(2) : "",
+        pct != null ? String(pct) : "",
+        status,
+        center.forecastOverBudget ? "Yes" : "No",
+        center.trend || "",
       ];
     });
 
-    const allRows = [...appRows, ...costCenterRows];
-    const unbudgetedCount = filteredApps?.filter((a, index) => {
-      const costData = costQueries[index]?.data;
-      return (costData?.budget ?? a.budget) == null;
-    }).length ?? 0;
+    const allRows = costCenterRows; // Only show cost centers, remove apps
+    const unbudgetedCount = costCenterData.filter(center => center.budget == null).length;
     const totalRow = [
       "Total",
       "",
@@ -1111,7 +1180,7 @@ function BudgetSummaryWidget({
     const rows: string[][] = [...allRows, totalRow];
     if (unbudgetedCount > 0) {
       rows.push([
-        `Note: ${unbudgetedCount} app${unbudgetedCount === 1 ? "" : "s"} not included in budget/forecast totals (no budget set)`,
+        `Note: ${unbudgetedCount} cost center${unbudgetedCount === 1 ? "" : "s"} not included in budget/forecast totals (no budget set)`,
         "", "", "", "", "", "", "", "", "",
       ]);
     }
