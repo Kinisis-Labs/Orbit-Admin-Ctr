@@ -542,8 +542,13 @@ function AzureSpendVsBudgetTile() {
     
     apps?.forEach((app, index) => {
       const costData = costQueries[index]?.data;
-      // Skip if app already exists as a cost center to avoid duplicates
-      if (costData?.budget && costData?.monthToDate && !costCenterNames.has(app.name)) {
+      // Skip if app already exists as a cost center to avoid duplicates (case-insensitive check)
+      const appNameLower = app.name.toLowerCase();
+      const hasMatchingCostCenter = Array.from(costCenterNames).some(name => 
+        name.toLowerCase() === appNameLower
+      );
+      
+      if (costData?.budget && costData?.monthToDate && !hasMatchingCostCenter) {
         const utilization = Math.min((costData.monthToDate / costData.budget) * 100, 100);
         data.push({
           name: app.name,
