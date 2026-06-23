@@ -283,7 +283,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <nav className="flex flex-col gap-0.5 w-full px-1">
               <NavSection
                 sectionKey="enterprise"
-                label="Enterprise Mgmt"
+                label="Service Operations Header"
                 navCollapsed={navCollapsed}
               >
                 <NavItem
