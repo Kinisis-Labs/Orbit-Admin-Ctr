@@ -566,19 +566,20 @@ function AzureSpendVsBudgetTile() {
       .slice(0, 8);
   }, [apps, costQueries, globalCostSummary, budgetManagement]);
 
-  // Calculate totals
+  // Calculate totals using same method as BudgetTile for consistency
   const totals = useMemo(() => {
     // Use the correct total from global cost summary to avoid double counting
     const totalSpent = globalCostSummary?.total ?? 0;
     
-    // Sum budgets from both apps and cost centers
-    const totalBudget = chartData
-      .reduce((sum, item) => sum + item.budget, 0);
+    // Sum of ALL budgets from budget management API (both apps and cost centers) - same as BudgetTile
+    const totalBudget = budgetManagement?.reduce((total: number, budget: any) => {
+      return total + (budget.monthlyBudget ?? 0);
+    }, 0) ?? 0;
     
     const utilizationPct = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0;
     
     return { totalSpent, totalBudget, utilizationPct };
-  }, [chartData, globalCostSummary]);
+  }, [chartData, globalCostSummary, budgetManagement]);
 
   const isLoading = apps === undefined || costQueries.some(q => q.isLoading) || !globalCostSummary;
 
