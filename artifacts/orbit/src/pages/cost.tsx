@@ -398,7 +398,9 @@ export default function Cost() {
           <div className="flex items-center gap-2">
             <span className="text-[12px] text-muted-foreground font-medium">Scope</span>
             <span className="text-[13px] font-medium text-foreground bg-muted px-2 py-1 rounded-sm">
-              {isGlobal ? "Global — All Apps" : `${selectedApp?.name ?? ""} · ${selectedApp?.environment ?? ""}`}
+              {isGlobal
+                ? "Global — All Apps"
+                : `${selectedApp?.name ?? ""} · ${selectedApp?.environment ?? ""}`}
             </span>
           </div>
         </div>
