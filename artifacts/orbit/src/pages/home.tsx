@@ -494,6 +494,13 @@ function AzureSpendVsBudgetTile() {
     query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
   });
 
+  // Fetch budget management data to get cost center budgets
+  const { data: budgetManagement } = useQuery({
+    queryKey: ["budget-management"],
+    queryFn: () => fetch("/api/budget-management").then(r => r.json()),
+    staleTime: 2 * 60 * 1000,
+  });
+
   // Calculate spend vs budget data
   const chartData = useMemo(() => {
     if (!apps || !globalCostSummary) return [];
@@ -510,14 +517,21 @@ function AzureSpendVsBudgetTile() {
       utilization: number;
     }> = [];
     
-    // Add cost centers
+    // Add cost centers with actual budgets from budget management API
+    const budgetByAppId = new Map(budgetManagement?.map((b: any) => [b.appId, b.monthlyBudget]) ?? []);
+    
     costCenterData.forEach(cat => {
+      // Map cost center category to budget app ID
+      const budgetAppId = cat.category === "Other" ? "microsoft365" : cat.category.toLowerCase();
+      const budget = (budgetByAppId.get(budgetAppId) as number | null) ?? 0;
+      const utilization = budget > 0 ? Math.min((cat.monthToDate / budget) * 100, 100) : 0;
+      
       data.push({
         name: cat.category === "Other" ? "Microsoft365" : cat.category,
         type: "Cost Center",
         spent: cat.monthToDate,
-        budget: 0, // Cost centers don't have individual budgets
-        utilization: 0,
+        budget,
+        utilization,
       });
     });
     
@@ -545,16 +559,15 @@ function AzureSpendVsBudgetTile() {
     return data
       .sort((a, b) => b.spent - a.spent)
       .slice(0, 8);
-  }, [apps, costQueries, globalCostSummary]);
+  }, [apps, costQueries, globalCostSummary, budgetManagement]);
 
   // Calculate totals
   const totals = useMemo(() => {
     // Use the correct total from global cost summary to avoid double counting
     const totalSpent = globalCostSummary?.total ?? 0;
     
-    // Sum budgets only from apps (cost centers don't have individual budgets)
+    // Sum budgets from both apps and cost centers
     const totalBudget = chartData
-      .filter(item => item.type === "App")
       .reduce((sum, item) => sum + item.budget, 0);
     
     const utilizationPct = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0;
