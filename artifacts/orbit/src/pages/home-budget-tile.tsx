@@ -34,7 +34,7 @@ function WoWTrendBadge({ trend }: { trend: string | null }) {
   );
 }
 
-export default function Home() {
+export function HomeBudgetTile() {
   const { data: apps } = useApps();
   const queryClient = useQueryClient();
 
