@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useGetGlobalCostSummary, getGetGlobalCostSummaryQueryKey, useGetGlobalHealth, getGetGlobalHealthQueryKey, useListUserActivity } from "@workspace/api-client-react";
-import { useQueryClient, useQueries } from "@tanstack/react-query";
+import { useQueryClient, useQueries, useQuery } from "@tanstack/react-query";
 import { getCost, getGetCostQueryKey } from "@workspace/api-client-react";
 import { useApps } from "@/hooks/use-apps";
 import { useUpdatedAgo } from "@/hooks/use-updated-ago";
@@ -329,30 +329,48 @@ function BudgetTile() {
     query: { queryKey: getGetGlobalCostSummaryQueryKey(), staleTime: 5 * 60 * 1000 },
   });
 
-  // Build cost center data from global cost summary (matches costs page exactly)
+  // Fetch budget management data to get cost center budgets
+  const { data: budgetManagement } = useQuery({
+    queryKey: ["budget-management"],
+    queryFn: () => fetch("/api/budget-management").then(r => r.json()),
+    staleTime: 2 * 60 * 1000,
+  });
+
+  // Build cost center data from global cost summary and budget management data
   const costCenterData = useMemo(() => {
     const categories = globalCostSummary?.byCategory ?? [];
-    return categories.map(cat => ({
-      id: `cost-center-${cat.category}`,
-      name: cat.category === "Other" ? "Microsoft365" : cat.category,
-      category: cat.category,
-      monthToDateCost: cat.monthToDate,
-      budget: null, // Cost centers don't have individual budgets
-      forecast: null, // Cost centers don't have individual forecasts
-      environment: "cost-center",
-    }));
-  }, [globalCostSummary?.byCategory]);
+    const budgetByAppId = new Map(budgetManagement?.map((b: any) => [b.appId, b.monthlyBudget]) ?? []);
+    
+    return categories.map(cat => {
+      // Map cost center category to budget app ID
+      const budgetAppId = cat.category === "Other" ? "microsoft365" : cat.category.toLowerCase();
+      const budget = (budgetByAppId.get(budgetAppId) as number | null) ?? 0;
+      
+      return {
+        id: `cost-center-${cat.category}`,
+        name: cat.category === "Other" ? "Microsoft365" : cat.category,
+        category: cat.category,
+        monthToDateCost: cat.monthToDate,
+        budget,
+        forecast: null, // Cost centers don't have individual forecasts
+        environment: "cost-center",
+      };
+    });
+  }, [globalCostSummary?.byCategory, budgetManagement]);
 
-  // Calculate totals using real cost data (matches costs and revenue tabs)
+  // Calculate totals using real cost data and budget management data
   const totals = useMemo(() => {
     // Use the correct total from global cost summary (sum of MTD spend across all apps)
     const totalSpent = globalCostSummary?.total ?? 0;
     
-    // Sum of all app budgets
+    // Sum of all app budgets from individual app cost data
     const appBudgetTotal = apps?.reduce((total, app, index) => {
       const costData = costQueries[index]?.data;
       return total + (costData?.budget ?? 0);
     }, 0) ?? 0;
+    
+    // Sum of all cost center budgets from budget management API
+    const costCenterBudgetTotal = costCenterData.reduce((total, center) => total + (center.budget ?? 0), 0);
     
     // Sum of all app forecasts
     const appForecastTotal = apps?.reduce((total, app, index) => {
@@ -360,7 +378,7 @@ function BudgetTile() {
       return total + (costData?.forecast ?? 0);
     }, 0) ?? 0;
 
-    const totalBudget = appBudgetTotal;
+    const totalBudget = appBudgetTotal + costCenterBudgetTotal;
     const totalForecast = appForecastTotal;
     const variance = totalBudget > 0 ? totalBudget - totalForecast : null;
     const utilizationPct = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : null;
@@ -481,7 +499,12 @@ function BudgetTile() {
             costCenterData.slice(0, 3).map(center => (
               <div key={center.id} className="flex items-center justify-between text-[11px]">
                 <span className="text-muted-foreground">{center.name}</span>
-                <span className="font-medium tabular-nums">{fmt(center.monthToDateCost)}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium tabular-nums">{fmt(center.monthToDateCost)}</span>
+                  {center.budget && center.budget > 0 && (
+                    <span className="text-muted-foreground">/ {fmt(center.budget)}</span>
+                  )}
+                </div>
               </div>
             ))
           )}
