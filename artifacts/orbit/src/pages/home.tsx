@@ -242,14 +242,8 @@ function BudgetTile() {
 
   // Calculate totals using real cost data (matches costs and revenue tabs)
   const totals = useMemo(() => {
-    // Sum of all cost centers
-    const costCenterTotal = costCenterData.reduce((total, center) => total + center.monthToDateCost, 0);
-    
-    // Sum of all apps with real cost data
-    const appTotal = apps?.reduce((total, app, index) => {
-      const costData = costQueries[index]?.data;
-      return total + (costData?.monthToDate ?? 0);
-    }, 0) ?? 0;
+    // Use the correct total from global cost summary (sum of MTD spend across all apps)
+    const totalSpent = globalCostSummary?.total ?? 0;
     
     // Sum of all app budgets
     const appBudgetTotal = apps?.reduce((total, app, index) => {
@@ -263,7 +257,6 @@ function BudgetTile() {
       return total + (costData?.forecast ?? 0);
     }, 0) ?? 0;
 
-    const totalSpent = costCenterTotal + appTotal;
     const totalBudget = appBudgetTotal;
     const totalForecast = appForecastTotal;
     const variance = totalBudget > 0 ? totalBudget - totalForecast : null;
@@ -278,7 +271,7 @@ function BudgetTile() {
       costCenterCount: costCenterData.length,
       appCount: apps?.length ?? 0,
     };
-  }, [costCenterData, apps, costQueries]);
+  }, [costCenterData, apps, costQueries, globalCostSummary]);
 
   const isLoading = apps === undefined || costQueries.some(q => q.isLoading) || !globalCostSummary;
 
@@ -461,14 +454,18 @@ function AzureSpendVsBudgetTile() {
 
   // Calculate totals
   const totals = useMemo(() => {
-    if (!chartData.length) return { totalSpent: 0, totalBudget: 0, utilizationPct: 0 };
+    // Use the correct total from global cost summary to avoid double counting
+    const totalSpent = globalCostSummary?.total ?? 0;
     
-    const totalSpent = chartData.reduce((sum, item) => sum + item.spent, 0);
-    const totalBudget = chartData.reduce((sum, item) => sum + item.budget, 0);
+    // Sum budgets only from apps (cost centers don't have individual budgets)
+    const totalBudget = chartData
+      .filter(item => item.type === "App")
+      .reduce((sum, item) => sum + item.budget, 0);
+    
     const utilizationPct = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0;
     
     return { totalSpent, totalBudget, utilizationPct };
-  }, [chartData]);
+  }, [chartData, globalCostSummary]);
 
   const isLoading = apps === undefined || costQueries.some(q => q.isLoading) || !globalCostSummary;
 
