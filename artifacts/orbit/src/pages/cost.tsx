@@ -69,7 +69,6 @@ import { DataSourceBadge } from "@/components/data-source-badge";
 import { CostDataSourceBadge } from "@/components/cost-data-source-badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { ScopeSelect } from "@/lib/scope";
 import { useScope } from "@/lib/scope-context";
 import { CsvToolbar } from "@/components/csv-toolbar";
 import { useCsvExport } from "@/hooks/use-csv-export";
@@ -396,7 +395,12 @@ export default function Cost() {
             />
           )}
           <AdminAccessBadge />
-          <ScopeSelect allowGlobal />
+          <div className="flex items-center gap-2">
+            <span className="text-[12px] text-muted-foreground font-medium">Scope</span>
+            <span className="text-[13px] font-medium text-foreground bg-muted px-2 py-1 rounded-sm">
+              {isGlobal ? "Global — All Apps" : `${selectedApp?.name ?? ""} · ${selectedApp?.environment ?? ""}`}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -727,7 +731,7 @@ function GlobalCost() {
 
     // Get Microsoft365 cost from global cost summary
     const microsoft365Cost =
-      globalCostSummary?.byCategory?.find((c) => c.category === "Other")?.monthToDate ?? 0;
+      globalCostSummary?.byCategory?.find((c) => c.category === "Microsoft365")?.monthToDate ?? 0;
 
     const rows = apps.map((app, i) => {
       const costData = costQueries[i]?.data;
