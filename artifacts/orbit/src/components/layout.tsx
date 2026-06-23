@@ -29,8 +29,6 @@ import {
   Smartphone,
   ChevronDown,
   ToggleLeft,
-  RefreshCw,
-  CreditCard,
   Sparkles,
   BarChart3,
 } from "lucide-react";
@@ -68,7 +66,6 @@ const ROUTE_LABELS: Record<string, string> = {
   "/users": "Users & activity",
   "/cost": "Cost Management",
   "/unified-subscriptions": "App Store Subscriptions",
-  "/stripe-subscriptions": "Stripe Subscriptions",
   "/subscriptions": "Subscriptions",
   "/tags": "Tags",
   "/access": "Identity & access",
@@ -78,7 +75,6 @@ const ROUTE_LABELS: Record<string, string> = {
   "/apps": "App Services",
   "/constellation": "Constellation",
   "/budget-management": "Budget Management",
-  "/store-reports": "Store ingestion",
 };
 
 function getInitialTheme(): Theme {
@@ -416,36 +412,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   icon={<Smartphone className="h-[18px] w-[18px]" />}
                   label="App Store Subscriptions"
                   active={location === "/unified-subscriptions"}
-                  collapsed={navCollapsed}
-                  trailingIcon={
-                    !canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined
-                  }
-                  trailingTitle={
-                    !canSeeCost
-                      ? `Restricted to members of ${COST_READER_GROUP.displayName}`
-                      : undefined
-                  }
-                />
-                <NavItem
-                  href="/stripe-subscriptions"
-                  icon={<CreditCard className="h-[18px] w-[18px]" />}
-                  label="Stripe Subscriptions"
-                  active={location === "/stripe-subscriptions"}
-                  collapsed={navCollapsed}
-                  trailingIcon={
-                    !canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined
-                  }
-                  trailingTitle={
-                    !canSeeCost
-                      ? `Restricted to members of ${COST_READER_GROUP.displayName}`
-                      : undefined
-                  }
-                />
-                <NavItem
-                  href="/store-reports"
-                  icon={<RefreshCw className="h-[18px] w-[18px]" />}
-                  label="Store ingestion"
-                  active={location === "/store-reports"}
                   collapsed={navCollapsed}
                   trailingIcon={
                     !canSeeCost ? <Lock className="h-3 w-3 text-muted-foreground" /> : undefined

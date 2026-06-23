@@ -23,8 +23,6 @@ import Subscriptions from "@/pages/subscriptions";
 import UnifiedSubscriptions from "@/pages/unified-subscriptions";
 import PlaySubscriptions from "@/pages/play-subscriptions";
 import AppleSubscriptions from "@/pages/apple-subscriptions";
-import StripeSubscriptions from "@/pages/stripe-subscriptions";
-import StoreReports from "@/pages/store-reports";
 import BudgetManagement from "@/pages/budget-management";
 import Tags from "@/pages/tags";
 import Access from "@/pages/access";
@@ -67,8 +65,6 @@ function Router() {
         <Route path="/unified-subscriptions"><Gated><UnifiedSubscriptions /></Gated></Route>
         <Route path="/play-subscriptions"><Gated><PlaySubscriptions /></Gated></Route>
         <Route path="/apple-subscriptions"><Gated><AppleSubscriptions /></Gated></Route>
-        <Route path="/stripe-subscriptions"><Gated><StripeSubscriptions /></Gated></Route>
-        <Route path="/store-reports"><Gated><StoreReports /></Gated></Route>
         <Route path="/constellation" component={ConstellationPage} />
         <Route path="/resources" component={Resources} />
         <Route path="/subscriptions" component={Subscriptions} />
