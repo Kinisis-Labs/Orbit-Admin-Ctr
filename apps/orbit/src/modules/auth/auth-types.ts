@@ -10,4 +10,6 @@ export type EntraUser = {
   userPrincipalName: string;
   jobTitle: string;
   initial: string;
+  isAdmin: boolean;
+  isEngineer: boolean;
 };

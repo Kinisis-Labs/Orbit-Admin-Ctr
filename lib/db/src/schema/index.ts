@@ -17,3 +17,4 @@ export * from "./featureFlags";
 export * from "./opsCosts";
 export * from "./manualBudgets";
 export * from "./applications";
+export * from "./rbac";

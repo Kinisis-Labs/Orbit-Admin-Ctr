@@ -4,6 +4,8 @@ import { DashboardPage } from "./modules/dashboard/DashboardPage";
 import { SignedOutPage } from "./modules/auth/SignedOutPage";
 import { PlaceholderPage } from "./components/PlaceholderPage";
 import { ApplicationsPage } from "./modules/applications/ApplicationsPage";
+import { RolesPage } from "./modules/roles/RolesPage";
+import { PermissionsPage } from "./modules/permissions/PermissionsPage";
 
 export const router = createBrowserRouter([
   {
@@ -31,11 +33,11 @@ export const router = createBrowserRouter([
           },
           {
             path: "roles",
-            element: <PlaceholderPage title="Roles" description="RBAC role definitions — coming in Phase C." />,
+            element: <RolesPage />,
           },
           {
             path: "permissions",
-            element: <PlaceholderPage title="Permissions" description="Feature permission registry — coming in Phase C." />,
+            element: <PermissionsPage />,
           },
           {
             path: "audit",
