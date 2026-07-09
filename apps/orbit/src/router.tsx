@@ -9,6 +9,7 @@ import { PermissionsPage } from "./modules/permissions/PermissionsPage";
 import { UsersPage } from "./modules/users/UsersPage";
 import { AuditPage } from "./modules/audit/AuditPage";
 import { NotificationsPage } from "./modules/notifications/NotificationsPage";
+import { ConfigurationPage } from "./modules/configuration/ConfigurationPage";
 
 export const router = createBrowserRouter([
   {
@@ -52,11 +53,11 @@ export const router = createBrowserRouter([
           },
           {
             path: "configuration",
-            element: <PlaceholderPage title="Configuration" description="Platform configuration and feature flags — coming in Phase G." />,
+            element: <ConfigurationPage />,
           },
           {
             path: "feature-flags",
-            element: <PlaceholderPage title="Feature Flags" description="Runtime feature flag management — coming in Phase G." />,
+            element: <ConfigurationPage />,
           },
         ],
       },

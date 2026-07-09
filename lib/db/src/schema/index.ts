@@ -20,3 +20,4 @@ export * from "./applications";
 export * from "./rbac";
 export * from "./auditLog";
 export * from "./notifications";
+export * from "./globalConfig";
