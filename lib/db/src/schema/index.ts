@@ -16,3 +16,4 @@ export * from "./anomalyDismissals";
 export * from "./featureFlags";
 export * from "./opsCosts";
 export * from "./manualBudgets";
+export * from "./applications";

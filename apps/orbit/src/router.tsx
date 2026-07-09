@@ -3,6 +3,7 @@ import { EnterpriseLayout } from "./layouts/EnterpriseLayout";
 import { DashboardPage } from "./modules/dashboard/DashboardPage";
 import { SignedOutPage } from "./modules/auth/SignedOutPage";
 import { PlaceholderPage } from "./components/PlaceholderPage";
+import { ApplicationsPage } from "./modules/applications/ApplicationsPage";
 
 export const router = createBrowserRouter([
   {
@@ -22,7 +23,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "applications",
-            element: <PlaceholderPage title="Applications" description="Application registry and Entra group mapping — coming in Phase B." />,
+            element: <ApplicationsPage />,
           },
           {
             path: "users",
