@@ -8,6 +8,7 @@ import {
   userRolesTable,
 } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../../middlewares/auth.js";
+import { auditFromReq } from "../../lib/audit.js";
 
 const router = Router();
 
@@ -122,6 +123,7 @@ router.post("/api/rbac/roles", requireAuth, requireAdmin, async (req, res) => {
         createdBy: req.session.user!.id,
       })
       .returning();
+    void auditFromReq(req, { action: "rbac.role.create", category: "rbac", entityType: "role", entityId: created.id, entityName: created.name });
     res.status(201).json(created);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -181,6 +183,7 @@ router.delete("/api/rbac/roles/:id", requireAuth, requireAdmin, async (req, res)
       return;
     }
     await db.delete(rolesTable).where(eq(rolesTable.id, String(id)));
+    void auditFromReq(req, { action: "rbac.role.delete", category: "rbac", entityType: "role", entityId: role.id, entityName: role.name });
     res.status(204).end();
   } catch (err) {
     req.log.error(err, "DELETE /api/rbac/roles/:id failed");
@@ -202,6 +205,7 @@ router.post("/api/rbac/roles/:id/permissions", requireAuth, requireAdmin, async 
       .values({ roleId, permissionId, createdBy: req.session.user!.id })
       .onConflictDoNothing()
       .returning();
+    void auditFromReq(req, { action: "rbac.role.permission.assign", category: "rbac", entityType: "role", entityId: roleId, detail: { permissionId } });
     res.status(201).json(created ?? { roleId, permissionId });
   } catch (err) {
     req.log.error(err, "POST /api/rbac/roles/:id/permissions failed");
@@ -271,6 +275,7 @@ router.post("/api/rbac/permissions", requireAuth, requireAdmin, async (req, res)
         createdBy: req.session.user!.id,
       })
       .returning();
+    void auditFromReq(req, { action: "rbac.permission.create", category: "rbac", entityType: "permission", entityId: created.id, entityName: created.name });
     res.status(201).json(created);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -367,6 +372,7 @@ router.post("/api/rbac/users/:userId/roles", requireAuth, requireAdmin, async (r
       .values({ userId, roleId, createdBy: req.session.user!.id })
       .onConflictDoNothing()
       .returning();
+    void auditFromReq(req, { action: "rbac.user.role.assign", category: "rbac", entityType: "user", entityId: userId, detail: { roleId } });
     res.status(201).json(created ?? { userId, roleId });
   } catch (err) {
     req.log.error(err, "POST /api/rbac/users/:userId/roles failed");
@@ -381,9 +387,12 @@ router.delete(
   requireAdmin,
   async (req, res) => {
     try {
+      const userId = String(req.params.userId);
+      const assignmentId = String(req.params.assignmentId);
       await db
         .delete(userRolesTable)
-        .where(eq(userRolesTable.id, String(req.params.assignmentId)));
+        .where(eq(userRolesTable.id, assignmentId));
+      void auditFromReq(req, { action: "rbac.user.role.remove", category: "rbac", entityType: "user", entityId: userId, detail: { assignmentId } });
       res.status(204).end();
     } catch (err) {
       req.log.error(err, "DELETE /api/rbac/users/:userId/roles/:assignmentId failed");

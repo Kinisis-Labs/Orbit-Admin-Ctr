@@ -18,3 +18,4 @@ export * from "./opsCosts";
 export * from "./manualBudgets";
 export * from "./applications";
 export * from "./rbac";
+export * from "./auditLog";

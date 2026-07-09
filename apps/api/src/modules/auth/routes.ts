@@ -3,6 +3,7 @@ import * as client from "openid-client";
 import { getEntraConfig, getOidcConfiguration } from "../../lib/entra.js";
 import { resolveOrbitGroups } from "../../lib/orbitGroups.js";
 import { logger } from "../../lib/logger.js";
+import { logAudit } from "../../lib/audit.js";
 
 const router: IRouter = Router();
 
@@ -277,6 +278,14 @@ router.get("/auth/callback", async (req, res, next) => {
 
     const authorized = !cfg.authorizedGroupId || groupIds.includes(cfg.authorizedGroupId);
     if (!authorized) {
+      void logAudit({
+        action: "auth.login.denied",
+        category: "auth",
+        outcome: "denied",
+        actor: { id: str(claims.oid) ?? claims.sub, displayName: str(claims.name) ?? "", userPrincipalName: str(claims.preferred_username) ?? "" },
+        detail: { reason: "not_in_authorized_group" },
+        req,
+      });
       delete req.session.oidc;
       res.redirect("/?auth=denied");
       return;
@@ -298,6 +307,13 @@ router.get("/auth/callback", async (req, res, next) => {
       idToken: tokens.id_token,
       groupsLastChecked: Date.now(),
     };
+    void logAudit({
+      action: "auth.login.success",
+      category: "auth",
+      outcome: "success",
+      actor: { id: req.session.user!.id, displayName: req.session.user!.displayName, userPrincipalName: req.session.user!.userPrincipalName },
+      req,
+    });
     const returnTo = safeReturnTo(oidc.returnTo);
     delete req.session.oidc;
     req.session.save(() => res.redirect(returnTo));
@@ -311,6 +327,15 @@ router.post("/auth/logout", async (req, res, next) => {
     const cfg = getEntraConfig();
     const idToken = req.session.user?.idToken;
     const upn = req.session.user?.userPrincipalName;
+    if (req.session.user) {
+      void logAudit({
+        action: "auth.logout",
+        category: "auth",
+        outcome: "success",
+        actor: { id: req.session.user.id, displayName: req.session.user.displayName, userPrincipalName: req.session.user.userPrincipalName },
+        req,
+      });
+    }
     req.session.destroy(() => {
       res.clearCookie("orbit.sid");
       void (async () => {

@@ -7,6 +7,7 @@ import { ApplicationsPage } from "./modules/applications/ApplicationsPage";
 import { RolesPage } from "./modules/roles/RolesPage";
 import { PermissionsPage } from "./modules/permissions/PermissionsPage";
 import { UsersPage } from "./modules/users/UsersPage";
+import { AuditPage } from "./modules/audit/AuditPage";
 
 export const router = createBrowserRouter([
   {
@@ -42,7 +43,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "audit",
-            element: <PlaceholderPage title="Audit" description="Immutable audit log viewer — coming in Phase E." />,
+            element: <AuditPage />,
           },
           {
             path: "notifications",
