@@ -44,7 +44,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: artifacts/api-server/Dockerfile
+          file: apps/api/Dockerfile
           push: true
           tags: |
             ${{ steps.image.outputs.name }}:latest
@@ -380,14 +380,14 @@ jobs:
               --format text \
               2>&1 || echo "(log stream unavailable — check Azure portal → Monitoring → Log stream)"
 
-      - name: Smoke-test /api/healthz
+      - name: Smoke-test /api/health
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://orbit.kinisislabs.com/api/healthz)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://orbit.kinisislabs.com/api/health)
           echo "HTTP status: $STATUS"
           if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
             echo "Smoke test passed ✓"
           else
-            echo "Smoke test FAILED — /api/healthz returned HTTP $STATUS"
+            echo "Smoke test FAILED — /api/health returned HTTP $STATUS"
             exit 1
           fi
 
