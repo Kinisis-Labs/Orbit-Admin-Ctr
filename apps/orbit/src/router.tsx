@@ -6,6 +6,7 @@ import { PlaceholderPage } from "./components/PlaceholderPage";
 import { ApplicationsPage } from "./modules/applications/ApplicationsPage";
 import { RolesPage } from "./modules/roles/RolesPage";
 import { PermissionsPage } from "./modules/permissions/PermissionsPage";
+import { UsersPage } from "./modules/users/UsersPage";
 
 export const router = createBrowserRouter([
   {
@@ -29,7 +30,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "users",
-            element: <PlaceholderPage title="Users" description="User directory and role management — coming in Phase D." />,
+            element: <UsersPage />,
           },
           {
             path: "roles",
