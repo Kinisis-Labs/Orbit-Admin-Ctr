@@ -6,6 +6,7 @@ import applicationsRouter from "../modules/applications/routes.js";
 import rbacRouter from "../modules/rbac/routes.js";
 import usersRouter from "../modules/users/routes.js";
 import auditRouter from "../modules/audit/routes.js";
+import notificationsRouter from "../modules/notifications/routes.js";
 
 const router: IRouter = Router();
 
@@ -15,6 +16,7 @@ router.use(applicationsRouter);
 router.use(rbacRouter);
 router.use(usersRouter);
 router.use(auditRouter);
+router.use(notificationsRouter);
 
 router.use("/admin", requireAuth, requireAdmin, (_req, res) => {
   res.status(501).json({ message: "Admin modules coming in Phase C–H" });

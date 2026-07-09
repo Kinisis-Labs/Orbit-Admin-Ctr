@@ -1,5 +1,6 @@
-import { Bell, LogOut, User, ChevronDown } from "lucide-react";
+import { LogOut, ChevronDown } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
+import { NotificationCenter } from "../../components/NotificationCenter";
 
 export function Topbar() {
   const { user, signOut } = useAuth();
@@ -41,15 +42,7 @@ export function Topbar() {
 
       {/* Right side controls */}
       <div className="flex items-center gap-2">
-        {/* Notifications bell — placeholder for Phase F */}
-        <button
-          type="button"
-          className="relative w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
-          style={{ color: "var(--orbit-text-secondary)" }}
-          title="Notifications (coming soon)"
-        >
-          <Bell className="w-4 h-4" />
-        </button>
+        <NotificationCenter />
 
         {/* User menu */}
         <div className="relative flex items-center gap-2 pl-2">

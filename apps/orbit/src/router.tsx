@@ -8,6 +8,7 @@ import { RolesPage } from "./modules/roles/RolesPage";
 import { PermissionsPage } from "./modules/permissions/PermissionsPage";
 import { UsersPage } from "./modules/users/UsersPage";
 import { AuditPage } from "./modules/audit/AuditPage";
+import { NotificationsPage } from "./modules/notifications/NotificationsPage";
 
 export const router = createBrowserRouter([
   {
@@ -47,7 +48,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "notifications",
-            element: <PlaceholderPage title="Notifications" description="Alert rules and delivery channels — coming in Phase F." />,
+            element: <NotificationsPage />,
           },
           {
             path: "configuration",
