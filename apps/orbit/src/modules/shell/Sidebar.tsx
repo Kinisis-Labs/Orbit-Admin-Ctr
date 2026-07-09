@@ -13,32 +13,37 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "../auth/AuthProvider";
 
 interface NavItem {
   label: string;
   to: string;
   icon: React.ElementType;
   section?: string;
+  adminOnly?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/", icon: LayoutDashboard },
-  { label: "Applications", to: "/admin/applications", icon: AppWindow, section: "Administration" },
-  { label: "Users", to: "/admin/users", icon: Users, section: "Administration" },
-  { label: "Roles", to: "/admin/roles", icon: Shield, section: "Administration" },
-  { label: "Permissions", to: "/admin/permissions", icon: Key, section: "Administration" },
-  { label: "Audit", to: "/admin/audit", icon: ScrollText, section: "Administration" },
-  { label: "Notifications", to: "/admin/notifications", icon: Bell, section: "Administration" },
-  { label: "Configuration", to: "/admin/configuration", icon: Settings, section: "Administration" },
-  { label: "Platform Health", to: "/platform/health", icon: Activity, section: "Platform" },
+  { label: "Applications", to: "/admin/applications", icon: AppWindow, section: "Administration", adminOnly: true },
+  { label: "Users", to: "/admin/users", icon: Users, section: "Administration", adminOnly: true },
+  { label: "Roles", to: "/admin/roles", icon: Shield, section: "Administration", adminOnly: true },
+  { label: "Permissions", to: "/admin/permissions", icon: Key, section: "Administration", adminOnly: true },
+  { label: "Audit", to: "/admin/audit", icon: ScrollText, section: "Administration", adminOnly: true },
+  { label: "Notifications", to: "/admin/notifications", icon: Bell, section: "Administration", adminOnly: true },
+  { label: "Configuration", to: "/admin/configuration", icon: Settings, section: "Administration", adminOnly: true },
+  { label: "Platform Health", to: "/platform/health", icon: Activity, section: "Platform", adminOnly: true },
 ];
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
 
-  const sections = Array.from(new Set(NAV_ITEMS.map((n) => n.section ?? ""))).filter(Boolean);
-  const topItems = NAV_ITEMS.filter((n) => !n.section);
+  const visibleItems = NAV_ITEMS.filter((n) => !n.adminOnly || user.isAdmin);
+
+  const sections = Array.from(new Set(visibleItems.map((n) => n.section ?? ""))).filter(Boolean);
+  const topItems = visibleItems.filter((n) => !n.section);
 
   return (
     <aside
@@ -68,7 +73,7 @@ export function Sidebar() {
               </div>
             )}
             {collapsed && <div className="mx-2 my-2" style={{ height: 1, background: "var(--orbit-border)" }} />}
-            {NAV_ITEMS.filter((n) => n.section === section).map((item) => (
+            {visibleItems.filter((n) => n.section === section).map((item) => (
               <NavItem
                 key={item.to}
                 item={item}

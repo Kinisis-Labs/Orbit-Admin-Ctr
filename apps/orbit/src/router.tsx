@@ -10,6 +10,7 @@ import { UsersPage } from "./modules/users/UsersPage";
 import { AuditPage } from "./modules/audit/AuditPage";
 import { NotificationsPage } from "./modules/notifications/NotificationsPage";
 import { ConfigurationPage } from "./modules/configuration/ConfigurationPage";
+import { HealthPage } from "./modules/platform/HealthPage";
 
 export const router = createBrowserRouter([
   {
@@ -66,7 +67,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "health",
-            element: <PlaceholderPage title="Platform Health" description="Service and infrastructure health monitoring — coming in Phase H." />,
+            element: <HealthPage />,
           },
         ],
       },

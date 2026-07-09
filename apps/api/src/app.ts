@@ -1,5 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
 import pinoHttp from "pino-http";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
@@ -23,6 +25,25 @@ if (!isEntraConfigured()) {
 const app: Express = express();
 
 app.set("trust proxy", 1);
+
+// ── Security headers (Phase I) ───────────────────────────────────────────────
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Vite SPA manages its own CSP
+    crossOriginEmbedderPolicy: false,
+  }),
+);
+
+// ── Rate limiting on auth endpoints to prevent brute-force (Phase I) ─────────
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1_000, // 15 minutes
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests — please try again later." },
+  skip: () => process.env.NODE_ENV === "test",
+});
+app.use("/api/auth", authLimiter);
 
 app.use(
   pinoHttp({
