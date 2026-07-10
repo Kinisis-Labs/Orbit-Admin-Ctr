@@ -8,7 +8,7 @@ router.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-router.get("/api/health/platform", requireAuth, requireAdmin, async (req, res) => {
+router.get("/health/platform", requireAuth, requireAdmin, async (req, res) => {
   try {
     const report = await getPlatformHealth();
     const statusCode = report.overall === "unhealthy" ? 503 : report.overall === "degraded" ? 207 : 200;
