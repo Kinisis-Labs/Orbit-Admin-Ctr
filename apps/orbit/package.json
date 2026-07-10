@@ -40,5 +40,7 @@
     "vite": "catalog:",
     "zod": "catalog:"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@microsoft/applicationinsights-web": "^3.4.3"
+  }
 }

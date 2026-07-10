@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import App from "./App";
 import "./styles/globals.css";
+import "./lib/appInsights";
 
 class RootErrorBoundary extends Component<
   { children: ReactNode },
