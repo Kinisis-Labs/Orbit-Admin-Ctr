@@ -30,11 +30,13 @@ async function getAppInsightsTelemetry(connectionString: string): Promise<AppTel
   };
 
   try {
-    const match = connectionString.match(/InstrumentationKey=([^;]+)/i);
-    const key = match?.[1];
-    if (!key) return empty;
+    const keyMatch = connectionString.match(/InstrumentationKey=([^;]+)/i);
+    const appIdMatch = connectionString.match(/ApplicationId=([^;]+)/i);
+    const key = keyMatch?.[1];
+    const appId = appIdMatch?.[1] ?? key;
+    if (!key || !appId) return empty;
 
-    const baseUrl = `https://api.applicationinsights.io/v1/apps/${key}/metrics`;
+    const baseUrl = `https://api.applicationinsights.io/v1/apps/${appId}/metrics`;
     const timespan = "PT24H";
 
     const results = await Promise.allSettled([
@@ -159,7 +161,7 @@ router.get("/applications/:slug", requireAuth, requireAdmin, async (req, res) =>
       return;
     }
 
-    const connStr = getAppInsightsConnStr();
+    const connStr = app.appInsightsConnectionString ?? getAppInsightsConnStr();
     const telemetry = connStr ? await getAppInsightsTelemetry(connStr) : {
       availability: null, avgResponseMs: null, failedRequests: null,
       totalRequests: null, exceptions: null, activeSessions: null, authFailures: null,
