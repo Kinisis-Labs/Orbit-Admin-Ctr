@@ -47,7 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Incidents", to: "/noc/incidents", icon: Siren, section: "Network Operations", adminOnly: true },
   { label: "UX Quality", to: "/noc/ux", icon: MonitorSmartphone, section: "Network Operations", adminOnly: true },
   { label: "API Dependencies", to: "/noc/api-dependencies", icon: Plug, section: "Network Operations", adminOnly: true },
-  { label: "Applications", to: "/admin/applications", icon: AppWindow, section: "Administration", adminOnly: true },
+  { label: "App Registration", to: "/admin/applications", icon: AppWindow, section: "Administration", adminOnly: true },
   { label: "Users", to: "/admin/users", icon: Users, section: "Administration", adminOnly: true },
   { label: "Roles", to: "/admin/roles", icon: Shield, section: "Administration", adminOnly: true },
   { label: "Permissions", to: "/admin/permissions", icon: Key, section: "Administration", adminOnly: true },
