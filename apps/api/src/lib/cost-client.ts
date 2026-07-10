@@ -109,6 +109,31 @@ async function getAzureToken(): Promise<string | null> {
   }
 }
 
+async function getSpToken(): Promise<string | null> {
+  const resource = "https://management.azure.com/";
+  const { AZURE_TENANT_ID: tenantId, AZURE_CLIENT_ID: clientId, AZURE_CLIENT_SECRET: clientSecret } = process.env;
+  if (!tenantId || !clientId || !clientSecret) return null;
+  try {
+    const body = new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: `${resource}.default`,
+    });
+    const res = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
+      method: "POST",
+      body,
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { access_token: string };
+      return data.access_token;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function isCostConfigured(): boolean {
   return !!(process.env.AZURE_SUBSCRIPTION_IDS ?? process.env.AZURE_SUBSCRIPTION_ID);
 }
@@ -411,14 +436,17 @@ export async function getCostSnapshot(): Promise<CostSnapshot> {
     return { subscriptions: [], subscriptionConfigured: false, m365: emptyM365, capturedAt };
   }
 
-  const token = await getAzureToken();
+  const [miToken, spToken] = await Promise.all([getAzureToken(), getSpToken()]);
+  const token = miToken ?? spToken;
   if (!token) {
     return { subscriptions: [], subscriptionConfigured: true, m365: emptyM365, capturedAt };
   }
 
+  const billingToken = spToken ?? miToken;
+
   const [subscriptions, m365] = await Promise.all([
     Promise.all(subList.map(({ id, label }) => getSubscriptionCost(token, id, label))),
-    getM365Costs(token),
+    billingToken ? getM365Costs(billingToken) : Promise.resolve(emptyM365),
   ]);
 
   return { subscriptions, subscriptionConfigured: true, m365, capturedAt };
