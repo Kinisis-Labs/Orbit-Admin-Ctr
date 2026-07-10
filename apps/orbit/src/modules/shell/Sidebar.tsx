@@ -8,7 +8,6 @@ import {
   ScrollText,
   Bell,
   Settings,
-  Activity,
   Server,
   LayoutGrid,
   ShieldAlert,
@@ -33,13 +32,11 @@ interface NavItem {
 
 const SECTION_COLORS: Record<string, string> = {
   Administration: "#60a5fa",       // blue
-  Platform: "#34d399",             // emerald
   "Network Operations": "#a78bfa", // violet
 };
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Enterprise Overview", to: "/", icon: LayoutDashboard },
-  { label: "Platform Health", to: "/platform/health", icon: Activity, section: "Platform", adminOnly: true },
   { label: "Infrastructure", to: "/noc/infrastructure", icon: Server, section: "Network Operations", adminOnly: true },
   { label: "Applications", to: "/noc/applications", icon: LayoutGrid, section: "Network Operations", adminOnly: true },
   { label: "Security", to: "/noc/security", icon: ShieldAlert, section: "Network Operations", adminOnly: true },
