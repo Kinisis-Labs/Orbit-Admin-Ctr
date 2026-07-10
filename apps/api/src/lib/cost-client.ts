@@ -11,7 +11,10 @@
  *       client_credentials (AZURE_TENANT_ID + AZURE_CLIENT_ID + AZURE_CLIENT_SECRET).
  *
  * Required env vars:
- *   AZURE_SUBSCRIPTION_ID      — subscription to query Azure resource costs
+ *   AZURE_SUBSCRIPTION_IDS     — comma-separated subscription IDs (e.g. "abc-123,def-456")
+ *   AZURE_SUBSCRIPTION_LABELS  — comma-separated display names matching the IDs above
+ *                                (e.g. "SharedPlatform,GrailBabe")
+ *   AZURE_SUBSCRIPTION_ID      — single subscription fallback (used if IDS not set)
  *   AZURE_BUDGET_NAME          — (optional) named budget to read utilisation from
  *   AZURE_BILLING_ACCOUNT_ID   — (optional) EA/MCA billing account for M365 costs
  *   AZURE_BILLING_PROFILE_ID   — (optional) MCA billing profile scope (MCA only)
@@ -47,12 +50,18 @@ export interface M365CostSummary {
   billingConfigured: boolean;
 }
 
-export interface CostSnapshot {
+export interface SubscriptionCost {
+  subscriptionId: string;
+  label: string;
   totalMtdCost: number | null;
   totalYtdCost: number | null;
   currency: string;
   topServices: CostByService[];
   budget: BudgetInfo | null;
+}
+
+export interface CostSnapshot {
+  subscriptions: SubscriptionCost[];
   subscriptionConfigured: boolean;
   m365: M365CostSummary;
   capturedAt: string;
@@ -101,7 +110,21 @@ async function getAzureToken(): Promise<string | null> {
 }
 
 export function isCostConfigured(): boolean {
-  return !!process.env.AZURE_SUBSCRIPTION_ID;
+  return !!(process.env.AZURE_SUBSCRIPTION_IDS ?? process.env.AZURE_SUBSCRIPTION_ID);
+}
+
+function getSubscriptionList(): Array<{ id: string; label: string }> {
+  const ids = process.env.AZURE_SUBSCRIPTION_IDS
+    ? process.env.AZURE_SUBSCRIPTION_IDS.split(",").map((s) => s.trim()).filter(Boolean)
+    : process.env.AZURE_SUBSCRIPTION_ID
+      ? [process.env.AZURE_SUBSCRIPTION_ID.trim()]
+      : [];
+
+  const labels = process.env.AZURE_SUBSCRIPTION_LABELS
+    ? process.env.AZURE_SUBSCRIPTION_LABELS.split(",").map((s) => s.trim())
+    : [];
+
+  return ids.map((id, i) => ({ id, label: labels[i] ?? id }));
 }
 
 // ── Cost query helper ─────────────────────────────────────────────────────────
@@ -354,11 +377,27 @@ async function getBudget(token: string, subscriptionId: string): Promise<BudgetI
   }
 }
 
+// ── Per-subscription query ────────────────────────────────────────────────────
+
+async function getSubscriptionCost(
+  token: string,
+  id: string,
+  label: string,
+): Promise<SubscriptionCost> {
+  const { total: totalMtdCost, currency } = await getMtdCost(token, id);
+  const [totalYtdCost, topServices, budget] = await Promise.all([
+    getYtdCost(token, id),
+    getTopServices(token, id, currency),
+    getBudget(token, id),
+  ]);
+  return { subscriptionId: id, label, totalMtdCost, totalYtdCost, currency, topServices, budget };
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export async function getCostSnapshot(): Promise<CostSnapshot> {
   const capturedAt = new Date().toISOString();
-  const subscriptionId = process.env.AZURE_SUBSCRIPTION_ID;
+  const subList = getSubscriptionList();
 
   const emptyM365: M365CostSummary = {
     totalMtdCost: null,
@@ -368,49 +407,19 @@ export async function getCostSnapshot(): Promise<CostSnapshot> {
     billingConfigured: isBillingConfigured(),
   };
 
-  if (!subscriptionId) {
-    return {
-      totalMtdCost: null,
-      totalYtdCost: null,
-      currency: "USD",
-      topServices: [],
-      budget: null,
-      subscriptionConfigured: false,
-      m365: emptyM365,
-      capturedAt,
-    };
+  if (subList.length === 0) {
+    return { subscriptions: [], subscriptionConfigured: false, m365: emptyM365, capturedAt };
   }
 
   const token = await getAzureToken();
   if (!token) {
-    return {
-      totalMtdCost: null,
-      totalYtdCost: null,
-      currency: "USD",
-      topServices: [],
-      budget: null,
-      subscriptionConfigured: true,
-      m365: emptyM365,
-      capturedAt,
-    };
+    return { subscriptions: [], subscriptionConfigured: true, m365: emptyM365, capturedAt };
   }
 
-  const { total: totalMtdCost, currency } = await getMtdCost(token, subscriptionId);
-  const [totalYtdCost, topServices, budget, m365] = await Promise.all([
-    getYtdCost(token, subscriptionId),
-    getTopServices(token, subscriptionId, currency),
-    getBudget(token, subscriptionId),
+  const [subscriptions, m365] = await Promise.all([
+    Promise.all(subList.map(({ id, label }) => getSubscriptionCost(token, id, label))),
     getM365Costs(token),
   ]);
 
-  return {
-    totalMtdCost,
-    totalYtdCost,
-    currency,
-    topServices,
-    budget,
-    subscriptionConfigured: true,
-    m365,
-    capturedAt,
-  };
+  return { subscriptions, subscriptionConfigured: true, m365, capturedAt };
 }

@@ -1,8 +1,9 @@
-import { RefreshCw, Loader2, Info, DollarSign, TrendingUp, Package } from "lucide-react";
+import { RefreshCw, Loader2, Info, DollarSign, TrendingUp, Package, CloudCog } from "lucide-react";
 import {
   useCostMetrics,
   type CostByService,
   type BudgetInfo,
+  type SubscriptionCost,
   type M365ProductCost,
   type M365CostSummary,
 } from "../../services/noc";
@@ -264,6 +265,112 @@ function M365Section({ m365 }: { m365: M365CostSummary }) {
   );
 }
 
+function SubscriptionSection({ sub }: { sub: SubscriptionCost }) {
+  const maxCost = sub.topServices[0]?.cost ?? 1;
+  return (
+    <>
+      <div className="flex items-center gap-2 mt-1">
+        <CloudCog className="h-4 w-4" style={{ color: "var(--orbit-text-muted)" }} />
+        <h2 className="text-sm font-semibold" style={{ color: "var(--orbit-text-primary)" }}>
+          {sub.label}
+        </h2>
+        <span className="text-xs font-mono" style={{ color: "var(--orbit-text-muted)" }}>
+          {sub.subscriptionId}
+        </span>
+        <div className="flex-1 h-px" style={{ background: "var(--orbit-border)" }} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <SummaryTile
+          label="Month-to-Date"
+          value={sub.totalMtdCost}
+          currency={sub.currency}
+          subtext="current billing month"
+          highlight={
+            sub.budget && sub.totalMtdCost !== null && sub.totalMtdCost / sub.budget.limit > 0.9
+              ? "red"
+              : sub.budget && sub.totalMtdCost !== null && sub.totalMtdCost / sub.budget.limit > 0.75
+                ? "yellow"
+                : undefined
+          }
+        />
+        <SummaryTile
+          label="Year-to-Date"
+          value={sub.totalYtdCost}
+          currency={sub.currency}
+          subtext="Jan 1 → today"
+        />
+      </div>
+
+      {sub.budget && <BudgetBar budget={sub.budget} />}
+
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}
+      >
+        <div
+          className="flex items-center gap-2 px-4 py-3"
+          style={{ borderBottom: "1px solid var(--orbit-border)" }}
+        >
+          <DollarSign className="h-4 w-4" style={{ color: "var(--orbit-text-muted)" }} />
+          <span className="text-sm font-semibold" style={{ color: "var(--orbit-text-primary)" }}>
+            Top Services by Cost (MTD)
+          </span>
+          <span className="ml-auto text-xs" style={{ color: "var(--orbit-text-muted)" }}>
+            {sub.topServices.length} services
+          </span>
+        </div>
+        <table className="w-full">
+          <thead>
+            <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
+              {["Service", "Share", "Cost"].map((h) => (
+                <th
+                  key={h}
+                  className="px-4 py-2 text-left text-xs font-semibold"
+                  style={{ color: "var(--orbit-text-muted)" }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sub.topServices.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={3}
+                  className="px-4 py-8 text-sm text-center"
+                  style={{ color: "var(--orbit-text-muted)" }}
+                >
+                  No cost data available for this billing period.
+                </td>
+              </tr>
+            ) : (
+              sub.topServices.map((s) => (
+                <ServiceRow key={s.serviceName} service={s} maxCost={maxCost} />
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {sub.totalMtdCost !== null && sub.totalYtdCost !== null && sub.totalYtdCost > 0 && (
+        <div
+          className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm"
+          style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}
+        >
+          <TrendingUp className="h-4 w-4 shrink-0" style={{ color: "var(--orbit-text-muted)" }} />
+          <span style={{ color: "var(--orbit-text-secondary)" }}>
+            MTD {fmtCurrency(sub.totalMtdCost, sub.currency)} is{" "}
+            {((sub.totalMtdCost / sub.totalYtdCost) * 100).toFixed(1)}% of YTD{" "}
+            {fmtCurrency(sub.totalYtdCost, sub.currency)}
+          </span>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export function CostDashboard() {
@@ -277,8 +384,6 @@ export function CostDashboard() {
       })
     : null;
 
-  const maxCost = data?.topServices[0]?.cost ?? 1;
-
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -288,7 +393,7 @@ export function CostDashboard() {
             Cost NOC
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--orbit-text-muted)" }}>
-            Azure Cost Management · MTD &amp; YTD spend · top 10 services · auto-refreshes every 5 min
+            Azure Cost Management · per-subscription MTD &amp; YTD · auto-refreshes every 5 min
             {lastUpdated && <span className="ml-2">· Last updated {lastUpdated}</span>}
           </p>
         </div>
@@ -332,116 +437,18 @@ export function CostDashboard() {
             >
               <Info className="h-4 w-4 mt-0.5 shrink-0" />
               <span>
-                Azure subscription not configured — set{" "}
-                <code className="font-mono text-xs">AZURE_SUBSCRIPTION_ID</code> to enable cost data.
-                Optionally set <code className="font-mono text-xs">AZURE_BUDGET_NAME</code> for budget tracking.
+                No subscriptions configured — set{" "}
+                <code className="font-mono text-xs">AZURE_SUBSCRIPTION_IDS</code> (comma-separated) and{" "}
+                <code className="font-mono text-xs">AZURE_SUBSCRIPTION_LABELS</code> (e.g.{" "}
+                <code className="font-mono text-xs">SharedPlatform,GrailBabe</code>).
               </span>
             </div>
           )}
 
-          {/* Summary tiles */}
-          <div className="grid grid-cols-2 gap-4">
-            <SummaryTile
-              label="Month-to-Date Spend"
-              value={data.totalMtdCost}
-              currency={data.currency}
-              subtext="current billing month"
-              highlight={
-                data.budget && data.totalMtdCost !== null && data.totalMtdCost / data.budget.limit > 0.9
-                  ? "red"
-                  : data.budget && data.totalMtdCost !== null && data.totalMtdCost / data.budget.limit > 0.75
-                    ? "yellow"
-                    : undefined
-              }
-            />
-            <SummaryTile
-              label="Year-to-Date Spend"
-              value={data.totalYtdCost}
-              currency={data.currency}
-              subtext="Jan 1 → today"
-            />
-          </div>
-
-          {/* Budget bar */}
-          {data.budget && <BudgetBar budget={data.budget} />}
-
-          {/* Top services table */}
-          <div
-            className="rounded-xl overflow-hidden"
-            style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}
-          >
-            <div
-              className="flex items-center gap-2 px-4 py-3"
-              style={{ borderBottom: "1px solid var(--orbit-border)" }}
-            >
-              <DollarSign className="h-4 w-4" style={{ color: "var(--orbit-text-muted)" }} />
-              <span className="text-sm font-semibold" style={{ color: "var(--orbit-text-primary)" }}>
-                Top Services by Cost (MTD)
-              </span>
-              <span className="ml-auto text-xs" style={{ color: "var(--orbit-text-muted)" }}>
-                {data.topServices.length} services
-              </span>
-            </div>
-            <table className="w-full">
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-                  {["Service", "Share", "Cost"].map((h) => (
-                    <th
-                      key={h}
-                      className="px-4 py-2 text-left text-xs font-semibold"
-                      style={{ color: "var(--orbit-text-muted)" }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.topServices.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={3}
-                      className="px-4 py-8 text-sm text-center"
-                      style={{ color: "var(--orbit-text-muted)" }}
-                    >
-                      {data.subscriptionConfigured
-                        ? "No cost data available for this billing period."
-                        : "Configure AZURE_SUBSCRIPTION_ID to view cost breakdown."}
-                    </td>
-                  </tr>
-                ) : (
-                  data.topServices.map((s) => (
-                    <ServiceRow key={s.serviceName} service={s} maxCost={maxCost} />
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Trend hint */}
-          {data.totalMtdCost !== null && data.totalYtdCost !== null && (
-            <div
-              className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm"
-              style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}
-            >
-              <TrendingUp className="h-4 w-4 shrink-0" style={{ color: "var(--orbit-text-muted)" }} />
-              <span style={{ color: "var(--orbit-text-secondary)" }}>
-                MTD spend is{" "}
-                <strong>
-                  {fmtCurrency(data.totalMtdCost, data.currency)}
-                </strong>{" "}
-                out of{" "}
-                <strong>
-                  {fmtCurrency(data.totalYtdCost, data.currency)}
-                </strong>{" "}
-                YTD (
-                {data.totalYtdCost > 0
-                  ? `${((data.totalMtdCost / data.totalYtdCost) * 100).toFixed(1)}% of YTD`
-                  : "—"}
-                )
-              </span>
-            </div>
-          )}
+          {/* Per-subscription sections */}
+          {data.subscriptions.map((sub) => (
+            <SubscriptionSection key={sub.subscriptionId} sub={sub} />
+          ))}
 
           {/* M365 section */}
           <M365Section m365={data.m365} />

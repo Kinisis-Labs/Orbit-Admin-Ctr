@@ -258,12 +258,18 @@ export interface M365CostSummary {
   billingConfigured: boolean;
 }
 
-export interface CostSnapshot {
+export interface SubscriptionCost {
+  subscriptionId: string;
+  label: string;
   totalMtdCost: number | null;
   totalYtdCost: number | null;
   currency: string;
   topServices: CostByService[];
   budget: BudgetInfo | null;
+}
+
+export interface CostSnapshot {
+  subscriptions: SubscriptionCost[];
   subscriptionConfigured: boolean;
   m365: M365CostSummary;
   capturedAt: string;
