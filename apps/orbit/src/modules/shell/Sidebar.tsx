@@ -40,13 +40,13 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Notifications", to: "/admin/notifications", icon: Bell, section: "Administration", adminOnly: true },
   { label: "Configuration", to: "/admin/configuration", icon: Settings, section: "Administration", adminOnly: true },
   { label: "Platform Health", to: "/platform/health", icon: Activity, section: "Platform", adminOnly: true },
-  { label: "Infrastructure", to: "/noc/infrastructure", icon: Server, section: "NOC", adminOnly: true },
-  { label: "Applications", to: "/noc/applications", icon: LayoutGrid, section: "NOC", adminOnly: true },
-  { label: "Security", to: "/noc/security", icon: ShieldAlert, section: "NOC", adminOnly: true },
-  { label: "AI Platform", to: "/noc/ai", icon: BrainCircuit, section: "NOC", adminOnly: true },
-  { label: "Incidents", to: "/noc/incidents", icon: Siren, section: "NOC", adminOnly: true },
-  { label: "UX Quality", to: "/noc/ux", icon: MonitorSmartphone, section: "NOC", adminOnly: true },
-  { label: "API Dependencies", to: "/noc/api-dependencies", icon: Plug, section: "NOC", adminOnly: true },
+  { label: "Infrastructure", to: "/noc/infrastructure", icon: Server, section: "Network Operations", adminOnly: true },
+  { label: "Applications", to: "/noc/applications", icon: LayoutGrid, section: "Network Operations", adminOnly: true },
+  { label: "Security", to: "/noc/security", icon: ShieldAlert, section: "Network Operations", adminOnly: true },
+  { label: "AI Platform", to: "/noc/ai", icon: BrainCircuit, section: "Network Operations", adminOnly: true },
+  { label: "Incidents", to: "/noc/incidents", icon: Siren, section: "Network Operations", adminOnly: true },
+  { label: "UX Quality", to: "/noc/ux", icon: MonitorSmartphone, section: "Network Operations", adminOnly: true },
+  { label: "API Dependencies", to: "/noc/api-dependencies", icon: Plug, section: "Network Operations", adminOnly: true },
 ];
 
 export function Sidebar() {
