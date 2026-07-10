@@ -107,7 +107,7 @@ export function AIDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--orbit-text-primary)" }}>
-            AI NOC
+            AI Platform
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--orbit-text-muted)" }}>
             Azure OpenAI · Azure AI Search · 24h window · auto-refreshes every 60s

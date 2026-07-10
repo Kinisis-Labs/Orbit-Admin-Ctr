@@ -125,7 +125,7 @@ export function SecurityDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--orbit-text-primary)" }}>
-            Security NOC
+            Security
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--orbit-text-muted)" }}>
             Entra sign-in logs, security events, Orbit audit · 24h window · auto-refreshes every 60s

@@ -86,7 +86,7 @@ export function ApplicationDetailPage() {
         style={{ color: "var(--orbit-text-muted)" }}
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Application NOC
+        Back to Applications
       </Link>
 
       {isLoading ? (

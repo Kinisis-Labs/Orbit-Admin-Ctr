@@ -107,7 +107,7 @@ export function ApplicationDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--orbit-text-primary)" }}>
-            Application NOC
+            Applications
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--orbit-text-muted)" }}>
             Per-app Application Insights telemetry · 24h window · auto-refreshes every 60s
