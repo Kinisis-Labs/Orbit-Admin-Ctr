@@ -89,10 +89,12 @@ export async function getAccessToken(): Promise<string | null> {
         const data = (await res.json()) as { access_token: string };
         return data.access_token;
       }
+      const errText = await res.text().catch(() => "unreadable");
+      throw new Error(`OAuth failed ${res.status}: ${errText.slice(0, 300)}`);
     }
     return null;
-  } catch {
-    return null;
+  } catch (err) {
+    throw err;
   }
 }
 

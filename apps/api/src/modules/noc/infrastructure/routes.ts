@@ -78,10 +78,10 @@ router.get("/infrastructure/debug", requireAuth, requireAdmin, async (req, res) 
   if (e("IDENTITY_ENDPOINT") || (e("AZURE_TENANT_ID") && e("AZURE_CLIENT_ID") && e("AZURE_CLIENT_SECRET"))) {
     try {
       const { getAccessToken } = await import("../../../lib/azure-monitor.js");
-      const token = await getAccessToken();
-      tokenResult = token ? `✓ obtained (${token.slice(0, 10)}…)` : "✗ fetch succeeded but token was null";
+      const token = await getAccessToken().catch((e: unknown) => { throw e; });
+      tokenResult = token ? `✓ obtained (${token.slice(0, 10)}…)` : "✗ null returned";
     } catch (err) {
-      tokenResult = `✗ threw: ${String(err)}`;
+      tokenResult = `✗ ${String(err)}`;
     }
   } else {
     tokenResult = "✗ no auth env vars present";
