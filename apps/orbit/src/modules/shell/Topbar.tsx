@@ -16,12 +16,7 @@ export function Topbar() {
     >
       {/* Logo */}
       <div className="flex items-center gap-3">
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-          style={{ background: "linear-gradient(135deg, #7C3AED, #4361EE)" }}
-        >
-          O
-        </div>
+        <img src="/logo.png" alt="O.R.B.I.T" className="w-8 h-8 rounded-lg object-cover" />
         <span
           className="text-base font-semibold tracking-tight"
           style={{ color: "var(--orbit-text-primary)" }}
