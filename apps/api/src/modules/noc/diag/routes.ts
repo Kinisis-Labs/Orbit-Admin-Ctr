@@ -149,6 +149,8 @@ router.get("/noc/diag", requireAuth, requireAdmin, async (_req, res) => {
     "IDENTITY_ENDPOINT",
     "AZURE_TENANT_ID",
     "AZURE_CLIENT_ID",
+    "AZURE_SUBSCRIPTION_IDS",
+    "AZURE_SUBSCRIPTION_LABELS",
     "AZURE_SUBSCRIPTION_ID",
     "AZURE_BUDGET_NAME",
     "AZURE_BILLING_ACCOUNT_ID",
@@ -164,7 +166,10 @@ router.get("/noc/diag", requireAuth, requireAdmin, async (_req, res) => {
   envSnapshot["IDENTITY_HEADER"] = process.env.IDENTITY_HEADER ? "✓ set" : "✗ not set";
   envSnapshot["AZURE_CLIENT_SECRET"] = process.env.AZURE_CLIENT_SECRET ? "✓ set" : "✗ not set";
 
-  const subscriptionId = process.env.AZURE_SUBSCRIPTION_ID;
+  const subscriptionIdsRaw = process.env.AZURE_SUBSCRIPTION_IDS ?? process.env.AZURE_SUBSCRIPTION_ID ?? "";
+  const subscriptionLabelsRaw = process.env.AZURE_SUBSCRIPTION_LABELS ?? "";
+  const subscriptionIds = subscriptionIdsRaw.split(",").map((s) => s.trim()).filter(Boolean);
+  const subscriptionLabels = subscriptionLabelsRaw.split(",").map((s) => s.trim());
   const openAiResourceId = process.env.AZURE_OPENAI_RESOURCE_ID;
   const searchResourceId = process.env.AZURE_SEARCH_RESOURCE_ID;
   const billingAccountId = process.env.AZURE_BILLING_ACCOUNT_ID;
@@ -176,22 +181,26 @@ router.get("/noc/diag", requireAuth, requireAdmin, async (_req, res) => {
   );
   results.push(mgmtTokenResult);
 
-  // ── Cost Management ────────────────────────────────────────────────────────
-  if (!subscriptionId) {
-    results.push({ check: "Cost — subscription query", status: "skip", detail: "AZURE_SUBSCRIPTION_ID not set" });
+  // ── Cost Management — per subscription ────────────────────────────────────
+  if (subscriptionIds.length === 0) {
+    results.push({ check: "Cost — subscription query", status: "skip", detail: "AZURE_SUBSCRIPTION_IDS and AZURE_SUBSCRIPTION_ID not set" });
   } else if (!mgmtToken) {
     results.push({ check: "Cost — subscription query", status: "skip", detail: "No token" });
   } else {
-    const costUrl =
-      `https://management.azure.com/subscriptions/${subscriptionId}` +
-      `/providers/Microsoft.CostManagement/query?api-version=2023-11-01`;
-    results.push(
-      await checkUrl("Cost — subscription MTD query", costUrl, mgmtToken, "POST", {
-        type: "ActualCost",
-        timeframe: "BillingMonthToDate",
-        dataset: { granularity: "None", aggregation: { totalCost: { name: "Cost", function: "Sum" } } },
-      }),
-    );
+    for (let i = 0; i < subscriptionIds.length; i++) {
+      const subId = subscriptionIds[i];
+      const label = subscriptionLabels[i] ?? subId;
+      const costUrl =
+        `https://management.azure.com/subscriptions/${subId}` +
+        `/providers/Microsoft.CostManagement/query?api-version=2023-11-01`;
+      results.push(
+        await checkUrl(`Cost — ${label} (${subId.slice(0, 8)}…) MTD query`, costUrl, mgmtToken, "POST", {
+          type: "ActualCost",
+          timeframe: "BillingMonthToDate",
+          dataset: { granularity: "None", aggregation: { totalCost: { name: "Cost", function: "Sum" } } },
+        }),
+      );
+    }
   }
 
   // ── M365 billing account ───────────────────────────────────────────────────
