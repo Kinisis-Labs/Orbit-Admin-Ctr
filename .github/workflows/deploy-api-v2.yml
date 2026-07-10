@@ -179,6 +179,9 @@ jobs:
           V_ENTRA_AUTHORIZED_GROUP_ID: ${{ secrets.ENTRA_AUTHORIZED_GROUP_ID }}
           V_ENTRA_ADMIN_GROUP_ID: ${{ secrets.ENTRA_ADMIN_GROUP_ID }}
           V_ENTRA_ENGINEER_GROUP_ID: ${{ secrets.ENTRA_ENGINEER_GROUP_ID }}
+          V_ENTRA_COST_READER_GROUP_ID: ${{ secrets.ENTRA_COST_READER_GROUP_ID }}
+          V_ENTRA_FINOPS_GROUP_ID: ${{ secrets.ENTRA_FINOPS_GROUP_ID }}
+          V_AZURE_TENANT_ID: ${{ secrets.ENTRA_TENANT_ID }}
           V_AZURE_SUBSCRIPTION_IDS: ${{ secrets.AZURE_SUBSCRIPTION_IDS }}
           V_AZURE_SUBSCRIPTION_LABELS: ${{ secrets.AZURE_SUBSCRIPTION_LABELS }}
           V_AZURE_MANAGED_IDENTITY_CLIENT_ID: ${{ secrets.AZURE_MANAGED_IDENTITY_CLIENT_ID }}
@@ -232,6 +235,9 @@ jobs:
                 ("ENTRA_AUTHORIZED_GROUP_ID",            "V_ENTRA_AUTHORIZED_GROUP_ID"),
                 ("ENTRA_ADMIN_GROUP_ID",                 "V_ENTRA_ADMIN_GROUP_ID"),
                 ("ENTRA_ENGINEER_GROUP_ID",              "V_ENTRA_ENGINEER_GROUP_ID"),
+                ("ENTRA_COST_READER_GROUP_ID",           "V_ENTRA_COST_READER_GROUP_ID"),
+                ("ENTRA_FINOPS_GROUP_ID",                "V_ENTRA_FINOPS_GROUP_ID"),
+                ("AZURE_TENANT_ID",                      "V_AZURE_TENANT_ID"),
                 ("AZURE_SUBSCRIPTION_IDS",              "V_AZURE_SUBSCRIPTION_IDS"),
                 ("AZURE_SUBSCRIPTION_LABELS",           "V_AZURE_SUBSCRIPTION_LABELS"),
                 ("AZURE_MANAGED_IDENTITY_CLIENT_ID",     "V_AZURE_MANAGED_IDENTITY_CLIENT_ID"),
