@@ -165,6 +165,9 @@ router.get("/noc/diag", requireAuth, requireAdmin, async (_req, res) => {
   }
   envSnapshot["IDENTITY_HEADER"] = process.env.IDENTITY_HEADER ? "✓ set" : "✗ not set";
   envSnapshot["AZURE_CLIENT_SECRET"] = process.env.AZURE_CLIENT_SECRET ? "✓ set" : "✗ not set";
+  envSnapshot["AZURE_CLIENT_ID_PREFIX"] = process.env.AZURE_CLIENT_ID
+    ? process.env.AZURE_CLIENT_ID.slice(0, 8) + "…"
+    : "✗ not set";
 
   const subscriptionIdsRaw = process.env.AZURE_SUBSCRIPTION_IDS ?? process.env.AZURE_SUBSCRIPTION_ID ?? "";
   const subscriptionLabelsRaw = process.env.AZURE_SUBSCRIPTION_LABELS ?? "";
