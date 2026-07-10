@@ -14,7 +14,7 @@ let cacheExpiresAt = 0;
 
 // ── GET /api/noc/incidents ────────────────────────────────────────────────────
 
-router.get("/noc/incidents", requireAuth, requireAdmin, async (req, res) => {
+router.get("/incidents", requireAuth, requireAdmin, async (req, res) => {
   try {
     const forceRefresh = req.query.refresh === "1";
     const now = Date.now();
@@ -66,7 +66,7 @@ router.get("/noc/incidents", requireAuth, requireAdmin, async (req, res) => {
 
 // ── GET /api/noc/incidents/metrics — MTTA/MTTR trends from DB ─────────────────
 
-router.get("/noc/incidents/metrics", requireAuth, requireAdmin, async (req, res) => {
+router.get("/incidents/metrics", requireAuth, requireAdmin, async (req, res) => {
   try {
     const days = Math.min(Number(req.query.days ?? 7), 30);
     const since = new Date(Date.now() - days * 86_400_000);

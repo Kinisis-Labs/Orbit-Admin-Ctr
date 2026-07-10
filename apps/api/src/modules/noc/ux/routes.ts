@@ -306,7 +306,7 @@ async function computeOverallScore(
 
 // ── Route ──────────────────────────────────────────────────────────────────────
 
-router.get("/noc/ux", requireAuth, requireAdmin, async (req, res) => {
+router.get("/ux", requireAuth, requireAdmin, async (req, res) => {
   try {
     const forceRefresh = req.query.refresh === "1";
     const now = Date.now();

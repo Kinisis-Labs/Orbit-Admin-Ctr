@@ -141,7 +141,7 @@ async function checkUrl(
   }
 }
 
-router.get("/noc/diag", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/diag", requireAuth, requireAdmin, async (_req, res) => {
   const results: DiagResult[] = [];
   const envSnapshot: Record<string, string> = {};
 

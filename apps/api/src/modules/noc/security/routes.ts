@@ -7,7 +7,7 @@ import { getSecuritySummary, isGraphConfigured } from "../../../lib/graph-client
 
 const router: IRouter = Router();
 
-router.get("/noc/security", requireAuth, requireAdmin, async (req, res) => {
+router.get("/security", requireAuth, requireAdmin, async (req, res) => {
   try {
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -90,7 +90,7 @@ router.get("/noc/security", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-router.patch("/noc/security/:id/acknowledge", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/security/:id/acknowledge", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { eq } = await import("drizzle-orm");
     const id = String(req.params.id);

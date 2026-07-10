@@ -27,14 +27,14 @@ router.use(usersRouter);
 router.use(auditRouter);
 router.use(notificationsRouter);
 router.use(configRouter);
-router.use(nocInfraRouter);
-router.use(nocAppsRouter);
-router.use(nocSecurityRouter);
-router.use(nocAiRouter);
-router.use(nocDiagRouter);
-router.use(nocIncidentsRouter);
-router.use(nocUxRouter);
-router.use(nocApiDepsRouter);
+router.use("/noc", nocInfraRouter);
+router.use("/noc", nocAppsRouter);
+router.use("/noc", nocSecurityRouter);
+router.use("/noc", nocAiRouter);
+router.use("/noc", nocDiagRouter);
+router.use("/noc", nocIncidentsRouter);
+router.use("/noc", nocUxRouter);
+router.use("/noc", nocApiDepsRouter);
 
 router.use("/admin", requireAuth, requireAdmin, (_req, res) => {
   res.status(501).json({ message: "Admin modules coming in Phase C–H" });

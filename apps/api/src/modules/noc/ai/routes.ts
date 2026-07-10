@@ -10,7 +10,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 let cachedSnapshot: AiSnapshot | null = null;
 let cacheExpiresAt = 0;
 
-router.get("/noc/ai", requireAuth, requireAdmin, async (req, res) => {
+router.get("/ai", requireAuth, requireAdmin, async (req, res) => {
   try {
     const now = Date.now();
     const forceRefresh = req.query.refresh === "1";

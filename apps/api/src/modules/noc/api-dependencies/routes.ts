@@ -141,7 +141,7 @@ const CACHE_TTL_MS = 2 * 60 * 1000;
 let cached: DependencySnapshot | null = null;
 let cacheExpiresAt = 0;
 
-router.get("/noc/api-dependencies", requireAuth, requireAdmin, async (req, res) => {
+router.get("/api-dependencies", requireAuth, requireAdmin, async (req, res) => {
   try {
     const now = Date.now();
     const forceRefresh = req.query.refresh === "1";

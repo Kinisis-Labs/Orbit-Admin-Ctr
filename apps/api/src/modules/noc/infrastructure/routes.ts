@@ -13,7 +13,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 let cachedSnapshot: InfraSnapshot | null = null;
 let cacheExpiresAt = 0;
 
-router.get("/noc/infrastructure", requireAuth, requireAdmin, async (req, res) => {
+router.get("/infrastructure", requireAuth, requireAdmin, async (req, res) => {
   try {
     const now = Date.now();
     const forceRefresh = req.query.refresh === "1";
@@ -61,7 +61,7 @@ router.get("/noc/infrastructure", requireAuth, requireAdmin, async (req, res) =>
   }
 });
 
-router.get("/noc/infrastructure/history", requireAuth, requireAdmin, async (req, res) => {
+router.get("/infrastructure/history", requireAuth, requireAdmin, async (req, res) => {
   try {
     const hours = Math.min(Number(req.query.hours ?? 6), 24);
     const since = new Date(Date.now() - hours * 3600 * 1000);

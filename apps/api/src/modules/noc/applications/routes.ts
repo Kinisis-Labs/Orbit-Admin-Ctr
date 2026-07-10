@@ -100,7 +100,7 @@ const CACHE_TTL_MS = 2 * 60 * 1000;
 let cachedApps: unknown = null;
 let cacheExpiresAt = 0;
 
-router.get("/noc/applications", requireAuth, requireAdmin, async (req, res) => {
+router.get("/applications", requireAuth, requireAdmin, async (req, res) => {
   try {
     const now = Date.now();
     const forceRefresh = req.query.refresh === "1";
@@ -146,7 +146,7 @@ router.get("/noc/applications", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-router.get("/noc/applications/:slug", requireAuth, requireAdmin, async (req, res) => {
+router.get("/applications/:slug", requireAuth, requireAdmin, async (req, res) => {
   try {
     const [app] = await db
       .select()
