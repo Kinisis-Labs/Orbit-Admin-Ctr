@@ -13,7 +13,7 @@ const router = Router();
 // ── GET /api/applications ─────────────────────────────────────────────────────
 // Returns apps the authenticated user is authorized to see, based on their
 // Entra group memberships. Admins see all apps regardless of group mapping.
-router.get("/api/applications", requireAuth, async (req, res) => {
+router.get("/applications", requireAuth, async (req, res) => {
   try {
     const user = req.session.user!;
     const userGroupIds = new Set(user.groupIds);
@@ -46,7 +46,7 @@ router.get("/api/applications", requireAuth, async (req, res) => {
 
 // ── GET /api/applications/all ─────────────────────────────────────────────────
 // Admin: returns ALL apps (enabled + disabled) with their group mappings.
-router.get("/api/applications/all", requireAuth, requireAdmin, async (req, res) => {
+router.get("/applications/all", requireAuth, requireAdmin, async (req, res) => {
   try {
     const [apps, mappings] = await Promise.all([
       db.select().from(applicationsTable),
@@ -66,7 +66,7 @@ router.get("/api/applications/all", requireAuth, requireAdmin, async (req, res) 
 });
 
 // ── POST /api/applications ────────────────────────────────────────────────────
-router.post("/api/applications", requireAuth, requireAdmin, async (req, res) => {
+router.post("/applications", requireAuth, requireAdmin, async (req, res) => {
   try {
     const body = req.body as Partial<ApplicationInsert>;
     if (!body.slug || !body.displayName) {
@@ -102,7 +102,7 @@ router.post("/api/applications", requireAuth, requireAdmin, async (req, res) => 
 });
 
 // ── PUT /api/applications/:id ─────────────────────────────────────────────────
-router.put("/api/applications/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/applications/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const body = req.body as Partial<ApplicationInsert>;
@@ -134,7 +134,7 @@ router.put("/api/applications/:id", requireAuth, requireAdmin, async (req, res) 
 });
 
 // ── DELETE /api/applications/:id ──────────────────────────────────────────────
-router.delete("/api/applications/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/applications/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const [deleted] = await db
@@ -153,7 +153,7 @@ router.delete("/api/applications/:id", requireAuth, requireAdmin, async (req, re
 });
 
 // ── GET /api/applications/:id/groups ─────────────────────────────────────────
-router.get("/api/applications/:id/groups", requireAuth, requireAdmin, async (req, res) => {
+router.get("/applications/:id/groups", requireAuth, requireAdmin, async (req, res) => {
   try {
     const mappings = await db
       .select()
@@ -167,7 +167,7 @@ router.get("/api/applications/:id/groups", requireAuth, requireAdmin, async (req
 });
 
 // ── POST /api/applications/:id/groups ────────────────────────────────────────
-router.post("/api/applications/:id/groups", requireAuth, requireAdmin, async (req, res) => {
+router.post("/applications/:id/groups", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { entraGroupId, entraGroupName } = req.body as {
@@ -196,7 +196,7 @@ router.post("/api/applications/:id/groups", requireAuth, requireAdmin, async (re
 
 // ── DELETE /api/applications/:id/groups/:mappingId ────────────────────────────
 router.delete(
-  "/api/applications/:id/groups/:mappingId",
+  "/applications/:id/groups/:mappingId",
   requireAuth,
   requireAdmin,
   async (req, res) => {
