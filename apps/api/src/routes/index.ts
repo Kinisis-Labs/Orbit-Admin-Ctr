@@ -8,6 +8,7 @@ import usersRouter from "../modules/users/routes.js";
 import auditRouter from "../modules/audit/routes.js";
 import notificationsRouter from "../modules/notifications/routes.js";
 import configRouter from "../modules/config/routes.js";
+import nocInfraRouter from "../modules/noc/infrastructure/routes.js";
 
 const router: IRouter = Router();
 
@@ -19,6 +20,7 @@ router.use(usersRouter);
 router.use(auditRouter);
 router.use(notificationsRouter);
 router.use(configRouter);
+router.use(nocInfraRouter);
 
 router.use("/admin", requireAuth, requireAdmin, (_req, res) => {
   res.status(501).json({ message: "Admin modules coming in Phase C–H" });

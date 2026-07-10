@@ -21,3 +21,4 @@ export * from "./rbac";
 export * from "./auditLog";
 export * from "./notifications";
 export * from "./globalConfig";
+export * from "./nocSnapshots";

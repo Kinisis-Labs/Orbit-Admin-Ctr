@@ -9,6 +9,7 @@ import {
   Bell,
   Settings,
   Activity,
+  Server,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -33,6 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Notifications", to: "/admin/notifications", icon: Bell, section: "Administration", adminOnly: true },
   { label: "Configuration", to: "/admin/configuration", icon: Settings, section: "Administration", adminOnly: true },
   { label: "Platform Health", to: "/platform/health", icon: Activity, section: "Platform", adminOnly: true },
+  { label: "Infrastructure", to: "/noc/infrastructure", icon: Server, section: "NOC", adminOnly: true },
 ];
 
 export function Sidebar() {

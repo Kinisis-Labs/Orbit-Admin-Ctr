@@ -11,6 +11,7 @@ import { AuditPage } from "./modules/audit/AuditPage";
 import { NotificationsPage } from "./modules/notifications/NotificationsPage";
 import { ConfigurationPage } from "./modules/configuration/ConfigurationPage";
 import { HealthPage } from "./modules/platform/HealthPage";
+import { InfrastructureDashboard } from "./modules/noc/InfrastructureDashboard";
 
 export const router = createBrowserRouter([
   {
@@ -68,6 +69,15 @@ export const router = createBrowserRouter([
           {
             path: "health",
             element: <HealthPage />,
+          },
+        ],
+      },
+      {
+        path: "noc",
+        children: [
+          {
+            path: "infrastructure",
+            element: <InfrastructureDashboard />,
           },
         ],
       },
