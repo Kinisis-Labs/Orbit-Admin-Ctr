@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Server,
   Database,
@@ -270,6 +271,27 @@ function SectionHeading({ label, count, health }: { label: string; count: number
 export function InfrastructureDashboard() {
   const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useInfrastructureMetrics();
   const { data: history } = useInfrastructureHistory(6);
+  const [busting, setBusting] = useState(false);
+  const [bustMsg, setBustMsg] = useState<string | null>(null);
+
+  async function bustCache() {
+    setBusting(true);
+    setBustMsg(null);
+    try {
+      const res = await fetch("/api/noc/infrastructure/cache-bust", { method: "POST" });
+      if (res.ok) {
+        setBustMsg("Cache cleared — refreshing…");
+        await refetch();
+      } else {
+        setBustMsg("Failed to clear cache");
+      }
+    } catch {
+      setBustMsg("Error clearing cache");
+    } finally {
+      setBusting(false);
+      setTimeout(() => setBustMsg(null), 4000);
+    }
+  }
 
   const seriesList = history?.series ?? [];
 
@@ -290,15 +312,29 @@ export function InfrastructureDashboard() {
             {lastUpdated && <span className="ml-2">· {lastUpdated}</span>}
           </p>
         </div>
-        <button
-          onClick={() => void refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
-          style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)", color: "var(--orbit-text-secondary)" }}
-        >
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {bustMsg && (
+            <span className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>{bustMsg}</span>
+          )}
+          <button
+            onClick={() => void bustCache()}
+            disabled={busting || isFetching}
+            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
+            style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)", color: "var(--orbit-text-secondary)" }}
+          >
+            {busting ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Bust Cache
+          </button>
+          <button
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
+            style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)", color: "var(--orbit-text-secondary)" }}
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
