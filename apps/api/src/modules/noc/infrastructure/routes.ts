@@ -126,10 +126,15 @@ router.get("/infrastructure/debug", requireAuth, requireAdmin, async (req, res) 
         const rg = process.env["AZURE_RESOURCE_GROUP_ORBIT"] ?? "rg-kinisislabs-orbit-prod-eus2";
         const ca = process.env["AZURE_CONTAINER_APP_NAME"] ?? "ca-orbit-prod-v2";
         const resourceId = `/subscriptions/${subId}/resourceGroups/${rg}/providers/Microsoft.App/containerApps/${ca}`;
-        const url = `https://management.azure.com${resourceId}/providers/Microsoft.Insights/metrics?api-version=2023-10-01&metricnames=CpuPercentage&timespan=PT1H&aggregation=Average&interval=PT1H`;
+        const defsUrl = `https://management.azure.com${resourceId}/providers/Microsoft.Insights/metricDefinitions?api-version=2023-10-01`;
+        const defsRes = await fetch(defsUrl, { headers: { Authorization: `Bearer ${token}` } });
+        const defsBody = (await defsRes.json()) as { value?: Array<{ name?: { value?: string } }> };
+        const availableMetrics = (defsBody.value ?? []).map((m) => m.name?.value).filter(Boolean);
+
+        const url = `https://management.azure.com${resourceId}/providers/Microsoft.Insights/metrics?api-version=2023-10-01&metricnames=CpuPercentage&timespan=PT6H&aggregation=Average&interval=PT1H`;
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         const body = await res.text();
-        return { status: res.status, resourceId, bodyPreview: body.slice(0, 500) };
+        return { status: res.status, resourceId, availableMetrics, bodyPreview: body.slice(0, 300) };
       } catch (err) {
         return { error: String(err) };
       }
