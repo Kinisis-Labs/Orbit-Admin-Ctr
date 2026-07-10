@@ -38,13 +38,13 @@ const SECTION_COLORS: Record<string, string> = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", to: "/", icon: LayoutDashboard },
+  { label: "Enterprise Overview", to: "/", icon: LayoutDashboard },
   { label: "Platform Health", to: "/platform/health", icon: Activity, section: "Platform", adminOnly: true },
   { label: "Infrastructure", to: "/noc/infrastructure", icon: Server, section: "Network Operations", adminOnly: true },
   { label: "Applications", to: "/noc/applications", icon: LayoutGrid, section: "Network Operations", adminOnly: true },
   { label: "Security", to: "/noc/security", icon: ShieldAlert, section: "Network Operations", adminOnly: true },
   { label: "AI Platform", to: "/noc/ai", icon: BrainCircuit, section: "Network Operations", adminOnly: true },
-  { label: "Incidents", to: "/noc/incidents", icon: Siren, section: "Network Operations", adminOnly: true },
+  { label: "Azure Monitor", to: "/noc/incidents", icon: Siren, section: "Network Operations", adminOnly: true },
   { label: "UX Quality", to: "/noc/ux", icon: MonitorSmartphone, section: "Network Operations", adminOnly: true },
   { label: "API Dependencies", to: "/noc/api-dependencies", icon: Plug, section: "Network Operations", adminOnly: true },
   { label: "App Registration", to: "/admin/applications", icon: AppWindow, section: "Administration", adminOnly: true },

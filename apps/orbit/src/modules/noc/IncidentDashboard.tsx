@@ -235,7 +235,7 @@ export function IncidentDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--orbit-text-primary)" }}>
-            Incident & Alert Overview
+            Azure Monitor Alerts
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--orbit-text-muted)" }}>
             Azure Monitor Alerts · unified ITSM signals · refreshes every 2m
