@@ -8,6 +8,7 @@ export interface Application {
   logoUrl: string | null;
   url: string | null;
   healthCheckUrl: string | null;
+  appInsightsConnectionString: string | null;
   category: string;
   tags: string[];
   enabled: boolean;

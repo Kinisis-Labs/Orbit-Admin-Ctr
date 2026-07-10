@@ -133,6 +133,7 @@ function AppFormDrawer({ initial, onClose }: AppFormProps) {
     description: initial?.description ?? "",
     url: initial?.url ?? "",
     healthCheckUrl: initial?.healthCheckUrl ?? "",
+    appInsightsConnectionString: initial?.appInsightsConnectionString ?? "",
     category: initial?.category ?? "application",
     tags: (initial?.tags ?? []).join(", "),
     enabled: initial?.enabled ?? true,
@@ -195,6 +196,18 @@ function AppFormDrawer({ initial, onClose }: AppFormProps) {
           <div>
             <label className={labelCls} style={{ color: "var(--orbit-text-secondary)" }}>Health Check URL</label>
             <input value={form.healthCheckUrl} onChange={set("healthCheckUrl")} className={inputCls} style={inputStyle} placeholder="https://app.example.com/api/health" />
+          </div>
+          <div>
+            <label className={labelCls} style={{ color: "var(--orbit-text-secondary)" }}>App Insights Connection String</label>
+            <input
+              value={form.appInsightsConnectionString}
+              onChange={set("appInsightsConnectionString")}
+              className={inputCls}
+              style={inputStyle}
+              placeholder="InstrumentationKey=xxx;IngestionEndpoint=https://..."
+              type="password"
+            />
+            <p className="mt-1 text-[10px]" style={{ color: "var(--orbit-text-muted)" }}>Found in Azure Portal → App Insights → Overview. Leave blank to use the global env var.</p>
           </div>
           <div>
             <label className={labelCls} style={{ color: "var(--orbit-text-secondary)" }}>Logo URL</label>
