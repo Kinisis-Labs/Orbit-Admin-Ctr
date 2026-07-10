@@ -320,9 +320,31 @@ async function getM365Costs(token: string): Promise<M365CostSummary> {
 
   try {
     const currentYear = new Date().getFullYear();
+
+    // MCA invoices live at billing profile scope. Resolve the profile ID:
+    // prefer explicit env var, otherwise fetch the first profile from the account.
+    let profileId = process.env.AZURE_BILLING_PROFILE_ID ?? null;
+    if (!profileId) {
+      const profilesUrl =
+        `https://management.azure.com/providers/Microsoft.Billing/billingAccounts/${billingAccountId}` +
+        `/billingProfiles?api-version=2020-05-01`;
+      const profilesRes = await fetch(profilesUrl, {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+      if (profilesRes.ok) {
+        const profilesData = (await profilesRes.json()) as {
+          value?: Array<{ name?: string }>;
+        };
+        profileId = profilesData.value?.[0]?.name ?? null;
+      }
+    }
+
+    const base = profileId
+      ? `https://management.azure.com/providers/Microsoft.Billing/billingAccounts/${billingAccountId}/billingProfiles/${profileId}`
+      : `https://management.azure.com/providers/Microsoft.Billing/billingAccounts/${billingAccountId}`;
+
     const url =
-      `https://management.azure.com/providers/Microsoft.Billing/billingAccounts/${billingAccountId}` +
-      `/invoices?api-version=2020-05-01&periodStartDate=${currentYear}-01-01&periodEndDate=${currentYear}-12-31`;
+      `${base}/invoices?api-version=2020-05-01&periodStartDate=${currentYear}-01-01&periodEndDate=${currentYear}-12-31`;
 
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
