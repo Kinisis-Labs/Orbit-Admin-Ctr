@@ -291,11 +291,11 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
     capturedAt,
   };
 
-  // AZURE_SUBSCRIPTION_IDS is a comma-separated list: first = Orbit sub, second = Shared Platform sub.
-  // Individual overrides (AZURE_SUB_ORBIT, AZURE_SUB_SHARED) take precedence when set.
+  // AZURE_SUBSCRIPTION_IDS: primary subscription for all resources.
+  // AZURE_SUB_ORBIT / AZURE_SUB_SHARED can override individually but default to the same sub.
   const subIds = (env("AZURE_SUBSCRIPTION_IDS") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const orbitSubId = env("AZURE_SUB_ORBIT") ?? subIds[0];
-  const sharedSubId = env("AZURE_SUB_SHARED") ?? subIds[1] ?? subIds[0];
+  const sharedSubId = env("AZURE_SUB_SHARED") ?? orbitSubId;
 
   if (!orbitSubId) return empty;
 

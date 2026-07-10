@@ -63,6 +63,12 @@ router.get("/infrastructure", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+router.post("/infrastructure/cache-bust", requireAuth, requireAdmin, (_req, res) => {
+  cachedSnapshot = null;
+  cacheExpiresAt = 0;
+  res.json({ ok: true, message: "Cache cleared — next GET /infrastructure will fetch fresh data" });
+});
+
 router.get("/infrastructure/debug", requireAuth, requireAdmin, async (req, res) => {
   const e = (k: string) => process.env[k];
   const present = (k: string) => (e(k) ? "✓ set" : "✗ missing");
@@ -99,7 +105,8 @@ router.get("/infrastructure/debug", requireAuth, requireAdmin, async (req, res) 
     subscriptions: {
       AZURE_SUBSCRIPTION_IDS: present("AZURE_SUBSCRIPTION_IDS"),
       parsedCount: subIds.length,
-      AZURE_SUB_ORBIT: present("AZURE_SUB_ORBIT"),
+      AZURE_SUB_ORBIT: e("AZURE_SUB_ORBIT") ?? "✗ missing",
+      AZURE_SUB_GRAILBABE: e("AZURE_SUB_GRAILBABE") ?? "✗ missing",
       AZURE_SUB_SHARED: present("AZURE_SUB_SHARED"),
     },
     resources: {
@@ -121,8 +128,7 @@ router.get("/infrastructure/debug", requireAuth, requireAdmin, async (req, res) 
         const { getAccessToken } = await import("../../../lib/azure-monitor.js");
         const token = await getAccessToken();
         if (!token) return { error: "no token" };
-        const subIds = (process.env["AZURE_SUBSCRIPTION_IDS"] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-        const subId = subIds[0];
+        const subId = process.env["AZURE_SUB_ORBIT"] ?? (process.env["AZURE_SUBSCRIPTION_IDS"] ?? "").split(",").map((s) => s.trim()).filter(Boolean)[0];
         const rg = process.env["AZURE_RESOURCE_GROUP_ORBIT"] ?? "rg-kinisislabs-orbit-prod-eus2";
         const ca = process.env["AZURE_CONTAINER_APP_NAME"] ?? "ca-orbit-prod-v2";
         const resourceId = `/subscriptions/${subId}/resourceGroups/${rg}/providers/Microsoft.App/containerApps/${ca}`;
