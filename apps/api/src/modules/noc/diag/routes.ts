@@ -206,19 +206,51 @@ router.get("/noc/diag", requireAuth, requireAdmin, async (_req, res) => {
   // ── M365 billing account ───────────────────────────────────────────────────
   if (!billingAccountId) {
     results.push({ check: "Cost — M365 billing query", status: "skip", detail: "AZURE_BILLING_ACCOUNT_ID not set" });
-  } else if (!mgmtToken) {
-    results.push({ check: "Cost — M365 billing query", status: "skip", detail: "No token" });
   } else {
     const billingUrl =
       `https://management.azure.com/providers/Microsoft.Billing/billingAccounts/${billingAccountId}` +
       `/providers/Microsoft.CostManagement/query?api-version=2023-11-01`;
-    results.push(
-      await checkUrl("Cost — M365 billing account query", billingUrl, mgmtToken, "POST", {
-        type: "ActualCost",
-        timeframe: "BillingMonthToDate",
-        dataset: { granularity: "None", aggregation: { totalCost: { name: "Cost", function: "Sum" } } },
-      }),
-    );
+    const billingBody = {
+      type: "ActualCost",
+      timeframe: "BillingMonthToDate",
+      dataset: { granularity: "None", aggregation: { totalCost: { name: "Cost", function: "Sum" } } },
+    };
+    const tenantId = process.env.AZURE_TENANT_ID;
+    const clientId = process.env.AZURE_CLIENT_ID;
+    const clientSecret = process.env.AZURE_CLIENT_SECRET;
+    let spOnlyToken: string | null = null;
+    if (tenantId && clientId && clientSecret) {
+      try {
+        const body = new URLSearchParams({
+          grant_type: "client_credentials",
+          client_id: clientId,
+          client_secret: clientSecret,
+          scope: "https://management.azure.com/.default",
+        });
+        const res = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
+          method: "POST",
+          body,
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { access_token: string };
+          spOnlyToken = data.access_token;
+          results.push({ check: "M365 — SP client_credentials token", status: "ok", detail: "SP token acquired" });
+        } else {
+          const txt = await res.text();
+          results.push({ check: "M365 — SP client_credentials token", status: "fail", detail: `HTTP ${res.status}: ${txt.slice(0, 200)}` });
+        }
+      } catch (e) {
+        results.push({ check: "M365 — SP client_credentials token", status: "fail", detail: String(e) });
+      }
+    } else {
+      results.push({ check: "M365 — SP client_credentials token", status: "skip", detail: "AZURE_CLIENT_SECRET not set" });
+    }
+    if (spOnlyToken) {
+      results.push(await checkUrl("Cost — M365 billing query (SP token)", billingUrl, spOnlyToken, "POST", billingBody));
+    }
+    if (mgmtToken) {
+      results.push(await checkUrl("Cost — M365 billing query (MI token)", billingUrl, mgmtToken, "POST", billingBody));
+    }
   }
 
   // ── AI — OpenAI ────────────────────────────────────────────────────────────
