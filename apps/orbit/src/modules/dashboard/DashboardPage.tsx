@@ -7,19 +7,22 @@ import {
   Server,
   Network,
   Cpu,
-  FlaskConical,
-  Rocket,
   MonitorSmartphone,
   ArrowRight,
   CheckCircle2,
   AlertTriangle,
   XCircle,
   HelpCircle,
+  Database,
+  Globe,
+  Activity,
+  Clock,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
-import { useInfrastructureMetrics } from "../../services/noc";
-import { useIncidents } from "../../services/noc";
-import { useUXSnapshot } from "../../services/noc";
+import { useInfrastructureMetrics, useIncidents, useUXSnapshot } from "../../services/noc";
+import { usePlatformHealth, type HistoryPoint, type HealthStatus as PlatformHealthStatus } from "../../services/health";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -149,38 +152,52 @@ function Skeleton() {
   return <div className="h-4 rounded animate-pulse" style={{ background: "var(--orbit-border)" }} />;
 }
 
-// ── Bottom row tile ────────────────────────────────────────────────────────────
+// ── Platform Health mini-card ──────────────────────────────────────────────────
 
-function BottomTile({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  color,
-  to,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: React.ReactNode;
-  sub?: string;
-  color: string;
-  to: string;
-}) {
+const PH_STATUS: Record<PlatformHealthStatus, { color: string; bg: string; label: string; icon: React.ElementType }> = {
+  healthy:   { color: "#22c55e", bg: "rgba(34,197,94,0.12)",   label: "Healthy",   icon: CheckCircle2 },
+  degraded:  { color: "#f59e0b", bg: "rgba(245,158,11,0.12)",  label: "Degraded",  icon: AlertTriangle },
+  unhealthy: { color: "#ef4444", bg: "rgba(239,68,68,0.12)",   label: "Unhealthy", icon: XCircle },
+  unknown:   { color: "#94a3b8", bg: "rgba(148,163,184,0.12)", label: "Unknown",   icon: HelpCircle },
+};
+
+function PhHistoryDots({ history }: { history: HistoryPoint[] }) {
+  if (!history.length) return <span style={{ color: "var(--orbit-text-muted)" }}>—</span>;
   return (
-    <Link
-      to={to}
-      className="rounded-xl px-4 py-3 flex items-center gap-3 transition-opacity hover:opacity-80"
-      style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)", textDecoration: "none" }}
-    >
-      <div className="rounded-lg p-2 flex-shrink-0" style={{ background: `${color}15` }}>
-        <Icon className="h-4 w-4" style={{ color }} />
+    <span className="flex items-center gap-0.5">
+      {history.map((p, i) => (
+        <span
+          key={i}
+          className="inline-block rounded-sm"
+          style={{ width: 6, height: 12, background: PH_STATUS[p.status].color, opacity: 0.8 }}
+          title={`${p.status} · ${p.latencyMs}ms`}
+        />
+      ))}
+    </span>
+  );
+}
+
+function PhCheckRow({ check, icon: Icon }: { check: { name: string; status: PlatformHealthStatus; latencyMs?: number; httpStatus?: number; timedOut?: boolean; history: HistoryPoint[]; message?: string }; icon: React.ElementType }) {
+  const cfg = PH_STATUS[check.status];
+  const StatusIcon = cfg.icon;
+  return (
+    <div className="flex items-center justify-between px-1 py-2" style={{ borderBottom: "1px solid var(--orbit-border)" }}>
+      <div className="flex items-center gap-2 min-w-0">
+        <Icon className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--orbit-text-muted)" }} />
+        <span className="text-xs font-medium truncate" style={{ color: "var(--orbit-text-primary)" }}>{check.name}</span>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>{label}</p>
-        <p className="text-lg font-bold tabular-nums" style={{ color }}>{value}</p>
-        {sub && <p className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>{sub}</p>}
+      <div className="flex items-center gap-3 flex-shrink-0 ml-2">
+        <PhHistoryDots history={check.history} />
+        {check.latencyMs !== undefined && (
+          <span className="text-xs tabular-nums" style={{ color: "var(--orbit-text-muted)" }}>{check.latencyMs}ms</span>
+        )}
+        {check.timedOut && <Clock className="h-3 w-3" style={{ color: "#ef4444" }} />}
+        <div className="flex items-center gap-1 rounded-full px-2 py-0.5" style={{ background: cfg.bg }}>
+          <StatusIcon className="h-3 w-3" style={{ color: cfg.color }} />
+          <span className="text-xs font-medium" style={{ color: cfg.color }}>{cfg.label}</span>
+        </div>
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -191,8 +208,7 @@ export function DashboardPage() {
   const { data: infra, isLoading: infraLoading } = useInfrastructureMetrics();
   const { data: incidents, isLoading: incLoading } = useIncidents();
   const { data: ux, isLoading: uxLoading } = useUXSnapshot();
-
-  const now = new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const { data: ph, isLoading: phLoading, refetch: phRefetch, isFetching: phFetching } = usePlatformHealth();
 
   // ── Derived values ───────────────────────────────────────────────────────────
   const overallHealth: Health = infra?.overallHealth ?? "unknown";
@@ -216,6 +232,9 @@ export function DashboardPage() {
   const netGroup = infra?.network[0];
   const apiGroup = infra?.api[0];
 
+  const phOverall = ph?.overall ?? "unknown";
+  const phCfg = PH_STATUS[phOverall];
+
   function fmtMetric(v: number | null, unit: string) {
     if (v === null) return "—";
     if (unit === "%") return `${v.toFixed(1)}%`;
@@ -224,24 +243,23 @@ export function DashboardPage() {
     return String(v);
   }
 
+  void user;
+
   return (
     <div className="space-y-4">
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--orbit-text-primary)" }}>
-            Enterprise Overview
-          </h1>
-        </div>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--orbit-text-primary)" }}>Enterprise Overview</h1>
         <div
           className="flex items-center gap-2 rounded-lg px-3 py-2"
           style={{ background: H_BG[overallHealth], border: `1px solid ${H_BORDER[overallHealth]}` }}
         >
           <HealthIcon status={overallHealth} size="h-5 w-5" />
           <span className="text-sm font-semibold capitalize" style={{ color: H_COLOR[overallHealth] }}>
-            {overallHealth === "healthy" ? "All Systems Operational" :
-             overallHealth === "warning" ? "Degraded Performance" :
-             overallHealth === "critical" ? "Critical Issues" : "Awaiting Data"}
+            {overallHealth === "healthy" ? "All Systems Operational"
+              : overallHealth === "warning" ? "Degraded Performance"
+              : overallHealth === "critical" ? "Critical Issues"
+              : "Awaiting Data"}
           </span>
         </div>
       </div>
@@ -282,122 +300,144 @@ export function DashboardPage() {
         />
       </div>
 
-      {/* ── MIDDLE: Left + Right columns ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {/* LEFT — Infra + Network */}
+      {/* ── MAIN GRID: 3 columns on large screens ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+
+        {/* COL 1 — Infrastructure */}
         <div className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-widest px-1" style={{ color: "var(--orbit-text-muted)" }}>
-            Infrastructure & Network
+            Infrastructure
           </p>
-
           <SectionCard title="Compute" icon={Server} to="/noc/infrastructure" health={caGroup?.health ?? "unknown"}>
-            {infraLoading ? (
-              <><Skeleton /><Skeleton /></>
-            ) : caGroup ? (
+            {infraLoading ? <><Skeleton /><Skeleton /></> : caGroup ? (
               caGroup.metrics.map((m) => (
                 <MetricRow key={m.metricName} label={m.metricName.replace(/([A-Z])/g, " $1").trim()} value={fmtMetric(m.value, m.unit)} />
               ))
-            ) : (
-              <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No data</p>
-            )}
+            ) : <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No data</p>}
           </SectionCard>
-
           <SectionCard title="Database" icon={Cpu} to="/noc/infrastructure" health={dbGroup?.health ?? "unknown"}>
-            {infraLoading ? (
-              <><Skeleton /><Skeleton /></>
-            ) : dbGroup ? (
+            {infraLoading ? <><Skeleton /><Skeleton /></> : dbGroup ? (
               dbGroup.metrics.slice(0, 4).map((m) => (
                 <MetricRow key={m.metricName} label={m.metricName.replace(/_/g, " ")} value={fmtMetric(m.value, m.unit)} />
               ))
-            ) : (
-              <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No data</p>
-            )}
+            ) : <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No data</p>}
           </SectionCard>
-
           <SectionCard title="Network & Storage" icon={Network} to="/noc/infrastructure" health={netGroup?.health ?? "unknown"}>
-            {infraLoading ? (
-              <><Skeleton /><Skeleton /></>
-            ) : netGroup ? (
+            {infraLoading ? <><Skeleton /><Skeleton /></> : netGroup ? (
               netGroup.metrics.map((m) => (
                 <MetricRow key={m.metricName} label={m.metricName} value={fmtMetric(m.value, m.unit)} />
               ))
-            ) : (
-              <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No data</p>
-            )}
+            ) : <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No data</p>}
           </SectionCard>
         </div>
 
-        {/* RIGHT — API + Incidents + UX */}
+        {/* COL 2 — API + Incidents + UX */}
         <div className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-widest px-1" style={{ color: "var(--orbit-text-muted)" }}>
             API & Service Quality
           </p>
-
           <SectionCard title="API & Observability" icon={MonitorSmartphone} to="/noc/infrastructure" health={apiGroup?.health ?? "unknown"}>
-            {infraLoading ? (
-              <><Skeleton /><Skeleton /></>
-            ) : apiGroup ? (
+            {infraLoading ? <><Skeleton /><Skeleton /></> : apiGroup ? (
               apiGroup.metrics.map((m) => (
                 <MetricRow key={m.metricName} label={m.metricName.replace(/\//g, " / ")} value={fmtMetric(m.value, m.unit)} />
               ))
-            ) : (
-              <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No data</p>
-            )}
+            ) : <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No data</p>}
           </SectionCard>
-
-          <SectionCard
-            title="Active Incidents"
-            icon={Siren}
-            to="/noc/incidents"
-            health={criticalIncidents > 0 ? "critical" : activeIncidents > 0 ? "warning" : "healthy"}
-          >
-            {incLoading ? (
-              <><Skeleton /><Skeleton /></>
-            ) : incidents ? (
+          <SectionCard title="Azure Monitor Alerts" icon={Siren} to="/noc/incidents" health={criticalIncidents > 0 ? "critical" : activeIncidents > 0 ? "warning" : "healthy"}>
+            {incLoading ? <><Skeleton /><Skeleton /></> : incidents ? (
               <>
                 <MetricRow label="Active" value={String(incidents.metrics.activeCount)} color={incidents.metrics.activeCount > 0 ? "#F59E0B" : "#10B981"} />
                 <MetricRow label="Critical" value={String(incidents.metrics.criticalCount)} color={incidents.metrics.criticalCount > 0 ? "#EF4444" : "#10B981"} />
                 <MetricRow label="MTTA" value={incidents.metrics.mttaMinutes !== null ? `${Math.round(incidents.metrics.mttaMinutes)}m` : "—"} />
                 <MetricRow label="MTTR" value={incidents.metrics.mttrMinutes !== null ? `${Math.round(incidents.metrics.mttrMinutes)}m` : "—"} />
               </>
-            ) : (
-              <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No data</p>
-            )}
+            ) : <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No data</p>}
           </SectionCard>
-
-          <SectionCard
-            title="UX & Error Rate"
-            icon={Gauge}
-            to="/noc/ux"
-            health={uxScore === null ? "unknown" : uxScore >= 90 ? "healthy" : uxScore >= 70 ? "warning" : "critical"}
-          >
-            {uxLoading ? (
-              <><Skeleton /><Skeleton /></>
-            ) : ux ? (
+          <SectionCard title="UX & Error Rate" icon={Gauge} to="/noc/ux" health={uxScore === null ? "unknown" : uxScore >= 90 ? "healthy" : uxScore >= 70 ? "warning" : "critical"}>
+            {uxLoading ? <><Skeleton /><Skeleton /></> : ux ? (
               <>
                 <MetricRow label="UX Score" value={ux.overallScore !== null ? `${ux.overallScore}/100` : "—"} color={scoreColor(ux.overallScore)} />
                 <MetricRow label="Error types (1h)" value={String(ux.errorDistribution.length)} />
                 <MetricRow label="Synthetics passing" value={`${ux.syntheticResults.filter((s) => s.success).length}/${ux.syntheticResults.length}`} />
                 <MetricRow label="Failing journeys" value={String(ux.failingJourneys.length)} color={ux.failingJourneys.length > 0 ? "#F59E0B" : "#10B981"} />
               </>
-            ) : (
-              <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No telemetry</p>
-            )}
+            ) : <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No telemetry</p>}
           </SectionCard>
         </div>
-      </div>
 
-      {/* ── BOTTOM ROW: Quick links ── */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-widest px-1 mb-2" style={{ color: "var(--orbit-text-muted)" }}>
-          Quick Links
-        </p>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <BottomTile icon={Server} label="Infrastructure Health" value="NOC" color="#7C3AED" to="/noc/infrastructure" />
-          <BottomTile icon={Siren} label="Incident Overview" value="NOC" color="#F59E0B" to="/noc/incidents" />
-          <BottomTile icon={FlaskConical} label="Synthetics & UX" value="NOC" color="#10B981" to="/noc/ux" />
-          <BottomTile icon={Rocket} label="AI Platform" value="NOC" color="#06B6D4" to="/noc/ai" />
+        {/* COL 3 — Platform Health */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--orbit-text-muted)" }}>
+              Platform Health
+            </p>
+            <button
+              onClick={() => void phRefetch()}
+              disabled={phFetching}
+              className="flex items-center gap-1 text-xs disabled:opacity-40"
+              style={{ color: "var(--orbit-text-muted)" }}
+            >
+              <RefreshCw className={`h-3 w-3 ${phFetching ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
+          </div>
+
+          {/* Overall platform status banner */}
+          <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: phCfg.bg, border: `1px solid ${phCfg.color}33` }}>
+            <phCfg.icon className="h-5 w-5 flex-shrink-0" style={{ color: phCfg.color }} />
+            <div>
+              <p className="text-sm font-semibold" style={{ color: phCfg.color }}>Platform {phCfg.label}</p>
+              {ph && <p className="text-xs mt-0.5" style={{ color: "var(--orbit-text-muted)" }}>
+                {new Date(ph.checkedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              </p>}
+            </div>
+          </div>
+
+          {/* Core services */}
+          <div className="rounded-xl overflow-hidden" style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}>
+            <div className="px-4 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid var(--orbit-border)", background: "var(--orbit-bg-page)" }}>
+              <Activity className="h-3.5 w-3.5" style={{ color: "var(--orbit-text-muted)" }} />
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--orbit-text-muted)" }}>Core Services</span>
+            </div>
+            <div className="px-3 pb-1">
+              {phLoading ? (
+                <div className="py-4 flex justify-center"><Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--orbit-text-muted)" }} /></div>
+              ) : ph ? (
+                <>
+                  <PhCheckRow check={ph.orbit} icon={Server} />
+                  <PhCheckRow check={ph.database} icon={Database} />
+                </>
+              ) : (
+                <p className="text-xs py-3 text-center" style={{ color: "var(--orbit-text-muted)" }}>Unavailable</p>
+              )}
+            </div>
+          </div>
+
+          {/* Registered applications */}
+          <div className="rounded-xl overflow-hidden" style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}>
+            <div className="px-4 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid var(--orbit-border)", background: "var(--orbit-bg-page)" }}>
+              <Globe className="h-3.5 w-3.5" style={{ color: "var(--orbit-text-muted)" }} />
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--orbit-text-muted)" }}>
+                Applications
+                {ph && <span className="ml-1.5 font-normal">({ph.applications.length})</span>}
+              </span>
+            </div>
+            <div className="px-3 pb-1">
+              {phLoading ? (
+                <div className="py-4 flex justify-center"><Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--orbit-text-muted)" }} /></div>
+              ) : ph && ph.applications.length > 0 ? (
+                ph.applications.map((app) => (
+                  <PhCheckRow key={app.name} check={app} icon={Globe} />
+                ))
+              ) : (
+                <p className="text-xs py-3 text-center" style={{ color: "var(--orbit-text-muted)" }}>
+                  {phLoading ? "" : "No health check URLs configured"}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
+
       </div>
     </div>
   );
