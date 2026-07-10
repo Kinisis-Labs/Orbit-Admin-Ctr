@@ -27,6 +27,7 @@ export interface InfrastructureSnapshot {
   database: ResourceGroup[];
   network: ResourceGroup[];
   vpn: ResourceGroup[];
+  loadBalancers: ResourceGroup[];
   api: ResourceGroup[];
   capturedAt: string;
 }

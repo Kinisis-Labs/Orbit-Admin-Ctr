@@ -33,6 +33,7 @@ export interface InfrastructureSnapshot {
   database: ResourceGroup[];
   network: ResourceGroup[];
   vpn: ResourceGroup[];
+  loadBalancers: ResourceGroup[];
   api: ResourceGroup[];
   capturedAt: string;
 }
@@ -283,6 +284,7 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
     database: [],
     network: [],
     vpn: [],
+    loadBalancers: [],
     api: [],
     capturedAt,
   };
@@ -398,6 +400,45 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
 
   const vpn = await Promise.all(vnetPromises);
 
+  // ── Load Balancers ────────────────────────────────────────────────────────────
+  const lbConfigs = [
+    {
+      name: env("AZURE_LB_NAME_SHARED") ?? "capp-svc-lb",
+      rg: env("AZURE_RESOURCE_GROUP_LB_SHARED") ?? "rg-sharedplatform-prod-cae-infra",
+      subId: env("AZURE_SUB_LB_SHARED") ?? vnetSubId,
+      displayName: "lb-vnet-sharedplatform-prod",
+    },
+    {
+      name: env("AZURE_LB_NAME_GRAILBABE") ?? "capp-svc-lb",
+      rg: env("AZURE_RESOURCE_GROUP_LB_GRAILBABE") ?? "rg-grailbabe-prod-v2-infra",
+      subId: env("AZURE_SUB_LB_GRAILBABE") ?? vnetSubId,
+      displayName: "lb-vnet-grailbabe-prod",
+    },
+  ];
+
+  const lbPromises = lbConfigs.map(async ({ name, rg, subId, displayName }): Promise<ResourceGroup> => {
+    const lbResourceId = `/subscriptions/${subId}/resourceGroups/${rg}/providers/Microsoft.Network/loadBalancers/${name}`;
+    const [byteCount, packetCount, synCount, snatUsed, snatAllocated, healthProbeStatus] = await Promise.all([
+      queryMetric(token, subId, lbResourceId, "ByteCount", "PT6H", "Total"),
+      queryMetric(token, subId, lbResourceId, "PacketCount", "PT6H", "Total"),
+      queryMetric(token, subId, lbResourceId, "SYNCount", "PT6H", "Total"),
+      queryMetric(token, subId, lbResourceId, "UsedSNATPorts", "PT6H", "Average"),
+      queryMetric(token, subId, lbResourceId, "AllocatedSNATPorts", "PT6H", "Average"),
+      queryMetric(token, subId, lbResourceId, "VipAvailability", "PT6H", "Average"),
+    ]);
+    const metrics: MetricResult[] = [
+      makeMetric(lbResourceId, displayName, "LoadBalancer", "ByteCount", byteCount, "bytes", capturedAt),
+      makeMetric(lbResourceId, displayName, "LoadBalancer", "PacketCount", packetCount, "count", capturedAt),
+      makeMetric(lbResourceId, displayName, "LoadBalancer", "SYNCount", synCount, "count", capturedAt),
+      makeMetric(lbResourceId, displayName, "LoadBalancer", "UsedSNATPorts", snatUsed, "count", capturedAt),
+      makeMetric(lbResourceId, displayName, "LoadBalancer", "AllocatedSNATPorts", snatAllocated, "count", capturedAt),
+      makeMetric(lbResourceId, displayName, "LoadBalancer", "VipAvailability", healthProbeStatus, "%", capturedAt),
+    ];
+    return { name: displayName, resourceType: "LoadBalancer", health: deriveHealth(metrics), metrics };
+  });
+
+  const loadBalancers = await Promise.all(lbPromises);
+
   // ── API (Application Insights — one entry per configured app) ───────────────
   const apiPromises: Promise<ResourceGroup>[] = [];
 
@@ -414,11 +455,12 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
   const api: ResourceGroup[] = await Promise.all(apiPromises);
 
   return {
-    overallHealth: overallHealth([containerApps, database, network, vpn, api]),
+    overallHealth: overallHealth([containerApps, database, network, vpn, loadBalancers, api]),
     containerApps,
     database,
     network,
     vpn,
+    loadBalancers,
     api,
     capturedAt,
   };

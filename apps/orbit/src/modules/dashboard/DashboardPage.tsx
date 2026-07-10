@@ -231,6 +231,7 @@ export function DashboardPage() {
   const dbGroup = infra?.database[0];
   const netGroup = infra?.network[0];
   const vpnGroups = infra?.vpn ?? [];
+  const lbGroups = infra?.loadBalancers ?? [];
   const apiGroup = infra?.api[0];
 
   const phOverall = ph?.overall ?? "unknown";
@@ -334,6 +335,15 @@ export function DashboardPage() {
             <SectionCard key={vg.name} title={vg.name} icon={Network} to="/noc/infrastructure" health={vg.health}>
               {infraLoading ? <><Skeleton /><Skeleton /></> : (
                 vg.metrics.map((m) => (
+                  <MetricRow key={m.metricName} label={m.metricName} value={fmtMetric(m.value, m.unit)} />
+                ))
+              )}
+            </SectionCard>
+          ))}
+          {lbGroups.map((lb) => (
+            <SectionCard key={lb.name} title={lb.name} icon={Network} to="/noc/infrastructure" health={lb.health}>
+              {infraLoading ? <><Skeleton /><Skeleton /></> : (
+                lb.metrics.map((m) => (
                   <MetricRow key={m.metricName} label={m.metricName} value={fmtMetric(m.value, m.unit)} />
                 ))
               )}
