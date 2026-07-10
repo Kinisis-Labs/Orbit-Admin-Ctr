@@ -39,13 +39,6 @@ const SECTION_COLORS: Record<string, string> = {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/", icon: LayoutDashboard },
-  { label: "Applications", to: "/admin/applications", icon: AppWindow, section: "Administration", adminOnly: true },
-  { label: "Users", to: "/admin/users", icon: Users, section: "Administration", adminOnly: true },
-  { label: "Roles", to: "/admin/roles", icon: Shield, section: "Administration", adminOnly: true },
-  { label: "Permissions", to: "/admin/permissions", icon: Key, section: "Administration", adminOnly: true },
-  { label: "Audit", to: "/admin/audit", icon: ScrollText, section: "Administration", adminOnly: true },
-  { label: "Notifications", to: "/admin/notifications", icon: Bell, section: "Administration", adminOnly: true },
-  { label: "Configuration", to: "/admin/configuration", icon: Settings, section: "Administration", adminOnly: true },
   { label: "Platform Health", to: "/platform/health", icon: Activity, section: "Platform", adminOnly: true },
   { label: "Infrastructure", to: "/noc/infrastructure", icon: Server, section: "Network Operations", adminOnly: true },
   { label: "Applications", to: "/noc/applications", icon: LayoutGrid, section: "Network Operations", adminOnly: true },
@@ -54,6 +47,13 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Incidents", to: "/noc/incidents", icon: Siren, section: "Network Operations", adminOnly: true },
   { label: "UX Quality", to: "/noc/ux", icon: MonitorSmartphone, section: "Network Operations", adminOnly: true },
   { label: "API Dependencies", to: "/noc/api-dependencies", icon: Plug, section: "Network Operations", adminOnly: true },
+  { label: "Applications", to: "/admin/applications", icon: AppWindow, section: "Administration", adminOnly: true },
+  { label: "Users", to: "/admin/users", icon: Users, section: "Administration", adminOnly: true },
+  { label: "Roles", to: "/admin/roles", icon: Shield, section: "Administration", adminOnly: true },
+  { label: "Permissions", to: "/admin/permissions", icon: Key, section: "Administration", adminOnly: true },
+  { label: "Audit", to: "/admin/audit", icon: ScrollText, section: "Administration", adminOnly: true },
+  { label: "Notifications", to: "/admin/notifications", icon: Bell, section: "Administration", adminOnly: true },
+  { label: "Configuration", to: "/admin/configuration", icon: Settings, section: "Administration", adminOnly: true },
 ];
 
 export function Sidebar() {
