@@ -220,23 +220,28 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
     capturedAt,
   };
 
-  const subscriptionId = env("AZURE_SUBSCRIPTION_ID") ?? env("AZURE_SUBSCRIPTION_IDS")?.split(",")[0]?.trim();
-  if (!subscriptionId) return empty;
+  // AZURE_SUBSCRIPTION_IDS is a comma-separated list: first = Orbit sub, second = Shared Platform sub.
+  // Individual overrides (AZURE_SUB_ORBIT, AZURE_SUB_SHARED) take precedence when set.
+  const subIds = (env("AZURE_SUBSCRIPTION_IDS") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const orbitSubId = env("AZURE_SUB_ORBIT") ?? subIds[0];
+  const sharedSubId = env("AZURE_SUB_SHARED") ?? subIds[1] ?? subIds[0];
+
+  if (!orbitSubId) return empty;
 
   const token = await getAccessToken();
   if (!token) return empty;
 
-  // ── Container Apps ──────────────────────────────────────────────────────────
+  // ── Container Apps (Orbit subscription) ─────────────────────────────────────
   const caResourceGroup = env("AZURE_RESOURCE_GROUP_ORBIT") ?? "rg-kinisislabs-orbit-prod-eus2";
   const caName = env("AZURE_CONTAINER_APP_NAME") ?? "ca-orbit-prod-v2";
-  const caResourceId = `/subscriptions/${subscriptionId}/resourceGroups/${caResourceGroup}/providers/Microsoft.App/containerApps/${caName}`;
+  const caResourceId = `/subscriptions/${orbitSubId}/resourceGroups/${caResourceGroup}/providers/Microsoft.App/containerApps/${caName}`;
 
   const [cpuUsage, memUsage, reqCount, restartCount, replicaCount] = await Promise.all([
-    queryMetric(token, subscriptionId, caResourceId, "CpuPercentage"),
-    queryMetric(token, subscriptionId, caResourceId, "MemoryPercentage"),
-    queryMetric(token, subscriptionId, caResourceId, "Requests", "PT1H", "Total"),
-    queryMetric(token, subscriptionId, caResourceId, "RestartCount", "PT1H", "Total"),
-    queryMetric(token, subscriptionId, caResourceId, "Replicas"),
+    queryMetric(token, orbitSubId, caResourceId, "CpuPercentage"),
+    queryMetric(token, orbitSubId, caResourceId, "MemoryPercentage"),
+    queryMetric(token, orbitSubId, caResourceId, "Requests", "PT1H", "Total"),
+    queryMetric(token, orbitSubId, caResourceId, "RestartCount", "PT1H", "Total"),
+    queryMetric(token, orbitSubId, caResourceId, "Replicas"),
   ]);
 
   const caMetrics: MetricResult[] = [
@@ -251,18 +256,18 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
     { name: caName, resourceType: "ContainerApp", health: deriveHealth(caMetrics), metrics: caMetrics },
   ];
 
-  // ── PostgreSQL ──────────────────────────────────────────────────────────────
+  // ── PostgreSQL (Shared Platform subscription) ────────────────────────────────
   const pgResourceGroup = env("AZURE_RESOURCE_GROUP_SHARED") ?? "rg-kinisislabs-platform-shared-prod-eus2";
   const pgName = env("AZURE_POSTGRES_NAME") ?? "pg-orbit-prod";
-  const pgResourceId = `/subscriptions/${subscriptionId}/resourceGroups/${pgResourceGroup}/providers/Microsoft.DBforPostgreSQL/flexibleServers/${pgName}`;
+  const pgResourceId = `/subscriptions/${sharedSubId}/resourceGroups/${pgResourceGroup}/providers/Microsoft.DBforPostgreSQL/flexibleServers/${pgName}`;
 
   const [pgAvail, pgConns, pgStorage, pgCpu, pgDeadlocks, pgQueryTime] = await Promise.all([
-    queryMetric(token, subscriptionId, pgResourceId, "availability_percent"),
-    queryMetric(token, subscriptionId, pgResourceId, "active_connections"),
-    queryMetric(token, subscriptionId, pgResourceId, "storage_percent"),
-    queryMetric(token, subscriptionId, pgResourceId, "cpu_percent"),
-    queryMetric(token, subscriptionId, pgResourceId, "deadlocks", "PT1H", "Total"),
-    queryMetric(token, subscriptionId, pgResourceId, "read_iops"),
+    queryMetric(token, sharedSubId, pgResourceId, "availability_percent"),
+    queryMetric(token, sharedSubId, pgResourceId, "active_connections"),
+    queryMetric(token, sharedSubId, pgResourceId, "storage_percent"),
+    queryMetric(token, sharedSubId, pgResourceId, "cpu_percent"),
+    queryMetric(token, sharedSubId, pgResourceId, "deadlocks", "PT1H", "Total"),
+    queryMetric(token, sharedSubId, pgResourceId, "read_iops"),
   ]);
 
   const pgMetrics: MetricResult[] = [
@@ -281,13 +286,13 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
   // ── Network (Storage as proxy for throughput) ────────────────────────────────
   const stResourceGroup = env("AZURE_RESOURCE_GROUP_SHARED") ?? "rg-kinisislabs-platform-shared-prod-eus2";
   const stName = env("AZURE_STORAGE_NAME") ?? "stsharedprod";
-  const stResourceId = `/subscriptions/${subscriptionId}/resourceGroups/${stResourceGroup}/providers/Microsoft.Storage/storageAccounts/${stName}`;
+  const stResourceId = `/subscriptions/${sharedSubId}/resourceGroups/${stResourceGroup}/providers/Microsoft.Storage/storageAccounts/${stName}`;
 
   const [stIngress, stEgress, stTransactions, stLatency] = await Promise.all([
-    queryMetric(token, subscriptionId, stResourceId, "Ingress", "PT1H", "Total"),
-    queryMetric(token, subscriptionId, stResourceId, "Egress", "PT1H", "Total"),
-    queryMetric(token, subscriptionId, stResourceId, "Transactions", "PT1H", "Total"),
-    queryMetric(token, subscriptionId, stResourceId, "SuccessE2ELatency"),
+    queryMetric(token, sharedSubId, stResourceId, "Ingress", "PT1H", "Total"),
+    queryMetric(token, sharedSubId, stResourceId, "Egress", "PT1H", "Total"),
+    queryMetric(token, sharedSubId, stResourceId, "Transactions", "PT1H", "Total"),
+    queryMetric(token, sharedSubId, stResourceId, "SuccessE2ELatency"),
   ]);
 
   const networkMetrics: MetricResult[] = [
