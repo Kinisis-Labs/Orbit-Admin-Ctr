@@ -9,8 +9,8 @@
   /* Primary accent — violet/indigo gradient per style guide */
   --orbit-primary:       #7C3AED;
   --orbit-primary-hover: #6D28D9;
-  --orbit-accent:        #4361EE;
-  --orbit-accent-2:      #4CC9F0;
+  --orbit-accent:        #4361F1;
+  --orbit-accent-2:      #06B6D4;
 
   /* Backgrounds */
   --orbit-bg-page:       #0B1120;
@@ -32,7 +32,7 @@
   --orbit-success: #10B981;
   --orbit-warning: #F59E0B;
   --orbit-danger:  #EF4444;
-  --orbit-info:    #4361EE;
+  --orbit-info:    #4361F1;
 
   /* Chart palette */
   --chart-1: #4361EE;

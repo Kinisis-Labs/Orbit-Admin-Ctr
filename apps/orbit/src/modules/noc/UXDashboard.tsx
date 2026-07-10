@@ -35,17 +35,17 @@ function fmtNum(v: number | null): string {
 }
 
 function latencyColor(ms: number | null): string {
-  if (ms === null) return "#6b7280";
-  if (ms > 3000) return "#ef4444";
-  if (ms > 1000) return "#f59e0b";
-  return "#22c55e";
+  if (ms === null) return "#6B7280";
+  if (ms > 3000) return "#EF4444";
+  if (ms > 1000) return "#F59E0B";
+  return "#10B981";
 }
 
 function scoreColor(score: number | null): string {
-  if (score === null) return "#6b7280";
-  if (score >= 90) return "#22c55e";
-  if (score >= 70) return "#f59e0b";
-  return "#ef4444";
+  if (score === null) return "#6B7280";
+  if (score >= 90) return "#10B981";
+  if (score >= 70) return "#F59E0B";
+  return "#EF4444";
 }
 
 function scoreLabel(score: number | null): string {
@@ -178,14 +178,14 @@ export function UXDashboard() {
                   : null,
               )}
               sub="across all regions"
-              color="#818cf8"
+              color="#4361F1"
               icon={Globe}
             />
             <StatCard
               label="Errors (1h)"
               value={fmtNum(data.errorDistribution.reduce((a, e) => a + e.count, 0))}
               sub={`${data.errorDistribution.length} distinct types`}
-              color={data.errorDistribution.reduce((a, e) => a + e.count, 0) > 100 ? "#ef4444" : "#22c55e"}
+              color={data.errorDistribution.reduce((a, e) => a + e.count, 0) > 100 ? "#EF4444" : "#10B981"}
               icon={Bug}
             />
             <StatCard
@@ -198,8 +198,8 @@ export function UXDashboard() {
               sub="passing checks"
               color={
                 data.syntheticResults.length > 0 && data.syntheticResults.some((s) => !s.success)
-                  ? "#ef4444"
-                  : "#22c55e"
+                  ? "#EF4444"
+                  : "#10B981"
               }
               icon={FlaskConical}
             />
@@ -263,7 +263,7 @@ export function UXDashboard() {
                       <div className="flex gap-4 text-xs" style={{ color: "var(--orbit-text-muted)" }}>
                         <span>p95 {fmtMs(r.p95Ms)}</span>
                         <span>{fmtNum(r.requestCount)} reqs</span>
-                        <span style={{ color: (r.failureRate ?? 0) > 5 ? "#ef4444" : (r.failureRate ?? 0) > 1 ? "#f59e0b" : "#22c55e" }}>
+                        <span style={{ color: (r.failureRate ?? 0) > 5 ? "#EF4444" : (r.failureRate ?? 0) > 1 ? "#F59E0B" : "#10B981" }}>
                           {r.failureRate !== null ? `${r.failureRate.toFixed(1)}% fail` : "—"}
                         </span>
                       </div>
@@ -286,7 +286,7 @@ export function UXDashboard() {
                           {e.type.split(".").pop() ?? e.type}
                         </span>
                         <div className="flex items-center gap-3 text-xs tabular-nums">
-                          <span style={{ color: e.count > 50 ? "#ef4444" : "#f59e0b" }}>{fmtNum(e.count)} errors</span>
+                          <span style={{ color: e.count > 50 ? "#EF4444" : "#F59E0B" }}>{fmtNum(e.count)} errors</span>
                           {e.affectedUsers !== null && (
                             <span style={{ color: "var(--orbit-text-muted)" }}>{fmtNum(e.affectedUsers)} users</span>
                           )}
@@ -311,8 +311,8 @@ export function UXDashboard() {
                     {data.syntheticResults.map((s, i) => (
                       <div key={i} className="flex items-center gap-3 py-1.5 px-1" style={{ borderBottom: "1px solid var(--orbit-border)" }}>
                         {s.success
-                          ? <CheckCircle2 className="h-4 w-4 flex-shrink-0" style={{ color: "#22c55e" }} />
-                          : <XCircle className="h-4 w-4 flex-shrink-0" style={{ color: "#ef4444" }} />}
+                          ? <CheckCircle2 className="h-4 w-4 flex-shrink-0" style={{ color: "#10B981" }} />
+                          : <XCircle className="h-4 w-4 flex-shrink-0" style={{ color: "#EF4444" }} />}
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium truncate" style={{ color: "var(--orbit-text-secondary)" }}>{s.name}</p>
                           <p className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>{s.location}</p>
@@ -331,7 +331,7 @@ export function UXDashboard() {
                   <div className="space-y-1">
                     {data.failingJourneys.map((j, i) => (
                       <div key={i} className="flex items-center gap-3 py-1.5 px-1" style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-                        <AlertTriangle className="h-4 w-4 flex-shrink-0" style={{ color: "#f59e0b" }} />
+                        <AlertTriangle className="h-4 w-4 flex-shrink-0" style={{ color: "#F59E0B" }} />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium truncate" style={{ color: "var(--orbit-text-secondary)" }}>{j.journey}</p>
                           {j.topError && (
@@ -339,7 +339,7 @@ export function UXDashboard() {
                           )}
                         </div>
                         <div className="text-right text-xs tabular-nums">
-                          <p style={{ color: "#ef4444" }}>{fmtNum(j.failureCount)} fails</p>
+                          <p style={{ color: "#EF4444" }}>{fmtNum(j.failureCount)} fails</p>
                           {j.affectedUsers !== null && (
                             <p style={{ color: "var(--orbit-text-muted)" }}>{fmtNum(j.affectedUsers)} users</p>
                           )}

@@ -26,21 +26,21 @@ import { useUXSnapshot } from "../../services/noc";
 type Health = "healthy" | "warning" | "critical" | "unknown";
 
 const H_COLOR: Record<Health, string> = {
-  healthy: "#22c55e",
-  warning: "#f59e0b",
-  critical: "#ef4444",
-  unknown: "#6b7280",
+  healthy: "#10B981",
+  warning: "#F59E0B",
+  critical: "#EF4444",
+  unknown: "#6B7280",
 };
 
 const H_BG: Record<Health, string> = {
-  healthy: "rgba(34,197,94,0.08)",
+  healthy: "rgba(16,185,129,0.08)",
   warning: "rgba(245,158,11,0.08)",
   critical: "rgba(239,68,68,0.08)",
   unknown: "rgba(107,114,128,0.08)",
 };
 
 const H_BORDER: Record<Health, string> = {
-  healthy: "rgba(34,197,94,0.25)",
+  healthy: "rgba(16,185,129,0.25)",
   warning: "rgba(245,158,11,0.25)",
   critical: "rgba(239,68,68,0.25)",
   unknown: "rgba(107,114,128,0.25)",
@@ -55,10 +55,10 @@ function HealthIcon({ status, size = "h-5 w-5" }: { status: Health; size?: strin
 }
 
 function scoreColor(n: number | null): string {
-  if (n === null) return "#6b7280";
-  if (n >= 90) return "#22c55e";
-  if (n >= 70) return "#f59e0b";
-  return "#ef4444";
+  if (n === null) return "#6B7280";
+  if (n >= 90) return "#10B981";
+  if (n >= 70) return "#F59E0B";
+  return "#EF4444";
 }
 
 // ── Executive KPI tile (top row) ──────────────────────────────────────────────
@@ -264,7 +264,7 @@ export function DashboardPage() {
           label="Active Incidents"
           value={incLoading ? "…" : activeIncidents}
           sub={incLoading ? "Loading…" : `${criticalIncidents} critical`}
-          color={criticalIncidents > 0 ? "#ef4444" : activeIncidents > 0 ? "#f59e0b" : "#22c55e"}
+          color={criticalIncidents > 0 ? "#EF4444" : activeIncidents > 0 ? "#F59E0B" : "#10B981"}
           to="/noc/incidents"
         />
         <ExecKpi
@@ -280,7 +280,7 @@ export function DashboardPage() {
           label="Security Posture"
           value="—"
           sub="View security NOC"
-          color="#818cf8"
+          color="#4361F1"
           to="/noc/security"
         />
       </div>
@@ -358,8 +358,8 @@ export function DashboardPage() {
               <><Skeleton /><Skeleton /></>
             ) : incidents ? (
               <>
-                <MetricRow label="Active" value={String(incidents.metrics.activeCount)} color={incidents.metrics.activeCount > 0 ? "#f59e0b" : "#22c55e"} />
-                <MetricRow label="Critical" value={String(incidents.metrics.criticalCount)} color={incidents.metrics.criticalCount > 0 ? "#ef4444" : "#22c55e"} />
+                <MetricRow label="Active" value={String(incidents.metrics.activeCount)} color={incidents.metrics.activeCount > 0 ? "#F59E0B" : "#10B981"} />
+                <MetricRow label="Critical" value={String(incidents.metrics.criticalCount)} color={incidents.metrics.criticalCount > 0 ? "#EF4444" : "#10B981"} />
                 <MetricRow label="MTTA" value={incidents.metrics.mttaMinutes !== null ? `${Math.round(incidents.metrics.mttaMinutes)}m` : "—"} />
                 <MetricRow label="MTTR" value={incidents.metrics.mttrMinutes !== null ? `${Math.round(incidents.metrics.mttrMinutes)}m` : "—"} />
               </>
@@ -381,7 +381,7 @@ export function DashboardPage() {
                 <MetricRow label="UX Score" value={ux.overallScore !== null ? `${ux.overallScore}/100` : "—"} color={scoreColor(ux.overallScore)} />
                 <MetricRow label="Error types (1h)" value={String(ux.errorDistribution.length)} />
                 <MetricRow label="Synthetics passing" value={`${ux.syntheticResults.filter((s) => s.success).length}/${ux.syntheticResults.length}`} />
-                <MetricRow label="Failing journeys" value={String(ux.failingJourneys.length)} color={ux.failingJourneys.length > 0 ? "#f59e0b" : "#22c55e"} />
+                <MetricRow label="Failing journeys" value={String(ux.failingJourneys.length)} color={ux.failingJourneys.length > 0 ? "#F59E0B" : "#10B981"} />
               </>
             ) : (
               <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No telemetry</p>
@@ -396,10 +396,10 @@ export function DashboardPage() {
           Quick Links
         </p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <BottomTile icon={Server} label="Infrastructure Health" value="NOC" color="#818cf8" to="/noc/infrastructure" />
-          <BottomTile icon={Siren} label="Incident Overview" value="NOC" color="#f59e0b" to="/noc/incidents" />
-          <BottomTile icon={FlaskConical} label="Synthetics & UX" value="NOC" color="#22c55e" to="/noc/ux" />
-          <BottomTile icon={Rocket} label="AI Platform" value="NOC" color="#38bdf8" to="/noc/ai" />
+          <BottomTile icon={Server} label="Infrastructure Health" value="NOC" color="#7C3AED" to="/noc/infrastructure" />
+          <BottomTile icon={Siren} label="Incident Overview" value="NOC" color="#F59E0B" to="/noc/incidents" />
+          <BottomTile icon={FlaskConical} label="Synthetics & UX" value="NOC" color="#10B981" to="/noc/ux" />
+          <BottomTile icon={Rocket} label="AI Platform" value="NOC" color="#06B6D4" to="/noc/ai" />
         </div>
       </div>
     </div>
