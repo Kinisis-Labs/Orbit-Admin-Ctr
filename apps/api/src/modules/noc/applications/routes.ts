@@ -91,7 +91,7 @@ function deriveStatus(telemetry: AppTelemetry): "healthy" | "degraded" | "unheal
 }
 
 function getAppInsightsConnStr(): string | undefined {
-  return process.env.APPINSIGHTS_CONNECTION_STRING;
+  return process.env.APPLICATIONINSIGHTS_CONNECTION_STRING ?? process.env.APPINSIGHTS_CONNECTION_STRING;
 }
 
 // ── Routes ────────────────────────────────────────────────────────────────────
@@ -113,10 +113,11 @@ router.get("/noc/applications", requireAuth, requireAdmin, async (req, res) => {
       .from(applicationsTable)
       .where(eq(applicationsTable.enabled, true));
 
-    const connStr = getAppInsightsConnStr();
+    const globalConnStr = getAppInsightsConnStr();
 
     const results = await Promise.all(
       apps.map(async (app) => {
+        const connStr = app.appInsightsConnectionString ?? globalConnStr;
         const telemetry = connStr ? await getAppInsightsTelemetry(connStr) : {
           availability: null, avgResponseMs: null, failedRequests: null,
           totalRequests: null, exceptions: null, activeSessions: null, authFailures: null,

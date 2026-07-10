@@ -15,6 +15,7 @@ export const applicationsTable = pgTable("applications", {
   logoUrl: text("logo_url"),
   url: text("url"),
   healthCheckUrl: text("health_check_url"),
+  appInsightsConnectionString: text("app_insights_connection_string"),
   category: text("category").notNull().default("application"),
   tags: jsonb("tags").$type<string[]>().notNull().default([]),
   enabled: boolean("enabled").notNull().default(true),

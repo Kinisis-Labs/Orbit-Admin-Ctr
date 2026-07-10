@@ -134,7 +134,7 @@ async function queryMetric(
 // ── App Insights query ────────────────────────────────────────────────────────
 
 async function queryAppInsights(metricId: string): Promise<number | null> {
-  const connStr = env("APPINSIGHTS_CONNECTION_STRING");
+  const connStr = env("APPLICATIONINSIGHTS_CONNECTION_STRING") ?? env("APPINSIGHTS_CONNECTION_STRING");
   if (!connStr) return null;
 
   try {
