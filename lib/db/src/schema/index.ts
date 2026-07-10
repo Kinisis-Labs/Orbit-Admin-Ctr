@@ -22,3 +22,4 @@ export * from "./auditLog";
 export * from "./notifications";
 export * from "./globalConfig";
 export * from "./nocSnapshots";
+export * from "./securityEvents";

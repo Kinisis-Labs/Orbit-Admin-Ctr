@@ -14,6 +14,7 @@ import { HealthPage } from "./modules/platform/HealthPage";
 import { InfrastructureDashboard } from "./modules/noc/InfrastructureDashboard";
 import { ApplicationDashboard } from "./modules/noc/ApplicationDashboard";
 import { ApplicationDetailPage } from "./modules/noc/ApplicationDetailPage";
+import { SecurityDashboard } from "./modules/noc/SecurityDashboard";
 
 export const router = createBrowserRouter([
   {
@@ -88,6 +89,10 @@ export const router = createBrowserRouter([
           {
             path: "applications/:slug",
             element: <ApplicationDetailPage />,
+          },
+          {
+            path: "security",
+            element: <SecurityDashboard />,
           },
         ],
       },

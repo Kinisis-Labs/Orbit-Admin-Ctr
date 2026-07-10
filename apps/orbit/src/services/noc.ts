@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -109,5 +109,75 @@ export function useApplicationDetail(slug: string) {
     refetchInterval: 60_000,
     retry: 1,
     enabled: !!slug,
+  });
+}
+
+// ── Security NOC ──────────────────────────────────────────────────────────────
+
+export interface SignInSummary {
+  totalSignIns24h: number;
+  failedSignIns24h: number;
+  mfaFailureCount: number;
+}
+
+export interface RecentSignIn {
+  id: string;
+  createdAt: string;
+  user: string;
+  upn: string;
+  ip: string;
+  success: boolean;
+  failureReason: string | null;
+}
+
+export interface SecurityEvent {
+  id: string;
+  source: string;
+  type: string;
+  severity: string;
+  user: string | null;
+  ip: string | null;
+  detail: string;
+  acknowledged: boolean;
+  createdAt: string;
+}
+
+export interface SecuritySnapshot {
+  graphConfigured: boolean;
+  signInSummary: SignInSummary;
+  recentSignIns: RecentSignIn[];
+  securityEvents: SecurityEvent[];
+  auditEvents: SecurityEvent[];
+  capturedAt: string;
+}
+
+async function fetchSecurity(): Promise<SecuritySnapshot> {
+  const res = await fetch("/api/noc/security");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { message?: string }).message ?? `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<SecuritySnapshot>;
+}
+
+export function useSecurityEvents(refetchIntervalMs = 60_000) {
+  return useQuery<SecuritySnapshot>({
+    queryKey: ["noc-security"],
+    queryFn: fetchSecurity,
+    refetchInterval: refetchIntervalMs,
+    retry: 1,
+  });
+}
+
+export function useAcknowledgeSecurityEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/noc/security/${encodeURIComponent(id)}/acknowledge`, {
+        method: "PATCH",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["noc-security"] }),
   });
 }

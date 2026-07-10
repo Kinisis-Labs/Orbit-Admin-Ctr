@@ -11,6 +11,7 @@ import {
   Activity,
   Server,
   LayoutGrid,
+  ShieldAlert,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -37,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Platform Health", to: "/platform/health", icon: Activity, section: "Platform", adminOnly: true },
   { label: "Infrastructure", to: "/noc/infrastructure", icon: Server, section: "NOC", adminOnly: true },
   { label: "Applications", to: "/noc/applications", icon: LayoutGrid, section: "NOC", adminOnly: true },
+  { label: "Security", to: "/noc/security", icon: ShieldAlert, section: "NOC", adminOnly: true },
 ];
 
 export function Sidebar() {
