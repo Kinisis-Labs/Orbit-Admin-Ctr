@@ -296,7 +296,7 @@ export function DashboardPage() {
           icon={TrendingUp}
           label="Security Posture"
           value="—"
-          sub="View security NOC"
+          sub="View security posture"
           color="#4361F1"
           to="/noc/security"
         />
