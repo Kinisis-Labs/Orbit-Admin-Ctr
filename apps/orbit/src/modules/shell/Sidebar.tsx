@@ -15,6 +15,7 @@ import {
   BrainCircuit,
   Siren,
   MonitorSmartphone,
+  Plug,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -45,6 +46,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "AI Platform", to: "/noc/ai", icon: BrainCircuit, section: "NOC", adminOnly: true },
   { label: "Incidents", to: "/noc/incidents", icon: Siren, section: "NOC", adminOnly: true },
   { label: "UX Quality", to: "/noc/ux", icon: MonitorSmartphone, section: "NOC", adminOnly: true },
+  { label: "API Dependencies", to: "/noc/api-dependencies", icon: Plug, section: "NOC", adminOnly: true },
 ];
 
 export function Sidebar() {

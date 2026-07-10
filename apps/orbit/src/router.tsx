@@ -18,6 +18,7 @@ import { SecurityDashboard } from "./modules/noc/SecurityDashboard";
 import { AIDashboard } from "./modules/noc/AIDashboard";
 import { IncidentDashboard } from "./modules/noc/IncidentDashboard";
 import { UXDashboard } from "./modules/noc/UXDashboard";
+import { ApiDependenciesDashboard } from "./modules/noc/ApiDependenciesDashboard";
 
 export const router = createBrowserRouter([
   {
@@ -108,6 +109,10 @@ export const router = createBrowserRouter([
           {
             path: "ux",
             element: <UXDashboard />,
+          },
+          {
+            path: "api-dependencies",
+            element: <ApiDependenciesDashboard />,
           },
         ],
       },
