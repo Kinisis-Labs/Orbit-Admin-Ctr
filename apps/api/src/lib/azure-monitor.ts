@@ -347,15 +347,16 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
   ];
 
   // ── Network (Storage as proxy for throughput) ────────────────────────────────
-  const stResourceGroup = env("AZURE_RESOURCE_GROUP_SHARED") ?? "rg-kinisislabs-platform-shared-prod-eus2";
+  const stSubId = env("AZURE_SUB_STORAGE") ?? sharedSubId;
+  const stResourceGroup = env("AZURE_RESOURCE_GROUP_STORAGE") ?? env("AZURE_RESOURCE_GROUP_SHARED") ?? "rg-kinisislabs-platform-shared-prod-eus2";
   const stName = env("AZURE_STORAGE_NAME") ?? "stsharedprod";
-  const stResourceId = `/subscriptions/${sharedSubId}/resourceGroups/${stResourceGroup}/providers/Microsoft.Storage/storageAccounts/${stName}`;
+  const stResourceId = `/subscriptions/${stSubId}/resourceGroups/${stResourceGroup}/providers/Microsoft.Storage/storageAccounts/${stName}`;
 
   const [stIngress, stEgress, stTransactions, stLatency] = await Promise.all([
-    queryMetric(token, sharedSubId, stResourceId, "Ingress", "PT1H", "Total"),
-    queryMetric(token, sharedSubId, stResourceId, "Egress", "PT1H", "Total"),
-    queryMetric(token, sharedSubId, stResourceId, "Transactions", "PT1H", "Total"),
-    queryMetric(token, sharedSubId, stResourceId, "SuccessE2ELatency"),
+    queryMetric(token, stSubId, stResourceId, "Ingress", "PT1H", "Total"),
+    queryMetric(token, stSubId, stResourceId, "Egress", "PT1H", "Total"),
+    queryMetric(token, stSubId, stResourceId, "Transactions", "PT1H", "Total"),
+    queryMetric(token, stSubId, stResourceId, "SuccessE2ELatency"),
   ]);
 
   const networkMetrics: MetricResult[] = [
