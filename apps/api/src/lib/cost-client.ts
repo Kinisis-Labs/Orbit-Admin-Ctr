@@ -1,0 +1,278 @@
+/**
+ * Azure Cost Management client.
+ *
+ * Uses the Azure Cost Management Query API to fetch actual spend, budget
+ * utilisation, and top cost contributors for the subscription.
+ *
+ * Auth: Managed Identity (IDENTITY_ENDPOINT + IDENTITY_HEADER) or
+ *       client_credentials (AZURE_TENANT_ID + AZURE_CLIENT_ID + AZURE_CLIENT_SECRET).
+ *
+ * Required env vars:
+ *   AZURE_SUBSCRIPTION_ID  — subscription to query costs for
+ *   AZURE_BUDGET_NAME      — (optional) named budget to read utilisation from
+ */
+
+export interface CostByService {
+  serviceName: string;
+  cost: number;
+  currency: string;
+}
+
+export interface BudgetInfo {
+  name: string;
+  limit: number;
+  currentSpend: number;
+  currency: string;
+  utilizationPct: number;
+  forecastedSpend: number | null;
+}
+
+export interface CostSnapshot {
+  totalMtdCost: number | null;
+  totalYtdCost: number | null;
+  currency: string;
+  topServices: CostByService[];
+  budget: BudgetInfo | null;
+  subscriptionConfigured: boolean;
+  capturedAt: string;
+}
+
+// ── Token ─────────────────────────────────────────────────────────────────────
+
+async function getAzureToken(): Promise<string | null> {
+  const resource = "https://management.azure.com/";
+  try {
+    const miEndpoint = process.env.IDENTITY_ENDPOINT;
+    const miHeader = process.env.IDENTITY_HEADER;
+    if (miEndpoint && miHeader) {
+      const res = await fetch(
+        `${miEndpoint}?resource=${encodeURIComponent(resource)}&api-version=2019-08-01`,
+        { headers: { "X-IDENTITY-HEADER": miHeader } },
+      );
+      if (res.ok) {
+        const data = (await res.json()) as { access_token: string };
+        return data.access_token;
+      }
+    }
+
+    const { AZURE_TENANT_ID: tenantId, AZURE_CLIENT_ID: clientId, AZURE_CLIENT_SECRET: clientSecret } =
+      process.env;
+    if (tenantId && clientId && clientSecret) {
+      const body = new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: clientId,
+        client_secret: clientSecret,
+        scope: `${resource}.default`,
+      });
+      const res = await fetch(
+        `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+        { method: "POST", body },
+      );
+      if (res.ok) {
+        const data = (await res.json()) as { access_token: string };
+        return data.access_token;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function isCostConfigured(): boolean {
+  return !!process.env.AZURE_SUBSCRIPTION_ID;
+}
+
+// ── Cost query helper ─────────────────────────────────────────────────────────
+
+type QueryBody = {
+  type: string;
+  timeframe: string;
+  timePeriod?: { from: string; to: string };
+  dataset: {
+    granularity: string;
+    aggregation: Record<string, { name: string; function: string }>;
+    grouping?: Array<{ type: string; name: string }>;
+  };
+};
+
+interface CostRow {
+  properties: {
+    rows: Array<Array<string | number>>;
+    columns: Array<{ name: string; type: string }>;
+  };
+}
+
+async function queryCosts(token: string, subscriptionId: string, body: QueryBody): Promise<CostRow | null> {
+  try {
+    const url =
+      `https://management.azure.com/subscriptions/${subscriptionId}` +
+      `/providers/Microsoft.CostManagement/query?api-version=2023-11-01`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as CostRow;
+  } catch {
+    return null;
+  }
+}
+
+// ── MTD total ─────────────────────────────────────────────────────────────────
+
+async function getMtdCost(
+  token: string,
+  subscriptionId: string,
+): Promise<{ total: number | null; currency: string }> {
+  const result = await queryCosts(token, subscriptionId, {
+    type: "ActualCost",
+    timeframe: "BillingMonthToDate",
+    dataset: {
+      granularity: "None",
+      aggregation: { totalCost: { name: "Cost", function: "Sum" } },
+    },
+  });
+
+  const rows = result?.properties?.rows ?? [];
+  if (rows.length === 0) return { total: null, currency: "USD" };
+  const [cost, , currency] = rows[0] as [number, unknown, string];
+  return { total: cost, currency: currency ?? "USD" };
+}
+
+// ── YTD total ─────────────────────────────────────────────────────────────────
+
+async function getYtdCost(token: string, subscriptionId: string): Promise<number | null> {
+  const now = new Date();
+  const ytdStart = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0]!;
+  const today = now.toISOString().split("T")[0]!;
+
+  const result = await queryCosts(token, subscriptionId, {
+    type: "ActualCost",
+    timeframe: "Custom",
+    timePeriod: { from: ytdStart, to: today },
+    dataset: {
+      granularity: "None",
+      aggregation: { totalCost: { name: "Cost", function: "Sum" } },
+    },
+  });
+
+  const rows = result?.properties?.rows ?? [];
+  if (rows.length === 0) return null;
+  return (rows[0] as [number])[0] ?? null;
+}
+
+// ── Top services ──────────────────────────────────────────────────────────────
+
+async function getTopServices(
+  token: string,
+  subscriptionId: string,
+  currency: string,
+): Promise<CostByService[]> {
+  const result = await queryCosts(token, subscriptionId, {
+    type: "ActualCost",
+    timeframe: "BillingMonthToDate",
+    dataset: {
+      granularity: "None",
+      aggregation: { totalCost: { name: "Cost", function: "Sum" } },
+      grouping: [{ type: "Dimension", name: "ServiceName" }],
+    },
+  });
+
+  const rows = result?.properties?.rows ?? [];
+  return rows
+    .map((r) => ({
+      serviceName: String((r as [number, string])[1] ?? "Unknown"),
+      cost: Number((r as [number])[0] ?? 0),
+      currency,
+    }))
+    .sort((a, b) => b.cost - a.cost)
+    .slice(0, 10);
+}
+
+// ── Budget ────────────────────────────────────────────────────────────────────
+
+interface BudgetResponse {
+  properties?: {
+    amount?: number;
+    currentSpend?: { amount?: number; unit?: string };
+    forecastSpend?: { amount?: number };
+  };
+}
+
+async function getBudget(token: string, subscriptionId: string): Promise<BudgetInfo | null> {
+  const budgetName = process.env.AZURE_BUDGET_NAME;
+  if (!budgetName) return null;
+
+  try {
+    const url =
+      `https://management.azure.com/subscriptions/${subscriptionId}` +
+      `/providers/Microsoft.Consumption/budgets/${encodeURIComponent(budgetName)}?api-version=2023-05-01`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as BudgetResponse;
+    const limit = data.properties?.amount ?? 0;
+    const currentSpend = data.properties?.currentSpend?.amount ?? 0;
+    const currency = data.properties?.currentSpend?.unit ?? "USD";
+    const forecastedSpend = data.properties?.forecastSpend?.amount ?? null;
+    const utilizationPct = limit > 0 ? (currentSpend / limit) * 100 : 0;
+
+    return { name: budgetName, limit, currentSpend, currency, utilizationPct, forecastedSpend };
+  } catch {
+    return null;
+  }
+}
+
+// ── Main export ───────────────────────────────────────────────────────────────
+
+export async function getCostSnapshot(): Promise<CostSnapshot> {
+  const capturedAt = new Date().toISOString();
+  const subscriptionId = process.env.AZURE_SUBSCRIPTION_ID;
+
+  if (!subscriptionId) {
+    return {
+      totalMtdCost: null,
+      totalYtdCost: null,
+      currency: "USD",
+      topServices: [],
+      budget: null,
+      subscriptionConfigured: false,
+      capturedAt,
+    };
+  }
+
+  const token = await getAzureToken();
+  if (!token) {
+    return {
+      totalMtdCost: null,
+      totalYtdCost: null,
+      currency: "USD",
+      topServices: [],
+      budget: null,
+      subscriptionConfigured: true,
+      capturedAt,
+    };
+  }
+
+  const { total: totalMtdCost, currency } = await getMtdCost(token, subscriptionId);
+  const [totalYtdCost, topServices, budget] = await Promise.all([
+    getYtdCost(token, subscriptionId),
+    getTopServices(token, subscriptionId, currency),
+    getBudget(token, subscriptionId),
+  ]);
+
+  return {
+    totalMtdCost,
+    totalYtdCost,
+    currency,
+    topServices,
+    budget,
+    subscriptionConfigured: true,
+    capturedAt,
+  };
+}

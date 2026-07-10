@@ -225,3 +225,48 @@ export function useAiMetrics(refetchIntervalMs = 60_000) {
     retry: 1,
   });
 }
+
+// ── Cost NOC ──────────────────────────────────────────────────────────────────
+
+export interface CostByService {
+  serviceName: string;
+  cost: number;
+  currency: string;
+}
+
+export interface BudgetInfo {
+  name: string;
+  limit: number;
+  currentSpend: number;
+  currency: string;
+  utilizationPct: number;
+  forecastedSpend: number | null;
+}
+
+export interface CostSnapshot {
+  totalMtdCost: number | null;
+  totalYtdCost: number | null;
+  currency: string;
+  topServices: CostByService[];
+  budget: BudgetInfo | null;
+  subscriptionConfigured: boolean;
+  capturedAt: string;
+}
+
+async function fetchCost(): Promise<CostSnapshot> {
+  const res = await fetch("/api/noc/cost");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { message?: string }).message ?? `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<CostSnapshot>;
+}
+
+export function useCostMetrics(refetchIntervalMs = 300_000) {
+  return useQuery<CostSnapshot>({
+    queryKey: ["noc-cost"],
+    queryFn: fetchCost,
+    refetchInterval: refetchIntervalMs,
+    retry: 1,
+  });
+}

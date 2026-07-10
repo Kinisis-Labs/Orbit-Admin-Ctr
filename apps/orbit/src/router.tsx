@@ -16,6 +16,7 @@ import { ApplicationDashboard } from "./modules/noc/ApplicationDashboard";
 import { ApplicationDetailPage } from "./modules/noc/ApplicationDetailPage";
 import { SecurityDashboard } from "./modules/noc/SecurityDashboard";
 import { AIDashboard } from "./modules/noc/AIDashboard";
+import { CostDashboard } from "./modules/noc/CostDashboard";
 
 export const router = createBrowserRouter([
   {
@@ -98,6 +99,10 @@ export const router = createBrowserRouter([
           {
             path: "ai",
             element: <AIDashboard />,
+          },
+          {
+            path: "cost",
+            element: <CostDashboard />,
           },
         ],
       },
