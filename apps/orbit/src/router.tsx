@@ -1,24 +1,30 @@
 import { createBrowserRouter } from "react-router-dom";
+import React, { lazy, Suspense } from "react";
 import { EnterpriseLayout } from "./layouts/EnterpriseLayout";
-import { DashboardPage } from "./modules/dashboard/DashboardPage";
 import { SignedOutPage } from "./modules/auth/SignedOutPage";
-import { PlaceholderPage } from "./components/PlaceholderPage";
-import { ApplicationsPage } from "./modules/applications/ApplicationsPage";
-import { RolesPage } from "./modules/roles/RolesPage";
-import { PermissionsPage } from "./modules/permissions/PermissionsPage";
-import { UsersPage } from "./modules/users/UsersPage";
-import { AuditPage } from "./modules/audit/AuditPage";
-import { NotificationsPage } from "./modules/notifications/NotificationsPage";
-import { ConfigurationPage } from "./modules/configuration/ConfigurationPage";
-import { HealthPage } from "./modules/platform/HealthPage";
-import { InfrastructureDashboard } from "./modules/noc/InfrastructureDashboard";
-import { ApplicationDashboard } from "./modules/noc/ApplicationDashboard";
-import { ApplicationDetailPage } from "./modules/noc/ApplicationDetailPage";
-import { SecurityDashboard } from "./modules/noc/SecurityDashboard";
-import { AIDashboard } from "./modules/noc/AIDashboard";
-import { IncidentDashboard } from "./modules/noc/IncidentDashboard";
-import { UXDashboard } from "./modules/noc/UXDashboard";
-import { ApiDependenciesDashboard } from "./modules/noc/ApiDependenciesDashboard";
+
+const DashboardPage = lazy(() => import("./modules/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })));
+const PlaceholderPage = lazy(() => import("./components/PlaceholderPage").then((m) => ({ default: m.PlaceholderPage })));
+const ApplicationsPage = lazy(() => import("./modules/applications/ApplicationsPage").then((m) => ({ default: m.ApplicationsPage })));
+const RolesPage = lazy(() => import("./modules/roles/RolesPage").then((m) => ({ default: m.RolesPage })));
+const PermissionsPage = lazy(() => import("./modules/permissions/PermissionsPage").then((m) => ({ default: m.PermissionsPage })));
+const UsersPage = lazy(() => import("./modules/users/UsersPage").then((m) => ({ default: m.UsersPage })));
+const AuditPage = lazy(() => import("./modules/audit/AuditPage").then((m) => ({ default: m.AuditPage })));
+const NotificationsPage = lazy(() => import("./modules/notifications/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
+const ConfigurationPage = lazy(() => import("./modules/configuration/ConfigurationPage").then((m) => ({ default: m.ConfigurationPage })));
+const HealthPage = lazy(() => import("./modules/platform/HealthPage").then((m) => ({ default: m.HealthPage })));
+const InfrastructureDashboard = lazy(() => import("./modules/noc/InfrastructureDashboard").then((m) => ({ default: m.InfrastructureDashboard })));
+const ApplicationDashboard = lazy(() => import("./modules/noc/ApplicationDashboard").then((m) => ({ default: m.ApplicationDashboard })));
+const ApplicationDetailPage = lazy(() => import("./modules/noc/ApplicationDetailPage").then((m) => ({ default: m.ApplicationDetailPage })));
+const SecurityDashboard = lazy(() => import("./modules/noc/SecurityDashboard").then((m) => ({ default: m.SecurityDashboard })));
+const AIDashboard = lazy(() => import("./modules/noc/AIDashboard").then((m) => ({ default: m.AIDashboard })));
+const IncidentDashboard = lazy(() => import("./modules/noc/IncidentDashboard").then((m) => ({ default: m.IncidentDashboard })));
+const UXDashboard = lazy(() => import("./modules/noc/UXDashboard").then((m) => ({ default: m.UXDashboard })));
+const ApiDependenciesDashboard = lazy(() => import("./modules/noc/ApiDependenciesDashboard").then((m) => ({ default: m.ApiDependenciesDashboard })));
+
+function Lazy({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={null}>{children}</Suspense>;
+}
 
 export const router = createBrowserRouter([
   {
@@ -31,42 +37,42 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <DashboardPage />,
+        element: <Lazy><DashboardPage /></Lazy>,
       },
       {
         path: "admin",
         children: [
           {
             path: "applications",
-            element: <ApplicationsPage />,
+            element: <Lazy><ApplicationsPage /></Lazy>,
           },
           {
             path: "users",
-            element: <UsersPage />,
+            element: <Lazy><UsersPage /></Lazy>,
           },
           {
             path: "roles",
-            element: <RolesPage />,
+            element: <Lazy><RolesPage /></Lazy>,
           },
           {
             path: "permissions",
-            element: <PermissionsPage />,
+            element: <Lazy><PermissionsPage /></Lazy>,
           },
           {
             path: "audit",
-            element: <AuditPage />,
+            element: <Lazy><AuditPage /></Lazy>,
           },
           {
             path: "notifications",
-            element: <NotificationsPage />,
+            element: <Lazy><NotificationsPage /></Lazy>,
           },
           {
             path: "configuration",
-            element: <ConfigurationPage />,
+            element: <Lazy><ConfigurationPage /></Lazy>,
           },
           {
             path: "feature-flags",
-            element: <ConfigurationPage />,
+            element: <Lazy><ConfigurationPage /></Lazy>,
           },
         ],
       },
@@ -75,7 +81,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "health",
-            element: <HealthPage />,
+            element: <Lazy><HealthPage /></Lazy>,
           },
         ],
       },
@@ -84,45 +90,47 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "infrastructure",
-            element: <InfrastructureDashboard />,
+            element: <Lazy><InfrastructureDashboard /></Lazy>,
           },
           {
             path: "applications",
-            element: <ApplicationDashboard />,
+            element: <Lazy><ApplicationDashboard /></Lazy>,
           },
           {
             path: "applications/:slug",
-            element: <ApplicationDetailPage />,
+            element: <Lazy><ApplicationDetailPage /></Lazy>,
           },
           {
             path: "security",
-            element: <SecurityDashboard />,
+            element: <Lazy><SecurityDashboard /></Lazy>,
           },
           {
             path: "ai",
-            element: <AIDashboard />,
+            element: <Lazy><AIDashboard /></Lazy>,
           },
           {
             path: "incidents",
-            element: <IncidentDashboard />,
+            element: <Lazy><IncidentDashboard /></Lazy>,
           },
           {
             path: "ux",
-            element: <UXDashboard />,
+            element: <Lazy><UXDashboard /></Lazy>,
           },
           {
             path: "api-dependencies",
-            element: <ApiDependenciesDashboard />,
+            element: <Lazy><ApiDependenciesDashboard /></Lazy>,
           },
         ],
       },
       {
         path: "*",
         element: (
-          <PlaceholderPage
-            title="Page not found"
-            description="This page doesn't exist. Use the sidebar to navigate."
-          />
+          <Lazy>
+            <PlaceholderPage
+              title="Page not found"
+              description="This page doesn't exist. Use the sidebar to navigate."
+            />
+          </Lazy>
         ),
       },
     ],

@@ -33,6 +33,8 @@ router.get("/infrastructure", requireAuth, requireAdmin, async (req, res) => {
         ...snapshot.containerApps,
         ...snapshot.database,
         ...snapshot.network,
+        ...snapshot.vpn,
+        ...snapshot.loadBalancers,
         ...snapshot.api,
       ].flatMap((g) => g.metrics);
 
