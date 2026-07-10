@@ -344,7 +344,7 @@ async function getM365Costs(token: string): Promise<M365CostSummary> {
       : `https://management.azure.com/providers/Microsoft.Billing/billingAccounts/${billingAccountId}`;
 
     const url =
-      `${base}/invoices?api-version=2020-05-01&periodStartDate=${currentYear}-01-01&periodEndDate=${currentYear}-12-31`;
+      `${base}/invoices?api-version=2020-05-01&periodStartDate=${currentYear}-01-01&periodEndDate=${currentYear}-12-31&$expand=documents`;
 
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -371,7 +371,6 @@ async function getM365Costs(token: string): Promise<M365CostSummary> {
           downloadUrl: doc?.url ?? null,
         };
       })
-      .filter((inv) => inv.amount > 0)
       .sort((a, b) => (b.dueDate ?? "").localeCompare(a.dueDate ?? ""));
 
     const currency = invoices[0]?.currency ?? "USD";
