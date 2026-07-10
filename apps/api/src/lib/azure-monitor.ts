@@ -1,12 +1,14 @@
 /**
  * Azure Monitor + Application Insights client.
  *
- * Production: uses Managed Identity (no credentials needed — DefaultAzureCredential picks up the CA Managed Identity).
+ * Production: uses Managed Identity token endpoint (IDENTITY_ENDPOINT + IDENTITY_HEADER).
  * Local dev fallback: reads AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET from env.
  *
  * All functions return null-safe results — callers must handle the case where
  * Azure is not configured (e.g. local dev without credentials).
  */
+
+export type HealthStatus = "healthy" | "warning" | "critical" | "unknown";
 
 export interface MetricResult {
   resourceId: string;
@@ -18,11 +20,19 @@ export interface MetricResult {
   capturedAt: string;
 }
 
+export interface ResourceGroup {
+  name: string;
+  resourceType: string;
+  health: HealthStatus;
+  metrics: MetricResult[];
+}
+
 export interface InfrastructureSnapshot {
-  containerApps: MetricResult[];
-  database: MetricResult[];
-  storage: MetricResult[];
-  appInsights: MetricResult[];
+  overallHealth: HealthStatus;
+  containerApps: ResourceGroup[];
+  database: ResourceGroup[];
+  network: ResourceGroup[];
+  api: ResourceGroup[];
   capturedAt: string;
 }
 
@@ -34,8 +44,8 @@ function env(key: string): string | undefined {
 
 export function isAzureMonitorConfigured(): boolean {
   return !!(
-    env("AZURE_SUBSCRIPTION_ID") &&
-    (env("AZURE_CLIENT_ID") || env("AZURE_USE_MANAGED_IDENTITY") === "true")
+    env("IDENTITY_ENDPOINT") ||
+    (env("AZURE_TENANT_ID") && env("AZURE_CLIENT_ID") && env("AZURE_CLIENT_SECRET"))
   );
 }
 
@@ -147,88 +157,178 @@ async function queryAppInsights(metricId: string): Promise<number | null> {
   }
 }
 
+// ── Health status derivation ──────────────────────────────────────────────────
+
+function deriveHealth(metrics: MetricResult[]): HealthStatus {
+  let worst: HealthStatus = "unknown";
+  for (const m of metrics) {
+    if (m.value === null) continue;
+    let status: HealthStatus = "healthy";
+    const n = m.metricName.toLowerCase();
+    if (n.includes("cpu") || n.includes("memory") || n.includes("storage_percent")) {
+      status = m.value > 90 ? "critical" : m.value > 75 ? "warning" : "healthy";
+    } else if (n.includes("availability")) {
+      status = m.value < 95 ? "critical" : m.value < 99 ? "warning" : "healthy";
+    } else if (n.includes("restartcount") || n.includes("crashloop")) {
+      status = m.value > 5 ? "critical" : m.value > 0 ? "warning" : "healthy";
+    } else if (n.includes("failed") || n.includes("errors")) {
+      status = m.value > 10 ? "critical" : m.value > 0 ? "warning" : "healthy";
+    } else if (n.includes("duration") || n.includes("latency") || n.includes("responsetime")) {
+      status = m.value > 5000 ? "critical" : m.value > 1000 ? "warning" : "healthy";
+    } else if (n.includes("deadlock")) {
+      status = m.value > 0 ? "critical" : "healthy";
+    } else if (n.includes("active_connections")) {
+      status = m.value > 90 ? "critical" : m.value > 70 ? "warning" : "healthy";
+    }
+    if (status === "critical") return "critical";
+    if (status === "warning") worst = "warning";
+    else if (status === "healthy" && worst === "unknown") worst = "healthy";
+  }
+  return worst;
+}
+
+function overallHealth(groups: ResourceGroup[][]): HealthStatus {
+  const all = groups.flat().map((g) => g.health);
+  if (all.includes("critical")) return "critical";
+  if (all.includes("warning")) return "warning";
+  if (all.every((h) => h === "healthy")) return "healthy";
+  return "unknown";
+}
+
 // ── Main snapshot builder ─────────────────────────────────────────────────────
+
+function makeMetric(
+  resourceId: string,
+  resourceName: string,
+  resourceType: string,
+  metricName: string,
+  value: number | null,
+  unit: string,
+  capturedAt: string,
+): MetricResult {
+  return { resourceId, resourceName, resourceType, metricName, value, unit, capturedAt };
+}
 
 export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapshot> {
   const capturedAt = new Date().toISOString();
   const empty: InfrastructureSnapshot = {
+    overallHealth: "unknown",
     containerApps: [],
     database: [],
-    storage: [],
-    appInsights: [],
+    network: [],
+    api: [],
     capturedAt,
   };
 
-  const subscriptionId = env("AZURE_SUBSCRIPTION_ID");
+  const subscriptionId = env("AZURE_SUBSCRIPTION_ID") ?? env("AZURE_SUBSCRIPTION_IDS")?.split(",")[0]?.trim();
   if (!subscriptionId) return empty;
 
   const token = await getAccessToken();
   if (!token) return empty;
 
   // ── Container Apps ──────────────────────────────────────────────────────────
-  const caResourceGroup = env("AZURE_RESOURCE_GROUP_ORBIT") ?? "rg-kinisislabs-orbit-prod";
-  const caName = env("AZURE_CONTAINER_APP_NAME") ?? "ca-orbit-prod";
+  const caResourceGroup = env("AZURE_RESOURCE_GROUP_ORBIT") ?? "rg-kinisislabs-orbit-prod-eus2";
+  const caName = env("AZURE_CONTAINER_APP_NAME") ?? "ca-orbit-prod-v2";
   const caResourceId = `/subscriptions/${subscriptionId}/resourceGroups/${caResourceGroup}/providers/Microsoft.App/containerApps/${caName}`;
 
-  const [cpuUsage, memUsage, reqCount] = await Promise.all([
+  const [cpuUsage, memUsage, reqCount, restartCount, replicaCount] = await Promise.all([
     queryMetric(token, subscriptionId, caResourceId, "CpuPercentage"),
     queryMetric(token, subscriptionId, caResourceId, "MemoryPercentage"),
     queryMetric(token, subscriptionId, caResourceId, "Requests", "PT1H", "Total"),
+    queryMetric(token, subscriptionId, caResourceId, "RestartCount", "PT1H", "Total"),
+    queryMetric(token, subscriptionId, caResourceId, "Replicas"),
   ]);
 
-  const containerApps: MetricResult[] = [
-    { resourceId: caResourceId, resourceName: caName, resourceType: "ContainerApp", metricName: "CpuPercentage", value: cpuUsage, unit: "%", capturedAt },
-    { resourceId: caResourceId, resourceName: caName, resourceType: "ContainerApp", metricName: "MemoryPercentage", value: memUsage, unit: "%", capturedAt },
-    { resourceId: caResourceId, resourceName: caName, resourceType: "ContainerApp", metricName: "Requests", value: reqCount, unit: "count", capturedAt },
+  const caMetrics: MetricResult[] = [
+    makeMetric(caResourceId, caName, "ContainerApp", "CpuPercentage", cpuUsage, "%", capturedAt),
+    makeMetric(caResourceId, caName, "ContainerApp", "MemoryPercentage", memUsage, "%", capturedAt),
+    makeMetric(caResourceId, caName, "ContainerApp", "Requests", reqCount, "count", capturedAt),
+    makeMetric(caResourceId, caName, "ContainerApp", "RestartCount", restartCount, "count", capturedAt),
+    makeMetric(caResourceId, caName, "ContainerApp", "Replicas", replicaCount, "count", capturedAt),
+  ];
+
+  const containerApps: ResourceGroup[] = [
+    { name: caName, resourceType: "ContainerApp", health: deriveHealth(caMetrics), metrics: caMetrics },
   ];
 
   // ── PostgreSQL ──────────────────────────────────────────────────────────────
-  const pgResourceGroup = env("AZURE_RESOURCE_GROUP_SHARED") ?? "rg-kinisislabs-platform-shared-prod";
+  const pgResourceGroup = env("AZURE_RESOURCE_GROUP_SHARED") ?? "rg-kinisislabs-platform-shared-prod-eus2";
   const pgName = env("AZURE_POSTGRES_NAME") ?? "pg-orbit-prod";
   const pgResourceId = `/subscriptions/${subscriptionId}/resourceGroups/${pgResourceGroup}/providers/Microsoft.DBforPostgreSQL/flexibleServers/${pgName}`;
 
-  const [pgAvail, pgConns, pgStorage] = await Promise.all([
+  const [pgAvail, pgConns, pgStorage, pgCpu, pgDeadlocks, pgQueryTime] = await Promise.all([
     queryMetric(token, subscriptionId, pgResourceId, "availability_percent"),
     queryMetric(token, subscriptionId, pgResourceId, "active_connections"),
     queryMetric(token, subscriptionId, pgResourceId, "storage_percent"),
+    queryMetric(token, subscriptionId, pgResourceId, "cpu_percent"),
+    queryMetric(token, subscriptionId, pgResourceId, "deadlocks", "PT1H", "Total"),
+    queryMetric(token, subscriptionId, pgResourceId, "read_iops"),
   ]);
 
-  const database: MetricResult[] = [
-    { resourceId: pgResourceId, resourceName: pgName, resourceType: "PostgreSQL", metricName: "availability_percent", value: pgAvail, unit: "%", capturedAt },
-    { resourceId: pgResourceId, resourceName: pgName, resourceType: "PostgreSQL", metricName: "active_connections", value: pgConns, unit: "count", capturedAt },
-    { resourceId: pgResourceId, resourceName: pgName, resourceType: "PostgreSQL", metricName: "storage_percent", value: pgStorage, unit: "%", capturedAt },
+  const pgMetrics: MetricResult[] = [
+    makeMetric(pgResourceId, pgName, "PostgreSQL", "availability_percent", pgAvail, "%", capturedAt),
+    makeMetric(pgResourceId, pgName, "PostgreSQL", "active_connections", pgConns, "count", capturedAt),
+    makeMetric(pgResourceId, pgName, "PostgreSQL", "storage_percent", pgStorage, "%", capturedAt),
+    makeMetric(pgResourceId, pgName, "PostgreSQL", "cpu_percent", pgCpu, "%", capturedAt),
+    makeMetric(pgResourceId, pgName, "PostgreSQL", "deadlocks", pgDeadlocks, "count", capturedAt),
+    makeMetric(pgResourceId, pgName, "PostgreSQL", "read_iops", pgQueryTime, "count", capturedAt),
   ];
 
-  // ── Storage ─────────────────────────────────────────────────────────────────
-  const stResourceGroup = env("AZURE_RESOURCE_GROUP_SHARED") ?? "rg-kinisislabs-platform-shared-prod";
+  const database: ResourceGroup[] = [
+    { name: pgName, resourceType: "PostgreSQL", health: deriveHealth(pgMetrics), metrics: pgMetrics },
+  ];
+
+  // ── Network (Storage as proxy for throughput) ────────────────────────────────
+  const stResourceGroup = env("AZURE_RESOURCE_GROUP_SHARED") ?? "rg-kinisislabs-platform-shared-prod-eus2";
   const stName = env("AZURE_STORAGE_NAME") ?? "stsharedprod";
   const stResourceId = `/subscriptions/${subscriptionId}/resourceGroups/${stResourceGroup}/providers/Microsoft.Storage/storageAccounts/${stName}`;
 
-  const [stIngress, stEgress, stErrors] = await Promise.all([
+  const [stIngress, stEgress, stTransactions, stLatency] = await Promise.all([
     queryMetric(token, subscriptionId, stResourceId, "Ingress", "PT1H", "Total"),
     queryMetric(token, subscriptionId, stResourceId, "Egress", "PT1H", "Total"),
     queryMetric(token, subscriptionId, stResourceId, "Transactions", "PT1H", "Total"),
+    queryMetric(token, subscriptionId, stResourceId, "SuccessE2ELatency"),
   ]);
 
-  const storage: MetricResult[] = [
-    { resourceId: stResourceId, resourceName: stName, resourceType: "Storage", metricName: "Ingress", value: stIngress, unit: "bytes", capturedAt },
-    { resourceId: stResourceId, resourceName: stName, resourceType: "Storage", metricName: "Egress", value: stEgress, unit: "bytes", capturedAt },
-    { resourceId: stResourceId, resourceName: stName, resourceType: "Storage", metricName: "Transactions", value: stErrors, unit: "count", capturedAt },
+  const networkMetrics: MetricResult[] = [
+    makeMetric(stResourceId, stName, "Storage", "Ingress", stIngress, "bytes", capturedAt),
+    makeMetric(stResourceId, stName, "Storage", "Egress", stEgress, "bytes", capturedAt),
+    makeMetric(stResourceId, stName, "Storage", "Transactions", stTransactions, "count", capturedAt),
+    makeMetric(stResourceId, stName, "Storage", "SuccessE2ELatency", stLatency, "ms", capturedAt),
   ];
 
-  // ── Application Insights ────────────────────────────────────────────────────
-  const [aiRequests, aiDuration, aiFailed] = await Promise.all([
+  const network: ResourceGroup[] = [
+    { name: stName, resourceType: "Storage", health: deriveHealth(networkMetrics), metrics: networkMetrics },
+  ];
+
+  // ── API (Application Insights) ───────────────────────────────────────────────
+  const [aiRequests, aiDuration, aiFailed, aiAvailability, aiExceptions] = await Promise.all([
     queryAppInsights("requests/count"),
     queryAppInsights("requests/duration"),
     queryAppInsights("requests/failed"),
+    queryAppInsights("availabilityResults/availabilityPercentage"),
+    queryAppInsights("exceptions/count"),
   ]);
 
-  const appInsightsResourceId = `appinsights/orbit`;
-  const appInsights: MetricResult[] = [
-    { resourceId: appInsightsResourceId, resourceName: "appi-orbit-prod", resourceType: "AppInsights", metricName: "requests/count", value: aiRequests, unit: "count", capturedAt },
-    { resourceId: appInsightsResourceId, resourceName: "appi-orbit-prod", resourceType: "AppInsights", metricName: "requests/duration", value: aiDuration, unit: "ms", capturedAt },
-    { resourceId: appInsightsResourceId, resourceName: "appi-orbit-prod", resourceType: "AppInsights", metricName: "requests/failed", value: aiFailed, unit: "count", capturedAt },
+  const aiResourceId = "appinsights/orbit";
+  const aiMetrics: MetricResult[] = [
+    makeMetric(aiResourceId, "appi-orbit-prod", "AppInsights", "requests/count", aiRequests, "count", capturedAt),
+    makeMetric(aiResourceId, "appi-orbit-prod", "AppInsights", "requests/duration", aiDuration, "ms", capturedAt),
+    makeMetric(aiResourceId, "appi-orbit-prod", "AppInsights", "requests/failed", aiFailed, "count", capturedAt),
+    makeMetric(aiResourceId, "appi-orbit-prod", "AppInsights", "availability", aiAvailability, "%", capturedAt),
+    makeMetric(aiResourceId, "appi-orbit-prod", "AppInsights", "exceptions/count", aiExceptions, "count", capturedAt),
   ];
 
-  return { containerApps, database, storage, appInsights, capturedAt };
+  const api: ResourceGroup[] = [
+    { name: "appi-orbit-prod", resourceType: "AppInsights", health: deriveHealth(aiMetrics), metrics: aiMetrics },
+  ];
+
+  return {
+    overallHealth: overallHealth([containerApps, database, network, api]),
+    containerApps,
+    database,
+    network,
+    api,
+    capturedAt,
+  };
 }

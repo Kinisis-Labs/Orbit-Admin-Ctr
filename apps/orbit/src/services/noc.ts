@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export type HealthStatus = "healthy" | "warning" | "critical" | "unknown";
+
 export interface MetricResult {
   resourceId: string;
   resourceName: string;
@@ -12,13 +14,39 @@ export interface MetricResult {
   capturedAt: string;
 }
 
+export interface ResourceGroup {
+  name: string;
+  resourceType: string;
+  health: HealthStatus;
+  metrics: MetricResult[];
+}
+
 export interface InfrastructureSnapshot {
-  azureConfigured: boolean;
-  containerApps: MetricResult[];
-  database: MetricResult[];
-  storage: MetricResult[];
-  appInsights: MetricResult[];
+  overallHealth: HealthStatus;
+  containerApps: ResourceGroup[];
+  database: ResourceGroup[];
+  network: ResourceGroup[];
+  api: ResourceGroup[];
   capturedAt: string;
+}
+
+export interface MetricSeriesPoint {
+  t: string;
+  v: number | null;
+}
+
+export interface MetricSeries {
+  resourceName: string;
+  resourceType: string;
+  metricName: string;
+  unit: string;
+  points: MetricSeriesPoint[];
+}
+
+export interface InfrastructureHistory {
+  hours: number;
+  series: MetricSeries[];
+  generatedAt: string;
 }
 
 // ── Infrastructure NOC ────────────────────────────────────────────────────────
@@ -32,10 +60,28 @@ async function fetchInfrastructure(): Promise<InfrastructureSnapshot> {
   return res.json() as Promise<InfrastructureSnapshot>;
 }
 
+async function fetchInfrastructureHistory(hours = 6): Promise<InfrastructureHistory> {
+  const res = await fetch(`/api/noc/infrastructure/history?hours=${hours}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { message?: string }).message ?? `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<InfrastructureHistory>;
+}
+
 export function useInfrastructureMetrics(refetchIntervalMs = 60_000) {
   return useQuery<InfrastructureSnapshot>({
     queryKey: ["noc-infrastructure"],
     queryFn: fetchInfrastructure,
+    refetchInterval: refetchIntervalMs,
+    retry: 1,
+  });
+}
+
+export function useInfrastructureHistory(hours = 6, refetchIntervalMs = 120_000) {
+  return useQuery<InfrastructureHistory>({
+    queryKey: ["noc-infrastructure-history", hours],
+    queryFn: () => fetchInfrastructureHistory(hours),
     refetchInterval: refetchIntervalMs,
     retry: 1,
   });
@@ -226,72 +272,3 @@ export function useAiMetrics(refetchIntervalMs = 60_000) {
   });
 }
 
-// ── Cost NOC ──────────────────────────────────────────────────────────────────
-
-export interface CostByService {
-  serviceName: string;
-  cost: number;
-  currency: string;
-}
-
-export interface BudgetInfo {
-  name: string;
-  limit: number;
-  currentSpend: number;
-  currency: string;
-  utilizationPct: number;
-  forecastedSpend: number | null;
-}
-
-export interface M365Invoice {
-  invoiceId: string;
-  billingPeriod: string;
-  dueDate: string | null;
-  amount: number;
-  currency: string;
-  status: string;
-  downloadUrl: string | null;
-}
-
-export interface M365CostSummary {
-  latestInvoiceAmount: number | null;
-  ytdTotal: number | null;
-  currency: string;
-  invoices: M365Invoice[];
-  billingConfigured: boolean;
-}
-
-export interface SubscriptionCost {
-  subscriptionId: string;
-  label: string;
-  totalMtdCost: number | null;
-  totalYtdCost: number | null;
-  currency: string;
-  topServices: CostByService[];
-  budget: BudgetInfo | null;
-}
-
-export interface CostSnapshot {
-  subscriptions: SubscriptionCost[];
-  subscriptionConfigured: boolean;
-  m365: M365CostSummary;
-  capturedAt: string;
-}
-
-async function fetchCost(): Promise<CostSnapshot> {
-  const res = await fetch("/api/noc/cost");
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as { message?: string }).message ?? `HTTP ${res.status}`);
-  }
-  return res.json() as Promise<CostSnapshot>;
-}
-
-export function useCostMetrics(refetchIntervalMs = 300_000) {
-  return useQuery<CostSnapshot>({
-    queryKey: ["noc-cost"],
-    queryFn: fetchCost,
-    refetchInterval: refetchIntervalMs,
-    retry: 1,
-  });
-}

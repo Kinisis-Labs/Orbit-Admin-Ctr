@@ -1,22 +1,61 @@
 import {
   Server,
   Database,
-  HardDrive,
+  Network,
   Activity,
   RefreshCw,
   Loader2,
-  AlertTriangle,
   CheckCircle2,
-  Info,
+  AlertTriangle,
+  XCircle,
+  HelpCircle,
 } from "lucide-react";
-import { useInfrastructureMetrics, type MetricResult } from "../../services/noc";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  useInfrastructureMetrics,
+  useInfrastructureHistory,
+  type HealthStatus,
+  type ResourceGroup,
+  type MetricSeries,
+} from "../../services/noc";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const card: React.CSSProperties = {
-  background: "var(--orbit-bg-card)",
-  border: "1px solid var(--orbit-border)",
+const HEALTH_COLOR: Record<HealthStatus, string> = {
+  healthy: "#22c55e",
+  warning: "#f59e0b",
+  critical: "#ef4444",
+  unknown: "#6b7280",
 };
+
+const HEALTH_BG: Record<HealthStatus, string> = {
+  healthy: "rgba(34,197,94,0.08)",
+  warning: "rgba(245,158,11,0.08)",
+  critical: "rgba(239,68,68,0.08)",
+  unknown: "rgba(107,114,128,0.08)",
+};
+
+const HEALTH_BORDER: Record<HealthStatus, string> = {
+  healthy: "rgba(34,197,94,0.25)",
+  warning: "rgba(245,158,11,0.25)",
+  critical: "rgba(239,68,68,0.25)",
+  unknown: "rgba(107,114,128,0.25)",
+};
+
+function HealthIcon({ status, size = "h-5 w-5" }: { status: HealthStatus; size?: string }) {
+  const color = HEALTH_COLOR[status];
+  if (status === "healthy") return <CheckCircle2 className={size} style={{ color }} />;
+  if (status === "warning") return <AlertTriangle className={size} style={{ color }} />;
+  if (status === "critical") return <XCircle className={size} style={{ color }} />;
+  return <HelpCircle className={size} style={{ color }} />;
+}
 
 function fmtValue(value: number | null, unit: string): string {
   if (value === null) return "—";
@@ -32,85 +71,207 @@ function fmtValue(value: number | null, unit: string): string {
   return `${value} ${unit}`;
 }
 
-function statusColor(metricName: string, value: number | null): string {
+function fmtMetricLabel(metricName: string): string {
+  return metricName
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .replace(/\//g, " / ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
+function metricColor(metricName: string, value: number | null): string {
   if (value === null) return "var(--orbit-text-muted)";
-  const pct = metricName.toLowerCase().includes("percent") || metricName.includes("%");
-  if (pct) {
-    if (metricName.toLowerCase().includes("availability")) {
-      return value >= 99 ? "#22c55e" : value >= 95 ? "#f59e0b" : "#ef4444";
-    }
-    return value > 85 ? "#ef4444" : value > 70 ? "#f59e0b" : "#22c55e";
+  const n = metricName.toLowerCase();
+  if (n.includes("cpu") || n.includes("memory") || n.includes("storage_percent")) {
+    return value > 90 ? "#ef4444" : value > 75 ? "#f59e0b" : "#22c55e";
+  }
+  if (n.includes("availability")) {
+    return value < 95 ? "#ef4444" : value < 99 ? "#f59e0b" : "#22c55e";
+  }
+  if (n.includes("failed") || n.includes("deadlock") || n.includes("restart")) {
+    return value > 5 ? "#ef4444" : value > 0 ? "#f59e0b" : "#22c55e";
+  }
+  if (n.includes("duration") || n.includes("latency")) {
+    return value > 5000 ? "#ef4444" : value > 1000 ? "#f59e0b" : "#22c55e";
   }
   return "var(--orbit-text-secondary)";
 }
 
-function MetricRow({ metric }: { metric: MetricResult }) {
-  const color = statusColor(metric.metricName, metric.value);
-  const label = metric.metricName
-    .replace(/_/g, " ")
-    .replace(/([A-Z])/g, " $1")
-    .replace(/\//g, " / ")
-    .trim();
+// ── Sparkline chart ───────────────────────────────────────────────────────────
+
+function SparkChart({ series, color }: { series: MetricSeries; color: string }) {
+  const data = series.points.map((p) => ({
+    t: new Date(p.t).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
+    v: p.v,
+  }));
+  if (data.length < 2) {
+    return <div className="h-16 flex items-center justify-center text-xs" style={{ color: "var(--orbit-text-muted)" }}>Collecting history…</div>;
+  }
   return (
-    <div
-      className="flex items-center justify-between px-4 py-3"
-      style={{ borderBottom: "1px solid var(--orbit-border)" }}
-    >
-      <span className="text-sm" style={{ color: "var(--orbit-text-secondary)" }}>
-        {label}
-      </span>
-      <span className="text-sm font-semibold tabular-nums" style={{ color }}>
-        {fmtValue(metric.value, metric.unit)}
-      </span>
-    </div>
+    <ResponsiveContainer width="100%" height={64}>
+      <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+        <defs>
+          <linearGradient id={`grad-${series.metricName}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={color} stopOpacity={0.25} />
+            <stop offset="95%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <XAxis dataKey="t" hide />
+        <YAxis hide domain={["auto", "auto"]} />
+        <Tooltip
+          contentStyle={{
+            background: "var(--orbit-bg-card)",
+            border: "1px solid var(--orbit-border)",
+            borderRadius: 8,
+            fontSize: 11,
+            color: "var(--orbit-text-secondary)",
+          }}
+          formatter={(val: number) => [fmtValue(val, series.unit), fmtMetricLabel(series.metricName)]}
+          labelStyle={{ color: "var(--orbit-text-muted)" }}
+        />
+        <Area
+          type="monotone"
+          dataKey="v"
+          stroke={color}
+          strokeWidth={1.5}
+          fill={`url(#grad-${series.metricName})`}
+          dot={false}
+          connectNulls
+        />
+      </AreaChart>
+    </ResponsiveContainer>
   );
 }
 
+// ── Resource group card ───────────────────────────────────────────────────────
+
 function ResourceCard({
-  title,
-  subtitle,
+  group,
   icon: Icon,
-  metrics,
+  seriesList,
+  primaryMetric,
 }: {
-  title: string;
-  subtitle: string;
+  group: ResourceGroup;
   icon: React.ElementType;
-  metrics: MetricResult[];
+  seriesList: MetricSeries[];
+  primaryMetric: string;
 }) {
-  const hasData = metrics.some((m) => m.value !== null);
+  const primarySeries = seriesList.find((s) => s.resourceName === group.name && s.metricName.toLowerCase().includes(primaryMetric));
+  const chartColor = HEALTH_COLOR[group.health];
+
   return (
-    <div className="rounded-xl overflow-hidden" style={card}>
-      <div className="flex items-center gap-3 px-4 py-4" style={{ borderBottom: "1px solid var(--orbit-border)" }}>
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{
+        background: "var(--orbit-bg-card)",
+        border: `1px solid ${HEALTH_BORDER[group.health]}`,
+      }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center gap-3 px-4 py-3"
+        style={{
+          borderBottom: "1px solid var(--orbit-border)",
+          background: HEALTH_BG[group.health],
+        }}
+      >
         <div className="rounded-lg p-2" style={{ background: "var(--orbit-bg-page)" }}>
           <Icon className="h-4 w-4" style={{ color: "var(--orbit-text-muted)" }} />
         </div>
-        <div>
-          <p className="text-sm font-semibold" style={{ color: "var(--orbit-text-primary)" }}>{title}</p>
-          <p className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>{subtitle}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold truncate" style={{ color: "var(--orbit-text-primary)" }}>{group.name}</p>
+          <p className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>{group.resourceType}</p>
         </div>
-        <div className="ml-auto">
-          {hasData ? (
-            <CheckCircle2 className="h-4 w-4" style={{ color: "#22c55e" }} />
-          ) : (
-            <AlertTriangle className="h-4 w-4" style={{ color: "var(--orbit-text-muted)" }} />
-          )}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium capitalize" style={{ color: HEALTH_COLOR[group.health] }}>
+            {group.health}
+          </span>
+          <HealthIcon status={group.health} size="h-4 w-4" />
         </div>
       </div>
-      <div>
-        {metrics.length === 0 ? (
-          <p className="px-4 py-4 text-sm" style={{ color: "var(--orbit-text-muted)" }}>No metrics available</p>
-        ) : (
-          metrics.map((m) => <MetricRow key={`${m.resourceId}-${m.metricName}`} metric={m} />)
-        )}
+
+      {/* Sparkline */}
+      {primarySeries && (
+        <div className="px-4 pt-3 pb-1">
+          <p className="text-xs mb-1" style={{ color: "var(--orbit-text-muted)" }}>
+            {fmtMetricLabel(primarySeries.metricName)} · last {primarySeries.points.length > 0 ? "6h" : "—"}
+          </p>
+          <SparkChart series={primarySeries} color={chartColor} />
+        </div>
+      )}
+
+      {/* Metrics table */}
+      <div className="mt-1">
+        {group.metrics.map((m) => (
+          <div
+            key={`${m.resourceId}-${m.metricName}`}
+            className="flex items-center justify-between px-4 py-2"
+            style={{ borderTop: "1px solid var(--orbit-border)" }}
+          >
+            <span className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>
+              {fmtMetricLabel(m.metricName)}
+            </span>
+            <span
+              className="text-xs font-semibold tabular-nums"
+              style={{ color: metricColor(m.metricName, m.value) }}
+            >
+              {fmtValue(m.value, m.unit)}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ── System health banner ──────────────────────────────────────────────────────
+
+function HealthBanner({ status, capturedAt }: { status: HealthStatus; capturedAt: string }) {
+  const labels: Record<HealthStatus, string> = {
+    healthy: "All Systems Operational",
+    warning: "Degraded Performance Detected",
+    critical: "Critical Issues Detected",
+    unknown: "Awaiting Data",
+  };
+  const time = new Date(capturedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return (
+    <div
+      className="rounded-xl px-5 py-4 flex items-center gap-4"
+      style={{
+        background: HEALTH_BG[status],
+        border: `1px solid ${HEALTH_BORDER[status]}`,
+      }}
+    >
+      <HealthIcon status={status} size="h-6 w-6" />
+      <div>
+        <p className="font-semibold text-base" style={{ color: HEALTH_COLOR[status] }}>{labels[status]}</p>
+        <p className="text-xs mt-0.5" style={{ color: "var(--orbit-text-muted)" }}>Last snapshot: {time}</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Section heading ───────────────────────────────────────────────────────────
+
+function SectionHeading({ label, count, health }: { label: string; count: number; health: HealthStatus }) {
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--orbit-text-muted)" }}>{label}</h2>
+      <span className="text-xs rounded-full px-2 py-0.5 font-medium" style={{ background: HEALTH_BG[health], color: HEALTH_COLOR[health] }}>
+        {count}
+      </span>
+    </div>
+  );
+}
+
+// ── Main Dashboard ────────────────────────────────────────────────────────────
 
 export function InfrastructureDashboard() {
   const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useInfrastructureMetrics();
+  const { data: history } = useInfrastructureHistory(6);
+
+  const seriesList = history?.series ?? [];
 
   const lastUpdated = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
@@ -122,13 +283,11 @@ export function InfrastructureDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--orbit-text-primary)" }}>
-            Infrastructure NOC
+            Infrastructure Health
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--orbit-text-muted)" }}>
-            Azure Monitor metrics — auto-refreshes every 60 seconds
-            {lastUpdated && (
-              <span className="ml-2">· Last updated {lastUpdated}</span>
-            )}
+            Real-time Azure Monitor metrics — refreshes every 60s
+            {lastUpdated && <span className="ml-2">· {lastUpdated}</span>}
           </p>
         </div>
         <button
@@ -148,54 +307,69 @@ export function InfrastructureDashboard() {
           <span className="text-sm">Fetching Azure Monitor metrics…</span>
         </div>
       ) : error ? (
-        <div
-          className="rounded-xl p-4 text-sm"
-          style={{ color: "#ef4444", border: "1px solid #ef444433", background: "var(--orbit-bg-card)" }}
-        >
+        <div className="rounded-xl p-4 text-sm" style={{ color: "#ef4444", border: "1px solid #ef444433", background: "var(--orbit-bg-card)" }}>
           {error.message}
         </div>
       ) : data ? (
-        <>
-          {!data.azureConfigured && (
-            <div
-              className="flex items-start gap-3 rounded-xl px-4 py-3 text-sm"
-              style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b" }}
-            >
-              <Info className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>
-                Azure Monitor is not configured — set <code className="font-mono text-xs">AZURE_SUBSCRIPTION_ID</code> and
-                Managed Identity (or client credentials) to enable live metrics. Showing empty state.
-              </span>
+        <div className="space-y-6">
+          {/* Overall health banner */}
+          <HealthBanner status={data.overallHealth} capturedAt={data.capturedAt} />
+
+          {/* Compute */}
+          {data.containerApps.length > 0 && (
+            <div className="space-y-3">
+              <SectionHeading label="Compute" count={data.containerApps.length} health={data.containerApps[0]?.health ?? "unknown"} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {data.containerApps.map((g) => (
+                  <ResourceCard key={g.name} group={g} icon={Server} seriesList={seriesList} primaryMetric="cpu" />
+                ))}
+              </div>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ResourceCard
-              title="Container Apps"
-              subtitle="ca-orbit-prod"
-              icon={Server}
-              metrics={data.containerApps}
-            />
-            <ResourceCard
-              title="PostgreSQL"
-              subtitle="pg-orbit-prod"
-              icon={Database}
-              metrics={data.database}
-            />
-            <ResourceCard
-              title="Storage Account"
-              subtitle="stsharedprod"
-              icon={HardDrive}
-              metrics={data.storage}
-            />
-            <ResourceCard
-              title="Application Insights"
-              subtitle="appi-orbit-prod · last 1h"
-              icon={Activity}
-              metrics={data.appInsights}
-            />
-          </div>
-        </>
+          {/* Database */}
+          {data.database.length > 0 && (
+            <div className="space-y-3">
+              <SectionHeading label="Database" count={data.database.length} health={data.database[0]?.health ?? "unknown"} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {data.database.map((g) => (
+                  <ResourceCard key={g.name} group={g} icon={Database} seriesList={seriesList} primaryMetric="availability" />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Network / Storage */}
+          {data.network.length > 0 && (
+            <div className="space-y-3">
+              <SectionHeading label="Network & Storage" count={data.network.length} health={data.network[0]?.health ?? "unknown"} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {data.network.map((g) => (
+                  <ResourceCard key={g.name} group={g} icon={Network} seriesList={seriesList} primaryMetric="egress" />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* API */}
+          {data.api.length > 0 && (
+            <div className="space-y-3">
+              <SectionHeading label="API & Observability" count={data.api.length} health={data.api[0]?.health ?? "unknown"} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {data.api.map((g) => (
+                  <ResourceCard key={g.name} group={g} icon={Activity} seriesList={seriesList} primaryMetric="duration" />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {data.containerApps.length === 0 && data.database.length === 0 && data.api.length === 0 && (
+            <div className="rounded-xl p-6 text-center text-sm" style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)", color: "var(--orbit-text-muted)" }}>
+              No metrics available — ensure <code className="font-mono text-xs">AZURE_SUBSCRIPTION_ID</code> (or <code className="font-mono text-xs">AZURE_SUBSCRIPTION_IDS</code>) is set and Managed Identity has Monitoring Reader role.
+            </div>
+          )}
+        </div>
       ) : null}
     </div>
   );
