@@ -311,57 +311,60 @@ export function InfrastructureDashboard() {
           {error.message}
         </div>
       ) : data ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Overall health banner */}
           <HealthBanner status={data.overallHealth} capturedAt={data.capturedAt} />
 
-          {/* Compute */}
-          {data.containerApps.length > 0 && (
-            <div className="space-y-3">
-              <SectionHeading label="Compute" count={data.containerApps.length} health={data.containerApps[0]?.health ?? "unknown"} />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {data.containerApps.map((g) => (
-                  <ResourceCard key={g.name} group={g} icon={Server} seriesList={seriesList} primaryMetric="cpu" />
-                ))}
+          {/* 2×2 grid — all four sections side by side */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Compute */}
+            {data.containerApps.length > 0 && (
+              <div className="space-y-2">
+                <SectionHeading label="Compute" count={data.containerApps.length} health={data.containerApps[0]?.health ?? "unknown"} />
+                <div className="space-y-3">
+                  {data.containerApps.map((g) => (
+                    <ResourceCard key={g.name} group={g} icon={Server} seriesList={seriesList} primaryMetric="cpu" />
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Database */}
-          {data.database.length > 0 && (
-            <div className="space-y-3">
-              <SectionHeading label="Database" count={data.database.length} health={data.database[0]?.health ?? "unknown"} />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {data.database.map((g) => (
-                  <ResourceCard key={g.name} group={g} icon={Database} seriesList={seriesList} primaryMetric="availability" />
-                ))}
+            {/* Database */}
+            {data.database.length > 0 && (
+              <div className="space-y-2">
+                <SectionHeading label="Database" count={data.database.length} health={data.database[0]?.health ?? "unknown"} />
+                <div className="space-y-3">
+                  {data.database.map((g) => (
+                    <ResourceCard key={g.name} group={g} icon={Database} seriesList={seriesList} primaryMetric="availability" />
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Network / Storage */}
-          {data.network.length > 0 && (
-            <div className="space-y-3">
-              <SectionHeading label="Network & Storage" count={data.network.length} health={data.network[0]?.health ?? "unknown"} />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {data.network.map((g) => (
-                  <ResourceCard key={g.name} group={g} icon={Network} seriesList={seriesList} primaryMetric="egress" />
-                ))}
+            {/* Network / Storage */}
+            {data.network.length > 0 && (
+              <div className="space-y-2">
+                <SectionHeading label="Network & Storage" count={data.network.length} health={data.network[0]?.health ?? "unknown"} />
+                <div className="space-y-3">
+                  {data.network.map((g) => (
+                    <ResourceCard key={g.name} group={g} icon={Network} seriesList={seriesList} primaryMetric="egress" />
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* API */}
-          {data.api.length > 0 && (
-            <div className="space-y-3">
-              <SectionHeading label="API & Observability" count={data.api.length} health={data.api[0]?.health ?? "unknown"} />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {data.api.map((g) => (
-                  <ResourceCard key={g.name} group={g} icon={Activity} seriesList={seriesList} primaryMetric="duration" />
-                ))}
+            {/* API & Observability */}
+            {data.api.length > 0 && (
+              <div className="space-y-2">
+                <SectionHeading label="API & Observability" count={data.api.length} health={data.api[0]?.health ?? "unknown"} />
+                <div className="space-y-3">
+                  {data.api.map((g) => (
+                    <ResourceCard key={g.name} group={g} icon={Activity} seriesList={seriesList} primaryMetric="duration" />
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Empty state */}
           {data.containerApps.length === 0 && data.database.length === 0 && data.api.length === 0 && (
