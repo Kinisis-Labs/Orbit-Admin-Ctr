@@ -346,13 +346,21 @@ async function getM365Costs(token: string): Promise<M365CostSummary> {
     const url =
       `${base}/invoices?api-version=2020-05-01&periodStartDate=${currentYear}-01-01&periodEndDate=${currentYear}-12-31&$expand=documents`;
 
+    console.log("[M365] invoices URL:", url);
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     });
-    if (!res.ok) return empty;
+    console.log("[M365] invoices HTTP status:", res.status);
+    if (!res.ok) {
+      const errText = await res.text();
+      console.log("[M365] invoices error body:", errText.slice(0, 500));
+      return empty;
+    }
 
     const data = (await res.json()) as InvoiceResponse;
     const items = data.value ?? [];
+    console.log("[M365] invoice count:", items.length);
+    if (items.length > 0) console.log("[M365] first invoice sample:", JSON.stringify(items[0]).slice(0, 500));
 
     const invoices: M365Invoice[] = items
       .map((item) => {
