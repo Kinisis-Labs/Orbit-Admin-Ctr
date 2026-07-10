@@ -116,6 +116,24 @@ router.get("/infrastructure/debug", requireAuth, requireAdmin, async (req, res) 
       cacheExpiresAt: cacheExpiresAt ? new Date(cacheExpiresAt).toISOString() : null,
       cacheValid: Date.now() < cacheExpiresAt,
     },
+    liveProbe: await (async () => {
+      try {
+        const { getAccessToken } = await import("../../../lib/azure-monitor.js");
+        const token = await getAccessToken();
+        if (!token) return { error: "no token" };
+        const subIds = (process.env["AZURE_SUBSCRIPTION_IDS"] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+        const subId = subIds[0];
+        const rg = process.env["AZURE_RESOURCE_GROUP_ORBIT"] ?? "rg-kinisislabs-orbit-prod-eus2";
+        const ca = process.env["AZURE_CONTAINER_APP_NAME"] ?? "ca-orbit-prod-v2";
+        const resourceId = `/subscriptions/${subId}/resourceGroups/${rg}/providers/Microsoft.App/containerApps/${ca}`;
+        const url = `https://management.azure.com${resourceId}/providers/Microsoft.Insights/metrics?api-version=2023-10-01&metricnames=CpuPercentage&timespan=PT1H&aggregation=Average&interval=PT1H`;
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        const body = await res.text();
+        return { status: res.status, resourceId, bodyPreview: body.slice(0, 500) };
+      } catch (err) {
+        return { error: String(err) };
+      }
+    })(),
   });
 });
 
