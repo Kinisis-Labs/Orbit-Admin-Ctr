@@ -324,9 +324,6 @@ router.get("/auth/callback", async (req, res, next) => {
 
 router.post("/auth/logout", async (req, res, next) => {
   try {
-    const cfg = getEntraConfig();
-    const idToken = req.session.user?.idToken;
-    const upn = req.session.user?.userPrincipalName;
     if (req.session.user) {
       void logAudit({
         action: "auth.logout",
@@ -338,24 +335,7 @@ router.post("/auth/logout", async (req, res, next) => {
     }
     req.session.destroy(() => {
       res.clearCookie("orbit.sid");
-      void (async () => {
-        if (cfg) {
-          try {
-            const config = await getOidcConfiguration(cfg);
-            const url = client.buildEndSessionUrl(config, {
-              ...(cfg.postLogoutRedirectUri
-                ? { post_logout_redirect_uri: cfg.postLogoutRedirectUri }
-                : {}),
-              ...(idToken ? { id_token_hint: idToken } : upn ? { logout_hint: upn } : {}),
-            });
-            res.json({ redirect: url.href });
-            return;
-          } catch {
-            /* fall through to default redirect */
-          }
-        }
-        res.json({ redirect: "/signed-out" });
-      })();
+      res.json({ redirect: "/signed-out" });
     });
   } catch (err) {
     next(err);
