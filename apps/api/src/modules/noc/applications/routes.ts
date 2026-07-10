@@ -96,8 +96,17 @@ function getAppInsightsConnStr(): string | undefined {
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 
+const CACHE_TTL_MS = 2 * 60 * 1000;
+let cachedApps: unknown = null;
+let cacheExpiresAt = 0;
+
 router.get("/noc/applications", requireAuth, requireAdmin, async (req, res) => {
   try {
+    const now = Date.now();
+    if (cachedApps && now < cacheExpiresAt) {
+      res.json(cachedApps);
+      return;
+    }
     const apps = await db
       .select()
       .from(applicationsTable)
@@ -123,7 +132,10 @@ router.get("/noc/applications", requireAuth, requireAdmin, async (req, res) => {
       }),
     );
 
-    res.json({ apps: results, capturedAt: new Date().toISOString() });
+    const payload = { apps: results, capturedAt: new Date().toISOString() };
+    cachedApps = payload;
+    cacheExpiresAt = Date.now() + CACHE_TTL_MS;
+    res.json(payload);
   } catch (err) {
     req.log.error(err, "GET /api/noc/applications failed");
     res.status(500).json({ message: "Internal server error" });
