@@ -59,7 +59,7 @@ export async function getAccessToken(): Promise<string | null> {
     const miEndpoint = env("IDENTITY_ENDPOINT");
     const miHeader = env("IDENTITY_HEADER");
 
-    if (miEndpoint && miHeader) {
+    if (miEndpoint && miHeader && !env("AZURE_USE_CLIENT_CREDENTIALS")) {
       const res = await fetch(
         `${miEndpoint}?resource=https://management.azure.com&api-version=2019-08-01`,
         { headers: { "X-IDENTITY-HEADER": miHeader } },
