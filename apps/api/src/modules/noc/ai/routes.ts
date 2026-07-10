@@ -13,13 +13,16 @@ let cacheExpiresAt = 0;
 router.get("/noc/ai", requireAuth, requireAdmin, async (req, res) => {
   try {
     const now = Date.now();
-    if (cachedSnapshot && now < cacheExpiresAt) {
+    const forceRefresh = req.query.refresh === "1";
+    if (!forceRefresh && cachedSnapshot && now < cacheExpiresAt) {
       res.json(cachedSnapshot);
       return;
     }
     const snapshot = await getAiSnapshot();
-    cachedSnapshot = snapshot;
-    cacheExpiresAt = now + CACHE_TTL_MS;
+    if (snapshot.openAi.totalRequests !== null || snapshot.aiSearch.totalQueries !== null) {
+      cachedSnapshot = snapshot;
+      cacheExpiresAt = now + CACHE_TTL_MS;
+    }
     res.json(snapshot);
   } catch (err) {
     req.log.error(err, "GET /api/noc/ai failed");

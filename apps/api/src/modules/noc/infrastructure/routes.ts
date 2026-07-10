@@ -15,9 +15,17 @@ let cacheExpiresAt = 0;
 router.get("/noc/infrastructure", requireAuth, requireAdmin, async (req, res) => {
   try {
     const now = Date.now();
-    const snapshot = cachedSnapshot && now < cacheExpiresAt
-      ? cachedSnapshot
-      : await getInfrastructureSnapshot().then((s) => { cachedSnapshot = s; cacheExpiresAt = now + CACHE_TTL_MS; return s; });
+    const forceRefresh = req.query.refresh === "1";
+    let snapshot: InfraSnapshot;
+    if (!forceRefresh && cachedSnapshot && now < cacheExpiresAt) {
+      snapshot = cachedSnapshot;
+    } else {
+      snapshot = await getInfrastructureSnapshot();
+      if (snapshot.containerApps.length > 0 || snapshot.database.length > 0) {
+        cachedSnapshot = snapshot;
+        cacheExpiresAt = now + CACHE_TTL_MS;
+      }
+    }
 
     if (isAzureMonitorConfigured()) {
       const allMetrics = [

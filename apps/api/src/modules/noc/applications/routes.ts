@@ -103,7 +103,8 @@ let cacheExpiresAt = 0;
 router.get("/noc/applications", requireAuth, requireAdmin, async (req, res) => {
   try {
     const now = Date.now();
-    if (cachedApps && now < cacheExpiresAt) {
+    const forceRefresh = req.query.refresh === "1";
+    if (!forceRefresh && cachedApps && now < cacheExpiresAt) {
       res.json(cachedApps);
       return;
     }
@@ -133,8 +134,10 @@ router.get("/noc/applications", requireAuth, requireAdmin, async (req, res) => {
     );
 
     const payload = { apps: results, capturedAt: new Date().toISOString() };
-    cachedApps = payload;
-    cacheExpiresAt = Date.now() + CACHE_TTL_MS;
+    if (results.length > 0) {
+      cachedApps = payload;
+      cacheExpiresAt = Date.now() + CACHE_TTL_MS;
+    }
     res.json(payload);
   } catch (err) {
     req.log.error(err, "GET /api/noc/applications failed");

@@ -11,13 +11,18 @@ let cacheExpiresAt = 0;
 router.get("/noc/cost", requireAuth, requireAdmin, async (req, res) => {
   try {
     const now = Date.now();
-    if (cachedSnapshot && now < cacheExpiresAt) {
+    const forceRefresh = req.query.refresh === "1";
+    if (!forceRefresh && cachedSnapshot && now < cacheExpiresAt) {
       res.json(cachedSnapshot);
       return;
     }
     const snapshot = await getCostSnapshot();
-    cachedSnapshot = snapshot;
-    cacheExpiresAt = now + CACHE_TTL_MS;
+    const hasData = snapshot.subscriptions.some((s) => s.totalMtdCost !== null)
+      || (snapshot.m365.invoices.length > 0);
+    if (hasData) {
+      cachedSnapshot = snapshot;
+      cacheExpiresAt = now + CACHE_TTL_MS;
+    }
     res.json(snapshot);
   } catch (err) {
     req.log.error(err, "GET /api/noc/cost failed");
