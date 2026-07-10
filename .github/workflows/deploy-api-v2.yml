@@ -182,12 +182,13 @@ jobs:
           V_ENTRA_ENGINEER_GROUP_ID: ${{ secrets.ENTRA_ENGINEER_GROUP_ID }}
           V_ENTRA_FINOPS_GROUP_ID: ${{ secrets.ENTRA_FINOPS_GROUP_ID }}
           V_AZURE_MANAGED_IDENTITY_CLIENT_ID: ${{ secrets.AZURE_MANAGED_IDENTITY_CLIENT_ID }}
-          V_AZURE_SUB_GRAILBABE: ${{ secrets.AZURE_SUB_GRAILBABE }}
-          V_AZURE_SUB_ORBIT: ${{ secrets.AZURE_SUB_ORBIT }}
-          V_AZURE_SUB_KINISIS_LABS: ${{ secrets.AZURE_SUB_KINISIS_LABS }}
-          V_AZURE_SUB_SHAREDPLATFORM: ${{ secrets.AZURE_SUB_SHAREDPLATFORM }}
+          V_AZURE_BILLING_SP_CLIENT_ID: ${{ secrets.AZURE_BILLING_SP_CLIENT_ID }}
+          V_AZURE_BILLING_SP_CLIENT_SECRET: ${{ secrets.AZURE_BILLING_SP_CLIENT_SECRET }}
+          V_AZURE_SUBSCRIPTION_IDS: ${{ secrets.AZURE_SUBSCRIPTION_IDS }}
+          V_AZURE_SUBSCRIPTION_LABELS: ${{ secrets.AZURE_SUBSCRIPTION_LABELS }}
           V_AZURE_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.AZURE_LOG_ANALYTICS_WORKSPACE_ID }}
           V_AZURE_BILLING_ACCOUNT_ID: ${{ secrets.AZURE_BILLING_ACCOUNT_ID }}
+          V_AZURE_BILLING_PROFILE_ID: ${{ secrets.AZURE_BILLING_PROFILE_ID }}
           V_BUDGET_AMOUNT__GRAILBABE: ${{ secrets.BUDGET_AMOUNT__GRAILBABE }}
           V_BUDGET_AMOUNT__KINISIS_LABS: ${{ secrets.BUDGET_AMOUNT__KINISIS_LABS }}
           V_CLERK_SECRET_KEY__GRAILBABE: ${{ secrets.CLERK_SECRET_KEY__GRAILBABE }}
@@ -246,15 +247,15 @@ jobs:
                 ("ENTRA_ADMIN_GROUP_ID",                 "V_ENTRA_ADMIN_GROUP_ID"),
                 ("ENTRA_ENGINEER_GROUP_ID",              "V_ENTRA_ENGINEER_GROUP_ID"),
                 ("ENTRA_FINOPS_GROUP_ID",                "V_ENTRA_FINOPS_GROUP_ID"),
-                ("AZURE_CLIENT_ID",                      "V_AZURE_MANAGED_IDENTITY_CLIENT_ID"),
                 ("AZURE_MANAGED_IDENTITY_CLIENT_ID",     "V_AZURE_MANAGED_IDENTITY_CLIENT_ID"),
+                ("AZURE_CLIENT_ID",                      "V_AZURE_BILLING_SP_CLIENT_ID"),
+                ("AZURE_CLIENT_SECRET",                  "V_AZURE_BILLING_SP_CLIENT_SECRET"),
                 ("AZURE_TENANT_ID",                      "V_ENTRA_TENANT_ID"),
-                ("AZURE_SUB_GRAILBABE",                  "V_AZURE_SUB_GRAILBABE"),
-                ("AZURE_SUB_ORBIT",                      "V_AZURE_SUB_ORBIT"),
-                ("AZURE_SUB_KINISIS_LABS",               "V_AZURE_SUB_KINISIS_LABS"),
-                ("AZURE_SUB_SHAREDPLATFORM",             "V_AZURE_SUB_SHAREDPLATFORM"),
+                ("AZURE_SUBSCRIPTION_IDS",               "V_AZURE_SUBSCRIPTION_IDS"),
+                ("AZURE_SUBSCRIPTION_LABELS",            "V_AZURE_SUBSCRIPTION_LABELS"),
                 ("AZURE_LOG_ANALYTICS_WORKSPACE_ID",     "V_AZURE_LOG_ANALYTICS_WORKSPACE_ID"),
                 ("AZURE_BILLING_ACCOUNT_ID",             "V_AZURE_BILLING_ACCOUNT_ID"),
+                ("AZURE_BILLING_PROFILE_ID",             "V_AZURE_BILLING_PROFILE_ID"),
                 ("BUDGET_AMOUNT__GRAILBABE",             "V_BUDGET_AMOUNT__GRAILBABE"),
                 ("BUDGET_AMOUNT__KINISIS_LABS",          "V_BUDGET_AMOUNT__KINISIS_LABS"),
                 ("CLERK_SECRET_KEY__GRAILBABE",          "V_CLERK_SECRET_KEY__GRAILBABE"),
@@ -267,11 +268,6 @@ jobs:
             ]
             from_secrets = {k: os.environ[env] for k, env in secret_map if os.environ.get(env)}
 
-            sub_g = from_secrets.get("AZURE_SUB_GRAILBABE",     existing.get("AZURE_SUB_GRAILBABE", ""))
-            sub_s = from_secrets.get("AZURE_SUB_SHAREDPLATFORM", existing.get("AZURE_SUB_SHAREDPLATFORM", ""))
-            subs  = [s for s in [sub_g, sub_s] if s]
-            if subs:
-                fixed["AZURE_SUBSCRIPTION_IDS"] = ",".join(subs)
 
             merged = {**existing, **fixed, **from_secrets}
 
