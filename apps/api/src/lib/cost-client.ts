@@ -35,18 +35,21 @@ export interface BudgetInfo {
   forecastedSpend: number | null;
 }
 
-export interface M365ProductCost {
-  productName: string;
-  publisherName: string;
-  cost: number;
+export interface M365Invoice {
+  invoiceId: string;
+  billingPeriod: string;
+  dueDate: string | null;
+  amount: number;
   currency: string;
+  status: string;
+  downloadUrl: string | null;
 }
 
 export interface M365CostSummary {
-  totalMtdCost: number | null;
-  totalYtdCost: number | null;
+  latestInvoiceAmount: number | null;
+  ytdTotal: number | null;
   currency: string;
-  topProducts: M365ProductCost[];
+  invoices: M365Invoice[];
   billingConfigured: boolean;
 }
 
@@ -285,87 +288,78 @@ async function getTopServices(
     .slice(0, 10);
 }
 
-// ── M365 / Billing Account costs ────────────────────────────────────────────
+// ── M365 / Billing Account costs via MCA Invoices API ───────────────────────
+
+interface InvoiceResponse {
+  value?: Array<{
+    name?: string;
+    properties?: {
+      invoiceDate?: string;
+      dueDate?: string;
+      amountDue?: { value?: number; currency?: string };
+      totalAmount?: { value?: number; currency?: string };
+      status?: string;
+      invoicePeriodStartDate?: string;
+      invoicePeriodEndDate?: string;
+      documents?: Array<{ documentType?: string; url?: string }>;
+    };
+  }>;
+}
 
 async function getM365Costs(token: string): Promise<M365CostSummary> {
   const empty: M365CostSummary = {
-    totalMtdCost: null,
-    totalYtdCost: null,
+    latestInvoiceAmount: null,
+    ytdTotal: null,
     currency: "USD",
-    topProducts: [],
+    invoices: [],
     billingConfigured: isBillingConfigured(),
   };
 
-  const scope = billingScope();
-  if (!scope) return empty;
+  const billingAccountId = process.env.AZURE_BILLING_ACCOUNT_ID;
+  if (!billingAccountId) return empty;
 
-  const now = new Date();
-  const ytdStart = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0]!;
-  const today = now.toISOString().split("T")[0]!;
+  try {
+    const currentYear = new Date().getFullYear();
+    const url =
+      `https://management.azure.com/providers/Microsoft.Billing/billingAccounts/${billingAccountId}` +
+      `/invoices?api-version=2020-05-01&periodStartDate=${currentYear}-01-01&periodEndDate=${currentYear}-12-31`;
 
-  const m365Filter = {
-    or: [
-      { dimensions: { name: "PublisherType", operator: "In", values: ["Marketplace"] } },
-      { tags: { name: "ProductFamily", operator: "In", values: ["Microsoft 365", "Office 365"] } },
-    ],
-  };
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    });
+    if (!res.ok) return empty;
 
-  const [mtdResult, ytdResult, breakdownResult] = await Promise.all([
-    queryCosts(token, scope, {
-      type: "ActualCost",
-      timeframe: "BillingMonthToDate",
-      dataset: {
-        granularity: "None",
-        aggregation: { totalCost: { name: "Cost", function: "Sum" } },
-        filter: m365Filter,
-      },
-    } as QueryBody & { dataset: { filter?: unknown } }),
-    queryCosts(token, scope, {
-      type: "ActualCost",
-      timeframe: "Custom",
-      timePeriod: { from: ytdStart, to: today },
-      dataset: {
-        granularity: "None",
-        aggregation: { totalCost: { name: "Cost", function: "Sum" } },
-        filter: m365Filter,
-      },
-    } as QueryBody & { dataset: { filter?: unknown } }),
-    queryCosts(token, scope, {
-      type: "ActualCost",
-      timeframe: "BillingMonthToDate",
-      dataset: {
-        granularity: "None",
-        aggregation: { totalCost: { name: "Cost", function: "Sum" } },
-        grouping: [
-          { type: "Dimension", name: "ProductName" },
-          { type: "Dimension", name: "PublisherName" },
-        ],
-        filter: m365Filter,
-      },
-    } as QueryBody & { dataset: { filter?: unknown } }),
-  ]);
+    const data = (await res.json()) as InvoiceResponse;
+    const items = data.value ?? [];
 
-  const mtdRows = mtdResult?.properties?.rows ?? [];
-  const ytdRows = ytdResult?.properties?.rows ?? [];
-  const breakdownRows = breakdownResult?.properties?.rows ?? [];
+    const invoices: M365Invoice[] = items
+      .map((item) => {
+        const p = item.properties ?? {};
+        const amt = p.amountDue ?? p.totalAmount;
+        const doc = (p.documents ?? []).find((d) => d.documentType === "Invoice");
+        return {
+          invoiceId: item.name ?? "",
+          billingPeriod: p.invoicePeriodStartDate
+            ? `${p.invoicePeriodStartDate} – ${p.invoicePeriodEndDate ?? ""}`
+            : "",
+          dueDate: p.dueDate ?? null,
+          amount: amt?.value ?? 0,
+          currency: amt?.currency ?? "USD",
+          status: p.status ?? "Unknown",
+          downloadUrl: doc?.url ?? null,
+        };
+      })
+      .filter((inv) => inv.amount > 0)
+      .sort((a, b) => (b.dueDate ?? "").localeCompare(a.dueDate ?? ""));
 
-  const totalMtdCost = mtdRows.length > 0 ? Number((mtdRows[0] as [number])[0]) : null;
-  const totalYtdCost = ytdRows.length > 0 ? Number((ytdRows[0] as [number])[0]) : null;
-  const currency =
-    mtdRows.length > 0 ? String((mtdRows[0] as [number, unknown, string])[2] ?? "USD") : "USD";
+    const currency = invoices[0]?.currency ?? "USD";
+    const latestInvoiceAmount = invoices[0]?.amount ?? null;
+    const ytdTotal = invoices.reduce((sum, inv) => sum + inv.amount, 0) || null;
 
-  const topProducts: M365ProductCost[] = breakdownRows
-    .map((r) => ({
-      productName: String((r as [number, string, string])[1] ?? "Unknown"),
-      publisherName: String((r as [number, string, string])[2] ?? ""),
-      cost: Number((r as [number])[0] ?? 0),
-      currency,
-    }))
-    .filter((p) => p.cost > 0)
-    .sort((a, b) => b.cost - a.cost)
-    .slice(0, 10);
-
-  return { totalMtdCost, totalYtdCost, currency, topProducts, billingConfigured: true };
+    return { latestInvoiceAmount, ytdTotal, currency, invoices, billingConfigured: true };
+  } catch {
+    return empty;
+  }
 }
 
 // ── Budget ────────────────────────────────────────────────────────────────────
@@ -425,10 +419,10 @@ export async function getCostSnapshot(): Promise<CostSnapshot> {
   const subList = getSubscriptionList();
 
   const emptyM365: M365CostSummary = {
-    totalMtdCost: null,
-    totalYtdCost: null,
+    latestInvoiceAmount: null,
+    ytdTotal: null,
     currency: "USD",
-    topProducts: [],
+    invoices: [],
     billingConfigured: isBillingConfigured(),
   };
 

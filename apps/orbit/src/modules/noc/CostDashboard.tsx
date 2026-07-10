@@ -1,10 +1,10 @@
-import { RefreshCw, Loader2, Info, DollarSign, TrendingUp, Package, CloudCog } from "lucide-react";
+import { RefreshCw, Loader2, Info, DollarSign, TrendingUp, Package, CloudCog, ExternalLink } from "lucide-react";
 import {
   useCostMetrics,
   type CostByService,
   type BudgetInfo,
   type SubscriptionCost,
-  type M365ProductCost,
+  type M365Invoice,
   type M365CostSummary,
 } from "../../services/noc";
 
@@ -125,53 +125,64 @@ function ServiceRow({ service, maxCost }: { service: CostByService; maxCost: num
   );
 }
 
-function M365ProductRow({ product, maxCost }: { product: M365ProductCost; maxCost: number }) {
-  const pct = maxCost > 0 ? (product.cost / maxCost) * 100 : 0;
+function statusBadge(status: string) {
+  const s = status.toLowerCase();
+  const color =
+    s === "paid" ? "#22c55e" : s === "due" || s === "pastdue" ? "#ef4444" : "#f59e0b";
+  return (
+    <span
+      className="text-xs font-medium px-2 py-0.5 rounded-full"
+      style={{ background: `${color}22`, color }}
+    >
+      {status}
+    </span>
+  );
+}
+
+function M365InvoiceRow({ invoice }: { invoice: M365Invoice }) {
   return (
     <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-      <td className="px-4 py-3" style={{ color: "var(--orbit-text-secondary)" }}>
-        <p className="text-sm">{product.productName}</p>
-        {product.publisherName && (
-          <p className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>
-            {product.publisherName}
-          </p>
-        )}
+      <td className="px-4 py-3 text-sm" style={{ color: "var(--orbit-text-secondary)" }}>
+        {invoice.invoiceId}
       </td>
-      <td className="px-4 py-3" style={{ width: "40%" }}>
-        <div className="flex items-center gap-2">
-          <div className="flex-1 rounded-full h-1.5" style={{ background: "var(--orbit-border)" }}>
-            <div
-              className="h-1.5 rounded-full"
-              style={{ width: `${pct}%`, background: "#0ea5e9" }}
-            />
-          </div>
-          <span
-            className="text-xs tabular-nums w-16 text-right"
-            style={{ color: "var(--orbit-text-muted)" }}
-          >
-            {pct.toFixed(1)}%
-          </span>
-        </div>
+      <td className="px-4 py-3 text-sm" style={{ color: "var(--orbit-text-muted)" }}>
+        {invoice.billingPeriod}
       </td>
+      <td className="px-4 py-3 text-sm" style={{ color: "var(--orbit-text-muted)" }}>
+        {invoice.dueDate ?? "—"}
+      </td>
+      <td className="px-4 py-3">{statusBadge(invoice.status)}</td>
       <td
         className="px-4 py-3 text-sm tabular-nums text-right"
         style={{ color: "var(--orbit-text-primary)" }}
       >
-        {fmtCurrency(product.cost, product.currency)}
+        {fmtCurrency(invoice.amount, invoice.currency)}
+      </td>
+      <td className="px-4 py-3 text-right">
+        {invoice.downloadUrl ? (
+          <a
+            href={invoice.downloadUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-xs"
+            style={{ color: "#0ea5e9" }}
+          >
+            <ExternalLink className="h-3 w-3" />
+            PDF
+          </a>
+        ) : null}
       </td>
     </tr>
   );
 }
 
 function M365Section({ m365 }: { m365: M365CostSummary }) {
-  const maxCost = m365.topProducts[0]?.cost ?? 1;
-
   return (
     <>
       <div className="flex items-center gap-2 mt-2">
         <Package className="h-4 w-4" style={{ color: "var(--orbit-text-muted)" }} />
         <h2 className="text-sm font-semibold" style={{ color: "var(--orbit-text-primary)" }}>
-          Microsoft 365 Licensing Costs
+          Microsoft 365 Billing Invoices
         </h2>
         <div className="flex-1 h-px" style={{ background: "var(--orbit-border)" }} />
       </div>
@@ -188,25 +199,24 @@ function M365Section({ m365 }: { m365: M365CostSummary }) {
           <Info className="h-4 w-4 mt-0.5 shrink-0" />
           <span>
             Billing account not configured — set{" "}
-            <code className="font-mono text-xs">AZURE_BILLING_ACCOUNT_ID</code> (EA/MCA) to enable
-            Microsoft 365 license cost visibility. Optionally set{" "}
-            <code className="font-mono text-xs">AZURE_BILLING_PROFILE_ID</code> for MCA profile scope.
+            <code className="font-mono text-xs">AZURE_BILLING_ACCOUNT_ID</code> to enable MCA invoice
+            history.
           </span>
         </div>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4">
             <SummaryTile
-              label="M365 Month-to-Date"
-              value={m365.totalMtdCost}
+              label="Latest Invoice"
+              value={m365.latestInvoiceAmount}
               currency={m365.currency}
-              subtext="license & subscription spend"
+              subtext="most recent billing period"
             />
             <SummaryTile
-              label="M365 Year-to-Date"
-              value={m365.totalYtdCost}
+              label="Year-to-Date Total"
+              value={m365.ytdTotal}
               currency={m365.currency}
-              subtext="Jan 1 → today"
+              subtext="sum of all invoices this year"
             />
           </div>
 
@@ -220,16 +230,16 @@ function M365Section({ m365 }: { m365: M365CostSummary }) {
             >
               <Package className="h-4 w-4" style={{ color: "var(--orbit-text-muted)" }} />
               <span className="text-sm font-semibold" style={{ color: "var(--orbit-text-primary)" }}>
-                Top M365 Products (MTD)
+                Invoice History ({new Date().getFullYear()})
               </span>
               <span className="ml-auto text-xs" style={{ color: "var(--orbit-text-muted)" }}>
-                {m365.topProducts.length} products
+                {m365.invoices.length} invoices
               </span>
             </div>
             <table className="w-full">
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-                  {["Product", "Share", "Cost"].map((h) => (
+                  {["Invoice", "Billing Period", "Due Date", "Status", "Amount", ""].map((h) => (
                     <th
                       key={h}
                       className="px-4 py-2 text-left text-xs font-semibold"
@@ -241,19 +251,19 @@ function M365Section({ m365 }: { m365: M365CostSummary }) {
                 </tr>
               </thead>
               <tbody>
-                {m365.topProducts.length === 0 ? (
+                {m365.invoices.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={3}
+                      colSpan={6}
                       className="px-4 py-8 text-sm text-center"
                       style={{ color: "var(--orbit-text-muted)" }}
                     >
-                      No Microsoft 365 costs found in the billing account for this period.
+                      No invoices found for this billing account this year.
                     </td>
                   </tr>
                 ) : (
-                  m365.topProducts.map((p) => (
-                    <M365ProductRow key={p.productName} product={p} maxCost={maxCost} />
+                  m365.invoices.map((inv) => (
+                    <M365InvoiceRow key={inv.invoiceId} invoice={inv} />
                   ))
                 )}
               </tbody>

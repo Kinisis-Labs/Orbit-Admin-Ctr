@@ -243,18 +243,21 @@ export interface BudgetInfo {
   forecastedSpend: number | null;
 }
 
-export interface M365ProductCost {
-  productName: string;
-  publisherName: string;
-  cost: number;
+export interface M365Invoice {
+  invoiceId: string;
+  billingPeriod: string;
+  dueDate: string | null;
+  amount: number;
   currency: string;
+  status: string;
+  downloadUrl: string | null;
 }
 
 export interface M365CostSummary {
-  totalMtdCost: number | null;
-  totalYtdCost: number | null;
+  latestInvoiceAmount: number | null;
+  ytdTotal: number | null;
   currency: string;
-  topProducts: M365ProductCost[];
+  invoices: M365Invoice[];
   billingConfigured: boolean;
 }
 
