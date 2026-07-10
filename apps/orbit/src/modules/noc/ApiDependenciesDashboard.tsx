@@ -25,6 +25,7 @@ interface DependencySnapshot {
 // ── Cost-sensitive APIs ───────────────────────────────────────────────────────
 
 const COST_SENSITIVE = new Set(["Azure OpenAI", "OpenAI", "Ximilar", "RoboFlow"]);
+const AI_APIS = new Set(["Azure OpenAI", "OpenAI"]);
 
 // ── Data hook ─────────────────────────────────────────────────────────────────
 
@@ -93,6 +94,71 @@ function SummaryTiles({ entries }: { entries: DependencyEntry[] }) {
   );
 }
 
+// ── Reusable API table ────────────────────────────────────────────────────────
+
+function ApiTable({ title, entries, accentColor }: { title: string; entries: DependencyEntry[]; accentColor: string }) {
+  return (
+    <div className="space-y-2">
+      <h2 className="text-sm font-semibold uppercase tracking-widest px-1" style={{ color: accentColor }}>
+        {title}
+      </h2>
+      <div className="rounded-xl overflow-hidden" style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
+              {["", "API", "Calls / hr", "Calls (24h)", "Avg Latency", "Failed", "Error Rate", "Last Seen"].map((h) => (
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold" style={{ color: "var(--orbit-text-muted)" }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {entries.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-6 text-center text-sm" style={{ color: "var(--orbit-text-muted)" }}>
+                  No entries
+                </td>
+              </tr>
+            ) : (
+              entries.map((entry) => (
+                <tr key={entry.name} style={{ borderBottom: "1px solid var(--orbit-border)" }}>
+                  <td className="px-4 py-3"><StatusIcon entry={entry} /></td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium" style={{ color: "var(--orbit-text-primary)" }}>{entry.name}</span>
+                      {COST_SENSITIVE.has(entry.name) && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b" }}>
+                          COST
+                        </span>
+                      )}
+                      {!entry.configured && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ background: "var(--orbit-border)", color: "var(--orbit-text-muted)" }}>
+                          NOT INSTRUMENTED
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 tabular-nums text-right" style={{ color: "var(--orbit-text-secondary)" }}>{fmt(entry.callsPerHour, "/hr")}</td>
+                  <td className="px-4 py-3 tabular-nums text-right" style={{ color: "var(--orbit-text-secondary)" }}>{fmt(entry.calls24h, "")}</td>
+                  <td className="px-4 py-3 tabular-nums text-right" style={{ color: "var(--orbit-text-secondary)" }}>{fmt(entry.avgDurationMs, "ms")}</td>
+                  <td className="px-4 py-3 tabular-nums text-right" style={{ color: entry.failedCalls ? "#ef4444" : "var(--orbit-text-secondary)" }}>{fmt(entry.failedCalls, "")}</td>
+                  <td className="px-4 py-3 tabular-nums text-right"><ErrorRateCell rate={entry.errorRate} /></td>
+                  <td className="px-4 py-3 text-xs" style={{ color: "var(--orbit-text-muted)" }}>
+                    {entry.lastSeen
+                      ? new Date(entry.lastSeen).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                      : "—"}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
 export function ApiDependenciesDashboard() {
@@ -148,58 +214,19 @@ export function ApiDependenciesDashboard() {
 
           <SummaryTiles entries={data.entries} />
 
-          {/* Table */}
-          <div className="rounded-xl overflow-hidden" style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-                  {["", "API", "Calls / hr", "Calls (24h)", "Avg Latency", "Failed", "Error Rate", "Last Seen"].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold" style={{ color: "var(--orbit-text-muted)" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.entries.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-sm" style={{ color: "var(--orbit-text-muted)" }}>
-                      No dependency data found. Instrument GrailBabe backend to track API calls.
-                    </td>
-                  </tr>
-                ) : (
-                  data.entries.map((entry) => (
-                    <tr key={entry.name} style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-                      <td className="px-4 py-3">
-                        <StatusIcon entry={entry} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium" style={{ color: "var(--orbit-text-primary)" }}>{entry.name}</span>
-                          {COST_SENSITIVE.has(entry.name) && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b" }}>
-                              COST
-                            </span>
-                          )}
-                          {!entry.configured && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ background: "var(--orbit-border)", color: "var(--orbit-text-muted)" }}>
-                              NOT INSTRUMENTED
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 tabular-nums text-right" style={{ color: "var(--orbit-text-secondary)" }}>{fmt(entry.callsPerHour, "/hr")}</td>
-                      <td className="px-4 py-3 tabular-nums text-right" style={{ color: "var(--orbit-text-secondary)" }}>{fmt(entry.calls24h, "")}</td>
-                      <td className="px-4 py-3 tabular-nums text-right" style={{ color: "var(--orbit-text-secondary)" }}>{fmt(entry.avgDurationMs, "ms")}</td>
-                      <td className="px-4 py-3 tabular-nums text-right" style={{ color: entry.failedCalls ? "#ef4444" : "var(--orbit-text-secondary)" }}>{fmt(entry.failedCalls, "")}</td>
-                      <td className="px-4 py-3 tabular-nums text-right"><ErrorRateCell rate={entry.errorRate} /></td>
-                      <td className="px-4 py-3 text-xs" style={{ color: "var(--orbit-text-muted)" }}>
-                        {entry.lastSeen ? new Date(entry.lastSeen).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          {/* AI APIs section */}
+          <ApiTable
+            title="AI Providers"
+            entries={data.entries.filter((e) => AI_APIS.has(e.name))}
+            accentColor="#818cf8"
+          />
+
+          {/* 3rd-party APIs section */}
+          <ApiTable
+            title="3rd-Party APIs"
+            entries={data.entries.filter((e) => !AI_APIS.has(e.name))}
+            accentColor="var(--orbit-text-muted)"
+          />
 
           <p className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>
             APIs marked <span className="font-semibold" style={{ color: "var(--orbit-text-secondary)" }}>NOT INSTRUMENTED</span> are known GrailBabe dependencies but have not yet sent telemetry.
