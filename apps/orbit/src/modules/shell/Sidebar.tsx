@@ -18,6 +18,7 @@ import {
   Plug,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
@@ -29,6 +30,12 @@ interface NavItem {
   section?: string;
   adminOnly?: boolean;
 }
+
+const SECTION_COLORS: Record<string, string> = {
+  Administration: "#60a5fa",       // blue
+  Platform: "#34d399",             // emerald
+  "Network Operations": "#a78bfa", // violet
+};
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/", icon: LayoutDashboard },
@@ -51,13 +58,21 @@ const NAV_ITEMS: NavItem[] = [
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    Administration: true,
+    Platform: true,
+    "Network Operations": true,
+  });
   const location = useLocation();
   const { user } = useAuth();
 
   const visibleItems = NAV_ITEMS.filter((n) => !n.adminOnly || user.isAdmin);
-
   const sections = Array.from(new Set(visibleItems.map((n) => n.section ?? ""))).filter(Boolean);
   const topItems = visibleItems.filter((n) => !n.section);
+
+  function toggleSection(section: string) {
+    setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  }
 
   return (
     <aside
@@ -76,31 +91,53 @@ export function Sidebar() {
         ))}
 
         {/* Sectioned items */}
-        {sections.map((section) => (
-          <div key={section} className="mt-4">
-            {!collapsed && (
-              <div
-                className="px-3 mb-1 text-xs font-semibold uppercase tracking-widest"
-                style={{ color: "var(--orbit-text-muted)" }}
-              >
-                {section}
-              </div>
-            )}
-            {collapsed && <div className="mx-2 my-2" style={{ height: 1, background: "var(--orbit-border)" }} />}
-            {visibleItems.filter((n) => n.section === section).map((item) => (
-              <NavItem
-                key={item.to}
-                item={item}
-                collapsed={collapsed}
-                active={
-                  item.to === "/"
-                    ? location.pathname === "/"
-                    : location.pathname.startsWith(item.to)
-                }
-              />
-            ))}
-          </div>
-        ))}
+        {sections.map((section) => {
+          const color = SECTION_COLORS[section] ?? "var(--orbit-text-muted)";
+          const isOpen = openSections[section] !== false;
+          const sectionItems = visibleItems.filter((n) => n.section === section);
+          return (
+            <div key={section} className="mt-4">
+              {!collapsed ? (
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section)}
+                  className="w-full flex items-center justify-between px-3 mb-1 group"
+                >
+                  <span
+                    className="text-xs font-semibold uppercase tracking-widest"
+                    style={{ color }}
+                  >
+                    {section}
+                  </span>
+                  <ChevronDown
+                    className="w-3 h-3 transition-transform duration-200"
+                    style={{
+                      color,
+                      transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)",
+                    }}
+                  />
+                </button>
+              ) : (
+                <div
+                  className="mx-2 my-2"
+                  style={{ height: 1, background: color, opacity: 0.4 }}
+                />
+              )}
+              {isOpen && sectionItems.map((item) => (
+                <NavItem
+                  key={item.to}
+                  item={item}
+                  collapsed={collapsed}
+                  active={
+                    item.to === "/"
+                      ? location.pathname === "/"
+                      : location.pathname.startsWith(item.to)
+                  }
+                />
+              ))}
+            </div>
+          );
+        })}
       </nav>
 
       {/* Collapse toggle */}
