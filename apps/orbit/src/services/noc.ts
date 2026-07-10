@@ -359,3 +359,69 @@ export function useIncidentTrend(days = 7) {
   });
 }
 
+// ── UX & Service Quality ───────────────────────────────────────────────────────
+
+export interface PageLoadMetric {
+  page: string;
+  p50Ms: number | null;
+  p95Ms: number | null;
+  p99Ms: number | null;
+  sessions: number | null;
+}
+
+export interface ApiLatencyRegion {
+  region: string;
+  avgMs: number | null;
+  p95Ms: number | null;
+  requestCount: number | null;
+  failureRate: number | null;
+}
+
+export interface ErrorBucket {
+  type: string;
+  count: number;
+  affectedUsers: number | null;
+  sample: string | null;
+}
+
+export interface SyntheticResult {
+  name: string;
+  location: string;
+  success: boolean;
+  durationMs: number | null;
+  lastRunAt: string | null;
+}
+
+export interface FailingJourney {
+  journey: string;
+  failureCount: number;
+  affectedUsers: number | null;
+  topError: string | null;
+}
+
+export interface UXSnapshot {
+  portalLoadTimes: PageLoadMetric[];
+  apiLatencyByRegion: ApiLatencyRegion[];
+  errorDistribution: ErrorBucket[];
+  syntheticResults: SyntheticResult[];
+  failingJourneys: FailingJourney[];
+  overallScore: number | null;
+  capturedAt: string;
+  appInsightsConfigured: boolean;
+}
+
+async function fetchUXSnapshot(): Promise<UXSnapshot> {
+  const res = await fetch("/api/noc/ux", { credentials: "same-origin" });
+  if (!res.ok) throw new Error(`UX fetch failed: ${res.status}`);
+  return res.json() as Promise<UXSnapshot>;
+}
+
+export function useUXSnapshot(refetchIntervalMs = 120_000) {
+  return useQuery<UXSnapshot>({
+    queryKey: ["noc-ux"],
+    queryFn: fetchUXSnapshot,
+    refetchInterval: refetchIntervalMs,
+    retry: 1,
+  });
+}
+

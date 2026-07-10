@@ -17,6 +17,7 @@ import { ApplicationDetailPage } from "./modules/noc/ApplicationDetailPage";
 import { SecurityDashboard } from "./modules/noc/SecurityDashboard";
 import { AIDashboard } from "./modules/noc/AIDashboard";
 import { IncidentDashboard } from "./modules/noc/IncidentDashboard";
+import { UXDashboard } from "./modules/noc/UXDashboard";
 
 export const router = createBrowserRouter([
   {
@@ -103,6 +104,10 @@ export const router = createBrowserRouter([
           {
             path: "incidents",
             element: <IncidentDashboard />,
+          },
+          {
+            path: "ux",
+            element: <UXDashboard />,
           },
         ],
       },

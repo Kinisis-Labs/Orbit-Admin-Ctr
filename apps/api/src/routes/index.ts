@@ -14,6 +14,7 @@ import nocSecurityRouter from "../modules/noc/security/routes.js";
 import nocAiRouter from "../modules/noc/ai/routes.js";
 import nocDiagRouter from "../modules/noc/diag/routes.js";
 import nocIncidentsRouter from "../modules/noc/incidents/routes.js";
+import nocUxRouter from "../modules/noc/ux/routes.js";
 
 const router: IRouter = Router();
 
@@ -31,6 +32,7 @@ router.use(nocSecurityRouter);
 router.use(nocAiRouter);
 router.use(nocDiagRouter);
 router.use(nocIncidentsRouter);
+router.use(nocUxRouter);
 
 router.use("/admin", requireAuth, requireAdmin, (_req, res) => {
   res.status(501).json({ message: "Admin modules coming in Phase C–H" });

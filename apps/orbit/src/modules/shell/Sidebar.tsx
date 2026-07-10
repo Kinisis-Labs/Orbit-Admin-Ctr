@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   BrainCircuit,
   Siren,
+  MonitorSmartphone,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -43,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Security", to: "/noc/security", icon: ShieldAlert, section: "NOC", adminOnly: true },
   { label: "AI Platform", to: "/noc/ai", icon: BrainCircuit, section: "NOC", adminOnly: true },
   { label: "Incidents", to: "/noc/incidents", icon: Siren, section: "NOC", adminOnly: true },
+  { label: "UX Quality", to: "/noc/ux", icon: MonitorSmartphone, section: "NOC", adminOnly: true },
 ];
 
 export function Sidebar() {
