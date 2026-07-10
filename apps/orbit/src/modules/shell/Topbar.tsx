@@ -26,7 +26,7 @@ export function Topbar() {
           className="text-base font-semibold tracking-tight"
           style={{ color: "var(--orbit-text-primary)" }}
         >
-          Orbit
+          O.R.B.I.T
         </span>
         <span
           className="text-xs px-1.5 py-0.5 rounded font-medium"
