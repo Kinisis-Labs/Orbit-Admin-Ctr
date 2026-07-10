@@ -51,7 +51,7 @@ export function isAzureMonitorConfigured(): boolean {
 
 // ── Azure Monitor REST helper ─────────────────────────────────────────────────
 
-async function getAccessToken(): Promise<string | null> {
+export async function getAccessToken(): Promise<string | null> {
   try {
     // Managed Identity token endpoint (works in Azure Container Apps)
     const miEndpoint = env("IDENTITY_ENDPOINT");

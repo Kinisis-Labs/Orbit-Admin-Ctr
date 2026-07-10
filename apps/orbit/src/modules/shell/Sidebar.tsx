@@ -13,7 +13,7 @@ import {
   LayoutGrid,
   ShieldAlert,
   BrainCircuit,
-  DollarSign,
+  Siren,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -42,7 +42,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Applications", to: "/noc/applications", icon: LayoutGrid, section: "NOC", adminOnly: true },
   { label: "Security", to: "/noc/security", icon: ShieldAlert, section: "NOC", adminOnly: true },
   { label: "AI Platform", to: "/noc/ai", icon: BrainCircuit, section: "NOC", adminOnly: true },
-  { label: "Cost", to: "/noc/cost", icon: DollarSign, section: "NOC", adminOnly: true },
+  { label: "Incidents", to: "/noc/incidents", icon: Siren, section: "NOC", adminOnly: true },
 ];
 
 export function Sidebar() {

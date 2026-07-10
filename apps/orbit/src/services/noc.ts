@@ -272,3 +272,90 @@ export function useAiMetrics(refetchIntervalMs = 60_000) {
   });
 }
 
+// ── Incident NOC ──────────────────────────────────────────────────────────────
+
+export type AlertSeverity = "critical" | "error" | "warning" | "informational" | "unknown";
+export type AlertStatus = "active" | "acknowledged" | "resolved";
+
+export interface AzureAlert {
+  id: string;
+  name: string;
+  severity: AlertSeverity;
+  status: AlertStatus;
+  service: string;
+  description: string;
+  firedAt: string;
+  resolvedAt: string | null;
+  source: string;
+}
+
+export interface IncidentMetrics {
+  activeCount: number;
+  acknowledgedCount: number;
+  resolvedCount: number;
+  criticalCount: number;
+  slaAtRiskCount: number;
+  mttaMinutes: number | null;
+  mttrMinutes: number | null;
+  byService: Record<string, number>;
+  bySeverity: Record<AlertSeverity, number>;
+}
+
+export interface IncidentSnapshot {
+  alerts: AzureAlert[];
+  metrics: IncidentMetrics;
+  azureConfigured: boolean;
+  generatedAt: string;
+}
+
+export interface IncidentTrendPoint {
+  date: string;
+  count: number;
+  resolved: number;
+  mttaMinutes: number | null;
+  mttrMinutes: number | null;
+}
+
+export interface IncidentTrend {
+  days: number;
+  trend: IncidentTrendPoint[];
+  total: number;
+  generatedAt: string;
+}
+
+async function fetchIncidents(): Promise<IncidentSnapshot> {
+  const res = await fetch("/api/noc/incidents");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { message?: string }).message ?? `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<IncidentSnapshot>;
+}
+
+async function fetchIncidentTrend(days = 7): Promise<IncidentTrend> {
+  const res = await fetch(`/api/noc/incidents/metrics?days=${days}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { message?: string }).message ?? `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<IncidentTrend>;
+}
+
+export function useIncidents(refetchIntervalMs = 120_000) {
+  return useQuery<IncidentSnapshot>({
+    queryKey: ["noc-incidents"],
+    queryFn: fetchIncidents,
+    refetchInterval: refetchIntervalMs,
+    retry: 1,
+  });
+}
+
+export function useIncidentTrend(days = 7) {
+  return useQuery<IncidentTrend>({
+    queryKey: ["noc-incident-trend", days],
+    queryFn: () => fetchIncidentTrend(days),
+    refetchInterval: 300_000,
+    retry: 1,
+  });
+}
+
