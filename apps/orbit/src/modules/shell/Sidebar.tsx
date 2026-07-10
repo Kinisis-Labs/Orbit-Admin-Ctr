@@ -12,6 +12,7 @@ import {
   Server,
   LayoutGrid,
   ShieldAlert,
+  BrainCircuit,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -39,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Infrastructure", to: "/noc/infrastructure", icon: Server, section: "NOC", adminOnly: true },
   { label: "Applications", to: "/noc/applications", icon: LayoutGrid, section: "NOC", adminOnly: true },
   { label: "Security", to: "/noc/security", icon: ShieldAlert, section: "NOC", adminOnly: true },
+  { label: "AI Platform", to: "/noc/ai", icon: BrainCircuit, section: "NOC", adminOnly: true },
 ];
 
 export function Sidebar() {

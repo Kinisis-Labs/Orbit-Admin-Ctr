@@ -181,3 +181,47 @@ export function useAcknowledgeSecurityEvent() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["noc-security"] }),
   });
 }
+
+// ── AI NOC ────────────────────────────────────────────────────────────────────
+
+export interface OpenAiMetrics {
+  tokenUsage: number | null;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  avgLatencyMs: number | null;
+  errorRate: number | null;
+  totalRequests: number | null;
+}
+
+export interface AiSearchMetrics {
+  documentCount: number | null;
+  queryLatencyMs: number | null;
+  throttledQueryPct: number | null;
+  totalQueries: number | null;
+}
+
+export interface AiSnapshot {
+  openAi: OpenAiMetrics;
+  aiSearch: AiSearchMetrics;
+  openAiConfigured: boolean;
+  aiSearchConfigured: boolean;
+  capturedAt: string;
+}
+
+async function fetchAi(): Promise<AiSnapshot> {
+  const res = await fetch("/api/noc/ai");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { message?: string }).message ?? `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<AiSnapshot>;
+}
+
+export function useAiMetrics(refetchIntervalMs = 60_000) {
+  return useQuery<AiSnapshot>({
+    queryKey: ["noc-ai"],
+    queryFn: fetchAi,
+    refetchInterval: refetchIntervalMs,
+    retry: 1,
+  });
+}
