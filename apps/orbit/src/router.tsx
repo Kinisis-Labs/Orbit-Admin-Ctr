@@ -12,6 +12,8 @@ import { NotificationsPage } from "./modules/notifications/NotificationsPage";
 import { ConfigurationPage } from "./modules/configuration/ConfigurationPage";
 import { HealthPage } from "./modules/platform/HealthPage";
 import { InfrastructureDashboard } from "./modules/noc/InfrastructureDashboard";
+import { ApplicationDashboard } from "./modules/noc/ApplicationDashboard";
+import { ApplicationDetailPage } from "./modules/noc/ApplicationDetailPage";
 
 export const router = createBrowserRouter([
   {
@@ -78,6 +80,14 @@ export const router = createBrowserRouter([
           {
             path: "infrastructure",
             element: <InfrastructureDashboard />,
+          },
+          {
+            path: "applications",
+            element: <ApplicationDashboard />,
+          },
+          {
+            path: "applications/:slug",
+            element: <ApplicationDetailPage />,
           },
         ],
       },
