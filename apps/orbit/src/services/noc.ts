@@ -243,6 +243,21 @@ export interface BudgetInfo {
   forecastedSpend: number | null;
 }
 
+export interface M365ProductCost {
+  productName: string;
+  publisherName: string;
+  cost: number;
+  currency: string;
+}
+
+export interface M365CostSummary {
+  totalMtdCost: number | null;
+  totalYtdCost: number | null;
+  currency: string;
+  topProducts: M365ProductCost[];
+  billingConfigured: boolean;
+}
+
 export interface CostSnapshot {
   totalMtdCost: number | null;
   totalYtdCost: number | null;
@@ -250,6 +265,7 @@ export interface CostSnapshot {
   topServices: CostByService[];
   budget: BudgetInfo | null;
   subscriptionConfigured: boolean;
+  m365: M365CostSummary;
   capturedAt: string;
 }
 

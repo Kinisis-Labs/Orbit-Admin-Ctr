@@ -4,12 +4,17 @@
  * Uses the Azure Cost Management Query API to fetch actual spend, budget
  * utilisation, and top cost contributors for the subscription.
  *
+ * Also queries the Billing Account scope for Microsoft 365 / license costs
+ * when AZURE_BILLING_ACCOUNT_ID is set.
+ *
  * Auth: Managed Identity (IDENTITY_ENDPOINT + IDENTITY_HEADER) or
  *       client_credentials (AZURE_TENANT_ID + AZURE_CLIENT_ID + AZURE_CLIENT_SECRET).
  *
  * Required env vars:
- *   AZURE_SUBSCRIPTION_ID  — subscription to query costs for
- *   AZURE_BUDGET_NAME      — (optional) named budget to read utilisation from
+ *   AZURE_SUBSCRIPTION_ID      — subscription to query Azure resource costs
+ *   AZURE_BUDGET_NAME          — (optional) named budget to read utilisation from
+ *   AZURE_BILLING_ACCOUNT_ID   — (optional) EA/MCA billing account for M365 costs
+ *   AZURE_BILLING_PROFILE_ID   — (optional) MCA billing profile scope (MCA only)
  */
 
 export interface CostByService {
@@ -27,6 +32,21 @@ export interface BudgetInfo {
   forecastedSpend: number | null;
 }
 
+export interface M365ProductCost {
+  productName: string;
+  publisherName: string;
+  cost: number;
+  currency: string;
+}
+
+export interface M365CostSummary {
+  totalMtdCost: number | null;
+  totalYtdCost: number | null;
+  currency: string;
+  topProducts: M365ProductCost[];
+  billingConfigured: boolean;
+}
+
 export interface CostSnapshot {
   totalMtdCost: number | null;
   totalYtdCost: number | null;
@@ -34,6 +54,7 @@ export interface CostSnapshot {
   topServices: CostByService[];
   budget: BudgetInfo | null;
   subscriptionConfigured: boolean;
+  m365: M365CostSummary;
   capturedAt: string;
 }
 
@@ -103,10 +124,14 @@ interface CostRow {
   };
 }
 
-async function queryCosts(token: string, subscriptionId: string, body: QueryBody): Promise<CostRow | null> {
+async function queryCosts(
+  token: string,
+  scopePath: string,
+  body: QueryBody,
+): Promise<CostRow | null> {
   try {
     const url =
-      `https://management.azure.com/subscriptions/${subscriptionId}` +
+      `https://management.azure.com${scopePath}` +
       `/providers/Microsoft.CostManagement/query?api-version=2023-11-01`;
     const res = await fetch(url, {
       method: "POST",
@@ -123,13 +148,31 @@ async function queryCosts(token: string, subscriptionId: string, body: QueryBody
   }
 }
 
+function subscriptionScope(subscriptionId: string): string {
+  return `/subscriptions/${subscriptionId}`;
+}
+
+function billingScope(): string | null {
+  const billingAccountId = process.env.AZURE_BILLING_ACCOUNT_ID;
+  if (!billingAccountId) return null;
+  const profileId = process.env.AZURE_BILLING_PROFILE_ID;
+  if (profileId) {
+    return `/providers/Microsoft.Billing/billingAccounts/${billingAccountId}/billingProfiles/${profileId}`;
+  }
+  return `/providers/Microsoft.Billing/billingAccounts/${billingAccountId}`;
+}
+
+export function isBillingConfigured(): boolean {
+  return !!process.env.AZURE_BILLING_ACCOUNT_ID;
+}
+
 // ── MTD total ─────────────────────────────────────────────────────────────────
 
 async function getMtdCost(
   token: string,
   subscriptionId: string,
 ): Promise<{ total: number | null; currency: string }> {
-  const result = await queryCosts(token, subscriptionId, {
+  const result = await queryCosts(token, subscriptionScope(subscriptionId), {
     type: "ActualCost",
     timeframe: "BillingMonthToDate",
     dataset: {
@@ -151,7 +194,7 @@ async function getYtdCost(token: string, subscriptionId: string): Promise<number
   const ytdStart = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0]!;
   const today = now.toISOString().split("T")[0]!;
 
-  const result = await queryCosts(token, subscriptionId, {
+  const result = await queryCosts(token, subscriptionScope(subscriptionId), {
     type: "ActualCost",
     timeframe: "Custom",
     timePeriod: { from: ytdStart, to: today },
@@ -173,7 +216,7 @@ async function getTopServices(
   subscriptionId: string,
   currency: string,
 ): Promise<CostByService[]> {
-  const result = await queryCosts(token, subscriptionId, {
+  const result = await queryCosts(token, subscriptionScope(subscriptionId), {
     type: "ActualCost",
     timeframe: "BillingMonthToDate",
     dataset: {
@@ -192,6 +235,89 @@ async function getTopServices(
     }))
     .sort((a, b) => b.cost - a.cost)
     .slice(0, 10);
+}
+
+// ── M365 / Billing Account costs ────────────────────────────────────────────
+
+async function getM365Costs(token: string): Promise<M365CostSummary> {
+  const empty: M365CostSummary = {
+    totalMtdCost: null,
+    totalYtdCost: null,
+    currency: "USD",
+    topProducts: [],
+    billingConfigured: isBillingConfigured(),
+  };
+
+  const scope = billingScope();
+  if (!scope) return empty;
+
+  const now = new Date();
+  const ytdStart = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0]!;
+  const today = now.toISOString().split("T")[0]!;
+
+  const m365Filter = {
+    or: [
+      { dimensions: { name: "PublisherType", operator: "In", values: ["Marketplace"] } },
+      { tags: { name: "ProductFamily", operator: "In", values: ["Microsoft 365", "Office 365"] } },
+    ],
+  };
+
+  const [mtdResult, ytdResult, breakdownResult] = await Promise.all([
+    queryCosts(token, scope, {
+      type: "ActualCost",
+      timeframe: "BillingMonthToDate",
+      dataset: {
+        granularity: "None",
+        aggregation: { totalCost: { name: "Cost", function: "Sum" } },
+        filter: m365Filter,
+      },
+    } as QueryBody & { dataset: { filter?: unknown } }),
+    queryCosts(token, scope, {
+      type: "ActualCost",
+      timeframe: "Custom",
+      timePeriod: { from: ytdStart, to: today },
+      dataset: {
+        granularity: "None",
+        aggregation: { totalCost: { name: "Cost", function: "Sum" } },
+        filter: m365Filter,
+      },
+    } as QueryBody & { dataset: { filter?: unknown } }),
+    queryCosts(token, scope, {
+      type: "ActualCost",
+      timeframe: "BillingMonthToDate",
+      dataset: {
+        granularity: "None",
+        aggregation: { totalCost: { name: "Cost", function: "Sum" } },
+        grouping: [
+          { type: "Dimension", name: "ProductName" },
+          { type: "Dimension", name: "PublisherName" },
+        ],
+        filter: m365Filter,
+      },
+    } as QueryBody & { dataset: { filter?: unknown } }),
+  ]);
+
+  const mtdRows = mtdResult?.properties?.rows ?? [];
+  const ytdRows = ytdResult?.properties?.rows ?? [];
+  const breakdownRows = breakdownResult?.properties?.rows ?? [];
+
+  const totalMtdCost = mtdRows.length > 0 ? Number((mtdRows[0] as [number])[0]) : null;
+  const totalYtdCost = ytdRows.length > 0 ? Number((ytdRows[0] as [number])[0]) : null;
+  const currency =
+    mtdRows.length > 0 ? String((mtdRows[0] as [number, unknown, string])[2] ?? "USD") : "USD";
+
+  const topProducts: M365ProductCost[] = breakdownRows
+    .map((r) => ({
+      productName: String((r as [number, string, string])[1] ?? "Unknown"),
+      publisherName: String((r as [number, string, string])[2] ?? ""),
+      cost: Number((r as [number])[0] ?? 0),
+      currency,
+    }))
+    .filter((p) => p.cost > 0)
+    .sort((a, b) => b.cost - a.cost)
+    .slice(0, 10);
+
+  return { totalMtdCost, totalYtdCost, currency, topProducts, billingConfigured: true };
 }
 
 // ── Budget ────────────────────────────────────────────────────────────────────
@@ -234,6 +360,14 @@ export async function getCostSnapshot(): Promise<CostSnapshot> {
   const capturedAt = new Date().toISOString();
   const subscriptionId = process.env.AZURE_SUBSCRIPTION_ID;
 
+  const emptyM365: M365CostSummary = {
+    totalMtdCost: null,
+    totalYtdCost: null,
+    currency: "USD",
+    topProducts: [],
+    billingConfigured: isBillingConfigured(),
+  };
+
   if (!subscriptionId) {
     return {
       totalMtdCost: null,
@@ -242,6 +376,7 @@ export async function getCostSnapshot(): Promise<CostSnapshot> {
       topServices: [],
       budget: null,
       subscriptionConfigured: false,
+      m365: emptyM365,
       capturedAt,
     };
   }
@@ -255,15 +390,17 @@ export async function getCostSnapshot(): Promise<CostSnapshot> {
       topServices: [],
       budget: null,
       subscriptionConfigured: true,
+      m365: emptyM365,
       capturedAt,
     };
   }
 
   const { total: totalMtdCost, currency } = await getMtdCost(token, subscriptionId);
-  const [totalYtdCost, topServices, budget] = await Promise.all([
+  const [totalYtdCost, topServices, budget, m365] = await Promise.all([
     getYtdCost(token, subscriptionId),
     getTopServices(token, subscriptionId, currency),
     getBudget(token, subscriptionId),
+    getM365Costs(token),
   ]);
 
   return {
@@ -273,6 +410,7 @@ export async function getCostSnapshot(): Promise<CostSnapshot> {
     topServices,
     budget,
     subscriptionConfigured: true,
+    m365,
     capturedAt,
   };
 }

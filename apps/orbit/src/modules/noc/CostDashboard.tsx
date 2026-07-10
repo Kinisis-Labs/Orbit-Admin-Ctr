@@ -1,5 +1,11 @@
-import { RefreshCw, Loader2, Info, DollarSign, TrendingUp } from "lucide-react";
-import { useCostMetrics, type CostByService, type BudgetInfo } from "../../services/noc";
+import { RefreshCw, Loader2, Info, DollarSign, TrendingUp, Package } from "lucide-react";
+import {
+  useCostMetrics,
+  type CostByService,
+  type BudgetInfo,
+  type M365ProductCost,
+  type M365CostSummary,
+} from "../../services/noc";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -115,6 +121,146 @@ function ServiceRow({ service, maxCost }: { service: CostByService; maxCost: num
         {fmtCurrency(service.cost, service.currency)}
       </td>
     </tr>
+  );
+}
+
+function M365ProductRow({ product, maxCost }: { product: M365ProductCost; maxCost: number }) {
+  const pct = maxCost > 0 ? (product.cost / maxCost) * 100 : 0;
+  return (
+    <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
+      <td className="px-4 py-3" style={{ color: "var(--orbit-text-secondary)" }}>
+        <p className="text-sm">{product.productName}</p>
+        {product.publisherName && (
+          <p className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>
+            {product.publisherName}
+          </p>
+        )}
+      </td>
+      <td className="px-4 py-3" style={{ width: "40%" }}>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 rounded-full h-1.5" style={{ background: "var(--orbit-border)" }}>
+            <div
+              className="h-1.5 rounded-full"
+              style={{ width: `${pct}%`, background: "#0ea5e9" }}
+            />
+          </div>
+          <span
+            className="text-xs tabular-nums w-16 text-right"
+            style={{ color: "var(--orbit-text-muted)" }}
+          >
+            {pct.toFixed(1)}%
+          </span>
+        </div>
+      </td>
+      <td
+        className="px-4 py-3 text-sm tabular-nums text-right"
+        style={{ color: "var(--orbit-text-primary)" }}
+      >
+        {fmtCurrency(product.cost, product.currency)}
+      </td>
+    </tr>
+  );
+}
+
+function M365Section({ m365 }: { m365: M365CostSummary }) {
+  const maxCost = m365.topProducts[0]?.cost ?? 1;
+
+  return (
+    <>
+      <div className="flex items-center gap-2 mt-2">
+        <Package className="h-4 w-4" style={{ color: "var(--orbit-text-muted)" }} />
+        <h2 className="text-sm font-semibold" style={{ color: "var(--orbit-text-primary)" }}>
+          Microsoft 365 Licensing Costs
+        </h2>
+        <div className="flex-1 h-px" style={{ background: "var(--orbit-border)" }} />
+      </div>
+
+      {!m365.billingConfigured ? (
+        <div
+          className="flex items-start gap-3 rounded-xl px-4 py-3 text-sm"
+          style={{
+            background: "rgba(245,158,11,0.08)",
+            border: "1px solid rgba(245,158,11,0.3)",
+            color: "#f59e0b",
+          }}
+        >
+          <Info className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>
+            Billing account not configured — set{" "}
+            <code className="font-mono text-xs">AZURE_BILLING_ACCOUNT_ID</code> (EA/MCA) to enable
+            Microsoft 365 license cost visibility. Optionally set{" "}
+            <code className="font-mono text-xs">AZURE_BILLING_PROFILE_ID</code> for MCA profile scope.
+          </span>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <SummaryTile
+              label="M365 Month-to-Date"
+              value={m365.totalMtdCost}
+              currency={m365.currency}
+              subtext="license & subscription spend"
+            />
+            <SummaryTile
+              label="M365 Year-to-Date"
+              value={m365.totalYtdCost}
+              currency={m365.currency}
+              subtext="Jan 1 → today"
+            />
+          </div>
+
+          <div
+            className="rounded-xl overflow-hidden"
+            style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}
+          >
+            <div
+              className="flex items-center gap-2 px-4 py-3"
+              style={{ borderBottom: "1px solid var(--orbit-border)" }}
+            >
+              <Package className="h-4 w-4" style={{ color: "var(--orbit-text-muted)" }} />
+              <span className="text-sm font-semibold" style={{ color: "var(--orbit-text-primary)" }}>
+                Top M365 Products (MTD)
+              </span>
+              <span className="ml-auto text-xs" style={{ color: "var(--orbit-text-muted)" }}>
+                {m365.topProducts.length} products
+              </span>
+            </div>
+            <table className="w-full">
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
+                  {["Product", "Share", "Cost"].map((h) => (
+                    <th
+                      key={h}
+                      className="px-4 py-2 text-left text-xs font-semibold"
+                      style={{ color: "var(--orbit-text-muted)" }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {m365.topProducts.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="px-4 py-8 text-sm text-center"
+                      style={{ color: "var(--orbit-text-muted)" }}
+                    >
+                      No Microsoft 365 costs found in the billing account for this period.
+                    </td>
+                  </tr>
+                ) : (
+                  m365.topProducts.map((p) => (
+                    <M365ProductRow key={p.productName} product={p} maxCost={maxCost} />
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
   );
 }
 
@@ -296,6 +442,9 @@ export function CostDashboard() {
               </span>
             </div>
           )}
+
+          {/* M365 section */}
+          <M365Section m365={data.m365} />
 
           <p className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>
             Captured at {new Date(data.capturedAt).toLocaleString()} · data via Azure Cost Management Query API
