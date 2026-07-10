@@ -230,6 +230,7 @@ export function DashboardPage() {
   const caGroup = infra?.containerApps[0];
   const dbGroup = infra?.database[0];
   const netGroup = infra?.network[0];
+  const vpnGroups = infra?.vpn ?? [];
   const apiGroup = infra?.api[0];
 
   const phOverall = ph?.overall ?? "unknown";
@@ -329,6 +330,15 @@ export function DashboardPage() {
               ))
             ) : <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No data</p>}
           </SectionCard>
+          {vpnGroups.map((vg) => (
+            <SectionCard key={vg.name} title={vg.name} icon={Network} to="/noc/infrastructure" health={vg.health}>
+              {infraLoading ? <><Skeleton /><Skeleton /></> : (
+                vg.metrics.map((m) => (
+                  <MetricRow key={m.metricName} label={m.metricName} value={fmtMetric(m.value, m.unit)} />
+                ))
+              )}
+            </SectionCard>
+          ))}
         </div>
 
         {/* COL 2 — API + Incidents + UX */}

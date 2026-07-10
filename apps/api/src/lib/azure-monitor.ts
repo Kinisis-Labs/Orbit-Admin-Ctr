@@ -32,6 +32,7 @@ export interface InfrastructureSnapshot {
   containerApps: ResourceGroup[];
   database: ResourceGroup[];
   network: ResourceGroup[];
+  vpn: ResourceGroup[];
   api: ResourceGroup[];
   capturedAt: string;
 }
@@ -281,6 +282,7 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
     containerApps: [],
     database: [],
     network: [],
+    vpn: [],
     api: [],
     capturedAt,
   };
@@ -365,6 +367,37 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
     { name: stName, resourceType: "Storage", health: deriveHealth(networkMetrics), metrics: networkMetrics },
   ];
 
+  // ── Virtual Networks ──────────────────────────────────────────────────────────
+  const vnetNames = [
+    env("AZURE_VNET_NAME_GRAILBABE") ?? "vnet-grailbabe-prod",
+    env("AZURE_VNET_NAME_SHARED") ?? "vnet-sharedplatform-prod",
+  ];
+  const vnetRg = env("AZURE_RESOURCE_GROUP_VNET") ?? env("AZURE_RESOURCE_GROUP_SHARED") ?? "rg-kinisislabs-platform-shared-prod-eus2";
+  const vnetSubId = env("AZURE_SUB_VNET") ?? sharedSubId;
+
+  const vnetPromises = vnetNames.map(async (vnetName): Promise<ResourceGroup> => {
+    const vnetResourceId = `/subscriptions/${vnetSubId}/resourceGroups/${vnetRg}/providers/Microsoft.Network/virtualNetworks/${vnetName}`;
+    const [bytesIn, bytesOut, packetsIn, packetsOut, droppedIn, droppedOut] = await Promise.all([
+      queryMetric(token, vnetSubId, vnetResourceId, "BytesInDDoS", "PT6H", "Total"),
+      queryMetric(token, vnetSubId, vnetResourceId, "BytesOutDDoS", "PT6H", "Total"),
+      queryMetric(token, vnetSubId, vnetResourceId, "PacketsInDDoS", "PT6H", "Total"),
+      queryMetric(token, vnetSubId, vnetResourceId, "PacketsOutDDoS", "PT6H", "Total"),
+      queryMetric(token, vnetSubId, vnetResourceId, "PacketsDroppedDDoS", "PT6H", "Total"),
+      queryMetric(token, vnetSubId, vnetResourceId, "BytesDroppedDDoS", "PT6H", "Total"),
+    ]);
+    const metrics: MetricResult[] = [
+      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "BytesIn", bytesIn, "bytes", capturedAt),
+      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "BytesOut", bytesOut, "bytes", capturedAt),
+      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "PacketsIn", packetsIn, "count", capturedAt),
+      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "PacketsOut", packetsOut, "count", capturedAt),
+      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "PacketsDropped", droppedIn, "count", capturedAt),
+      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "BytesDropped", droppedOut, "bytes", capturedAt),
+    ];
+    return { name: vnetName, resourceType: "VirtualNetwork", health: deriveHealth(metrics), metrics };
+  });
+
+  const vpn = await Promise.all(vnetPromises);
+
   // ── API (Application Insights — one entry per configured app) ───────────────
   const apiPromises: Promise<ResourceGroup>[] = [];
 
@@ -381,10 +414,11 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
   const api: ResourceGroup[] = await Promise.all(apiPromises);
 
   return {
-    overallHealth: overallHealth([containerApps, database, network, api]),
+    overallHealth: overallHealth([containerApps, database, network, vpn, api]),
     containerApps,
     database,
     network,
+    vpn,
     api,
     capturedAt,
   };

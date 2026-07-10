@@ -26,6 +26,7 @@ export interface InfrastructureSnapshot {
   containerApps: ResourceGroup[];
   database: ResourceGroup[];
   network: ResourceGroup[];
+  vpn: ResourceGroup[];
   api: ResourceGroup[];
   capturedAt: string;
 }
