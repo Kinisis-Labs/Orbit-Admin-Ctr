@@ -151,10 +151,6 @@ router.get("/noc/diag", requireAuth, requireAdmin, async (_req, res) => {
     "AZURE_CLIENT_ID",
     "AZURE_SUBSCRIPTION_IDS",
     "AZURE_SUBSCRIPTION_LABELS",
-    "AZURE_SUBSCRIPTION_ID",
-    "AZURE_BUDGET_NAME",
-    "AZURE_BILLING_ACCOUNT_ID",
-    "AZURE_BILLING_PROFILE_ID",
     "AZURE_OPENAI_RESOURCE_ID",
     "AZURE_SEARCH_RESOURCE_ID",
     "APPINSIGHTS_CONNECTION_STRING",
@@ -164,18 +160,9 @@ router.get("/noc/diag", requireAuth, requireAdmin, async (_req, res) => {
     envSnapshot[v] = process.env[v] ? "✓ set" : "✗ not set";
   }
   envSnapshot["IDENTITY_HEADER"] = process.env.IDENTITY_HEADER ? "✓ set" : "✗ not set";
-  envSnapshot["AZURE_CLIENT_SECRET"] = process.env.AZURE_CLIENT_SECRET ? "✓ set" : "✗ not set";
-  envSnapshot["AZURE_CLIENT_ID_PREFIX"] = process.env.AZURE_CLIENT_ID
-    ? process.env.AZURE_CLIENT_ID.slice(0, 8) + "…"
-    : "✗ not set";
 
-  const subscriptionIdsRaw = process.env.AZURE_SUBSCRIPTION_IDS ?? process.env.AZURE_SUBSCRIPTION_ID ?? "";
-  const subscriptionLabelsRaw = process.env.AZURE_SUBSCRIPTION_LABELS ?? "";
-  const subscriptionIds = subscriptionIdsRaw.split(",").map((s) => s.trim()).filter(Boolean);
-  const subscriptionLabels = subscriptionLabelsRaw.split(",").map((s) => s.trim());
   const openAiResourceId = process.env.AZURE_OPENAI_RESOURCE_ID;
   const searchResourceId = process.env.AZURE_SEARCH_RESOURCE_ID;
-  const billingAccountId = process.env.AZURE_BILLING_ACCOUNT_ID;
 
   // ── Azure management token ─────────────────────────────────────────────────
   const { token: mgmtToken, result: mgmtTokenResult } = await tryToken(
@@ -183,78 +170,6 @@ router.get("/noc/diag", requireAuth, requireAdmin, async (_req, res) => {
     "https://management.azure.com/",
   );
   results.push(mgmtTokenResult);
-
-  // ── Cost Management — per subscription ────────────────────────────────────
-  if (subscriptionIds.length === 0) {
-    results.push({ check: "Cost — subscription query", status: "skip", detail: "AZURE_SUBSCRIPTION_IDS and AZURE_SUBSCRIPTION_ID not set" });
-  } else if (!mgmtToken) {
-    results.push({ check: "Cost — subscription query", status: "skip", detail: "No token" });
-  } else {
-    for (let i = 0; i < subscriptionIds.length; i++) {
-      const subId = subscriptionIds[i];
-      const label = subscriptionLabels[i] ?? subId;
-      const costUrl =
-        `https://management.azure.com/subscriptions/${subId}` +
-        `/providers/Microsoft.CostManagement/query?api-version=2023-11-01`;
-      results.push(
-        await checkUrl(`Cost — ${label} (${subId.slice(0, 8)}…) MTD query`, costUrl, mgmtToken, "POST", {
-          type: "ActualCost",
-          timeframe: "BillingMonthToDate",
-          dataset: { granularity: "None", aggregation: { totalCost: { name: "Cost", function: "Sum" } } },
-        }),
-      );
-    }
-  }
-
-  // ── M365 billing account ───────────────────────────────────────────────────
-  if (!billingAccountId) {
-    results.push({ check: "Cost — M365 billing query", status: "skip", detail: "AZURE_BILLING_ACCOUNT_ID not set" });
-  } else {
-    const billingUrl =
-      `https://management.azure.com/providers/Microsoft.Billing/billingAccounts/${billingAccountId}` +
-      `/providers/Microsoft.CostManagement/query?api-version=2023-11-01`;
-    const billingBody = {
-      type: "ActualCost",
-      timeframe: "BillingMonthToDate",
-      dataset: { granularity: "None", aggregation: { totalCost: { name: "Cost", function: "Sum" } } },
-    };
-    const tenantId = process.env.AZURE_TENANT_ID;
-    const clientId = process.env.AZURE_CLIENT_ID;
-    const clientSecret = process.env.AZURE_CLIENT_SECRET;
-    let spOnlyToken: string | null = null;
-    if (tenantId && clientId && clientSecret) {
-      try {
-        const body = new URLSearchParams({
-          grant_type: "client_credentials",
-          client_id: clientId,
-          client_secret: clientSecret,
-          scope: "https://management.azure.com/.default",
-        });
-        const res = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
-          method: "POST",
-          body,
-        });
-        if (res.ok) {
-          const data = (await res.json()) as { access_token: string };
-          spOnlyToken = data.access_token;
-          results.push({ check: "M365 — SP client_credentials token", status: "ok", detail: "SP token acquired" });
-        } else {
-          const txt = await res.text();
-          results.push({ check: "M365 — SP client_credentials token", status: "fail", detail: `HTTP ${res.status}: ${txt.slice(0, 200)}` });
-        }
-      } catch (e) {
-        results.push({ check: "M365 — SP client_credentials token", status: "fail", detail: String(e) });
-      }
-    } else {
-      results.push({ check: "M365 — SP client_credentials token", status: "skip", detail: "AZURE_CLIENT_SECRET not set" });
-    }
-    if (spOnlyToken) {
-      results.push(await checkUrl("Cost — M365 billing query (SP token)", billingUrl, spOnlyToken, "POST", billingBody));
-    }
-    if (mgmtToken) {
-      results.push(await checkUrl("Cost — M365 billing query (MI token)", billingUrl, mgmtToken, "POST", billingBody));
-    }
-  }
 
   // ── AI — OpenAI ────────────────────────────────────────────────────────────
   if (!openAiResourceId) {
