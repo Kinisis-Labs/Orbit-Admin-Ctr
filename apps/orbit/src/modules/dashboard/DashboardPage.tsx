@@ -230,11 +230,8 @@ export function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--orbit-text-primary)" }}>
-            Command Center
+            Enterprise Overview
           </h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--orbit-text-muted)" }}>
-            Executive overview · {user.displayName.split(" ")[0]} · {now}
-          </p>
         </div>
         <div
           className="flex items-center gap-2 rounded-lg px-3 py-2"
