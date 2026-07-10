@@ -63,6 +63,62 @@ router.get("/infrastructure", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+router.get("/infrastructure/debug", requireAuth, requireAdmin, async (req, res) => {
+  const e = (k: string) => process.env[k];
+  const present = (k: string) => (e(k) ? "✓ set" : "✗ missing");
+  const masked = (k: string) => {
+    const v = e(k);
+    if (!v) return "✗ missing";
+    return `✓ set (${v.slice(0, 4)}…${v.slice(-4)})`;
+  };
+
+  const subIds = (e("AZURE_SUBSCRIPTION_IDS") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+
+  let tokenResult = "not attempted";
+  if (e("IDENTITY_ENDPOINT") || (e("AZURE_TENANT_ID") && e("AZURE_CLIENT_ID") && e("AZURE_CLIENT_SECRET"))) {
+    try {
+      const { getAccessToken } = await import("../../../lib/azure-monitor.js");
+      const token = await getAccessToken();
+      tokenResult = token ? `✓ obtained (${token.slice(0, 10)}…)` : "✗ fetch succeeded but token was null";
+    } catch (err) {
+      tokenResult = `✗ threw: ${String(err)}`;
+    }
+  } else {
+    tokenResult = "✗ no auth env vars present";
+  }
+
+  res.json({
+    auth: {
+      IDENTITY_ENDPOINT: present("IDENTITY_ENDPOINT"),
+      IDENTITY_HEADER: present("IDENTITY_HEADER"),
+      AZURE_TENANT_ID: present("AZURE_TENANT_ID"),
+      AZURE_CLIENT_ID: masked("AZURE_CLIENT_ID"),
+      AZURE_CLIENT_SECRET: present("AZURE_CLIENT_SECRET"),
+      tokenResult,
+    },
+    subscriptions: {
+      AZURE_SUBSCRIPTION_IDS: present("AZURE_SUBSCRIPTION_IDS"),
+      parsedCount: subIds.length,
+      AZURE_SUB_ORBIT: present("AZURE_SUB_ORBIT"),
+      AZURE_SUB_SHARED: present("AZURE_SUB_SHARED"),
+    },
+    resources: {
+      AZURE_RESOURCE_GROUP_ORBIT: e("AZURE_RESOURCE_GROUP_ORBIT") ?? "(default: rg-kinisislabs-orbit-prod-eus2)",
+      AZURE_CONTAINER_APP_NAME: e("AZURE_CONTAINER_APP_NAME") ?? "(default: ca-orbit-prod-v2)",
+      AZURE_RESOURCE_GROUP_SHARED: e("AZURE_RESOURCE_GROUP_SHARED") ?? "(default: rg-kinisislabs-platform-shared-prod-eus2)",
+      AZURE_POSTGRES_NAME: e("AZURE_POSTGRES_NAME") ?? "(default: pg-orbit-prod)",
+      AZURE_STORAGE_NAME: e("AZURE_STORAGE_NAME") ?? "(default: stsharedprod)",
+      AZURE_CONTAINER_APP_NAME_GRAILBABE: present("AZURE_CONTAINER_APP_NAME_GRAILBABE"),
+      APPLICATIONINSIGHTS_CONNECTION_STRING: present("APPLICATIONINSIGHTS_CONNECTION_STRING"),
+    },
+    cacheStatus: {
+      hasCachedSnapshot: cachedSnapshot !== null,
+      cacheExpiresAt: cacheExpiresAt ? new Date(cacheExpiresAt).toISOString() : null,
+      cacheValid: Date.now() < cacheExpiresAt,
+    },
+  });
+});
+
 router.get("/infrastructure/history", requireAuth, requireAdmin, async (req, res) => {
   try {
     const hours = Math.min(Number(req.query.hours ?? 6), 24);
