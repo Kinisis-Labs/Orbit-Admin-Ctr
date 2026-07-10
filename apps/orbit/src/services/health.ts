@@ -4,11 +4,20 @@ import { useQuery } from "@tanstack/react-query";
 
 export type HealthStatus = "healthy" | "degraded" | "unhealthy" | "unknown";
 
+export interface HistoryPoint {
+  status: HealthStatus;
+  latencyMs: number;
+  checkedAt: string;
+}
+
 export interface ServiceCheck {
   name: string;
   status: HealthStatus;
   latencyMs?: number;
   message?: string;
+  httpStatus?: number;
+  timedOut?: boolean;
+  history: HistoryPoint[];
   checkedAt: string;
 }
 

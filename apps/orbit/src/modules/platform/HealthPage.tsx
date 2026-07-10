@@ -1,5 +1,5 @@
-import { Activity, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Database, Server, Globe, Loader2 } from "lucide-react";
-import { usePlatformHealth, type HealthStatus, type ServiceCheck } from "../../services/health";
+import { Activity, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Database, Server, Globe, Loader2, Clock } from "lucide-react";
+import { usePlatformHealth, type HealthStatus, type ServiceCheck, type HistoryPoint } from "../../services/health";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -8,6 +8,13 @@ const STATUS_CONFIG: Record<HealthStatus, { icon: React.ElementType; color: stri
   degraded: { icon: AlertTriangle, color: "#f59e0b", bg: "rgba(245,158,11,0.12)", label: "Degraded" },
   unhealthy: { icon: XCircle, color: "#ef4444", bg: "rgba(239,68,68,0.12)", label: "Unhealthy" },
   unknown: { icon: AlertTriangle, color: "#94a3b8", bg: "rgba(148,163,184,0.12)", label: "Unknown" },
+};
+
+const STATUS_DOT: Record<HealthStatus, string> = {
+  healthy: "#22c55e",
+  degraded: "#f59e0b",
+  unhealthy: "#ef4444",
+  unknown: "#94a3b8",
 };
 
 const card: React.CSSProperties = {
@@ -19,6 +26,28 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
     month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit",
   });
+}
+
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+// ── History Dots ──────────────────────────────────────────────────────────────
+
+function HistoryDots({ history }: { history: HistoryPoint[] }) {
+  if (!history.length) return <span style={{ color: "var(--orbit-text-muted)" }}>—</span>;
+  return (
+    <span className="flex items-center gap-0.5" title="Last 10 checks (oldest → newest)">
+      {history.map((p, i) => (
+        <span
+          key={i}
+          className="inline-block rounded-sm"
+          style={{ width: 8, height: 14, background: STATUS_DOT[p.status], opacity: 0.85 }}
+          title={`${p.status} · ${p.latencyMs}ms · ${fmtTime(p.checkedAt)}`}
+        />
+      ))}
+    </span>
+  );
 }
 
 // ── Overall Status Banner ─────────────────────────────────────────────────────
@@ -52,7 +81,7 @@ function CheckCard({ check, icon: CardIcon }: { check: ServiceCheck; icon: React
           <div>
             <p className="text-sm font-semibold" style={{ color: "var(--orbit-text-primary)" }}>{check.name}</p>
             {check.message && (
-              <p className="text-xs mt-0.5" style={{ color: "var(--orbit-text-muted)" }}>{check.message}</p>
+              <p className="text-xs mt-0.5" style={{ color: check.status === "healthy" ? "var(--orbit-text-muted)" : "#f59e0b" }}>{check.message}</p>
             )}
           </div>
         </div>
@@ -61,13 +90,28 @@ function CheckCard({ check, icon: CardIcon }: { check: ServiceCheck; icon: React
           <span className="text-xs font-medium" style={{ color: cfg.color }}>{cfg.label}</span>
         </div>
       </div>
-      {check.latencyMs !== undefined && (
-        <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--orbit-border)" }}>
+      <div className="mt-3 pt-3 flex flex-wrap gap-x-5 gap-y-1" style={{ borderTop: "1px solid var(--orbit-border)" }}>
+        {check.latencyMs !== undefined && (
           <span className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>
             Latency: <span style={{ color: "var(--orbit-text-secondary)" }}>{check.latencyMs}ms</span>
           </span>
-        </div>
-      )}
+        )}
+        {check.httpStatus !== undefined && (
+          <span className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>
+            HTTP: <span style={{ color: check.httpStatus >= 400 ? "#ef4444" : "var(--orbit-text-secondary)" }}>{check.httpStatus}</span>
+          </span>
+        )}
+        {check.timedOut && (
+          <span className="flex items-center gap-1 text-xs" style={{ color: "#ef4444" }}>
+            <Clock className="h-3 w-3" /> Timed out
+          </span>
+        )}
+        {check.history.length > 0 && (
+          <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--orbit-text-muted)" }}>
+            History: <HistoryDots history={check.history} />
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -91,7 +135,7 @@ function AppChecksTable({ checks }: { checks: ServiceCheck[] }) {
       <table className="w-full text-xs">
         <thead>
           <tr style={{ borderBottom: "1px solid var(--orbit-border)", background: "var(--orbit-bg-page)" }}>
-            {["Application", "Status", "Latency", "Checked At"].map((h) => (
+            {["Application", "Status", "HTTP", "Latency", "Timeout", "History (oldest→newest)", "Checked At"].map((h) => (
               <th key={h} className="px-4 py-3 text-left font-semibold uppercase tracking-wider" style={{ color: "var(--orbit-text-muted)" }}>{h}</th>
             ))}
           </tr>
@@ -108,10 +152,22 @@ function AppChecksTable({ checks }: { checks: ServiceCheck[] }) {
                     <StatusIcon className="h-3.5 w-3.5" style={{ color: cfg.color }} />
                     <span style={{ color: cfg.color }}>{cfg.label}</span>
                   </span>
+                  {c.message && (
+                    <p className="mt-0.5 text-xs" style={{ color: "#f59e0b" }}>{c.message}</p>
+                  )}
                 </td>
-                <td className="px-4 py-3" style={{ color: "var(--orbit-text-secondary)" }}>
+                <td className="px-4 py-3 tabular-nums" style={{ color: c.httpStatus !== undefined && c.httpStatus >= 400 ? "#ef4444" : "var(--orbit-text-secondary)" }}>
+                  {c.httpStatus ?? "—"}
+                </td>
+                <td className="px-4 py-3 tabular-nums" style={{ color: "var(--orbit-text-secondary)" }}>
                   {c.latencyMs !== undefined ? `${c.latencyMs}ms` : "—"}
                 </td>
+                <td className="px-4 py-3">
+                  {c.timedOut
+                    ? <span className="flex items-center gap-1" style={{ color: "#ef4444" }}><Clock className="h-3 w-3" /> Yes</span>
+                    : <span style={{ color: "var(--orbit-text-muted)" }}>No</span>}
+                </td>
+                <td className="px-4 py-3"><HistoryDots history={c.history ?? []} /></td>
                 <td className="px-4 py-3" style={{ color: "var(--orbit-text-muted)" }}>{fmtDate(c.checkedAt)}</td>
               </tr>
             );

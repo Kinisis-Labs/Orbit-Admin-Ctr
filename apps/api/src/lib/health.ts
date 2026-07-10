@@ -4,11 +4,20 @@ import { eq, sql } from "drizzle-orm";
 
 export type HealthStatus = "healthy" | "degraded" | "unhealthy" | "unknown";
 
+export interface HistoryPoint {
+  status: HealthStatus;
+  latencyMs: number;
+  checkedAt: string;
+}
+
 export interface ServiceCheck {
   name: string;
   status: HealthStatus;
   latencyMs?: number;
   message?: string;
+  httpStatus?: number;
+  timedOut?: boolean;
+  history: HistoryPoint[];
   checkedAt: string;
 }
 
@@ -20,24 +29,37 @@ export interface PlatformHealthReport {
   checkedAt: string;
 }
 
+/** In-memory history ring — last 10 checks per app name. */
+const historyRing = new Map<string, HistoryPoint[]>();
+const HISTORY_MAX = 10;
+
+function pushHistory(name: string, point: HistoryPoint): HistoryPoint[] {
+  const ring = historyRing.get(name) ?? [];
+  ring.push(point);
+  if (ring.length > HISTORY_MAX) ring.shift();
+  historyRing.set(name, ring);
+  return [...ring];
+}
+
 /** Check database connectivity by running a trivial query. */
 export async function checkDatabase(): Promise<ServiceCheck> {
   const start = Date.now();
+  const checkedAt = new Date().toISOString();
   try {
     await db.execute(sql`SELECT 1`);
-    return {
-      name: "database",
-      status: "healthy",
-      latencyMs: Date.now() - start,
-      checkedAt: new Date().toISOString(),
-    };
+    const latencyMs = Date.now() - start;
+    const history = pushHistory("database", { status: "healthy", latencyMs, checkedAt });
+    return { name: "database", status: "healthy", latencyMs, history, checkedAt };
   } catch (err) {
+    const latencyMs = Date.now() - start;
+    const history = pushHistory("database", { status: "unhealthy", latencyMs, checkedAt });
     return {
       name: "database",
       status: "unhealthy",
-      latencyMs: Date.now() - start,
+      latencyMs,
       message: err instanceof Error ? err.message : String(err),
-      checkedAt: new Date().toISOString(),
+      history,
+      checkedAt,
     };
   }
 }
@@ -48,6 +70,7 @@ export async function checkAppEndpoint(
   url: string,
 ): Promise<ServiceCheck> {
   const start = Date.now();
+  const checkedAt = new Date().toISOString();
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5_000);
@@ -55,15 +78,30 @@ export async function checkAppEndpoint(
     clearTimeout(timer);
     const latencyMs = Date.now() - start;
     const status: HealthStatus = res.ok ? "healthy" : "degraded";
-    return { name, status, latencyMs, message: res.ok ? undefined : `HTTP ${res.status}`, checkedAt: new Date().toISOString() };
+    const history = pushHistory(name, { status, latencyMs, checkedAt });
+    return {
+      name,
+      status,
+      latencyMs,
+      httpStatus: res.status,
+      timedOut: false,
+      message: res.ok ? undefined : `HTTP ${res.status}`,
+      history,
+      checkedAt,
+    };
   } catch (err) {
+    const latencyMs = Date.now() - start;
     const msg = err instanceof Error ? err.message : String(err);
+    const timedOut = msg.includes("abort") || msg.includes("The operation was aborted");
+    const history = pushHistory(name, { status: "unhealthy", latencyMs, checkedAt });
     return {
       name,
       status: "unhealthy",
-      latencyMs: Date.now() - start,
-      message: msg.includes("abort") ? "Timeout after 5s" : msg,
-      checkedAt: new Date().toISOString(),
+      latencyMs,
+      timedOut,
+      message: timedOut ? "Timeout after 5s" : msg,
+      history,
+      checkedAt,
     };
   }
 }
@@ -77,12 +115,12 @@ export async function getPlatformHealth(): Promise<PlatformHealthReport> {
     status: "healthy",
     latencyMs: 0,
     message: `Node ${process.version}, uptime ${Math.floor(process.uptime())}s`,
+    history: pushHistory("orbit-api", { status: "healthy", latencyMs: 0, checkedAt }),
     checkedAt,
   };
 
   const dbCheck = await checkDatabase();
 
-  // Fetch all enabled apps that have a health check URL
   let appChecks: ServiceCheck[] = [];
   try {
     const apps = await db
