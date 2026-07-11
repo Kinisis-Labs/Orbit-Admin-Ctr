@@ -123,6 +123,28 @@ export const router = createBrowserRouter([
         ],
       },
       {
+        path: "revenue",
+        element: (
+          <Lazy>
+            <PlaceholderPage
+              title="Revenue Management"
+              description="Finance and revenue analytics are coming soon."
+            />
+          </Lazy>
+        ),
+      },
+      {
+        path: "service",
+        element: (
+          <Lazy>
+            <PlaceholderPage
+              title="Service Management"
+              description="IT support and service desk tools are coming soon."
+            />
+          </Lazy>
+        ),
+      },
+      {
         path: "*",
         element: (
           <Lazy>
