@@ -39,10 +39,15 @@ function sevBg(s: string) {
   return "var(--orbit-bg-page)";
 }
 
+function isInfoSeverity(e: SecurityEvent): boolean {
+  return e.severity === "info" || e.severity === "informational";
+}
+
 function getEventStatus(e: SecurityEvent): "active" | "acknowledged" | "resolved" {
-  if (!e.acknowledged) return "active";
   if (e.acknowledgedBy?.startsWith("resolved:")) return "resolved";
-  return "acknowledged";
+  if (e.acknowledged) return "acknowledged";
+  if (isInfoSeverity(e)) return "resolved";
+  return "active";
 }
 
 function SummaryTile({ label, value, color, sub }: { label: string; value: number; color?: string; sub?: string }) {
@@ -101,6 +106,7 @@ function EventRow({
   const [expanded, setExpanded] = useState(false);
   const status = getEventStatus(event);
   const isAudit = event.source === "orbit-audit";
+  const isAutoResolved = isInfoSeverity(event) && !event.acknowledged;
 
   return (
     <>
@@ -135,7 +141,7 @@ function EventRow({
         </td>
         <td className="px-3 py-3"><StatusBadge status={status} /></td>
         <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-          {!isAudit && status === "active" && (
+          {!isAudit && !isAutoResolved && status === "active" && (
             <div className="flex items-center gap-1 justify-end">
               <button
                 onClick={() => onAcknowledge(event.id)}
