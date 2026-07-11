@@ -145,10 +145,13 @@ export function TesterManagementPage() {
         </p>
         <form onSubmit={handleProvision} className="flex gap-2">
           <input
+            id="tester-user-id"
+            name="tester-user-id"
             type="text"
             value={addUserId}
             onChange={(e) => setAddUserId(e.target.value)}
             placeholder="user_2abc123..."
+            autoComplete="off"
             disabled={isBusy}
             className="flex-1 rounded-lg px-3 py-2 text-sm font-mono"
             style={{

@@ -31,6 +31,7 @@ async function proxyToGrailBabe(
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
+    signal: AbortSignal.timeout(10_000),
   });
 
   let body: unknown;
@@ -48,7 +49,7 @@ async function proxyToGrailBabe(
 }
 
 // ── GET /api/crm/testers — list all GrailBabe tester accounts ─────────────────
-router.get("/api/crm/testers", requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.get("/crm/testers", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { status, body } = await proxyToGrailBabe("GET", "/api/internal/v1/testers");
     res.status(status).json(body);
@@ -59,7 +60,7 @@ router.get("/api/crm/testers", requireAuth, requireAdmin, async (req: Request, r
 });
 
 // ── POST /api/crm/testers/:userId — provision a tester account ─────────────────
-router.post("/api/crm/testers/:userId", requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.post("/crm/testers/:userId", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const userId = String(req.params.userId ?? "").trim();
   if (!userId) {
     res.status(400).json({ error: "userId is required" });
@@ -75,7 +76,7 @@ router.post("/api/crm/testers/:userId", requireAuth, requireAdmin, async (req: R
 });
 
 // ── DELETE /api/crm/testers/:userId — revoke a tester account ─────────────────
-router.delete("/api/crm/testers/:userId", requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.delete("/crm/testers/:userId", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const userId = String(req.params.userId ?? "").trim();
   if (!userId) {
     res.status(400).json({ error: "userId is required" });
