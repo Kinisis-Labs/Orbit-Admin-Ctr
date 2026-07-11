@@ -187,6 +187,8 @@ export interface SecurityEvent {
   ip: string | null;
   detail: string;
   acknowledged: boolean;
+  acknowledgedBy: string | null;
+  acknowledgedAt: string | null;
   createdAt: string;
 }
 
@@ -222,6 +224,19 @@ export function useAcknowledgeSecurityEvent() {
   return useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/noc/security/${encodeURIComponent(id)}/acknowledge`, {
+        method: "PATCH",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["noc-security"] }),
+  });
+}
+
+export function useResolveSecurityEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/noc/security/${encodeURIComponent(id)}/resolve`, {
         method: "PATCH",
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

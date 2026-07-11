@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ShieldAlert,
   RefreshCw,
@@ -7,126 +8,280 @@ import {
   AlertTriangle,
   Info,
   Check,
+  ShieldCheck,
+  ChevronDown,
+  ChevronRight,
+  Filter,
 } from "lucide-react";
-import { useSecurityEvents, useAcknowledgeSecurityEvent, type SecurityEvent } from "../../services/noc";
+import {
+  useSecurityEvents,
+  useAcknowledgeSecurityEvent,
+  useResolveSecurityEvent,
+  type SecurityEvent,
+} from "../../services/noc";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function severityColor(severity: string): string {
-  switch (severity) {
-    case "critical": return "#ef4444";
-    case "warning": return "#f59e0b";
-    case "error": return "#ef4444";
-    default: return "var(--orbit-text-muted)";
-  }
+const SEV_ORDER = ["critical", "error", "warning", "informational", "info", "unknown"];
+
+function sevColor(s: string) {
+  if (s === "critical") return "#ef4444";
+  if (s === "error") return "#f97316";
+  if (s === "warning") return "#f59e0b";
+  if (s === "informational" || s === "info") return "#3b82f6";
+  return "var(--orbit-text-muted)";
+}
+function sevBg(s: string) {
+  if (s === "critical") return "rgba(239,68,68,0.1)";
+  if (s === "error") return "rgba(249,115,22,0.1)";
+  if (s === "warning") return "rgba(245,158,11,0.1)";
+  if (s === "informational" || s === "info") return "rgba(59,130,246,0.1)";
+  return "var(--orbit-bg-page)";
 }
 
-function severityBg(severity: string): string {
-  switch (severity) {
-    case "critical": return "rgba(239,68,68,0.1)";
-    case "warning": return "rgba(245,158,11,0.1)";
-    case "error": return "rgba(239,68,68,0.1)";
-    default: return "var(--orbit-bg-page)";
-  }
+function getEventStatus(e: SecurityEvent): "active" | "acknowledged" | "resolved" {
+  if (!e.acknowledged) return "active";
+  if (e.acknowledgedBy?.startsWith("resolved:")) return "resolved";
+  return "acknowledged";
 }
 
-function SummaryTile({ label, value, color }: { label: string; value: number; color?: string }) {
+function SummaryTile({ label, value, color, sub }: { label: string; value: number; color?: string; sub?: string }) {
   return (
     <div
       className="rounded-xl px-5 py-4 flex flex-col gap-1"
       style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}
     >
-      <span className="text-xs font-medium" style={{ color: "var(--orbit-text-muted)" }}>
-        {label}
-      </span>
+      <span className="text-xs font-medium" style={{ color: "var(--orbit-text-muted)" }}>{label}</span>
       <span className="text-3xl font-bold tabular-nums" style={{ color: color ?? "var(--orbit-text-primary)" }}>
         {value}
       </span>
+      {sub && <span className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>{sub}</span>}
     </div>
   );
 }
 
-function EventRow({ event, onAcknowledge }: { event: SecurityEvent; onAcknowledge: (id: string) => void }) {
+function SevBadge({ severity }: { severity: string }) {
   return (
-    <tr
-      style={{
-        borderBottom: "1px solid var(--orbit-border)",
-        opacity: event.acknowledged ? 0.5 : 1,
-      }}
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide"
+      style={{ color: sevColor(severity), background: sevBg(severity) }}
     >
-      <td className="px-4 py-3">
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
-          style={{ color: severityColor(event.severity), background: severityBg(event.severity) }}
-        >
-          {event.severity}
-        </span>
-      </td>
-      <td className="px-4 py-3">
-        <span className="text-xs font-mono" style={{ color: "var(--orbit-text-muted)" }}>
-          {event.source}
-        </span>
-      </td>
-      <td className="px-4 py-3 text-sm" style={{ color: "var(--orbit-text-secondary)", maxWidth: 320 }}>
-        <p className="truncate">{event.detail}</p>
-        {event.user && (
-          <p className="text-xs mt-0.5" style={{ color: "var(--orbit-text-muted)" }}>
-            {event.user}{event.ip ? ` · ${event.ip}` : ""}
-          </p>
-        )}
-      </td>
-      <td className="px-4 py-3 text-xs" style={{ color: "var(--orbit-text-muted)", whiteSpace: "nowrap" }}>
-        {new Date(event.createdAt).toLocaleTimeString(undefined, {
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
-      </td>
-      <td className="px-4 py-3 text-right">
-        {!event.acknowledged && event.source !== "orbit-audit" && (
-          <button
-            onClick={() => onAcknowledge(event.id)}
-            className="rounded px-2 py-1 text-xs font-medium"
-            style={{
-              background: "var(--orbit-bg-page)",
-              border: "1px solid var(--orbit-border)",
-              color: "var(--orbit-text-muted)",
-            }}
-          >
-            <Check className="h-3 w-3 inline mr-1" />
-            Ack
-          </button>
-        )}
-      </td>
-    </tr>
+      {(severity === "critical" || severity === "error") && <XCircle className="h-3 w-3" />}
+      {severity === "warning" && <AlertTriangle className="h-3 w-3" />}
+      {(severity === "informational" || severity === "info") && <Info className="h-3 w-3" />}
+      {severity}
+    </span>
+  );
+}
+
+function StatusBadge({ status }: { status: "active" | "acknowledged" | "resolved" }) {
+  const cfg = {
+    active: { color: "#ef4444", label: "Active" },
+    acknowledged: { color: "#f59e0b", label: "Acknowledged" },
+    resolved: { color: "#22c55e", label: "Resolved" },
+  }[status];
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
+      style={{ color: cfg.color, background: `${cfg.color}18` }}>
+      {status === "resolved" ? <ShieldCheck className="h-3 w-3" /> : status === "acknowledged" ? <Check className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+      {cfg.label}
+    </span>
+  );
+}
+
+function EventRow({
+  event,
+  onAcknowledge,
+  onResolve,
+}: {
+  event: SecurityEvent;
+  onAcknowledge: (id: string) => void;
+  onResolve: (id: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const status = getEventStatus(event);
+  const isAudit = event.source === "orbit-audit";
+
+  return (
+    <>
+      <tr
+        onClick={() => setExpanded((x) => !x)}
+        className="cursor-pointer"
+        style={{
+          borderBottom: expanded ? "none" : "1px solid var(--orbit-border)",
+          opacity: status === "resolved" ? 0.55 : 1,
+          background: expanded ? "var(--orbit-bg-page)" : undefined,
+        }}
+      >
+        <td className="px-4 py-3 w-4">
+          {expanded
+            ? <ChevronDown className="h-3.5 w-3.5" style={{ color: "var(--orbit-text-muted)" }} />
+            : <ChevronRight className="h-3.5 w-3.5" style={{ color: "var(--orbit-text-muted)" }} />}
+        </td>
+        <td className="px-3 py-3"><SevBadge severity={event.severity} /></td>
+        <td className="px-3 py-3">
+          <span className="text-xs font-mono" style={{ color: "var(--orbit-text-muted)" }}>{event.source}</span>
+        </td>
+        <td className="px-3 py-3 text-sm" style={{ color: "var(--orbit-text-secondary)", maxWidth: 340 }}>
+          <p className="truncate">{event.detail}</p>
+          {event.user && (
+            <p className="text-xs mt-0.5" style={{ color: "var(--orbit-text-muted)" }}>
+              {event.user}{event.ip ? ` · ${event.ip}` : ""}
+            </p>
+          )}
+        </td>
+        <td className="px-3 py-3 text-xs whitespace-nowrap" style={{ color: "var(--orbit-text-muted)" }}>
+          {new Date(event.createdAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+        </td>
+        <td className="px-3 py-3"><StatusBadge status={status} /></td>
+        <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+          {!isAudit && status === "active" && (
+            <div className="flex items-center gap-1 justify-end">
+              <button
+                onClick={() => onAcknowledge(event.id)}
+                className="rounded px-2 py-1 text-xs font-medium"
+                style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b" }}
+              >
+                <Check className="h-3 w-3 inline mr-1" />Ack
+              </button>
+              <button
+                onClick={() => onResolve(event.id)}
+                className="rounded px-2 py-1 text-xs font-medium"
+                style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#22c55e" }}
+              >
+                <ShieldCheck className="h-3 w-3 inline mr-1" />Resolve
+              </button>
+            </div>
+          )}
+          {!isAudit && status === "acknowledged" && (
+            <button
+              onClick={() => onResolve(event.id)}
+              className="rounded px-2 py-1 text-xs font-medium"
+              style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#22c55e" }}
+            >
+              <ShieldCheck className="h-3 w-3 inline mr-1" />Resolve
+            </button>
+          )}
+        </td>
+      </tr>
+      {expanded && (
+        <tr style={{ borderBottom: "1px solid var(--orbit-border)", background: "var(--orbit-bg-page)" }}>
+          <td colSpan={7} className="px-6 py-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+              <div>
+                <p className="font-semibold mb-1" style={{ color: "var(--orbit-text-muted)" }}>Detail</p>
+                <p style={{ color: "var(--orbit-text-secondary)" }}>{event.detail}</p>
+              </div>
+              {event.user && (
+                <div>
+                  <p className="font-semibold mb-1" style={{ color: "var(--orbit-text-muted)" }}>User</p>
+                  <p style={{ color: "var(--orbit-text-secondary)" }}>{event.user}</p>
+                </div>
+              )}
+              {event.ip && (
+                <div>
+                  <p className="font-semibold mb-1" style={{ color: "var(--orbit-text-muted)" }}>IP Address</p>
+                  <p className="font-mono" style={{ color: "var(--orbit-text-secondary)" }}>{event.ip}</p>
+                </div>
+              )}
+              <div>
+                <p className="font-semibold mb-1" style={{ color: "var(--orbit-text-muted)" }}>Event Type</p>
+                <p className="font-mono" style={{ color: "var(--orbit-text-secondary)" }}>{event.type}</p>
+              </div>
+              <div>
+                <p className="font-semibold mb-1" style={{ color: "var(--orbit-text-muted)" }}>Fired At</p>
+                <p style={{ color: "var(--orbit-text-secondary)" }}>
+                  {new Date(event.createdAt).toLocaleString()}
+                </p>
+              </div>
+              {event.acknowledgedAt && (
+                <div>
+                  <p className="font-semibold mb-1" style={{ color: "var(--orbit-text-muted)" }}>
+                    {status === "resolved" ? "Resolved At" : "Acknowledged At"}
+                  </p>
+                  <p style={{ color: "var(--orbit-text-secondary)" }}>
+                    {new Date(event.acknowledgedAt).toLocaleString()}
+                  </p>
+                </div>
+              )}
+              {event.acknowledgedBy && (
+                <div>
+                  <p className="font-semibold mb-1" style={{ color: "var(--orbit-text-muted)" }}>
+                    {status === "resolved" ? "Resolved By" : "Acknowledged By"}
+                  </p>
+                  <p style={{ color: "var(--orbit-text-secondary)" }}>
+                    {event.acknowledgedBy.replace("resolved:", "")}
+                  </p>
+                </div>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
+type TabKey = "active" | "acknowledged" | "resolved" | "all";
+
 export function SecurityDashboard() {
   const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useSecurityEvents();
   const { mutate: acknowledge } = useAcknowledgeSecurityEvent();
+  const { mutate: resolve } = useResolveSecurityEvent();
+
+  const [tab, setTab] = useState<TabKey>("active");
+  const [sevFilter, setSevFilter] = useState<string>("all");
+  const [srcFilter, setSrcFilter] = useState<string>("all");
 
   const lastUpdated = dataUpdatedAt
-    ? new Date(dataUpdatedAt).toLocaleTimeString(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
+    ? new Date(dataUpdatedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
     : null;
 
   const allEvents = [...(data?.securityEvents ?? []), ...(data?.auditEvents ?? [])].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 
+  const sources = Array.from(new Set(allEvents.map((e) => e.source)));
+
+  const filteredEvents = allEvents.filter((e) => {
+    const status = getEventStatus(e);
+    const tabMatch =
+      tab === "all" ? true :
+      tab === "active" ? status === "active" :
+      tab === "acknowledged" ? status === "acknowledged" :
+      status === "resolved";
+    const sevMatch = sevFilter === "all" || e.severity === sevFilter;
+    const srcMatch = srcFilter === "all" || e.source === srcFilter;
+    return tabMatch && sevMatch && srcMatch;
+  });
+
+  const counts = {
+    active: allEvents.filter((e) => getEventStatus(e) === "active").length,
+    acknowledged: allEvents.filter((e) => getEventStatus(e) === "acknowledged").length,
+    resolved: allEvents.filter((e) => getEventStatus(e) === "resolved").length,
+    all: allEvents.length,
+  };
+
+  const sevCounts = SEV_ORDER.reduce<Record<string, number>>((acc, s) => {
+    acc[s] = allEvents.filter((e) => e.severity === s).length;
+    return acc;
+  }, {});
+
+  const TABS: { key: TabKey; label: string }[] = [
+    { key: "active", label: "Active" },
+    { key: "acknowledged", label: "Acknowledged" },
+    { key: "resolved", label: "Resolved" },
+    { key: "all", label: "All Events" },
+  ];
+
   return (
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--orbit-text-primary)" }}>
-            Security
-          </h1>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--orbit-text-primary)" }}>Security</h1>
           <p className="text-sm mt-1" style={{ color: "var(--orbit-text-muted)" }}>
             Entra sign-in logs, security events, Orbit audit · 24h window · auto-refreshes every 60s
             {lastUpdated && <span className="ml-2">· Last updated {lastUpdated}</span>}
@@ -136,11 +291,7 @@ export function SecurityDashboard() {
           onClick={() => void refetch()}
           disabled={isFetching}
           className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
-          style={{
-            background: "var(--orbit-bg-card)",
-            border: "1px solid var(--orbit-border)",
-            color: "var(--orbit-text-secondary)",
-          }}
+          style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)", color: "var(--orbit-text-secondary)" }}
         >
           <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
           Refresh
@@ -153,23 +304,15 @@ export function SecurityDashboard() {
           <span className="text-sm">Fetching security events…</span>
         </div>
       ) : error ? (
-        <div
-          className="rounded-xl p-4 text-sm"
-          style={{ color: "#ef4444", border: "1px solid #ef444433", background: "var(--orbit-bg-card)" }}
-        >
+        <div className="rounded-xl p-4 text-sm"
+          style={{ color: "#ef4444", border: "1px solid #ef444433", background: "var(--orbit-bg-card)" }}>
           {error.message}
         </div>
       ) : data ? (
         <>
           {!data.graphConfigured && (
-            <div
-              className="flex items-start gap-3 rounded-xl px-4 py-3 text-sm"
-              style={{
-                background: "rgba(245,158,11,0.08)",
-                border: "1px solid rgba(245,158,11,0.3)",
-                color: "#f59e0b",
-              }}
-            >
+            <div className="flex items-start gap-3 rounded-xl px-4 py-3 text-sm"
+              style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b" }}>
               <Info className="h-4 w-4 mt-0.5 shrink-0" />
               <span>
                 Microsoft Graph not configured — set{" "}
@@ -181,8 +324,8 @@ export function SecurityDashboard() {
             </div>
           )}
 
-          {/* Sign-in summary tiles */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* Sign-in KPI tiles */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <SummaryTile label="Total Sign-ins (24h)" value={data.signInSummary.totalSignIns24h} />
             <SummaryTile
               label="Failed Sign-ins (24h)"
@@ -194,18 +337,48 @@ export function SecurityDashboard() {
               value={data.signInSummary.mfaFailureCount}
               color={data.signInSummary.mfaFailureCount > 0 ? "#ef4444" : undefined}
             />
+            <SummaryTile
+              label="Active Security Events"
+              value={counts.active}
+              color={counts.active > 0 ? "#ef4444" : undefined}
+              sub={counts.active > 0 ? "Require action" : "All clear"}
+            />
           </div>
+
+          {/* Severity breakdown */}
+          {allEvents.length > 0 && (
+            <div className="rounded-xl px-5 py-4 flex flex-wrap items-center gap-4"
+              style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}>
+              <span className="text-xs font-semibold mr-2" style={{ color: "var(--orbit-text-muted)" }}>
+                By Severity
+              </span>
+              {["critical", "error", "warning", "informational", "info"].map((s) => {
+                const cnt = sevCounts[s] ?? 0;
+                if (cnt === 0) return null;
+                return (
+                  <button
+                    key={s}
+                    onClick={() => setSevFilter(sevFilter === s ? "all" : s)}
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-opacity"
+                    style={{
+                      color: sevColor(s),
+                      background: sevBg(s),
+                      outline: sevFilter === s ? `2px solid ${sevColor(s)}` : undefined,
+                      opacity: sevFilter !== "all" && sevFilter !== s ? 0.4 : 1,
+                    }}
+                  >
+                    {cnt} {s}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Recent sign-ins */}
           {data.recentSignIns.length > 0 && (
-            <div
-              className="rounded-xl overflow-hidden"
-              style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}
-            >
-              <div
-                className="flex items-center gap-2 px-4 py-3"
-                style={{ borderBottom: "1px solid var(--orbit-border)" }}
-              >
+            <div className="rounded-xl overflow-hidden"
+              style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}>
+              <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid var(--orbit-border)" }}>
                 <ShieldAlert className="h-4 w-4" style={{ color: "var(--orbit-text-muted)" }} />
                 <span className="text-sm font-semibold" style={{ color: "var(--orbit-text-primary)" }}>
                   Recent Sign-ins
@@ -214,14 +387,9 @@ export function SecurityDashboard() {
               <table className="w-full">
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-                    {["Status", "User", "UPN", "IP", "Time"].map((h) => (
-                      <th
-                        key={h}
-                        className="px-4 py-2 text-left text-xs font-semibold"
-                        style={{ color: "var(--orbit-text-muted)" }}
-                      >
-                        {h}
-                      </th>
+                    {["Status", "User", "UPN", "IP", "Reason", "Time"].map((h) => (
+                      <th key={h} className="px-4 py-2 text-left text-xs font-semibold"
+                        style={{ color: "var(--orbit-text-muted)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -229,26 +397,18 @@ export function SecurityDashboard() {
                   {data.recentSignIns.map((s) => (
                     <tr key={s.id} style={{ borderBottom: "1px solid var(--orbit-border)" }}>
                       <td className="px-4 py-2">
-                        {s.success ? (
-                          <CheckCircle2 className="h-4 w-4" style={{ color: "#22c55e" }} />
-                        ) : (
-                          <XCircle className="h-4 w-4" style={{ color: "#ef4444" }} />
-                        )}
+                        {s.success
+                          ? <CheckCircle2 className="h-4 w-4" style={{ color: "#22c55e" }} />
+                          : <XCircle className="h-4 w-4" style={{ color: "#ef4444" }} />}
                       </td>
-                      <td className="px-4 py-2 text-sm" style={{ color: "var(--orbit-text-secondary)" }}>
-                        {s.user}
+                      <td className="px-4 py-2 text-sm" style={{ color: "var(--orbit-text-secondary)" }}>{s.user}</td>
+                      <td className="px-4 py-2 text-xs font-mono" style={{ color: "var(--orbit-text-muted)" }}>{s.upn}</td>
+                      <td className="px-4 py-2 text-xs font-mono" style={{ color: "var(--orbit-text-muted)" }}>{s.ip}</td>
+                      <td className="px-4 py-2 text-xs" style={{ color: s.failureReason ? "#f59e0b" : "var(--orbit-text-muted)" }}>
+                        {s.failureReason ?? "—"}
                       </td>
-                      <td className="px-4 py-2 text-xs font-mono" style={{ color: "var(--orbit-text-muted)" }}>
-                        {s.upn}
-                      </td>
-                      <td className="px-4 py-2 text-xs font-mono" style={{ color: "var(--orbit-text-muted)" }}>
-                        {s.ip}
-                      </td>
-                      <td className="px-4 py-2 text-xs" style={{ color: "var(--orbit-text-muted)", whiteSpace: "nowrap" }}>
-                        {new Date(s.createdAt).toLocaleTimeString(undefined, {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                      <td className="px-4 py-2 text-xs whitespace-nowrap" style={{ color: "var(--orbit-text-muted)" }}>
+                        {new Date(s.createdAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                       </td>
                     </tr>
                   ))}
@@ -257,51 +417,82 @@ export function SecurityDashboard() {
             </div>
           )}
 
-          {/* Security event feed */}
-          <div
-            className="rounded-xl overflow-hidden"
-            style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}
-          >
-            <div
-              className="flex items-center gap-2 px-4 py-3"
-              style={{ borderBottom: "1px solid var(--orbit-border)" }}
-            >
-              <AlertTriangle className="h-4 w-4" style={{ color: "var(--orbit-text-muted)" }} />
-              <span className="text-sm font-semibold" style={{ color: "var(--orbit-text-primary)" }}>
-                Security Event Feed
-              </span>
-              <span className="ml-auto text-xs" style={{ color: "var(--orbit-text-muted)" }}>
-                {allEvents.length} events (24h)
-              </span>
+          {/* Security event feed — tabbed */}
+          <div className="rounded-xl overflow-hidden"
+            style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}>
+
+            {/* Tab bar */}
+            <div className="flex items-center gap-0 px-4 pt-3"
+              style={{ borderBottom: "1px solid var(--orbit-border)" }}>
+              {TABS.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className="px-4 py-2 text-xs font-semibold mr-1 rounded-t-lg"
+                  style={{
+                    color: tab === t.key ? "var(--orbit-text-primary)" : "var(--orbit-text-muted)",
+                    background: tab === t.key ? "var(--orbit-bg-page)" : "transparent",
+                    borderBottom: tab === t.key ? "2px solid #6366f1" : "2px solid transparent",
+                  }}
+                >
+                  {t.label}
+                  <span
+                    className="ml-1.5 rounded-full px-1.5 py-0.5 text-xs"
+                    style={{
+                      background: tab === t.key ? "#6366f120" : "var(--orbit-bg-page)",
+                      color: tab === t.key ? "#6366f1" : "var(--orbit-text-muted)",
+                    }}
+                  >
+                    {counts[t.key]}
+                  </span>
+                </button>
+              ))}
+              {/* Source filter */}
+              {sources.length > 1 && (
+                <div className="ml-auto flex items-center gap-2 pb-2">
+                  <Filter className="h-3.5 w-3.5" style={{ color: "var(--orbit-text-muted)" }} />
+                  <select
+                    value={srcFilter}
+                    onChange={(e) => setSrcFilter(e.target.value)}
+                    className="text-xs rounded px-2 py-1"
+                    style={{
+                      background: "var(--orbit-bg-page)",
+                      border: "1px solid var(--orbit-border)",
+                      color: "var(--orbit-text-secondary)",
+                    }}
+                  >
+                    <option value="all">All sources</option>
+                    {sources.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
+
+            {/* Table */}
             <table className="w-full">
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-                  {["Severity", "Source", "Detail", "Time", ""].map((h) => (
-                    <th
-                      key={h}
-                      className="px-4 py-2 text-left text-xs font-semibold"
-                      style={{ color: "var(--orbit-text-muted)" }}
-                    >
-                      {h}
-                    </th>
+                  {["", "Severity", "Source", "Detail", "Time", "Status", "Actions"].map((h) => (
+                    <th key={h} className="px-3 py-2 text-left text-xs font-semibold"
+                      style={{ color: "var(--orbit-text-muted)" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {allEvents.length === 0 ? (
+                {filteredEvents.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={5}
-                      className="px-4 py-8 text-sm text-center"
-                      style={{ color: "var(--orbit-text-muted)" }}
-                    >
-                      No security events in the last 24 hours.
+                    <td colSpan={7} className="px-4 py-10 text-sm text-center" style={{ color: "var(--orbit-text-muted)" }}>
+                      {tab === "active" ? "No active security events — all clear." : `No ${tab} events.`}
                     </td>
                   </tr>
                 ) : (
-                  allEvents.map((e) => (
-                    <EventRow key={e.id} event={e} onAcknowledge={(id) => acknowledge(id)} />
+                  filteredEvents.map((e) => (
+                    <EventRow
+                      key={e.id}
+                      event={e}
+                      onAcknowledge={(id) => acknowledge(id)}
+                      onResolve={(id) => resolve(id)}
+                    />
                   ))
                 )}
               </tbody>

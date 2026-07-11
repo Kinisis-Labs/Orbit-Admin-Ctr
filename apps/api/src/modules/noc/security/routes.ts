@@ -79,6 +79,8 @@ router.get("/security", requireAuth, requireAdmin, async (req, res) => {
         ip: e.ipAddress ?? null,
         detail: e.detail,
         acknowledged: e.acknowledged,
+        acknowledgedBy: e.acknowledgedBy ?? null,
+        acknowledgedAt: e.acknowledgedAt?.toISOString() ?? null,
         createdAt: e.createdAt.toISOString(),
       })),
       auditEvents,
@@ -105,6 +107,26 @@ router.patch("/security/:id/acknowledge", requireAuth, requireAdmin, async (req,
     res.json({ ok: true });
   } catch (err) {
     req.log.error(err, "PATCH /api/noc/security/:id/acknowledge failed");
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.patch("/security/:id/resolve", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { eq } = await import("drizzle-orm");
+    const id = String(req.params.id);
+    const by = req.session.user?.userPrincipalName ?? "admin";
+    await db
+      .update(securityEventsTable)
+      .set({
+        acknowledged: true,
+        acknowledgedAt: new Date(),
+        acknowledgedBy: `resolved:${by}`,
+      })
+      .where(eq(securityEventsTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err, "PATCH /api/noc/security/:id/resolve failed");
     res.status(500).json({ message: "Internal server error" });
   }
 });
