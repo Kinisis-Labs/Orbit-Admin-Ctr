@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { requireAuth, requireAdmin } from "../../../middlewares/auth.js";
-import { getAccessToken, isAzureMonitorConfigured } from "../../../lib/azure-monitor.js";
+import { getAccessToken } from "../../../lib/azure-monitor.js";
 import { logger } from "../../../lib/logger.js";
 
 const router: IRouter = Router();
@@ -62,31 +62,51 @@ export interface UXSnapshot {
 
 // ── App Insights query helper ──────────────────────────────────────────────────
 
-function getAppInsightsCredentials(): { appId: string; apiKey: string } | null {
-  const connStr = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING ?? process.env.APPINSIGHTS_CONNECTION_STRING;
+function getAppInsightsResourceId(): string | null {
+  // Check per-app env var first, then generic fallback, then parse from conn string
+  const resourceId =
+    process.env.AZURE_APP_INSIGHTS_RESOURCE_ID_ORBIT ??
+    process.env.AZURE_APP_INSIGHTS_RESOURCE_ID;
+  if (resourceId) return resourceId;
+
+  const connStr =
+    process.env.APPLICATIONINSIGHTS_CONNECTION_STRING ??
+    process.env.APPINSIGHTS_CONNECTION_STRING;
   if (!connStr) return null;
-  const keyMatch = connStr.match(/InstrumentationKey=([^;]+)/i);
-  const appIdMatch = connStr.match(/ApplicationId=([^;]+)/i);
-  const key = keyMatch?.[1];
-  if (!key) return null;
-  return { appId: appIdMatch?.[1] ?? key, apiKey: key };
+
+  const match = connStr.match(/ResourceId=([^;]+)/i);
+  return match?.[1]?.trim() ?? null;
+}
+
+function isAppInsightsConfigured(): boolean {
+  const hasConnStr = !!(
+    process.env.APPLICATIONINSIGHTS_CONNECTION_STRING ??
+    process.env.APPINSIGHTS_CONNECTION_STRING
+  );
+  return hasConnStr && !!getAppInsightsResourceId();
 }
 
 async function queryAI(query: string): Promise<unknown[]> {
-  const creds = getAppInsightsCredentials();
-  if (!creds) return [];
+  const resourceId = getAppInsightsResourceId();
+  if (!resourceId) return [];
+
+  const token = await getAccessToken();
+  if (!token) return [];
+
   try {
-    const url = `https://api.applicationinsights.io/v1/apps/${creds.appId}/query`;
+    // Azure Monitor Logs query API — requires ARM resource ID + bearer token
+    const url = `https://management.azure.com${resourceId}/query?api-version=2023-12-01-preview`;
     const res = await fetch(url, {
       method: "POST",
       headers: {
-        "x-api-key": creds.apiKey,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ query, timespan: "PT24H" }),
     });
     if (!res.ok) {
-      logger.warn({ status: res.status, query: query.slice(0, 80) }, "App Insights query failed");
+      const txt = await res.text().catch(() => "");
+      logger.warn({ status: res.status, query: query.slice(0, 80), body: txt.slice(0, 200) }, "App Insights KQL query failed");
       return [];
     }
     type AIResponse = { tables?: Array<{ rows?: unknown[][] }> };
@@ -310,7 +330,7 @@ router.get("/ux", requireAuth, requireAdmin, async (req, res) => {
   try {
     const forceRefresh = req.query.refresh === "1";
     const now = Date.now();
-    const appInsightsConfigured = !!getAppInsightsCredentials();
+    const appInsightsConfigured = isAppInsightsConfigured();
 
     if (!forceRefresh && cachedSnapshot && now < cacheExpiresAt) {
       res.json(cachedSnapshot);

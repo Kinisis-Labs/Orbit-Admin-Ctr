@@ -157,7 +157,7 @@ export function UXDashboard() {
           {/* No App Insights banner */}
           {!data.appInsightsConfigured && (
             <div className="rounded-xl px-5 py-4 text-sm" style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "#f59e0b" }}>
-              <strong>App Insights not configured</strong> — set <code className="font-mono text-xs">APPLICATIONINSIGHTS_CONNECTION_STRING</code> to enable UX telemetry.
+              <strong>App Insights not configured</strong> — set <code className="font-mono text-xs">APPLICATIONINSIGHTS_CONNECTION_STRING</code> and <code className="font-mono text-xs">AZURE_APP_INSIGHTS_RESOURCE_ID_ORBIT</code> (ARM resource ID) to enable UX telemetry.
             </div>
           )}
 
