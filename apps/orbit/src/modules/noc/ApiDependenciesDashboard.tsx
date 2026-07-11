@@ -27,6 +27,70 @@ interface DependencySnapshot {
 const COST_SENSITIVE = new Set(["Azure OpenAI", "OpenAI", "Ximilar", "RoboFlow"]);
 const AI_APIS = new Set(["Azure OpenAI", "OpenAI"]);
 
+// ── Rate limit reference (from API Rate Limits & Access Reference 2026-07-10) ──
+// window: "day" | "hour" | "min" | "sec"
+// limit: numeric quota for that window
+// tier: label shown in UI
+
+interface RateLimit {
+  limit: number;
+  window: "day" | "hour" | "min" | "sec";
+  tier: string;
+}
+
+const RATE_LIMITS: Record<string, RateLimit> = {
+  "Stripe":            { limit: 100,     window: "sec",  tier: "Live" },
+  "Rebrickable":       { limit: 3_600,   window: "day",  tier: "Standard (~1 req/sec)" },
+  "Scryfall":          { limit: 7_200,   window: "hour", tier: "Free (2 req/sec)" },
+  "magicthegathering": { limit: 5_000,   window: "hour", tier: "Free" },
+  "TCG API":           { limit: 2_500,   window: "day",  tier: "Starter" },
+  "TradingCardAPI":    { limit: 1_000,   window: "hour", tier: "Free" },
+  "The Card API":      { limit: 2_000,   window: "day",  tier: "Pro" },
+  "JustTCG":           { limit: 1_000,   window: "day",  tier: "Starter" },
+  "Pokémon TCG":       { limit: 20_000,  window: "day",  tier: "With API Key" },
+  "Brickset":          { limit: 100,     window: "day",  tier: "Standard" },
+  "Ximilar":           { limit: 1_000,   window: "day",  tier: "Free (credits)" },
+  "RoboFlow":          { limit: 60,      window: "min",  tier: "Per device" },
+  "Azure OpenAI":      { limit: 0,       window: "hour", tier: "Token-based" },
+  "OpenAI":            { limit: 0,       window: "hour", tier: "Token-based" },
+};
+
+// Convert any window to a 24h equivalent for utilization calculation
+function limitPer24h(rl: RateLimit): number | null {
+  if (rl.limit === 0) return null; // token-based, no simple quota
+  if (rl.window === "day")  return rl.limit;
+  if (rl.window === "hour") return rl.limit * 24;
+  if (rl.window === "min")  return rl.limit * 60 * 24;
+  if (rl.window === "sec")  return rl.limit * 60 * 60 * 24;
+  return null;
+}
+
+function utilizationPct(entry: DependencyEntry): number | null {
+  const rl = RATE_LIMITS[entry.name];
+  if (!rl) return null;
+  const quota = limitPer24h(rl);
+  if (!quota || entry.calls24h === null) return null;
+  return Math.min((entry.calls24h / quota) * 100, 100);
+}
+
+function fmtRateLimit(rl: RateLimit): string {
+  if (rl.limit === 0) return "Token-based";
+  return `${rl.limit.toLocaleString()} / ${rl.window}`;
+}
+
+function UsageBar({ pct }: { pct: number | null }) {
+  if (pct === null) return <span style={{ color: "var(--orbit-text-muted)" }}>—</span>;
+  const color = pct >= 80 ? "#ef4444" : pct >= 50 ? "#f59e0b" : "#22c55e";
+  return (
+    <div className="flex items-center gap-2">
+      <div className="relative h-1.5 w-16 rounded-full overflow-hidden" style={{ background: "var(--orbit-border)" }}>
+        <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <span className="text-xs tabular-nums" style={{ color }}>{pct.toFixed(1)}%</span>
+    </div>
+  );
+}
+
 // ── Data hook ─────────────────────────────────────────────────────────────────
 
 function useApiDependencies(enabled = true) {
@@ -106,7 +170,7 @@ function ApiTable({ title, entries, accentColor }: { title: string; entries: Dep
         <table className="w-full text-sm">
           <thead>
             <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-              {["", "API", "Calls / hr", "Calls (24h)", "Avg Latency", "Failed", "Error Rate", "Last Seen"].map((h) => (
+              {["", "API", "Rate Limit", "Tier", "Calls (24h)", "Usage", "Avg Latency", "Error Rate", "Last Seen"].map((h) => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold" style={{ color: "var(--orbit-text-muted)" }}>
                   {h}
                 </th>
@@ -116,41 +180,50 @@ function ApiTable({ title, entries, accentColor }: { title: string; entries: Dep
           <tbody>
             {entries.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-sm" style={{ color: "var(--orbit-text-muted)" }}>
+                <td colSpan={9} className="px-4 py-6 text-center text-sm" style={{ color: "var(--orbit-text-muted)" }}>
                   No entries
                 </td>
               </tr>
             ) : (
-              entries.map((entry) => (
-                <tr key={entry.name} style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-                  <td className="px-4 py-3"><StatusIcon entry={entry} /></td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium" style={{ color: "var(--orbit-text-primary)" }}>{entry.name}</span>
-                      {COST_SENSITIVE.has(entry.name) && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b" }}>
-                          COST
-                        </span>
-                      )}
-                      {!entry.configured && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ background: "var(--orbit-border)", color: "var(--orbit-text-muted)" }}>
-                          NOT INSTRUMENTED
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 tabular-nums text-right" style={{ color: "var(--orbit-text-secondary)" }}>{fmt(entry.callsPerHour, "/hr")}</td>
-                  <td className="px-4 py-3 tabular-nums text-right" style={{ color: "var(--orbit-text-secondary)" }}>{fmt(entry.calls24h, "")}</td>
-                  <td className="px-4 py-3 tabular-nums text-right" style={{ color: "var(--orbit-text-secondary)" }}>{fmt(entry.avgDurationMs, "ms")}</td>
-                  <td className="px-4 py-3 tabular-nums text-right" style={{ color: entry.failedCalls ? "#ef4444" : "var(--orbit-text-secondary)" }}>{fmt(entry.failedCalls, "")}</td>
-                  <td className="px-4 py-3 tabular-nums text-right"><ErrorRateCell rate={entry.errorRate} /></td>
-                  <td className="px-4 py-3 text-xs" style={{ color: "var(--orbit-text-muted)" }}>
-                    {entry.lastSeen
-                      ? new Date(entry.lastSeen).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
-                      : "—"}
-                  </td>
-                </tr>
-              ))
+              entries.map((entry) => {
+                const rl = RATE_LIMITS[entry.name];
+                const pct = utilizationPct(entry);
+                return (
+                  <tr key={entry.name} style={{ borderBottom: "1px solid var(--orbit-border)" }}>
+                    <td className="px-4 py-3"><StatusIcon entry={entry} /></td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium" style={{ color: "var(--orbit-text-primary)" }}>{entry.name}</span>
+                        {COST_SENSITIVE.has(entry.name) && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b" }}>
+                            COST
+                          </span>
+                        )}
+                        {!entry.configured && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ background: "var(--orbit-border)", color: "var(--orbit-text-muted)" }}>
+                            NOT INSTRUMENTED
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 tabular-nums text-xs" style={{ color: "var(--orbit-text-secondary)" }}>
+                      {rl ? fmtRateLimit(rl) : <span style={{ color: "var(--orbit-text-muted)" }}>—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs" style={{ color: "var(--orbit-text-muted)" }}>
+                      {rl ? rl.tier : "—"}
+                    </td>
+                    <td className="px-4 py-3 tabular-nums text-right" style={{ color: "var(--orbit-text-secondary)" }}>{fmt(entry.calls24h, "")}</td>
+                    <td className="px-4 py-3"><UsageBar pct={pct} /></td>
+                    <td className="px-4 py-3 tabular-nums text-right" style={{ color: "var(--orbit-text-secondary)" }}>{fmt(entry.avgDurationMs, "ms")}</td>
+                    <td className="px-4 py-3 tabular-nums text-right"><ErrorRateCell rate={entry.errorRate} /></td>
+                    <td className="px-4 py-3 text-xs" style={{ color: "var(--orbit-text-muted)" }}>
+                      {entry.lastSeen
+                        ? new Date(entry.lastSeen).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                        : "—"}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
