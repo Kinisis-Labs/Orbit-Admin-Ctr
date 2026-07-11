@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronRight,
   Filter,
+  ArrowUpDown,
 } from "lucide-react";
 import {
   useSecurityEvents,
@@ -296,6 +297,7 @@ function EventRow({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 type TabKey = "active" | "acknowledged" | "resolved" | "all";
+type SortKey = "time-desc" | "time-asc" | "status" | "severity";
 
 export function SecurityDashboard() {
   const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useSecurityEvents();
@@ -313,6 +315,7 @@ export function SecurityDashboard() {
   const [tab, setTab] = useState<TabKey>("active");
   const [sevFilter, setSevFilter] = useState<string>("all");
   const [srcFilter, setSrcFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<SortKey>("time-desc");
 
   const lastUpdated = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
@@ -324,17 +327,35 @@ export function SecurityDashboard() {
 
   const sources = Array.from(new Set(allEvents.map((e) => e.source)));
 
-  const filteredEvents = allEvents.filter((e) => {
-    const status = getEventStatus(e);
-    const tabMatch =
-      tab === "all" ? true :
-      tab === "active" ? status === "active" :
-      tab === "acknowledged" ? status === "acknowledged" :
-      status === "resolved";
-    const sevMatch = sevFilter === "all" || e.severity === sevFilter;
-    const srcMatch = srcFilter === "all" || e.source === srcFilter;
-    return tabMatch && sevMatch && srcMatch;
-  });
+  const STATUS_ORDER: Record<string, number> = { active: 0, acknowledged: 1, resolved: 2 };
+  const SEV_SORT_ORDER: Record<string, number> = { critical: 0, error: 1, warning: 2, informational: 3, info: 4 };
+
+  const filteredEvents = allEvents
+    .filter((e) => {
+      const status = getEventStatus(e);
+      const tabMatch =
+        tab === "all" ? true :
+        tab === "active" ? status === "active" :
+        tab === "acknowledged" ? status === "acknowledged" :
+        status === "resolved";
+      const sevMatch = sevFilter === "all" || e.severity === sevFilter;
+      const srcMatch = srcFilter === "all" || e.source === srcFilter;
+      return tabMatch && sevMatch && srcMatch;
+    })
+    .sort((a, b) => {
+      if (sortBy === "time-asc") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      if (sortBy === "status") {
+        const sd = (STATUS_ORDER[getEventStatus(a)] ?? 9) - (STATUS_ORDER[getEventStatus(b)] ?? 9);
+        if (sd !== 0) return sd;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (sortBy === "severity") {
+        const sd = (SEV_SORT_ORDER[a.severity] ?? 9) - (SEV_SORT_ORDER[b.severity] ?? 9);
+        if (sd !== 0) return sd;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
   const counts = {
     active: allEvents.filter((e) => getEventStatus(e) === "active").length,
@@ -526,25 +547,43 @@ export function SecurityDashboard() {
                   </span>
                 </button>
               ))}
-              {/* Source filter */}
-              {sources.length > 1 && (
-                <div className="ml-auto flex items-center gap-2 pb-2">
-                  <Filter className="h-3.5 w-3.5" style={{ color: "var(--orbit-text-muted)" }} />
-                  <select
-                    value={srcFilter}
-                    onChange={(e) => setSrcFilter(e.target.value)}
-                    className="text-xs rounded px-2 py-1"
-                    style={{
-                      background: "var(--orbit-bg-page)",
-                      border: "1px solid var(--orbit-border)",
-                      color: "var(--orbit-text-secondary)",
-                    }}
-                  >
-                    <option value="all">All sources</option>
-                    {sources.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-              )}
+              {/* Filters + Sort */}
+              <div className="ml-auto flex items-center gap-2 pb-2">
+                {sources.length > 1 && (
+                  <>
+                    <Filter className="h-3.5 w-3.5" style={{ color: "var(--orbit-text-muted)" }} />
+                    <select
+                      value={srcFilter}
+                      onChange={(e) => setSrcFilter(e.target.value)}
+                      className="text-xs rounded px-2 py-1"
+                      style={{
+                        background: "var(--orbit-bg-page)",
+                        border: "1px solid var(--orbit-border)",
+                        color: "var(--orbit-text-secondary)",
+                      }}
+                    >
+                      <option value="all">All sources</option>
+                      {sources.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </>
+                )}
+                <ArrowUpDown className="h-3.5 w-3.5" style={{ color: "var(--orbit-text-muted)" }} />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortKey)}
+                  className="text-xs rounded px-2 py-1"
+                  style={{
+                    background: "var(--orbit-bg-page)",
+                    border: "1px solid var(--orbit-border)",
+                    color: "var(--orbit-text-secondary)",
+                  }}
+                >
+                  <option value="time-desc">Newest first</option>
+                  <option value="time-asc">Oldest first</option>
+                  <option value="status">By status</option>
+                  <option value="severity">By severity</option>
+                </select>
+              </div>
             </div>
 
             {/* Table */}
