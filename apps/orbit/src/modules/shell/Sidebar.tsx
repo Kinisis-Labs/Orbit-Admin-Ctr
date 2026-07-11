@@ -20,6 +20,7 @@ import {
   ChevronDown,
   DollarSign,
   Headphones,
+  Users2,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
@@ -37,6 +38,7 @@ const SECTION_COLORS: Record<string, string> = {
   "Network Operations": "#a78bfa",   // violet
   "Revenue Management": "#34d399",   // emerald
   "Service Management": "#fb923c",   // orange
+  "Customer Management": "#22d3ee",  // cyan
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -50,6 +52,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "API Dependencies", to: "/noc/api-dependencies", icon: Plug, section: "Network Operations", adminOnly: true },
   { label: "Revenue Overview", to: "/revenue", icon: DollarSign, section: "Revenue Management", adminOnly: true },
   { label: "Support Overview", to: "/service", icon: Headphones, section: "Service Management", adminOnly: true },
+  { label: "Quasar CRM", to: "/crm", icon: Users2, section: "Customer Management", adminOnly: true },
   { label: "App Registration", to: "/admin/applications", icon: AppWindow, section: "Administration", adminOnly: true },
   { label: "Users", to: "/admin/users", icon: Users, section: "Administration", adminOnly: true },
   { label: "Roles", to: "/admin/roles", icon: Shield, section: "Administration", adminOnly: true },
@@ -67,6 +70,7 @@ export function Sidebar() {
     "Network Operations": true,
     "Revenue Management": true,
     "Service Management": true,
+    "Customer Management": true,
   });
   const location = useLocation();
   const { user } = useAuth();

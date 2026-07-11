@@ -145,6 +145,17 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "crm",
+        element: (
+          <Lazy>
+            <PlaceholderPage
+              title="Quasar CRM"
+              description="Customer relationship management powered by Quasar is coming soon."
+            />
+          </Lazy>
+        ),
+      },
+      {
         path: "*",
         element: (
           <Lazy>
