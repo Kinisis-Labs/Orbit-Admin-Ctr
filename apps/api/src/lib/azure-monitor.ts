@@ -388,23 +388,22 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
 
   const vnetPromises = vnetConfigs.map(async ({ name: vnetName, rg: vnetRg, subId: vnetSubId }): Promise<ResourceGroup> => {
     const vnetResourceId = `/subscriptions/${vnetSubId}/resourceGroups/${vnetRg}/providers/Microsoft.Network/virtualNetworks/${vnetName}`;
-    const [bytesIn, bytesOut, packetsIn, packetsOut, droppedIn, droppedOut] = await Promise.all([
-      queryMetric(token, vnetSubId, vnetResourceId, "BytesInDDoS", "PT6H", "Total"),
-      queryMetric(token, vnetSubId, vnetResourceId, "BytesOutDDoS", "PT6H", "Total"),
-      queryMetric(token, vnetSubId, vnetResourceId, "PacketsInDDoS", "PT6H", "Total"),
-      queryMetric(token, vnetSubId, vnetResourceId, "PacketsOutDDoS", "PT6H", "Total"),
-      queryMetric(token, vnetSubId, vnetResourceId, "PacketsDroppedDDoS", "PT6H", "Total"),
-      queryMetric(token, vnetSubId, vnetResourceId, "BytesDroppedDDoS", "PT6H", "Total"),
-    ]);
+    const armUrl = `https://management.azure.com${vnetResourceId}?api-version=2023-09-01`;
+    let health: HealthStatus = "unknown";
+    let provisioningState: string | null = null;
+    try {
+      const res = await fetch(armUrl, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        type VNetResponse = { properties?: { provisioningState?: string } };
+        const data = (await res.json()) as VNetResponse;
+        provisioningState = data.properties?.provisioningState ?? null;
+        health = provisioningState === "Succeeded" ? "healthy" : "warning";
+      }
+    } catch { /* leave unknown */ }
     const metrics: MetricResult[] = [
-      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "BytesIn", bytesIn, "bytes", capturedAt),
-      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "BytesOut", bytesOut, "bytes", capturedAt),
-      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "PacketsIn", packetsIn, "count", capturedAt),
-      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "PacketsOut", packetsOut, "count", capturedAt),
-      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "PacketsDropped", droppedIn, "count", capturedAt),
-      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "BytesDropped", droppedOut, "bytes", capturedAt),
+      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "provisioningState", provisioningState === "Succeeded" ? 1 : null, "state", capturedAt),
     ];
-    return { name: vnetName, resourceType: "VirtualNetwork", health: deriveHealth(metrics), metrics };
+    return { name: vnetName, resourceType: "VirtualNetwork", health, metrics };
   });
 
   const vpn = await Promise.all(vnetPromises);
