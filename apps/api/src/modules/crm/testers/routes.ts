@@ -91,6 +91,22 @@ router.post("/crm/testers/:userId", requireAuth, requireAdmin, async (req: Reque
   }
 });
 
+// ── POST /api/crm/testers/:userId/renew — renew a tester account ──────────────
+router.post("/crm/testers/:userId/renew", requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  const userId = String(req.params.userId ?? "").trim();
+  if (!userId) {
+    res.status(400).json({ error: "userId is required" });
+    return;
+  }
+  try {
+    const { status, body } = await proxyToGrailBabe("POST", `/api/internal/v1/testers/${userId}/renew`);
+    res.status(status).json(body);
+  } catch (err) {
+    req.log.error({ err, userId }, "POST /api/crm/testers/:userId/renew failed");
+    res.status(502).json({ error: "Failed to reach GrailBabe API" });
+  }
+});
+
 // ── DELETE /api/crm/testers/:userId — revoke a tester account ─────────────────
 router.delete("/crm/testers/:userId", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const userId = String(req.params.userId ?? "").trim();

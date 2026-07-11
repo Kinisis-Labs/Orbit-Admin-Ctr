@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users2, UserPlus, Trash2, RefreshCw, Loader2, AlertTriangle, CheckCircle2, Info, Search, X } from "lucide-react";
+import { Users2, UserPlus, Trash2, RefreshCw, Loader2, AlertTriangle, CheckCircle2, Info, Search, X, RotateCcw } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -52,6 +52,14 @@ async function fetchTesters(): Promise<TestersResponse> {
 
 async function provisionTester(userId: string): Promise<void> {
   const res = await fetch(`/api/crm/testers/${encodeURIComponent(userId)}`, { method: "POST" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+  }
+}
+
+async function renewTester(userId: string): Promise<void> {
+  const res = await fetch(`/api/crm/testers/${encodeURIComponent(userId)}/renew`, { method: "POST" });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
@@ -155,6 +163,8 @@ export function TesterManagementPage() {
   const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [renewingIds, setRenewingIds] = useState<Set<string>>(new Set());
 
   const { data, isLoading, error, refetch, isFetching } = useQuery<TestersResponse>({
     queryKey: ["crm", "testers"],
@@ -167,7 +177,6 @@ export function TesterManagementPage() {
     onSuccess: (_data, userId) => {
       setActionError(null);
       setActionSuccess(`Provisioned ${userId} as a tester with master tier.`);
-      setAddUserId("");
       void queryClient.invalidateQueries({ queryKey: ["crm", "testers"] });
     },
     onError: (err: Error) => {
@@ -188,6 +197,37 @@ export function TesterManagementPage() {
       setActionError(err.message);
     },
   });
+
+  const renewMutation = useMutation({
+    mutationFn: renewTester,
+    onSuccess: (_data, userId) => {
+      setActionSuccess(`Renewed ${userId}`);
+      setActionError(null);
+      setRenewingIds((prev) => { const s = new Set(prev); s.delete(userId); return s; });
+      void queryClient.invalidateQueries({ queryKey: ["crm", "testers"] });
+    },
+    onError: (err: Error, userId) => {
+      setActionError(`Renew failed for ${userId}: ${err.message}`);
+      setActionSuccess(null);
+      setRenewingIds((prev) => { const s = new Set(prev); s.delete(userId); return s; });
+    },
+  });
+
+  async function handleRenewSelected() {
+    setActionError(null);
+    setActionSuccess(null);
+    const ids = [...selected];
+    setSelected(new Set());
+    setRenewingIds(new Set(ids));
+    for (const id of ids) {
+      await renewTester(id).catch((err: Error) => {
+        setActionError(`Renew failed for ${id}: ${err.message}`);
+      });
+      setRenewingIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
+    }
+    setActionSuccess(`Renewed ${ids.length} account${ids.length !== 1 ? "s" : ""}`);
+    void queryClient.invalidateQueries({ queryKey: ["crm", "testers"] });
+  }
 
   const isBusy = provisionMutation.isPending || revokeMutation.isPending;
 
@@ -274,12 +314,28 @@ export function TesterManagementPage() {
       {/* Tester list */}
       <div className="rounded-xl overflow-hidden" style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}>
         <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-          <h2 className="text-sm font-semibold uppercase tracking-widest" style={{ color: "#22d3ee" }}>
-            Active Testers
-          </h2>
-          <span className="text-xs tabular-nums px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(34,211,238,0.12)", color: "#22d3ee" }}>
-            {data?.count ?? 0}
-          </span>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold uppercase tracking-widest" style={{ color: "#22d3ee" }}>Active Testers</h2>
+            <span className="text-xs tabular-nums px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(34,211,238,0.12)", color: "#22d3ee" }}>{data?.count ?? 0}</span>
+          </div>
+          {selected.size > 0 && (
+            <button
+              type="button"
+              onClick={handleRenewSelected}
+              disabled={renewingIds.size > 0}
+              className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+              style={{
+                background: "rgba(34,211,238,0.12)",
+                border: "1px solid rgba(34,211,238,0.4)",
+                color: "#22d3ee",
+                opacity: renewingIds.size > 0 ? 0.5 : 1,
+                cursor: renewingIds.size > 0 ? "not-allowed" : "pointer",
+              }}
+            >
+              {renewingIds.size > 0 ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+              Renew {selected.size} selected
+            </button>
+          )}
         </div>
 
         {isLoading ? (
@@ -299,16 +355,33 @@ export function TesterManagementPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-                {["Email", "Display Name", "Tier", "Days Left", "Empire Orgs", ""].map((h) => (
-                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold" style={{ color: "var(--orbit-text-muted)" }}>
-                    {h}
+                {["", "Email", "Display Name", "Tier", "Days Left", "Empire Orgs", ""].map((h, i) => (
+                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold" style={{ color: "var(--orbit-text-muted)", width: i === 0 ? "2.5rem" : undefined }}>
+                    {i === 0 ? (
+                      <input
+                        type="checkbox"
+                        aria-label="Select all"
+                        checked={data?.testers.length > 0 && selected.size === data.testers.length}
+                        onChange={(e) => setSelected(e.target.checked ? new Set(data?.testers.map((t) => t.id) ?? []) : new Set())}
+                        className="cursor-pointer"
+                      />
+                    ) : h}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {data.testers.map((t) => (
-                <tr key={t.id} style={{ borderBottom: "1px solid var(--orbit-border)" }}>
+                <tr key={t.id} style={{ borderBottom: "1px solid var(--orbit-border)", background: selected.has(t.id) ? "rgba(34,211,238,0.04)" : undefined }}>
+                  <td className="px-5 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${t.email ?? t.id}`}
+                      checked={selected.has(t.id)}
+                      onChange={(e) => setSelected((prev) => { const s = new Set(prev); if (e.target.checked) { s.add(t.id); } else { s.delete(t.id); } return s; })}
+                      className="cursor-pointer"
+                    />
+                  </td>
                   <td className="px-5 py-3 text-xs" style={{ color: "var(--orbit-text-muted)" }}>
                     {t.email ?? t.id}
                   </td>
@@ -336,31 +409,42 @@ export function TesterManagementPage() {
                     {t.empireOrgIds.length > 0 ? t.empireOrgIds.length : "—"}
                   </td>
                   <td className="px-5 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActionError(null);
-                        setActionSuccess(null);
-                        revokeMutation.mutate(t.id);
-                      }}
-                      disabled={isBusy}
-                      title="Revoke tester access"
-                      className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium ml-auto transition-colors"
-                      style={{
-                        background: "rgba(239,68,68,0.08)",
-                        border: "1px solid rgba(239,68,68,0.3)",
-                        color: "#ef4444",
-                        opacity: isBusy ? 0.5 : 1,
-                        cursor: isBusy ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      {revokeMutation.isPending && revokeMutation.variables === t.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3 w-3" />
-                      )}
-                      Revoke
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setActionError(null); setActionSuccess(null); setRenewingIds((p) => new Set([...p, t.id])); renewMutation.mutate(t.id); }}
+                        disabled={isBusy || renewingIds.has(t.id)}
+                        title="Renew 1 year"
+                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                        style={{
+                          background: "rgba(34,211,238,0.08)",
+                          border: "1px solid rgba(34,211,238,0.3)",
+                          color: "#22d3ee",
+                          opacity: isBusy || renewingIds.has(t.id) ? 0.5 : 1,
+                          cursor: isBusy || renewingIds.has(t.id) ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {renewingIds.has(t.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                        Renew
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setActionError(null); setActionSuccess(null); revokeMutation.mutate(t.id); }}
+                        disabled={isBusy}
+                        title="Revoke tester access"
+                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                        style={{
+                          background: "rgba(239,68,68,0.08)",
+                          border: "1px solid rgba(239,68,68,0.3)",
+                          color: "#ef4444",
+                          opacity: isBusy ? 0.5 : 1,
+                          cursor: isBusy ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {revokeMutation.isPending && revokeMutation.variables === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                        Revoke
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
