@@ -48,6 +48,22 @@ async function proxyToGrailBabe(
   return { status: res.status, body };
 }
 
+// ── GET /api/crm/users/search — search GrailBabe Clerk users ─────────────────
+router.get("/crm/users/search", requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  const q = String(req.query.q ?? "").trim();
+  if (q.length < 2) {
+    res.status(400).json({ error: "q must be at least 2 characters" });
+    return;
+  }
+  try {
+    const { status, body } = await proxyToGrailBabe("GET", `/api/internal/v1/users/search?q=${encodeURIComponent(q)}`);
+    res.status(status).json(body);
+  } catch (err) {
+    req.log.error({ err }, "GET /api/crm/users/search failed");
+    res.status(502).json({ error: "Failed to reach GrailBabe API" });
+  }
+});
+
 // ── GET /api/crm/testers — list all GrailBabe tester accounts ─────────────────
 router.get("/crm/testers", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   try {

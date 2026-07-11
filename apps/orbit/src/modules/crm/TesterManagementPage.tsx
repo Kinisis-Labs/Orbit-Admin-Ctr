@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users2, UserPlus, Trash2, RefreshCw, Loader2, AlertTriangle, CheckCircle2, Info } from "lucide-react";
+import { Users2, UserPlus, Trash2, RefreshCw, Loader2, AlertTriangle, CheckCircle2, Info, Search, X } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -17,7 +17,27 @@ interface TestersResponse {
   count: number;
 }
 
+interface UserSearchResult {
+  id: string;
+  name: string | null;
+  email: string | null;
+  tier: string | null;
+  isTester: boolean;
+  hasProfile: boolean;
+}
+
 // ── API helpers ───────────────────────────────────────────────────────────────
+
+async function fetchUserSearch(q: string): Promise<UserSearchResult[]> {
+  if (q.trim().length < 2) return [];
+  const res = await fetch(`/api/crm/users/search?q=${encodeURIComponent(q)}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+  }
+  const data = (await res.json()) as { users: UserSearchResult[] };
+  return data.users;
+}
 
 async function fetchTesters(): Promise<TestersResponse> {
   const res = await fetch("/api/crm/testers");
@@ -44,11 +64,93 @@ async function revokeTester(userId: string): Promise<void> {
   }
 }
 
+// ── User search box ──────────────────────────────────────────────────────────
+
+function UserSearchBox({ onSelect, disabled }: { onSelect: (user: UserSearchResult) => void; disabled: boolean }) {
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const { data: results = [], isFetching } = useQuery<UserSearchResult[]>({
+    queryKey: ["crm", "user-search", q],
+    queryFn: () => fetchUserSearch(q),
+    enabled: q.trim().length >= 2,
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function tierBadgeStyle(tier: string | null) {
+    if (tier === "master") return { background: "rgba(168,85,247,0.15)", color: "#a855f7" };
+    if (tier === "pro") return { background: "rgba(34,211,238,0.12)", color: "#22d3ee" };
+    return { background: "var(--orbit-border)", color: "var(--orbit-text-muted)" };
+  }
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <div className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "var(--orbit-bg-base)", border: "1px solid var(--orbit-border)" }}>
+        {isFetching ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" style={{ color: "var(--orbit-text-muted)" }} /> : <Search className="h-4 w-4 shrink-0" style={{ color: "var(--orbit-text-muted)" }} />}
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search by name or email…"
+          disabled={disabled}
+          autoComplete="off"
+          className="flex-1 bg-transparent text-sm outline-none"
+          style={{ color: "var(--orbit-text-primary)" }}
+        />
+        {q && (
+          <button type="button" onClick={() => { setQ(""); setOpen(false); }} style={{ color: "var(--orbit-text-muted)" }}>
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      {open && q.trim().length >= 2 && (
+        <div className="absolute z-50 mt-1 w-full rounded-xl overflow-hidden shadow-xl" style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}>
+          {results.length === 0 && !isFetching ? (
+            <div className="px-4 py-3 text-sm" style={{ color: "var(--orbit-text-muted)" }}>No users found</div>
+          ) : (
+            results.map((u) => (
+              <button
+                key={u.id}
+                type="button"
+                disabled={u.isTester}
+                onClick={() => { onSelect(u); setQ(""); setOpen(false); }}
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-[rgba(255,255,255,0.04)] disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ borderBottom: "1px solid var(--orbit-border)" }}
+              >
+                <div className="min-w-0">
+                  <p className="font-medium truncate" style={{ color: "var(--orbit-text-primary)" }}>{u.name ?? "(no name)"}</p>
+                  <p className="text-xs truncate" style={{ color: "var(--orbit-text-muted)" }}>{u.email ?? u.id}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {u.isTester && <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e" }}>tester</span>}
+                  <span className="text-xs px-1.5 py-0.5 rounded font-medium capitalize" style={tierBadgeStyle(u.tier)}>{u.tier ?? "free"}</span>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export function TesterManagementPage() {
   const queryClient = useQueryClient();
-  const [addUserId, setAddUserId] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
@@ -87,13 +189,10 @@ export function TesterManagementPage() {
 
   const isBusy = provisionMutation.isPending || revokeMutation.isPending;
 
-  function handleProvision(e: React.FormEvent) {
-    e.preventDefault();
-    const id = addUserId.trim();
-    if (!id) return;
+  function handleSelectUser(user: UserSearchResult) {
     setActionError(null);
     setActionSuccess(null);
-    provisionMutation.mutate(id);
+    provisionMutation.mutate(user.id);
   }
 
   return (
@@ -140,47 +239,20 @@ export function TesterManagementPage() {
           Add Tester Account
         </h2>
         <p className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>
-          Enter the GrailBabe Clerk user ID (starts with <code className="font-mono">user_</code>).
-          The user must have signed in at least once.
+          Search by name or email. Select a user to provision them with master tier + Empire org.
+          The user must have signed in to GrailBabe at least once.
         </p>
-        <form onSubmit={handleProvision} className="flex gap-2">
-          <input
-            id="tester-user-id"
-            name="tester-user-id"
-            type="text"
-            value={addUserId}
-            onChange={(e) => setAddUserId(e.target.value)}
-            placeholder="user_2abc123..."
-            autoComplete="off"
-            disabled={isBusy}
-            className="flex-1 rounded-lg px-3 py-2 text-sm font-mono"
-            style={{
-              background: "var(--orbit-bg-base)",
-              border: "1px solid var(--orbit-border)",
-              color: "var(--orbit-text-primary)",
-              outline: "none",
-            }}
-          />
-          <button
-            type="submit"
-            disabled={isBusy || !addUserId.trim()}
-            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-            style={{
-              background: provisionMutation.isPending ? "rgba(34,211,238,0.2)" : "rgba(34,211,238,0.15)",
-              border: "1px solid rgba(34,211,238,0.4)",
-              color: "#22d3ee",
-              opacity: isBusy || !addUserId.trim() ? 0.5 : 1,
-              cursor: isBusy || !addUserId.trim() ? "not-allowed" : "pointer",
-            }}
-          >
-            {provisionMutation.isPending ? (
+        <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <UserSearchBox onSelect={handleSelectUser} disabled={isBusy} />
+          </div>
+          {provisionMutation.isPending && (
+            <div className="flex items-center gap-2 text-sm" style={{ color: "#22d3ee" }}>
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <UserPlus className="h-4 w-4" />
-            )}
-            Provision
-          </button>
-        </form>
+              Provisioning…
+            </div>
+          )}
+        </div>
 
         {/* Feedback */}
         {actionError && (
