@@ -21,7 +21,7 @@ async function proxyToGrailBabe(
 ): Promise<{ status: number; body: unknown }> {
   const token = internalToken();
   if (!token) {
-    return { status: 503, body: { error: "GRAILBABE_INTERNAL_API_TOKEN is not configured on this Orbit server." } };
+    return { status: 503, body: { error: "GRAILBABE_INTERNAL_API_TOKEN is not configured on this Orbit server.", debug_url: grailbabeUrl() } };
   }
 
   const url = `${grailbabeUrl()}${path}`;
@@ -38,6 +38,10 @@ async function proxyToGrailBabe(
     body = await res.json();
   } catch {
     body = { error: "invalid_response" };
+  }
+
+  if (res.status !== 200) {
+    return { status: res.status, body: { ...((body as object) ?? {}), debug_url: url, debug_status: res.status, debug_token_set: !!token } };
   }
 
   return { status: res.status, body };
