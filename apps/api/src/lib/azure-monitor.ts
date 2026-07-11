@@ -354,14 +354,16 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
   const stName = env("AZURE_STORAGE_NAME") ?? "stsharedprod";
   const stResourceId = `/subscriptions/${stSubId}/resourceGroups/${stResourceGroup}/providers/Microsoft.Storage/storageAccounts/${stName}`;
 
-  const [stIngress, stEgress, stTransactions, stLatency] = await Promise.all([
+  const [stIngress, stEgress, stTransactions, stLatency, stCapacity] = await Promise.all([
     queryMetric(token, stSubId, stResourceId, "Ingress", "PT1H", "Total"),
     queryMetric(token, stSubId, stResourceId, "Egress", "PT1H", "Total"),
     queryMetric(token, stSubId, stResourceId, "Transactions", "PT1H", "Total"),
     queryMetric(token, stSubId, stResourceId, "SuccessE2ELatency"),
+    queryMetric(token, stSubId, stResourceId, "UsedCapacity", "P1D", "Average"),
   ]);
 
   const networkMetrics: MetricResult[] = [
+    makeMetric(stResourceId, stName, "Storage", "UsedCapacity", stCapacity, "bytes", capturedAt),
     makeMetric(stResourceId, stName, "Storage", "Ingress", stIngress, "bytes", capturedAt),
     makeMetric(stResourceId, stName, "Storage", "Egress", stEgress, "bytes", capturedAt),
     makeMetric(stResourceId, stName, "Storage", "Transactions", stTransactions, "count", capturedAt),
