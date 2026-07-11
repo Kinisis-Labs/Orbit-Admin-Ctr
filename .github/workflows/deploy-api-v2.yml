@@ -188,6 +188,8 @@ jobs:
           V_AZURE_LOG_ANALYTICS_WORKSPACE_ID: ${{ secrets.AZURE_LOG_ANALYTICS_WORKSPACE_ID }}
           V_APPLICATIONINSIGHTS_CONNECTION_STRING: ${{ secrets.APPLICATIONINSIGHTS_CONNECTION_STRING }}
           V_APP_CONFIGURATION_ENDPOINT: ${{ secrets.APP_CONFIGURATION_ENDPOINT }}
+          V_GRAILBABE_API_URL: ${{ secrets.GRAILBABE_API_URL }}
+          V_GRAILBABE_INTERNAL_API_TOKEN: ${{ secrets.Grailbabe_internal_token }}
           NEW_IMAGE: "${{ needs.build.outputs.image }}:${{ github.sha }}"
         with:
           azcliversion: latest
@@ -244,6 +246,8 @@ jobs:
                 ("AZURE_LOG_ANALYTICS_WORKSPACE_ID",     "V_AZURE_LOG_ANALYTICS_WORKSPACE_ID"),
                 ("APPLICATIONINSIGHTS_CONNECTION_STRING","V_APPLICATIONINSIGHTS_CONNECTION_STRING"),
                 ("APP_CONFIGURATION_ENDPOINT",           "V_APP_CONFIGURATION_ENDPOINT"),
+                ("GRAILBABE_API_URL",                    "V_GRAILBABE_API_URL"),
+                ("GRAILBABE_INTERNAL_API_TOKEN",         "V_GRAILBABE_INTERNAL_API_TOKEN"),  # secret: Grailbabe_internal_token
             ]
             from_secrets = {k: os.environ[env] for k, env in secret_map if os.environ.get(env)}
 
