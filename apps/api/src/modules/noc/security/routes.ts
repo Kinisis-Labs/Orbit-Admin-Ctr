@@ -81,6 +81,7 @@ router.get("/security", requireAuth, requireAdmin, async (req, res) => {
         acknowledged: e.acknowledged,
         acknowledgedBy: e.acknowledgedBy ?? null,
         acknowledgedAt: e.acknowledgedAt?.toISOString() ?? null,
+        resolutionNote: e.resolutionNote ?? null,
         createdAt: e.createdAt.toISOString(),
       })),
       auditEvents,
@@ -96,12 +97,14 @@ router.patch("/security/:id/acknowledge", requireAuth, requireAdmin, async (req,
   try {
     const { eq } = await import("drizzle-orm");
     const id = String(req.params.id);
+    const note = typeof req.body?.note === "string" ? req.body.note.trim() || null : null;
     await db
       .update(securityEventsTable)
       .set({
         acknowledged: true,
         acknowledgedAt: new Date(),
         acknowledgedBy: req.session.user?.userPrincipalName ?? "admin",
+        resolutionNote: note,
       })
       .where(eq(securityEventsTable.id, id));
     res.json({ ok: true });
@@ -116,12 +119,14 @@ router.patch("/security/:id/resolve", requireAuth, requireAdmin, async (req, res
     const { eq } = await import("drizzle-orm");
     const id = String(req.params.id);
     const by = req.session.user?.userPrincipalName ?? "admin";
+    const note = typeof req.body?.note === "string" ? req.body.note.trim() || null : null;
     await db
       .update(securityEventsTable)
       .set({
         acknowledged: true,
         acknowledgedAt: new Date(),
         acknowledgedBy: `resolved:${by}`,
+        resolutionNote: note,
       })
       .where(eq(securityEventsTable.id, id));
     res.json({ ok: true });

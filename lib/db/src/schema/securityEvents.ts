@@ -14,6 +14,7 @@ export const securityEventsTable = pgTable(
     acknowledged: boolean("acknowledged").notNull().default(false),
     acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
     acknowledgedBy: text("acknowledged_by"),
+    resolutionNote: text("resolution_note"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

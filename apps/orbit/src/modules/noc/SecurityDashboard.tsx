@@ -99,13 +99,27 @@ function EventRow({
   onResolve,
 }: {
   event: SecurityEvent;
-  onAcknowledge: (id: string) => void;
-  onResolve: (id: string) => void;
+  onAcknowledge: (id: string, note: string) => void;
+  onResolve: (id: string, note: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"ack" | "resolve" | null>(null);
+  const [note, setNote] = useState("");
   const status = getEventStatus(event);
   const isAudit = event.source === "orbit-audit";
   const isAutoResolved = isInfoSeverity(event) && !event.acknowledged;
+
+  function submitAction() {
+    if (pendingAction === "ack") onAcknowledge(event.id, note);
+    else if (pendingAction === "resolve") onResolve(event.id, note);
+    setPendingAction(null);
+    setNote("");
+  }
+
+  function cancelAction() {
+    setPendingAction(null);
+    setNote("");
+  }
 
   return (
     <>
@@ -140,17 +154,17 @@ function EventRow({
         </td>
         <td className="px-3 py-3"><StatusBadge status={status} /></td>
         <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-          {!isAudit && !isAutoResolved && status === "active" && (
+          {!isAudit && !isAutoResolved && status === "active" && !pendingAction && (
             <div className="flex items-center gap-1 justify-end">
               <button
-                onClick={() => onAcknowledge(event.id)}
+                onClick={() => setPendingAction("ack")}
                 className="rounded px-2 py-1 text-xs font-medium"
                 style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b" }}
               >
                 <Check className="h-3 w-3 inline mr-1" />Ack
               </button>
               <button
-                onClick={() => onResolve(event.id)}
+                onClick={() => setPendingAction("resolve")}
                 className="rounded px-2 py-1 text-xs font-medium"
                 style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#22c55e" }}
               >
@@ -158,9 +172,9 @@ function EventRow({
               </button>
             </div>
           )}
-          {!isAudit && status === "acknowledged" && (
+          {!isAudit && status === "acknowledged" && !pendingAction && (
             <button
-              onClick={() => onResolve(event.id)}
+              onClick={() => setPendingAction("resolve")}
               className="rounded px-2 py-1 text-xs font-medium"
               style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#22c55e" }}
             >
@@ -169,6 +183,51 @@ function EventRow({
           )}
         </td>
       </tr>
+      {pendingAction && (
+        <tr style={{ borderBottom: "none", background: "var(--orbit-bg-page)" }}>
+          <td colSpan={7} className="px-6 py-3">
+            <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+              <p className="text-xs font-semibold" style={{ color: "var(--orbit-text-muted)" }}>
+                {pendingAction === "ack" ? "Acknowledge" : "Resolve"} — add a note (optional)
+              </p>
+              <textarea
+                autoFocus
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={2}
+                placeholder="Describe what action was taken or why this is being resolved…"
+                className="w-full rounded px-3 py-2 text-xs resize-none"
+                style={{
+                  background: "var(--orbit-bg-card)",
+                  border: "1px solid var(--orbit-border)",
+                  color: "var(--orbit-text-primary)",
+                  outline: "none",
+                }}
+              />
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  onClick={cancelAction}
+                  className="rounded px-3 py-1 text-xs font-medium"
+                  style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)", color: "var(--orbit-text-muted)" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitAction}
+                  className="rounded px-3 py-1 text-xs font-medium"
+                  style={{
+                    background: pendingAction === "ack" ? "rgba(245,158,11,0.15)" : "rgba(34,197,94,0.15)",
+                    border: pendingAction === "ack" ? "1px solid rgba(245,158,11,0.4)" : "1px solid rgba(34,197,94,0.4)",
+                    color: pendingAction === "ack" ? "#f59e0b" : "#22c55e",
+                  }}
+                >
+                  {pendingAction === "ack" ? <><Check className="h-3 w-3 inline mr-1" />Confirm Acknowledge</> : <><ShieldCheck className="h-3 w-3 inline mr-1" />Confirm Resolve</>}
+                </button>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
       {expanded && (
         <tr style={{ borderBottom: "1px solid var(--orbit-border)", background: "var(--orbit-bg-page)" }}>
           <td colSpan={7} className="px-6 py-3">
@@ -219,6 +278,12 @@ function EventRow({
                   </p>
                 </div>
               )}
+              {event.resolutionNote && (
+                <div className="col-span-2">
+                  <p className="font-semibold mb-1" style={{ color: "var(--orbit-text-muted)" }}>Resolution Note</p>
+                  <p style={{ color: "var(--orbit-text-secondary)" }}>{event.resolutionNote}</p>
+                </div>
+              )}
             </div>
           </td>
         </tr>
@@ -235,6 +300,14 @@ export function SecurityDashboard() {
   const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useSecurityEvents();
   const { mutate: acknowledge } = useAcknowledgeSecurityEvent();
   const { mutate: resolve } = useResolveSecurityEvent();
+
+  function handleAcknowledge(id: string, note: string) {
+    acknowledge({ id, note });
+  }
+
+  function handleResolve(id: string, note: string) {
+    resolve({ id, note });
+  }
 
   const [tab, setTab] = useState<TabKey>("active");
   const [sevFilter, setSevFilter] = useState<string>("all");
@@ -495,8 +568,8 @@ export function SecurityDashboard() {
                     <EventRow
                       key={e.id}
                       event={e}
-                      onAcknowledge={(id) => acknowledge(id)}
-                      onResolve={(id) => resolve(id)}
+                      onAcknowledge={handleAcknowledge}
+                      onResolve={handleResolve}
                     />
                   ))
                 )}

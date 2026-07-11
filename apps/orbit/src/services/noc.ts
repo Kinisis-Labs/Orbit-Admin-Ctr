@@ -189,6 +189,7 @@ export interface SecurityEvent {
   acknowledged: boolean;
   acknowledgedBy: string | null;
   acknowledgedAt: string | null;
+  resolutionNote: string | null;
   createdAt: string;
 }
 
@@ -222,9 +223,11 @@ export function useSecurityEvents(refetchIntervalMs = 60_000) {
 export function useAcknowledgeSecurityEvent() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, note }: { id: string; note?: string }) => {
       const res = await fetch(`/api/noc/security/${encodeURIComponent(id)}/acknowledge`, {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: note ?? null }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
     },
@@ -235,9 +238,11 @@ export function useAcknowledgeSecurityEvent() {
 export function useResolveSecurityEvent() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, note }: { id: string; note?: string }) => {
       const res = await fetch(`/api/noc/security/${encodeURIComponent(id)}/resolve`, {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: note ?? null }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
     },
