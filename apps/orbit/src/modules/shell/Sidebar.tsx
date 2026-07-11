@@ -18,6 +18,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  DollarSign,
+  Headphones,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
@@ -31,8 +33,10 @@ interface NavItem {
 }
 
 const SECTION_COLORS: Record<string, string> = {
-  Administration: "#60a5fa",       // blue
-  "Network Operations": "#a78bfa", // violet
+  Administration: "#60a5fa",         // blue
+  "Network Operations": "#a78bfa",   // violet
+  "Revenue Management": "#34d399",   // emerald
+  "Service Management": "#fb923c",   // orange
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -44,6 +48,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Azure Monitor", to: "/noc/incidents", icon: Siren, section: "Network Operations", adminOnly: true },
   { label: "UX Quality", to: "/noc/ux", icon: MonitorSmartphone, section: "Network Operations", adminOnly: true },
   { label: "API Dependencies", to: "/noc/api-dependencies", icon: Plug, section: "Network Operations", adminOnly: true },
+  { label: "Revenue Overview", to: "/revenue", icon: DollarSign, section: "Revenue Management", adminOnly: true },
+  { label: "Support Overview", to: "/service", icon: Headphones, section: "Service Management", adminOnly: true },
   { label: "App Registration", to: "/admin/applications", icon: AppWindow, section: "Administration", adminOnly: true },
   { label: "Users", to: "/admin/users", icon: Users, section: "Administration", adminOnly: true },
   { label: "Roles", to: "/admin/roles", icon: Shield, section: "Administration", adminOnly: true },
@@ -59,6 +65,8 @@ export function Sidebar() {
     Administration: true,
     Platform: true,
     "Network Operations": true,
+    "Revenue Management": true,
+    "Service Management": true,
   });
   const location = useLocation();
   const { user } = useAuth();
