@@ -21,6 +21,7 @@ const AIDashboard = lazy(() => import("./modules/noc/AIDashboard").then((m) => (
 const IncidentDashboard = lazy(() => import("./modules/noc/IncidentDashboard").then((m) => ({ default: m.IncidentDashboard })));
 const UXDashboard = lazy(() => import("./modules/noc/UXDashboard").then((m) => ({ default: m.UXDashboard })));
 const ApiDependenciesDashboard = lazy(() => import("./modules/noc/ApiDependenciesDashboard").then((m) => ({ default: m.ApiDependenciesDashboard })));
+const TesterManagementPage = lazy(() => import("./modules/crm/TesterManagementPage").then((m) => ({ default: m.TesterManagementPage })));
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
@@ -148,10 +149,7 @@ export const router = createBrowserRouter([
         path: "crm",
         element: (
           <Lazy>
-            <PlaceholderPage
-              title="Quasar CRM"
-              description="Customer relationship management powered by Quasar is coming soon."
-            />
+            <TesterManagementPage />
           </Lazy>
         ),
       },
