@@ -389,6 +389,44 @@ export function InfrastructureDashboard() {
               </div>
             )}
 
+            {/* Virtual Networks */}
+            {data.vpn.length > 0 && (
+              <div className="space-y-2">
+                <SectionHeading
+                  label="Virtual Networks"
+                  count={data.vpn.length}
+                  health={data.vpn.reduce<HealthStatus>((worst, g) => {
+                    const order: HealthStatus[] = ["critical", "warning", "unknown", "healthy"];
+                    return order.indexOf(g.health) < order.indexOf(worst) ? g.health : worst;
+                  }, "healthy")}
+                />
+                <div className="space-y-3">
+                  {data.vpn.map((g) => (
+                    <ResourceCard key={g.name} group={g} icon={Network} seriesList={seriesList} primaryMetric="provisioning" />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Load Balancers */}
+            {data.loadBalancers.length > 0 && (
+              <div className="space-y-2">
+                <SectionHeading
+                  label="Load Balancers"
+                  count={data.loadBalancers.length}
+                  health={data.loadBalancers.reduce<HealthStatus>((worst, g) => {
+                    const order: HealthStatus[] = ["critical", "warning", "unknown", "healthy"];
+                    return order.indexOf(g.health) < order.indexOf(worst) ? g.health : worst;
+                  }, "healthy")}
+                />
+                <div className="space-y-3">
+                  {data.loadBalancers.map((g) => (
+                    <ResourceCard key={g.name} group={g} icon={Network} seriesList={seriesList} primaryMetric="bytecount" />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* API & Observability */}
             {data.api.length > 0 && (
               <div className="space-y-2">
