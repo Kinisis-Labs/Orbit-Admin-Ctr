@@ -373,14 +373,20 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
   ];
 
   // ── Virtual Networks ──────────────────────────────────────────────────────────
-  const vnetNames = [
-    env("AZURE_VNET_NAME_GRAILBABE") ?? "vnet-grailbabe-prod",
-    env("AZURE_VNET_NAME_SHARED") ?? "vnet-sharedplatform-prod",
+  const vnetConfigs = [
+    {
+      name: env("AZURE_VNET_NAME_SHARED") ?? "vnet-sharedplatform-prod",
+      rg: env("AZURE_RESOURCE_GROUP_VNET_SHARED") ?? env("AZURE_RESOURCE_GROUP_VNET") ?? env("AZURE_RESOURCE_GROUP_SHARED") ?? "rg-kinisislabs-platform-shared-prod-eus2",
+      subId: env("AZURE_SUB_VNET_SHARED") ?? env("AZURE_SUB_VNET") ?? orbitSubId,
+    },
+    {
+      name: env("AZURE_VNET_NAME_GRAILBABE") ?? "vnet-grailbabe-prod",
+      rg: env("AZURE_RESOURCE_GROUP_VNET_GRAILBABE") ?? env("AZURE_RESOURCE_GROUP_VNET") ?? env("AZURE_RESOURCE_GROUP_GRAILBABE") ?? "rg-kinisislabs-platform-shared-prod-eus2",
+      subId: env("AZURE_SUB_VNET_GRAILBABE") ?? env("AZURE_SUB_VNET") ?? gbSubId,
+    },
   ];
-  const vnetRg = env("AZURE_RESOURCE_GROUP_VNET") ?? env("AZURE_RESOURCE_GROUP_SHARED") ?? "rg-kinisislabs-platform-shared-prod-eus2";
-  const vnetSubId = env("AZURE_SUB_VNET") ?? sharedSubId;
 
-  const vnetPromises = vnetNames.map(async (vnetName): Promise<ResourceGroup> => {
+  const vnetPromises = vnetConfigs.map(async ({ name: vnetName, rg: vnetRg, subId: vnetSubId }): Promise<ResourceGroup> => {
     const vnetResourceId = `/subscriptions/${vnetSubId}/resourceGroups/${vnetRg}/providers/Microsoft.Network/virtualNetworks/${vnetName}`;
     const [bytesIn, bytesOut, packetsIn, packetsOut, droppedIn, droppedOut] = await Promise.all([
       queryMetric(token, vnetSubId, vnetResourceId, "BytesInDDoS", "PT6H", "Total"),
@@ -408,13 +414,13 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
     {
       name: env("AZURE_LB_NAME_SHARED") ?? "capp-svc-lb",
       rg: env("AZURE_RESOURCE_GROUP_LB_SHARED") ?? "rg-sharedplatform-prod-cae-infra",
-      subId: env("AZURE_SUB_LB_SHARED") ?? vnetSubId,
+      subId: env("AZURE_SUB_LB_SHARED") ?? orbitSubId,
       displayName: "lb-vnet-sharedplatform-prod",
     },
     {
       name: env("AZURE_LB_NAME_GRAILBABE") ?? "capp-svc-lb",
       rg: env("AZURE_RESOURCE_GROUP_LB_GRAILBABE") ?? "rg-grailbabe-prod-v2-infra",
-      subId: env("AZURE_SUB_LB_GRAILBABE") ?? vnetSubId,
+      subId: env("AZURE_SUB_LB_GRAILBABE") ?? gbSubId,
       displayName: "lb-vnet-grailbabe-prod",
     },
   ];
