@@ -394,14 +394,16 @@ export function TesterManagementPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3 text-xs tabular-nums">
-                    {t.daysUntilExpiry !== null ? (
-                      <span
-                        className="font-semibold"
-                        style={{ color: t.daysUntilExpiry <= 30 ? "#f97316" : t.daysUntilExpiry <= 90 ? "#eab308" : "#22c55e" }}
-                      >
-                        {t.daysUntilExpiry}d
-                      </span>
-                    ) : (
+                    {t.daysUntilExpiry !== null ? (() => {
+                      const color = t.daysUntilExpiry <= 30 ? "#f97316" : t.daysUntilExpiry <= 90 ? "#eab308" : "#22c55e";
+                      const bg = t.daysUntilExpiry <= 30 ? "rgba(249,115,22,0.12)" : t.daysUntilExpiry <= 90 ? "rgba(234,179,8,0.12)" : "rgba(34,197,94,0.12)";
+                      return (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold" style={{ background: bg, color }}>
+                          <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+                          {t.daysUntilExpiry}d
+                        </span>
+                      );
+                    })() : (
                       <span style={{ color: "var(--orbit-text-muted)" }}>—</span>
                     )}
                   </td>
