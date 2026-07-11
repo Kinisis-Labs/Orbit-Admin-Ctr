@@ -379,11 +379,11 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
     {
       name: env("AZURE_VNET_NAME_SHARED") ?? "vnet-sharedplatform-prod",
       rg: env("AZURE_RESOURCE_GROUP_VNET_SHARED") ?? env("AZURE_RESOURCE_GROUP_VNET") ?? env("AZURE_RESOURCE_GROUP_SHARED") ?? "rg-kinisislabs-platform-shared-prod-eus2",
-      subId: env("AZURE_SUB_VNET_SHARED") ?? env("AZURE_SUB_VNET") ?? orbitSubId,
+      subId: env("AZURE_SUB_VNET_SHARED") ?? env("AZURE_SUB_VNET") ?? sharedSubId,
     },
     {
       name: env("AZURE_VNET_NAME_GRAILBABE") ?? "vnet-grailbabe-prod",
-      rg: env("AZURE_RESOURCE_GROUP_VNET_GRAILBABE") ?? env("AZURE_RESOURCE_GROUP_VNET") ?? env("AZURE_RESOURCE_GROUP_GRAILBABE") ?? "rg-kinisislabs-platform-shared-prod-eus2",
+      rg: env("AZURE_RESOURCE_GROUP_VNET_GRAILBABE") ?? env("AZURE_RESOURCE_GROUP_VNET") ?? env("AZURE_RESOURCE_GROUP_GRAILBABE") ?? "rg-kinisislabs-grailbabe-prod-eus2",
       subId: env("AZURE_SUB_VNET_GRAILBABE") ?? env("AZURE_SUB_VNET") ?? gbSubId,
     },
   ];
@@ -400,10 +400,15 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
         const data = (await res.json()) as VNetResponse;
         provisioningState = data.properties?.provisioningState ?? null;
         health = provisioningState === "Succeeded" ? "healthy" : "warning";
+      } else {
+        const errText = await res.text().catch(() => "");
+        console.warn(`[NOC] VNet ARM fetch failed ${res.status} for ${vnetResourceId}: ${errText.slice(0, 200)}`);
       }
-    } catch { /* leave unknown */ }
+    } catch (err) {
+      console.warn(`[NOC] VNet ARM fetch threw for ${vnetResourceId}:`, err);
+    }
     const metrics: MetricResult[] = [
-      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "provisioningState", provisioningState === "Succeeded" ? 1 : null, "state", capturedAt),
+      makeMetric(vnetResourceId, vnetName, "VirtualNetwork", "provisioningState", provisioningState !== null ? (provisioningState === "Succeeded" ? 1 : 0) : null, "state", capturedAt),
     ];
     return { name: vnetName, resourceType: "VirtualNetwork", health, metrics };
   });

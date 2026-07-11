@@ -69,6 +69,7 @@ function fmtValue(value: number | null, unit: string): string {
   if (unit === "%") return `${value.toFixed(1)}%`;
   if (unit === "ms") return `${Math.round(value)} ms`;
   if (unit === "count") return value.toLocaleString();
+  if (unit === "state") return value === 1 ? "Succeeded" : "Failed";
   return `${value} ${unit}`;
 }
 
@@ -95,6 +96,9 @@ function metricColor(metricName: string, value: number | null): string {
   }
   if (n.includes("duration") || n.includes("latency")) {
     return value > 5000 ? "#ef4444" : value > 1000 ? "#f59e0b" : "#22c55e";
+  }
+  if (n.includes("provisioningstate")) {
+    return value === 1 ? "#22c55e" : "#ef4444";
   }
   return "var(--orbit-text-secondary)";
 }
