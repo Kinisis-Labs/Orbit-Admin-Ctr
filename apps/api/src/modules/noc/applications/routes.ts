@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../../../middlewares/auth.js";
 import { db } from "../../../lib/db.js";
 import { applicationsTable } from "@workspace/db";
+import { getAccessToken } from "../../../lib/azure-monitor.js";
 
 const router: IRouter = Router();
 
@@ -18,7 +19,30 @@ interface AppTelemetry {
   authFailures: number | null;
 }
 
-async function getAppInsightsTelemetry(connectionString: string): Promise<AppTelemetry> {
+// Extract the App Insights resource ID from the connection string's IngestionEndpoint
+// or fall back to a known env var. The REST Metrics API requires the resource ID,
+// not the InstrumentationKey UUID.
+function extractResourceId(connectionString: string, slugHint?: string): string | null {
+  // Explicit env var override: AZURE_APP_INSIGHTS_RESOURCE_ID_<SLUG> or AZURE_APP_INSIGHTS_RESOURCE_ID
+  if (slugHint) {
+    const slugKey = `AZURE_APP_INSIGHTS_RESOURCE_ID_${slugHint.toUpperCase().replace(/-/g, "_")}`;
+    if (process.env[slugKey]) return process.env[slugKey] ?? null;
+  }
+  if (process.env.AZURE_APP_INSIGHTS_RESOURCE_ID) return process.env.AZURE_APP_INSIGHTS_RESOURCE_ID;
+
+  // Parse from connection string: IngestionEndpoint tells us the resource name/sub indirectly.
+  // The reliable field is the resource ID stored in some connection strings as ResourceId=
+  const resourceIdMatch = connectionString.match(/ResourceId=([^;]+)/i);
+  if (resourceIdMatch?.[1]) return resourceIdMatch[1].trim();
+
+  return null;
+}
+
+async function getAppInsightsTelemetry(
+  connectionString: string,
+  token: string,
+  slugHint?: string,
+): Promise<AppTelemetry> {
   const empty: AppTelemetry = {
     availability: null,
     avgResponseMs: null,
@@ -30,55 +54,61 @@ async function getAppInsightsTelemetry(connectionString: string): Promise<AppTel
   };
 
   try {
-    const keyMatch = connectionString.match(/InstrumentationKey=([^;]+)/i);
-    const appIdMatch = connectionString.match(/ApplicationId=([^;]+)/i);
-    const key = keyMatch?.[1];
-    const appId = appIdMatch?.[1] ?? key;
-    if (!key || !appId) return empty;
+    const resourceId = extractResourceId(connectionString, slugHint);
+    if (!resourceId) return empty;
 
-    const baseUrl = `https://api.applicationinsights.io/v1/apps/${appId}/metrics`;
+    // Use Azure Monitor Metrics REST API with bearer token — same as infrastructure NOC
+    const baseUrl = `https://management.azure.com${resourceId}/providers/microsoft.insights/metrics`;
     const timespan = "PT24H";
+    const auth = { Authorization: `Bearer ${token}` };
 
-    const results = await Promise.allSettled([
-      fetch(`${baseUrl}/availabilityResults/availabilityPercentage?timespan=${timespan}`, { headers: { "x-api-key": key } }),
-      fetch(`${baseUrl}/requests/duration?timespan=${timespan}&aggregation=avg`, { headers: { "x-api-key": key } }),
-      fetch(`${baseUrl}/requests/failed?timespan=${timespan}&aggregation=count`, { headers: { "x-api-key": key } }),
-      fetch(`${baseUrl}/requests/count?timespan=${timespan}&aggregation=count`, { headers: { "x-api-key": key } }),
-      fetch(`${baseUrl}/exceptions/count?timespan=${timespan}&aggregation=count`, { headers: { "x-api-key": key } }),
-      fetch(`${baseUrl}/sessions/count?timespan=${timespan}&aggregation=unique`, { headers: { "x-api-key": key } }),
-      fetch(`${baseUrl}/customEvents/count?timespan=${timespan}&aggregation=count&$filter=name eq 'authFailure'`, { headers: { "x-api-key": key } }),
-    ]);
-
-    type AiResponse = { value?: Record<string, { avg?: number; count?: number; unique?: number; sum?: number }> };
-
-    const extract = (r: PromiseSettledResult<Response>, metricId: string, agg: string): number | null => {
-      if (r.status !== "fulfilled") return null;
-      return r.value.json().then((d: AiResponse) => {
-        const v = d.value?.[metricId];
-        return (v?.[agg as keyof typeof v] as number | undefined) ?? null;
-      }).catch(() => null) as unknown as number | null;
+    type MetricResponse = {
+      value?: Array<{
+        name?: { value?: string };
+        timeseries?: Array<{ data?: Array<Record<string, number | undefined>> }>;
+      }>;
     };
 
-    const [avail, dur, failed, total, exc, sessions, authFail] = await Promise.all([
-      results[0].status === "fulfilled" ? results[0].value.json().then((d: AiResponse) => d.value?.["availabilityResults/availabilityPercentage"]?.avg ?? null).catch(() => null) : null,
-      results[1].status === "fulfilled" ? results[1].value.json().then((d: AiResponse) => d.value?.["requests/duration"]?.avg ?? null).catch(() => null) : null,
-      results[2].status === "fulfilled" ? results[2].value.json().then((d: AiResponse) => d.value?.["requests/failed"]?.count ?? null).catch(() => null) : null,
-      results[3].status === "fulfilled" ? results[3].value.json().then((d: AiResponse) => d.value?.["requests/count"]?.count ?? null).catch(() => null) : null,
-      results[4].status === "fulfilled" ? results[4].value.json().then((d: AiResponse) => d.value?.["exceptions/count"]?.count ?? null).catch(() => null) : null,
-      results[5].status === "fulfilled" ? results[5].value.json().then((d: AiResponse) => d.value?.["sessions/count"]?.unique ?? null).catch(() => null) : null,
-      results[6].status === "fulfilled" ? results[6].value.json().then((d: AiResponse) => d.value?.["customEvents/count"]?.count ?? null).catch(() => null) : null,
+    const extractLast = async (
+      metricName: string,
+      aggregation: string,
+    ): Promise<number | null> => {
+      try {
+        const url = `${baseUrl}?api-version=2023-10-01&metricnames=${encodeURIComponent(metricName)}&timespan=${timespan}&aggregation=${aggregation}&interval=PT24H`;
+        const res = await fetch(url, { headers: auth });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          console.warn(`[NOC/apps] metrics ${metricName} failed ${res.status}: ${txt.slice(0, 200)}`);
+          return null;
+        }
+        const data = (await res.json()) as MetricResponse;
+        const points = data.value?.[0]?.timeseries?.[0]?.data ?? [];
+        const last = points[points.length - 1];
+        if (!last) return null;
+        const val = last[aggregation.toLowerCase() as keyof typeof last];
+        return typeof val === "number" ? Math.round(val * 100) / 100 : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const [avail, dur, failed, total, exc, sessions] = await Promise.all([
+      extractLast("availabilityResults/availabilityPercentage", "average"),
+      extractLast("requests/duration", "average"),
+      extractLast("requests/failed", "count"),
+      extractLast("requests/count", "count"),
+      extractLast("exceptions/count", "count"),
+      extractLast("sessions/count", "unique"),
     ]);
 
-    void extract;
-
     return {
-      availability: avail as number | null,
-      avgResponseMs: dur as number | null,
-      failedRequests: failed as number | null,
-      totalRequests: total as number | null,
-      exceptions: exc as number | null,
-      activeSessions: sessions as number | null,
-      authFailures: authFail as number | null,
+      availability: avail,
+      avgResponseMs: dur,
+      failedRequests: failed,
+      totalRequests: total,
+      exceptions: exc,
+      activeSessions: sessions,
+      authFailures: null,
     };
   } catch {
     return empty;
@@ -89,6 +119,7 @@ function deriveStatus(telemetry: AppTelemetry): "healthy" | "degraded" | "unheal
   if (telemetry.availability === null && telemetry.avgResponseMs === null) return "unknown";
   if (telemetry.availability !== null && telemetry.availability < 95) return "unhealthy";
   if (telemetry.availability !== null && telemetry.availability < 99) return "degraded";
+  if (telemetry.avgResponseMs !== null && telemetry.avgResponseMs > 5000) return "degraded";
   return "healthy";
 }
 
@@ -116,14 +147,20 @@ router.get("/applications", requireAuth, requireAdmin, async (req, res) => {
       .where(eq(applicationsTable.enabled, true));
 
     const globalConnStr = getAppInsightsConnStr();
+    const token = await getAccessToken();
+
+    const emptyTelemetry: AppTelemetry = {
+      availability: null, avgResponseMs: null, failedRequests: null,
+      totalRequests: null, exceptions: null, activeSessions: null, authFailures: null,
+    };
 
     const results = await Promise.all(
       apps.map(async (app) => {
         const connStr = app.appInsightsConnectionString ?? globalConnStr;
-        const telemetry = connStr ? await getAppInsightsTelemetry(connStr) : {
-          availability: null, avgResponseMs: null, failedRequests: null,
-          totalRequests: null, exceptions: null, activeSessions: null, authFailures: null,
-        };
+        const telemetry =
+          connStr && token
+            ? await getAppInsightsTelemetry(connStr, token, app.slug)
+            : emptyTelemetry;
         return {
           slug: app.slug,
           displayName: app.displayName,
@@ -162,10 +199,14 @@ router.get("/applications/:slug", requireAuth, requireAdmin, async (req, res) =>
     }
 
     const connStr = app.appInsightsConnectionString ?? getAppInsightsConnStr();
-    const telemetry = connStr ? await getAppInsightsTelemetry(connStr) : {
-      availability: null, avgResponseMs: null, failedRequests: null,
-      totalRequests: null, exceptions: null, activeSessions: null, authFailures: null,
-    };
+    const token = await getAccessToken();
+    const telemetry =
+      connStr && token
+        ? await getAppInsightsTelemetry(connStr, token, app.slug)
+        : {
+            availability: null, avgResponseMs: null, failedRequests: null,
+            totalRequests: null, exceptions: null, activeSessions: null, authFailures: null,
+          };
 
     res.json({
       slug: app.slug,

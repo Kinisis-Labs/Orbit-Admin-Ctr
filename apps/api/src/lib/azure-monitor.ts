@@ -240,34 +240,44 @@ async function queryContainerApp(
 
 async function queryAppInsightsGroup(
   connStr: string,
+  token: string,
   displayName: string,
   capturedAt: string,
 ): Promise<ResourceGroup> {
-  const match = connStr.match(/InstrumentationKey=([^;]+)/i);
-  const key = match?.[1];
+  // Resolve the ARM resource ID: env var override > ResourceId= field in conn string
+  const slugEnvKey = `AZURE_APP_INSIGHTS_RESOURCE_ID_${displayName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
+  const armResourceId =
+    env(slugEnvKey) ??
+    env("AZURE_APP_INSIGHTS_RESOURCE_ID") ??
+    connStr.match(/ResourceId=([^;]+)/i)?.[1]?.trim() ??
+    null;
 
-  async function q(metricId: string): Promise<number | null> {
-    if (!key) return null;
+  async function q(metricName: string, aggregation: string): Promise<number | null> {
+    if (!armResourceId) return null;
     try {
-      const url = `https://api.applicationinsights.io/v1/apps/${key}/metrics/${encodeURIComponent(metricId)}?timespan=PT6H`;
-      const res = await fetch(url, { headers: { "x-api-key": key } });
+      const baseUrl = `https://management.azure.com${armResourceId}/providers/microsoft.insights/metrics`;
+      const url = `${baseUrl}?api-version=2023-10-01&metricnames=${encodeURIComponent(metricName)}&timespan=PT6H&aggregation=${aggregation}&interval=PT6H`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) return null;
-      type R = { value?: Record<string, { avg?: number; sum?: number }> };
+      type R = { value?: Array<{ timeseries?: Array<{ data?: Array<Record<string, number | undefined>> }> }> };
       const data = (await res.json()) as R;
-      const val = data.value?.[metricId];
-      return val?.avg ?? val?.sum ?? null;
+      const points = data.value?.[0]?.timeseries?.[0]?.data ?? [];
+      const last = points[points.length - 1];
+      if (!last) return null;
+      const val = last[aggregation.toLowerCase() as keyof typeof last];
+      return typeof val === "number" ? Math.round(val * 100) / 100 : null;
     } catch { return null; }
   }
 
   const [requests, duration, failed, availability, exceptions] = await Promise.all([
-    q("requests/count"),
-    q("requests/duration"),
-    q("requests/failed"),
-    q("availabilityResults/availabilityPercentage"),
-    q("exceptions/count"),
+    q("requests/count", "count"),
+    q("requests/duration", "average"),
+    q("requests/failed", "count"),
+    q("availabilityResults/availabilityPercentage", "average"),
+    q("exceptions/count", "count"),
   ]);
 
-  const resourceId = `appinsights/${displayName}`;
+  const resourceId = armResourceId ?? `appinsights/${displayName}`;
   const metrics: MetricResult[] = [
     makeMetric(resourceId, displayName, "AppInsights", "requests/count", requests, "count", capturedAt),
     makeMetric(resourceId, displayName, "AppInsights", "requests/duration", duration, "ms", capturedAt),
@@ -459,12 +469,12 @@ export async function getInfrastructureSnapshot(): Promise<InfrastructureSnapsho
 
   const orbitConnStr = env("APPLICATIONINSIGHTS_CONNECTION_STRING") ?? env("APPINSIGHTS_CONNECTION_STRING");
   if (orbitConnStr) {
-    apiPromises.push(queryAppInsightsGroup(orbitConnStr, "appi-orbit-prod", capturedAt));
+    apiPromises.push(queryAppInsightsGroup(orbitConnStr, token, "appi-orbit-prod", capturedAt));
   }
 
   const gbConnStr = env("GRAILBABE_APPLICATIONINSIGHTS_CONNECTION_STRING");
   if (gbConnStr) {
-    apiPromises.push(queryAppInsightsGroup(gbConnStr, "appi-grailbabe-prod", capturedAt));
+    apiPromises.push(queryAppInsightsGroup(gbConnStr, token, "appi-grailbabe-prod", capturedAt));
   }
 
   const api: ResourceGroup[] = await Promise.all(apiPromises);
