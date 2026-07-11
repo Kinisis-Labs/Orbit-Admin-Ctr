@@ -54,7 +54,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Revenue Overview", to: "/revenue", icon: DollarSign, section: "Revenue Management", adminOnly: true },
   { label: "Support Overview", to: "/service", icon: Headphones, section: "Service Management", adminOnly: true },
   { label: "Quasar CRM", to: "/crm", icon: Users2, section: "Customer Management", adminOnly: true },
-  { label: "Nexus Application", to: "/governance/nexus", icon: Shield, section: "Governance Management", adminOnly: true },
+  { label: "Nexus Governance", to: "/governance/nexus", icon: Shield, section: "Governance Management", adminOnly: true },
   { label: "App Registration", to: "/admin/applications", icon: AppWindow, section: "Administration", adminOnly: true },
   { label: "Users", to: "/admin/users", icon: Users, section: "Administration", adminOnly: true },
   { label: "Roles", to: "/admin/roles", icon: Shield, section: "Administration", adminOnly: true },
