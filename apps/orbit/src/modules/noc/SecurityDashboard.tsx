@@ -46,7 +46,6 @@ function isInfoSeverity(e: SecurityEvent): boolean {
 function getEventStatus(e: SecurityEvent): "active" | "acknowledged" | "resolved" {
   if (e.acknowledgedBy?.startsWith("resolved:")) return "resolved";
   if (e.acknowledged) return "acknowledged";
-  if (isInfoSeverity(e)) return "resolved";
   return "active";
 }
 
