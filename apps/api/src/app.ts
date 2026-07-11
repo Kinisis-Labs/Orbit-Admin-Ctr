@@ -76,6 +76,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(sessionMiddleware);
 
-app.use("/api", router);
+app.use(router);
 
 export default app;
