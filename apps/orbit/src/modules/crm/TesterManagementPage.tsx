@@ -7,9 +7,11 @@ import { Users2, UserPlus, Trash2, RefreshCw, Loader2, AlertTriangle, CheckCircl
 interface TesterAccount {
   id: string;
   displayName: string | null;
+  email: string | null;
   tier: string;
   isTester: boolean;
   empireOrgIds: string[];
+  daysUntilExpiry: number | null;
 }
 
 interface TestersResponse {
@@ -297,7 +299,7 @@ export function TesterManagementPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-                {["User ID", "Display Name", "Tier", "Empire Orgs", ""].map((h) => (
+                {["Email", "Display Name", "Tier", "Days Left", "Empire Orgs", ""].map((h) => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold" style={{ color: "var(--orbit-text-muted)" }}>
                     {h}
                   </th>
@@ -307,8 +309,8 @@ export function TesterManagementPage() {
             <tbody>
               {data.testers.map((t) => (
                 <tr key={t.id} style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-                  <td className="px-5 py-3 font-mono text-xs" style={{ color: "var(--orbit-text-muted)" }}>
-                    {t.id}
+                  <td className="px-5 py-3 text-xs" style={{ color: "var(--orbit-text-muted)" }}>
+                    {t.email ?? t.id}
                   </td>
                   <td className="px-5 py-3 font-medium" style={{ color: "var(--orbit-text-primary)" }}>
                     {t.displayName ?? <span style={{ color: "var(--orbit-text-muted)" }}>—</span>}
@@ -317,6 +319,18 @@ export function TesterManagementPage() {
                     <span className="text-xs px-2 py-0.5 rounded-full font-semibold capitalize" style={{ background: "rgba(34,211,238,0.12)", color: "#22d3ee" }}>
                       {t.tier}
                     </span>
+                  </td>
+                  <td className="px-5 py-3 text-xs tabular-nums">
+                    {t.daysUntilExpiry !== null ? (
+                      <span
+                        className="font-semibold"
+                        style={{ color: t.daysUntilExpiry <= 30 ? "#f97316" : t.daysUntilExpiry <= 90 ? "#eab308" : "#22c55e" }}
+                      >
+                        {t.daysUntilExpiry}d
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--orbit-text-muted)" }}>—</span>
+                    )}
                   </td>
                   <td className="px-5 py-3 text-xs" style={{ color: "var(--orbit-text-muted)" }}>
                     {t.empireOrgIds.length > 0 ? t.empireOrgIds.length : "—"}
