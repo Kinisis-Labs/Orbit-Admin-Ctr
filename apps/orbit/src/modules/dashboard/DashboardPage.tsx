@@ -248,16 +248,16 @@ export function DashboardPage() {
   void user;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold" style={{ color: "var(--orbit-text-primary)" }}>Enterprise Overview</h1>
         <div
-          className="flex items-center gap-2 rounded-lg px-3 py-2"
+          className="flex items-center gap-2 rounded-lg px-3 py-1.5"
           style={{ background: H_BG[overallHealth], border: `1px solid ${H_BORDER[overallHealth]}` }}
         >
-          <HealthIcon status={overallHealth} size="h-5 w-5" />
-          <span className="text-sm font-semibold capitalize" style={{ color: H_COLOR[overallHealth] }}>
+          <HealthIcon status={overallHealth} size="h-4 w-4" />
+          <span className="text-xs font-semibold capitalize" style={{ color: H_COLOR[overallHealth] }}>
             {overallHealth === "healthy" ? "All Systems Operational"
               : overallHealth === "warning" ? "Degraded Performance"
               : overallHealth === "critical" ? "Critical Issues"
@@ -266,8 +266,8 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* ── TOP ROW: Executive KPIs ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* ── ROW 1: Executive KPIs (compact) ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <ExecKpi
           icon={ShieldCheck}
           label="System Health"
@@ -302,11 +302,76 @@ export function DashboardPage() {
         />
       </div>
 
-      {/* ── MAIN GRID: 3 columns on large screens ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      {/* ── ROW 2: Platform Health (full-width horizontal) ── */}
+      <div className="rounded-xl overflow-hidden" style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}>
+        <div className="px-4 py-2 flex items-center justify-between" style={{ borderBottom: "1px solid var(--orbit-border)", background: "var(--orbit-bg-page)" }}>
+          <div className="flex items-center gap-3">
+            <Activity className="h-3.5 w-3.5" style={{ color: "var(--orbit-text-muted)" }} />
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--orbit-text-muted)" }}>Platform Health</span>
+            <div className="flex items-center gap-1.5 rounded-full px-2 py-0.5" style={{ background: phCfg.bg }}>
+              <phCfg.icon className="h-3 w-3" style={{ color: phCfg.color }} />
+              <span className="text-xs font-semibold" style={{ color: phCfg.color }}>Platform {phCfg.label}</span>
+            </div>
+            {ph && <span className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>
+              {new Date(ph.checkedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </span>}
+          </div>
+          <button
+            onClick={() => void phRefetch()}
+            disabled={phFetching}
+            className="flex items-center gap-1 text-xs disabled:opacity-40"
+            style={{ color: "var(--orbit-text-muted)" }}
+          >
+            <RefreshCw className={`h-3 w-3 ${phFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x" style={{ borderColor: "var(--orbit-border)" }}>
+          {/* Core services */}
+          <div className="px-3 pb-1">
+            <div className="px-1 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid var(--orbit-border)" }}>
+              <Server className="h-3 w-3" style={{ color: "var(--orbit-text-muted)" }} />
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--orbit-text-muted)" }}>Core Services</span>
+            </div>
+            {phLoading ? (
+              <div className="py-3 flex justify-center"><Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--orbit-text-muted)" }} /></div>
+            ) : ph ? (
+              <>
+                <PhCheckRow check={ph.orbit} icon={Server} />
+                <PhCheckRow check={ph.database} icon={Database} />
+              </>
+            ) : (
+              <p className="text-xs py-3 text-center" style={{ color: "var(--orbit-text-muted)" }}>Unavailable</p>
+            )}
+          </div>
+          {/* Applications */}
+          <div className="px-3 pb-1">
+            <div className="px-1 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid var(--orbit-border)" }}>
+              <Globe className="h-3 w-3" style={{ color: "var(--orbit-text-muted)" }} />
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--orbit-text-muted)" }}>
+                Applications{ph && <span className="ml-1.5 font-normal">({ph.applications.length})</span>}
+              </span>
+            </div>
+            {phLoading ? (
+              <div className="py-3 flex justify-center"><Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--orbit-text-muted)" }} /></div>
+            ) : ph && ph.applications.length > 0 ? (
+              ph.applications.map((app) => (
+                <PhCheckRow key={app.name} check={app} icon={Globe} />
+              ))
+            ) : (
+              <p className="text-xs py-3 text-center" style={{ color: "var(--orbit-text-muted)" }}>
+                {phLoading ? "" : "No health check URLs configured"}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── ROW 3: Infrastructure + API & Service Quality side by side ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
         {/* COL 1 — Infrastructure */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-widest px-1" style={{ color: "var(--orbit-text-muted)" }}>
             Infrastructure
           </p>
@@ -352,7 +417,7 @@ export function DashboardPage() {
         </div>
 
         {/* COL 2 — API + Incidents + UX */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-widest px-1" style={{ color: "var(--orbit-text-muted)" }}>
             API & Service Quality
           </p>
@@ -383,79 +448,6 @@ export function DashboardPage() {
               </>
             ) : <p className="text-xs py-2 text-center" style={{ color: "var(--orbit-text-muted)" }}>No telemetry</p>}
           </SectionCard>
-        </div>
-
-        {/* COL 3 — Platform Health */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--orbit-text-muted)" }}>
-              Platform Health
-            </p>
-            <button
-              onClick={() => void phRefetch()}
-              disabled={phFetching}
-              className="flex items-center gap-1 text-xs disabled:opacity-40"
-              style={{ color: "var(--orbit-text-muted)" }}
-            >
-              <RefreshCw className={`h-3 w-3 ${phFetching ? "animate-spin" : ""}`} />
-              Refresh
-            </button>
-          </div>
-
-          {/* Overall platform status banner */}
-          <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: phCfg.bg, border: `1px solid ${phCfg.color}33` }}>
-            <phCfg.icon className="h-5 w-5 flex-shrink-0" style={{ color: phCfg.color }} />
-            <div>
-              <p className="text-sm font-semibold" style={{ color: phCfg.color }}>Platform {phCfg.label}</p>
-              {ph && <p className="text-xs mt-0.5" style={{ color: "var(--orbit-text-muted)" }}>
-                {new Date(ph.checkedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-              </p>}
-            </div>
-          </div>
-
-          {/* Core services */}
-          <div className="rounded-xl overflow-hidden" style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}>
-            <div className="px-4 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid var(--orbit-border)", background: "var(--orbit-bg-page)" }}>
-              <Activity className="h-3.5 w-3.5" style={{ color: "var(--orbit-text-muted)" }} />
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--orbit-text-muted)" }}>Core Services</span>
-            </div>
-            <div className="px-3 pb-1">
-              {phLoading ? (
-                <div className="py-4 flex justify-center"><Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--orbit-text-muted)" }} /></div>
-              ) : ph ? (
-                <>
-                  <PhCheckRow check={ph.orbit} icon={Server} />
-                  <PhCheckRow check={ph.database} icon={Database} />
-                </>
-              ) : (
-                <p className="text-xs py-3 text-center" style={{ color: "var(--orbit-text-muted)" }}>Unavailable</p>
-              )}
-            </div>
-          </div>
-
-          {/* Registered applications */}
-          <div className="rounded-xl overflow-hidden" style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}>
-            <div className="px-4 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid var(--orbit-border)", background: "var(--orbit-bg-page)" }}>
-              <Globe className="h-3.5 w-3.5" style={{ color: "var(--orbit-text-muted)" }} />
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--orbit-text-muted)" }}>
-                Applications
-                {ph && <span className="ml-1.5 font-normal">({ph.applications.length})</span>}
-              </span>
-            </div>
-            <div className="px-3 pb-1">
-              {phLoading ? (
-                <div className="py-4 flex justify-center"><Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--orbit-text-muted)" }} /></div>
-              ) : ph && ph.applications.length > 0 ? (
-                ph.applications.map((app) => (
-                  <PhCheckRow key={app.name} check={app} icon={Globe} />
-                ))
-              ) : (
-                <p className="text-xs py-3 text-center" style={{ color: "var(--orbit-text-muted)" }}>
-                  {phLoading ? "" : "No health check URLs configured"}
-                </p>
-              )}
-            </div>
-          </div>
         </div>
 
       </div>
