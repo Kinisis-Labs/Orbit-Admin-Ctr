@@ -154,6 +154,22 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "governance",
+        children: [
+          {
+            path: "nexus",
+            element: (
+              <Lazy>
+                <PlaceholderPage
+                  title="Nexus Application"
+                  description="Governance and compliance management via Nexus is coming soon."
+                />
+              </Lazy>
+            ),
+          },
+        ],
+      },
+      {
         path: "*",
         element: (
           <Lazy>

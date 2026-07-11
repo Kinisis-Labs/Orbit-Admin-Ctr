@@ -39,6 +39,7 @@ const SECTION_COLORS: Record<string, string> = {
   "Revenue Management": "#34d399",   // emerald
   "Service Management": "#fb923c",   // orange
   "Customer Management": "#22d3ee",  // cyan
+  "Governance Management": "#f472b6",  // pink
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -53,6 +54,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Revenue Overview", to: "/revenue", icon: DollarSign, section: "Revenue Management", adminOnly: true },
   { label: "Support Overview", to: "/service", icon: Headphones, section: "Service Management", adminOnly: true },
   { label: "Quasar CRM", to: "/crm", icon: Users2, section: "Customer Management", adminOnly: true },
+  { label: "Nexus Application", to: "/governance/nexus", icon: Shield, section: "Governance Management", adminOnly: true },
   { label: "App Registration", to: "/admin/applications", icon: AppWindow, section: "Administration", adminOnly: true },
   { label: "Users", to: "/admin/users", icon: Users, section: "Administration", adminOnly: true },
   { label: "Roles", to: "/admin/roles", icon: Shield, section: "Administration", adminOnly: true },
@@ -71,6 +73,7 @@ export function Sidebar() {
     "Revenue Management": true,
     "Service Management": true,
     "Customer Management": true,
+    "Governance Management": true,
   });
   const location = useLocation();
   const { user } = useAuth();
