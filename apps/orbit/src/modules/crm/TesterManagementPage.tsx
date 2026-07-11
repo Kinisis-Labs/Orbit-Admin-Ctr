@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users2, UserPlus, Trash2, RefreshCw, Loader2, AlertTriangle, CheckCircle2, Info, Search, X, RotateCcw } from "lucide-react";
+import { Users2, UserPlus, Trash2, RefreshCw, Loader2, AlertTriangle, CheckCircle2, XCircle, Info, Search, X, RotateCcw } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -395,11 +395,14 @@ export function TesterManagementPage() {
                   </td>
                   <td className="px-5 py-3 text-xs tabular-nums">
                     {t.daysUntilExpiry !== null ? (() => {
-                      const color = t.daysUntilExpiry <= 30 ? "#f97316" : t.daysUntilExpiry <= 90 ? "#eab308" : "#22c55e";
-                      const bg = t.daysUntilExpiry <= 30 ? "rgba(249,115,22,0.12)" : t.daysUntilExpiry <= 90 ? "rgba(234,179,8,0.12)" : "rgba(34,197,94,0.12)";
+                      const critical = t.daysUntilExpiry <= 30;
+                      const warning = t.daysUntilExpiry <= 90;
+                      const color = critical ? "#ef4444" : warning ? "#f59e0b" : "#22c55e";
+                      const bg = critical ? "rgba(239,68,68,0.1)" : warning ? "rgba(245,158,11,0.1)" : "rgba(34,197,94,0.1)";
+                      const Icon = critical ? XCircle : warning ? AlertTriangle : CheckCircle2;
                       return (
                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold" style={{ background: bg, color }}>
-                          <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+                          <Icon className="h-3 w-3" />
                           {t.daysUntilExpiry}d
                         </span>
                       );
