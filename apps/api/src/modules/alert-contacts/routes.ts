@@ -28,7 +28,7 @@ router.post("/alert-contacts", requireAuth, requireAdmin, async (req, res) => {
       phone?: string;
       smsEnabled?: boolean;
       emailEnabled?: boolean;
-      minSeverity?: string;
+      severities?: string[];
     };
     if (!body.name?.trim()) {
       res.status(400).json({ message: "name is required" });
@@ -46,7 +46,7 @@ router.post("/alert-contacts", requireAuth, requireAdmin, async (req, res) => {
         phone: body.phone?.trim() || null,
         smsEnabled: body.smsEnabled ?? false,
         emailEnabled: body.emailEnabled ?? false,
-        minSeverity: body.minSeverity ?? "warning",
+        severities: body.severities ?? ["warning", "critical"],
         createdBy: req.session.user!.id,
       })
       .returning();
@@ -74,7 +74,7 @@ router.put("/alert-contacts/:id", requireAuth, requireAdmin, async (req, res) =>
       phone: string;
       smsEnabled: boolean;
       emailEnabled: boolean;
-      minSeverity: string;
+      severities: string[];
     }>;
     const [updated] = await db
       .update(alertContactsTable)
@@ -84,7 +84,7 @@ router.put("/alert-contacts/:id", requireAuth, requireAdmin, async (req, res) =>
         ...(body.phone !== undefined && { phone: body.phone || null }),
         ...(body.smsEnabled !== undefined && { smsEnabled: body.smsEnabled }),
         ...(body.emailEnabled !== undefined && { emailEnabled: body.emailEnabled }),
-        ...(body.minSeverity !== undefined && { minSeverity: body.minSeverity }),
+        ...(body.severities !== undefined && { severities: body.severities }),
         updatedAt: new Date(),
       })
       .where(eq(alertContactsTable.id, id))

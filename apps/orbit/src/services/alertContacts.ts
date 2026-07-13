@@ -7,7 +7,7 @@ export interface AlertContactRow {
   phone: string | null;
   smsEnabled: boolean;
   emailEnabled: boolean;
-  minSeverity: string;
+  severities: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -18,7 +18,7 @@ export interface UpsertContactInput {
   phone?: string;
   smsEnabled: boolean;
   emailEnabled: boolean;
-  minSeverity: string;
+  severities: string[];
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

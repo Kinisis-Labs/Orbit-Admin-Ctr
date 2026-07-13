@@ -9,7 +9,7 @@ export const alertContactsTable = pgTable(
     phone: text("phone"),
     smsEnabled: boolean("sms_enabled").notNull().default(false),
     emailEnabled: boolean("email_enabled").notNull().default(false),
-    minSeverity: text("min_severity").notNull().default("warning"),
+    severities: text("severities").array().notNull().default(["warning", "critical"]),
     createdBy: text("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

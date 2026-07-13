@@ -10,7 +10,7 @@
 import { logger } from "./logger.js";
 import { db } from "./db.js";
 import { alertContactsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export type AlertSeverity = "info" | "warning" | "critical";
 
@@ -97,12 +97,10 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
 
 // ── Severity helpers ───────────────────────────────────────────────────────────
 
-const SEVERITY_ORDER: Record<AlertSeverity, number> = { info: 0, warning: 1, critical: 2 };
 const SEVERITY_EMOJI: Record<AlertSeverity, string> = { info: "ℹ️", warning: "⚠️", critical: "🚨" };
 
-function meetsMinSeverity(min: string, actual: AlertSeverity): boolean {
-  const minLevel = SEVERITY_ORDER[min as AlertSeverity] ?? 0;
-  return SEVERITY_ORDER[actual] >= minLevel;
+function wantsAlert(severities: string[], actual: AlertSeverity): boolean {
+  return severities.includes(actual);
 }
 
 function buildSmsMessage(alert: AlertPayload): string {
@@ -143,7 +141,7 @@ export async function dispatchNocAlert(alert: AlertPayload): Promise<{ sms: numb
 
   try {
     const contacts = await db.select().from(alertContactsTable);
-    const eligible = contacts.filter((c) => meetsMinSeverity(c.minSeverity, alert.severity));
+    const eligible = contacts.filter((c) => wantsAlert(c.severities, alert.severity));
 
     await Promise.allSettled(
       eligible.map(async (contact) => {

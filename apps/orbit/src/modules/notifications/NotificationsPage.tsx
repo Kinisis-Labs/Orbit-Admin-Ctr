@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Bell, Plus, Trash2, Loader2, X, Megaphone, Phone, Mail, FlaskConical, Pencil } from "lucide-react";
+import { Bell, Plus, Trash2, Loader2, X, Megaphone, Phone, Mail, FlaskConical, Pencil, AlertTriangle, ShieldAlert, RefreshCw } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import {
   useAdminNotifications,
   useCreateNotification,
@@ -17,6 +18,34 @@ import {
   type AlertContactRow,
   type UpsertContactInput,
 } from "../../services/alertContacts";
+
+// ── Azure Alerts ─────────────────────────────────────────────────────────────
+
+interface AzureAlert {
+  id: string;
+  name: string;
+  severity: "critical" | "error" | "warning" | "informational" | "unknown";
+  status: "active" | "acknowledged" | "resolved";
+  service: string;
+  description: string;
+  firedAt: string;
+  resolvedAt: string | null;
+  source: string;
+}
+
+function useAzureAlerts(enabled: boolean) {
+  return useQuery<AzureAlert[]>({
+    queryKey: ["azure-alerts"],
+    queryFn: async () => {
+      const res = await fetch("/api/noc/incidents");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { alerts: AzureAlert[] };
+      return data.alerts ?? [];
+    },
+    enabled,
+    staleTime: 2 * 60 * 1000,
+  });
+}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -229,17 +258,24 @@ function NotificationRowItem({ n, onDelete }: { n: NotificationRow; onDelete: (i
 // ── Alert Contact Drawer ──────────────────────────────────────────────────────
 
 const SEVERITIES = ["info", "warning", "critical"] as const;
-const EMPTY_CONTACT: UpsertContactInput = { name: "", email: "", phone: "", smsEnabled: false, emailEnabled: false, minSeverity: "warning" };
+const SEV_COLOR: Record<string, string> = { info: "#93C5FD", warning: "#FCD34D", critical: "#FCA5A5" };
+const EMPTY_CONTACT: UpsertContactInput = { name: "", email: "", phone: "", smsEnabled: false, emailEnabled: false, severities: ["warning", "critical"] };
 
 function ContactDrawer({ existing, onClose }: { existing?: AlertContactRow; onClose: () => void }) {
   const [form, setForm] = useState<UpsertContactInput>(
     existing
-      ? { name: existing.name, email: existing.email ?? "", phone: existing.phone ?? "", smsEnabled: existing.smsEnabled, emailEnabled: existing.emailEnabled, minSeverity: existing.minSeverity }
+      ? { name: existing.name, email: existing.email ?? "", phone: existing.phone ?? "", smsEnabled: existing.smsEnabled, emailEnabled: existing.emailEnabled, severities: existing.severities }
       : EMPTY_CONTACT,
   );
   const create = useCreateContact();
   const update = useUpdateContact();
   const set = <K extends keyof UpsertContactInput>(k: K, v: UpsertContactInput[K]) => setForm((f) => ({ ...f, [k]: v }));
+  function toggleSeverity(s: string) {
+    setForm((f) => ({
+      ...f,
+      severities: f.severities.includes(s) ? f.severities.filter((x) => x !== s) : [...f.severities, s],
+    }));
+  }
   const isPending = create.isPending || update.isPending;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -281,10 +317,22 @@ function ContactDrawer({ existing, onClose }: { existing?: AlertContactRow; onCl
             <input type="tel" placeholder="+15551234567" value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} className={fieldCls} style={inputStyle} />
           </div>
           <div>
-            <label className={labelCls} style={{ color: "var(--orbit-text-muted)" }}>Minimum Severity</label>
-            <select value={form.minSeverity} onChange={(e) => set("minSeverity", e.target.value)} className={fieldCls} style={inputStyle}>
-              {SEVERITIES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-            </select>
+            <label className={labelCls} style={{ color: "var(--orbit-text-muted)" }}>Alert Severities</label>
+            <div className="flex gap-3 mt-1">
+              {SEVERITIES.map((s) => (
+                <label key={s} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.severities.includes(s)}
+                    onChange={() => toggleSeverity(s)}
+                    className="rounded"
+                  />
+                  <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: `${SEV_COLOR[s]}1a`, color: SEV_COLOR[s] }}>
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </span>
+                </label>
+              ))}
+            </div>
           </div>
           <div className="space-y-2">
             <label className={labelCls} style={{ color: "var(--orbit-text-muted)" }}>Channels</label>
@@ -302,7 +350,7 @@ function ContactDrawer({ existing, onClose }: { existing?: AlertContactRow; onCl
           <button onClick={onClose} className="flex-1 rounded-lg py-2 text-sm" style={{ background: "var(--orbit-border)", color: "var(--orbit-text-primary)" }}>Cancel</button>
           <button
             onClick={(e) => { void handleSubmit(e as unknown as React.FormEvent); }}
-            disabled={isPending || !form.name.trim() || (!form.email && !form.phone)}
+            disabled={isPending || !form.name.trim() || (!form.email && !form.phone) || form.severities.length === 0}
             className="flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium disabled:opacity-50"
             style={{ background: "var(--orbit-primary)", color: "#fff" }}
           >
@@ -333,8 +381,6 @@ function AlertContactsTab() {
       setTestResult((r) => ({ ...r, [id]: { sms: false, email: false } }));
     }
   }
-
-  const SEV_COLOR: Record<string, string> = { info: "#93C5FD", warning: "#FCD34D", critical: "#FCA5A5" };
 
   return (
     <div className="space-y-4">
@@ -380,9 +426,11 @@ function AlertContactsTab() {
                 <div className="flex items-center gap-2 shrink-0">
                   {c.smsEnabled && <span className="text-[10px] rounded-full px-2 py-0.5 font-medium" style={{ background: "#6EE7B71a", color: "#6EE7B7" }}>SMS</span>}
                   {c.emailEnabled && <span className="text-[10px] rounded-full px-2 py-0.5 font-medium" style={{ background: "#93C5FD1a", color: "#93C5FD" }}>Email</span>}
-                  <span className="text-[10px] rounded-full px-2 py-0.5 font-medium" style={{ background: `${SEV_COLOR[c.minSeverity] ?? "#FCD34D"}1a`, color: SEV_COLOR[c.minSeverity] ?? "#FCD34D" }}>
-                    ≥{c.minSeverity}
-                  </span>
+                  {c.severities.map((s) => (
+                    <span key={s} className="text-[10px] rounded-full px-2 py-0.5 font-medium" style={{ background: `${SEV_COLOR[s] ?? "#FCD34D"}1a`, color: SEV_COLOR[s] ?? "#FCD34D" }}>
+                      {s}
+                    </span>
+                  ))}
                 </div>
                 {tr && tr !== "pending" && (
                   <span className="text-[10px]" style={{ color: (tr.sms || tr.email) ? "#6EE7B7" : "#FCA5A5" }}>
@@ -418,7 +466,105 @@ function AlertContactsTab() {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-type Tab = "notifications" | "contacts";
+// ── Azure Alerts Tab ─────────────────────────────────────────────────────────
+
+const AZ_SEV_COLOR: Record<string, string> = {
+  critical: "#FCA5A5",
+  error: "#F97316",
+  warning: "#FCD34D",
+  informational: "#93C5FD",
+  unknown: "#9CA3AF",
+};
+
+const AZ_STATUS_COLOR: Record<string, string> = {
+  active: "#FCA5A5",
+  acknowledged: "#FCD34D",
+  resolved: "#6EE7B7",
+};
+
+function AzureAlertsTab() {
+  const { data: alerts, isLoading, error, refetch, isFetching } = useAzureAlerts(true);
+
+  const active = alerts?.filter((a) => a.status !== "resolved") ?? [];
+  const resolved = alerts?.filter((a) => a.status === "resolved") ?? [];
+
+  function AlertRow({ a }: { a: AzureAlert }) {
+    const sevColor = AZ_SEV_COLOR[a.severity] ?? "#9CA3AF";
+    const statusColor = AZ_STATUS_COLOR[a.status] ?? "#9CA3AF";
+    return (
+      <div className="flex items-start gap-4 px-4 py-3" style={{ borderBottom: "1px solid var(--orbit-border)" }}>
+        <div className="shrink-0 mt-0.5">
+          {a.severity === "critical" || a.severity === "error"
+            ? <ShieldAlert className="h-4 w-4" style={{ color: sevColor }} />
+            : <AlertTriangle className="h-4 w-4" style={{ color: sevColor }} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-medium" style={{ color: "var(--orbit-text-primary)" }}>{a.name}</p>
+            <span className="text-[10px] rounded-full px-2 py-0.5 font-medium" style={{ background: `${sevColor}1a`, color: sevColor }}>{a.severity}</span>
+            <span className="text-[10px] rounded-full px-2 py-0.5 font-medium" style={{ background: `${statusColor}1a`, color: statusColor }}>{a.status}</span>
+            <span className="text-[10px] rounded-full px-2 py-0.5" style={{ background: "var(--orbit-border)", color: "var(--orbit-text-muted)" }}>{a.service}</span>
+          </div>
+          {a.description && <p className="text-xs mt-0.5 line-clamp-2" style={{ color: "var(--orbit-text-muted)" }}>{a.description}</p>}
+          <p className="text-[10px] mt-1" style={{ color: "var(--orbit-text-muted)" }}>Fired {new Date(a.firedAt).toLocaleString()}{a.resolvedAt ? ` · Resolved ${new Date(a.resolvedAt).toLocaleString()}` : ""}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm" style={{ color: "var(--orbit-text-muted)" }}>
+          Live Azure Monitor alerts across all configured subscriptions.
+        </p>
+        <button
+          onClick={() => { void refetch(); }}
+          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm"
+          style={{ background: "var(--orbit-border)", color: "var(--orbit-text-primary)" }}
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Refresh
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 py-12" style={{ color: "var(--orbit-text-muted)" }}>
+          <Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm">Loading Azure alerts…</span>
+        </div>
+      ) : error ? (
+        <div className="rounded-xl p-4 text-sm" style={{ color: "var(--orbit-danger)", border: "1px solid var(--orbit-danger)", background: "var(--orbit-bg-card)" }}>
+          {error.message}
+        </div>
+      ) : !alerts?.length ? (
+        <div className="rounded-xl p-12 text-center" style={card}>
+          <Bell className="mx-auto h-10 w-10 mb-3 opacity-20" style={{ color: "var(--orbit-text-muted)" }} />
+          <p className="text-sm" style={{ color: "var(--orbit-text-muted)" }}>No Azure Monitor alerts in the last 24 hours.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {active.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--orbit-text-muted)" }}>Active / Acknowledged ({active.length})</p>
+              <div className="rounded-xl overflow-hidden" style={card}>
+                {active.map((a) => <AlertRow key={a.id} a={a} />)}
+              </div>
+            </div>
+          )}
+          {resolved.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--orbit-text-muted)" }}>Resolved ({resolved.length})</p>
+              <div className="rounded-xl overflow-hidden opacity-60" style={card}>
+                {resolved.map((a) => <AlertRow key={a.id} a={a} />)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type Tab = "notifications" | "alerts" | "contacts";
 
 export function NotificationsPage() {
   const [tab, setTab] = useState<Tab>("notifications");
@@ -440,6 +586,8 @@ export function NotificationsPage() {
           <p className="text-sm mt-1" style={{ color: "var(--orbit-text-muted)" }}>
             {tab === "notifications"
               ? (data ? `${data.length} notification${data.length === 1 ? "" : "s"}` : "Loading…")
+              : tab === "alerts"
+              ? "Live Azure Monitor alerts from all subscriptions"
               : "SMS & email alert contacts for NOC health events"}
           </p>
         </div>
@@ -458,6 +606,9 @@ export function NotificationsPage() {
       <div className="flex gap-1 rounded-xl p-1" style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)", width: "fit-content" }}>
         <button className={tabCls("notifications")} style={tabStyle("notifications")} onClick={() => setTab("notifications")}>
           <span className="flex items-center gap-2"><Bell className="h-4 w-4" /> Notifications</span>
+        </button>
+        <button className={tabCls("alerts")} style={tabStyle("alerts")} onClick={() => setTab("alerts")}>
+          <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Azure Alerts</span>
         </button>
         <button className={tabCls("contacts")} style={tabStyle("contacts")} onClick={() => setTab("contacts")}>
           <span className="flex items-center gap-2"><Phone className="h-4 w-4" /> Alert Contacts</span>
@@ -499,6 +650,9 @@ export function NotificationsPage() {
           </div>
         )
       )}
+
+      {/* Azure Alerts Tab */}
+      {tab === "alerts" && <AzureAlertsTab />}
 
       {/* Alert Contacts Tab */}
       {tab === "contacts" && <AlertContactsTab />}
