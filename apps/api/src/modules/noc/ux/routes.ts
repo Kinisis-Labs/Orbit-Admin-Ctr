@@ -62,8 +62,11 @@ export interface UXSnapshot {
 
 // ── App Insights query helper ──────────────────────────────────────────────────
 
+function getWorkspaceResourceId(): string | null {
+  return process.env.AZURE_LOG_ANALYTICS_WORKSPACE_RESOURCE_ID ?? null;
+}
+
 function getAppInsightsResourceId(): string | null {
-  // Check per-app env var first, then generic fallback, then parse from conn string
   const resourceId =
     process.env.AZURE_APP_INSIGHTS_RESOURCE_ID_ORBIT ??
     process.env.AZURE_APP_INSIGHTS_RESOURCE_ID;
@@ -79,23 +82,21 @@ function getAppInsightsResourceId(): string | null {
 }
 
 function isAppInsightsConfigured(): boolean {
-  const hasConnStr = !!(
-    process.env.APPLICATIONINSIGHTS_CONNECTION_STRING ??
-    process.env.APPINSIGHTS_CONNECTION_STRING
-  );
-  return hasConnStr && !!getAppInsightsResourceId();
+  return !!(getWorkspaceResourceId() ?? getAppInsightsResourceId());
 }
 
 async function queryAI(query: string): Promise<unknown[]> {
-  const resourceId = getAppInsightsResourceId();
-  if (!resourceId) return [];
-
   const token = await getAccessToken();
   if (!token) return [];
 
+  // Prefer Log Analytics workspace query API (required for workspace-based App Insights)
+  const workspaceId = getWorkspaceResourceId();
+  const appInsightsId = getAppInsightsResourceId();
+  const queryResourceId = workspaceId ?? appInsightsId;
+  if (!queryResourceId) return [];
+
   try {
-    // Azure Monitor Logs query API — requires ARM resource ID + bearer token
-    const url = `https://management.azure.com${resourceId}/query?api-version=2023-12-01-preview`;
+    const url = `https://management.azure.com${queryResourceId}/query?api-version=2022-10-01`;
     const res = await fetch(url, {
       method: "POST",
       headers: {
@@ -106,7 +107,7 @@ async function queryAI(query: string): Promise<unknown[]> {
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
-      logger.warn({ status: res.status, query: query.slice(0, 80), body: txt.slice(0, 200) }, "App Insights KQL query failed");
+      logger.warn({ status: res.status, query: query.slice(0, 80), body: txt.slice(0, 200) }, "KQL query failed");
       return [];
     }
     type AIResponse = { tables?: Array<{ rows?: unknown[][] }> };
