@@ -127,6 +127,51 @@
   --radius-full:         9999px;
 }
 
+/* ─── Iridescent Topbar ────────────────────────────────────────────────── */
+
+@keyframes orbit-iridescent-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.orbit-topbar-iridescent {
+  background: linear-gradient(
+    105deg,
+    #07091a 0%,
+    #0d0b2e 10%,
+    #1a0a3d 20%,
+    #3b0f6e 30%,
+    #6b21a8 40%,
+    #7c3aed 48%,
+    #a855f7 54%,
+    #c026d3 60%,
+    #9333ea 68%,
+    #4f46e5 76%,
+    #2563eb 84%,
+    #0ea5e9 92%,
+    #06b6d4 100%
+  );
+  background-size: 300% 300%;
+  animation: orbit-iridescent-shift 12s ease infinite;
+}
+
+.orbit-wordmark-iridescent {
+  background: linear-gradient(
+    90deg,
+    #c4b5fd 0%,
+    #e879f9 25%,
+    #818cf8 50%,
+    #67e8f9 75%,
+    #c4b5fd 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: orbit-iridescent-shift 6s linear infinite;
+}
+
 /* ─── Base Styles ──────────────────────────────────────────────────────── */
 html {
   font-family: var(--app-font-sans);

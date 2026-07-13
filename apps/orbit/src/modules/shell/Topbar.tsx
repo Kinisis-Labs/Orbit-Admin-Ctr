@@ -7,28 +7,27 @@ export function Topbar() {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5"
+      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 orbit-topbar-iridescent"
       style={{
         height: "var(--orbit-topbar-height)",
-        background: "var(--orbit-topbar-bg)",
-        borderBottom: "1px solid var(--orbit-border)",
+        borderBottom: "1px solid rgba(124,58,237,0.35)",
       }}
     >
       {/* Logo */}
       <div className="flex items-center gap-3">
         <img src="/logo.png" alt="O.R.B.I.T" className="w-8 h-8 rounded-lg object-cover" />
         <span
-          className="text-base font-semibold tracking-tight"
-          style={{ color: "var(--orbit-text-primary)" }}
+          className="text-base font-bold tracking-tight orbit-wordmark-iridescent"
         >
           O.R.B.I.T
         </span>
         <span
-          className="text-xs px-1.5 py-0.5 rounded font-medium"
+          className="text-xs px-1.5 py-0.5 rounded font-semibold"
           style={{
-            background: "rgba(124,58,237,0.15)",
-            color: "#A78BFA",
-            border: "1px solid rgba(124,58,237,0.3)",
+            background: "rgba(139,92,246,0.2)",
+            color: "#C4B5FD",
+            border: "1px solid rgba(167,139,250,0.4)",
+            textShadow: "0 0 8px rgba(167,139,250,0.6)",
           }}
         >
           Enterprise
@@ -87,11 +86,10 @@ export function Topbar() {
 export function TopbarSkeleton() {
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 flex items-center px-5"
+      className="fixed top-0 left-0 right-0 z-50 flex items-center px-5 orbit-topbar-iridescent"
       style={{
         height: "var(--orbit-topbar-height)",
-        background: "var(--orbit-topbar-bg)",
-        borderBottom: "1px solid var(--orbit-border)",
+        borderBottom: "1px solid rgba(124,58,237,0.35)",
       }}
     >
       <div
