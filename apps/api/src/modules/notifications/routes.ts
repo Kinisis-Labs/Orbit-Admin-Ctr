@@ -7,7 +7,7 @@ import { requireAuth, requireAdmin } from "../../middlewares/auth.js";
 const router = Router();
 
 // ── GET /api/notifications — current user's notifications (+ broadcasts) ─────
-router.get("/api/notifications", requireAuth, async (req, res) => {
+router.get("/notifications", requireAuth, async (req, res) => {
   try {
     const userId = req.session.user!.id;
     const now = new Date();
@@ -32,7 +32,7 @@ router.get("/api/notifications", requireAuth, async (req, res) => {
 });
 
 // ── GET /api/notifications/unread-count ───────────────────────────────────────
-router.get("/api/notifications/unread-count", requireAuth, async (req, res) => {
+router.get("/notifications/unread-count", requireAuth, async (req, res) => {
   try {
     const userId = req.session.user!.id;
     const now = new Date();
@@ -56,7 +56,7 @@ router.get("/api/notifications/unread-count", requireAuth, async (req, res) => {
 });
 
 // ── POST /api/notifications/:id/read — mark one as read ──────────────────────
-router.post("/api/notifications/:id/read", requireAuth, async (req, res) => {
+router.post("/notifications/:id/read", requireAuth, async (req, res) => {
   try {
     const userId = req.session.user!.id;
     const id = String(req.params.id);
@@ -79,7 +79,7 @@ router.post("/api/notifications/:id/read", requireAuth, async (req, res) => {
 });
 
 // ── POST /api/notifications/read-all — mark all as read ──────────────────────
-router.post("/api/notifications/read-all", requireAuth, async (req, res) => {
+router.post("/notifications/read-all", requireAuth, async (req, res) => {
   try {
     const userId = req.session.user!.id;
 
@@ -103,7 +103,7 @@ router.post("/api/notifications/read-all", requireAuth, async (req, res) => {
 // ── Admin routes ──────────────────────────────────────────────────────────────
 
 // GET /api/admin/notifications — list all notifications
-router.get("/api/admin/notifications", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/notifications", requireAuth, requireAdmin, async (req, res) => {
   try {
     const rows = await db
       .select()
@@ -118,7 +118,7 @@ router.get("/api/admin/notifications", requireAuth, requireAdmin, async (req, re
 });
 
 // POST /api/admin/notifications — create/broadcast a notification
-router.post("/api/admin/notifications", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/notifications", requireAuth, requireAdmin, async (req, res) => {
   try {
     const body = req.body as {
       title: string;
@@ -155,7 +155,7 @@ router.post("/api/admin/notifications", requireAuth, requireAdmin, async (req, r
 });
 
 // DELETE /api/admin/notifications/:id — delete a notification
-router.delete("/api/admin/notifications/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/admin/notifications/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     await db
       .delete(notificationsTable)

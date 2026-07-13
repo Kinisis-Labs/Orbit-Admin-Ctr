@@ -16,7 +16,7 @@ const router = Router();
 // GET /api/rbac/my-permissions
 // Returns the flat list of permission names for the current user based on
 // their assigned roles. Used by the frontend to gate UI controls.
-router.get("/api/rbac/my-permissions", requireAuth, async (req, res) => {
+router.get("/rbac/my-permissions", requireAuth, async (req, res) => {
   try {
     const userId = req.session.user!.id;
 
@@ -66,7 +66,7 @@ router.get("/api/rbac/my-permissions", requireAuth, async (req, res) => {
 // ── Roles ─────────────────────────────────────────────────────────────────────
 
 // GET /api/rbac/roles
-router.get("/api/rbac/roles", requireAuth, requireAdmin, async (req, res) => {
+router.get("/rbac/roles", requireAuth, requireAdmin, async (req, res) => {
   try {
     const roles = await db.select().from(rolesTable).orderBy(rolesTable.displayName);
     res.json(roles);
@@ -77,7 +77,7 @@ router.get("/api/rbac/roles", requireAuth, requireAdmin, async (req, res) => {
 });
 
 // GET /api/rbac/roles/:id/permissions
-router.get("/api/rbac/roles/:id/permissions", requireAuth, requireAdmin, async (req, res) => {
+router.get("/rbac/roles/:id/permissions", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const rows = await db
@@ -101,7 +101,7 @@ router.get("/api/rbac/roles/:id/permissions", requireAuth, requireAdmin, async (
 });
 
 // POST /api/rbac/roles
-router.post("/api/rbac/roles", requireAuth, requireAdmin, async (req, res) => {
+router.post("/rbac/roles", requireAuth, requireAdmin, async (req, res) => {
   try {
     const body = req.body as {
       name: string;
@@ -137,7 +137,7 @@ router.post("/api/rbac/roles", requireAuth, requireAdmin, async (req, res) => {
 });
 
 // PUT /api/rbac/roles/:id
-router.put("/api/rbac/roles/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/rbac/roles/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const body = req.body as Partial<{
@@ -167,7 +167,7 @@ router.put("/api/rbac/roles/:id", requireAuth, requireAdmin, async (req, res) =>
 });
 
 // DELETE /api/rbac/roles/:id
-router.delete("/api/rbac/roles/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/rbac/roles/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const [role] = await db
@@ -192,7 +192,7 @@ router.delete("/api/rbac/roles/:id", requireAuth, requireAdmin, async (req, res)
 });
 
 // POST /api/rbac/roles/:id/permissions — assign a permission to a role
-router.post("/api/rbac/roles/:id/permissions", requireAuth, requireAdmin, async (req, res) => {
+router.post("/rbac/roles/:id/permissions", requireAuth, requireAdmin, async (req, res) => {
   try {
     const roleId = String(req.params.id);
     const { permissionId } = req.body as { permissionId: string };
@@ -215,7 +215,7 @@ router.post("/api/rbac/roles/:id/permissions", requireAuth, requireAdmin, async 
 
 // DELETE /api/rbac/roles/:id/permissions/:mappingId
 router.delete(
-  "/api/rbac/roles/:id/permissions/:mappingId",
+  "/rbac/roles/:id/permissions/:mappingId",
   requireAuth,
   requireAdmin,
   async (req, res) => {
@@ -234,7 +234,7 @@ router.delete(
 // ── Permissions ───────────────────────────────────────────────────────────────
 
 // GET /api/rbac/permissions
-router.get("/api/rbac/permissions", requireAuth, requireAdmin, async (req, res) => {
+router.get("/rbac/permissions", requireAuth, requireAdmin, async (req, res) => {
   try {
     const perms = await db
       .select()
@@ -248,7 +248,7 @@ router.get("/api/rbac/permissions", requireAuth, requireAdmin, async (req, res) 
 });
 
 // POST /api/rbac/permissions
-router.post("/api/rbac/permissions", requireAuth, requireAdmin, async (req, res) => {
+router.post("/rbac/permissions", requireAuth, requireAdmin, async (req, res) => {
   try {
     const body = req.body as {
       application: string;
@@ -289,7 +289,7 @@ router.post("/api/rbac/permissions", requireAuth, requireAdmin, async (req, res)
 });
 
 // PUT /api/rbac/permissions/:id
-router.put("/api/rbac/permissions/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/rbac/permissions/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const body = req.body as Partial<{
@@ -319,7 +319,7 @@ router.put("/api/rbac/permissions/:id", requireAuth, requireAdmin, async (req, r
 });
 
 // DELETE /api/rbac/permissions/:id
-router.delete("/api/rbac/permissions/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/rbac/permissions/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const [deleted] = await db
       .delete(permissionsTable)
@@ -339,7 +339,7 @@ router.delete("/api/rbac/permissions/:id", requireAuth, requireAdmin, async (req
 // ── User ↔ Role Assignment ────────────────────────────────────────────────────
 
 // GET /api/rbac/users/:userId/roles
-router.get("/api/rbac/users/:userId/roles", requireAuth, requireAdmin, async (req, res) => {
+router.get("/rbac/users/:userId/roles", requireAuth, requireAdmin, async (req, res) => {
   try {
     const rows = await db
       .select({
@@ -359,7 +359,7 @@ router.get("/api/rbac/users/:userId/roles", requireAuth, requireAdmin, async (re
 });
 
 // POST /api/rbac/users/:userId/roles
-router.post("/api/rbac/users/:userId/roles", requireAuth, requireAdmin, async (req, res) => {
+router.post("/rbac/users/:userId/roles", requireAuth, requireAdmin, async (req, res) => {
   try {
     const userId = String(req.params.userId);
     const { roleId } = req.body as { roleId: string };
@@ -382,7 +382,7 @@ router.post("/api/rbac/users/:userId/roles", requireAuth, requireAdmin, async (r
 
 // DELETE /api/rbac/users/:userId/roles/:assignmentId
 router.delete(
-  "/api/rbac/users/:userId/roles/:assignmentId",
+  "/rbac/users/:userId/roles/:assignmentId",
   requireAuth,
   requireAdmin,
   async (req, res) => {

@@ -11,7 +11,7 @@ const router = Router();
 // ── Global Configuration ───────────────────────────────────────────────────────
 
 // GET /api/config — list all config entries (secret values masked)
-router.get("/api/config", requireAuth, requireAdmin, async (req, res) => {
+router.get("/config", requireAuth, requireAdmin, async (req, res) => {
   try {
     const rows = await db
       .select()
@@ -31,7 +31,7 @@ router.get("/api/config", requireAuth, requireAdmin, async (req, res) => {
 });
 
 // POST /api/config — create or update a config entry (upsert by key)
-router.post("/api/config", requireAuth, requireAdmin, async (req, res) => {
+router.post("/config", requireAuth, requireAdmin, async (req, res) => {
   try {
     const body = req.body as {
       key: string;
@@ -99,7 +99,7 @@ router.post("/api/config", requireAuth, requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/config/:key — delete a config entry
-router.delete("/api/config/:key", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/config/:key", requireAuth, requireAdmin, async (req, res) => {
   try {
     const key = String(req.params.key);
     await db.delete(globalConfigTable).where(eq(globalConfigTable.key, key));
@@ -115,7 +115,7 @@ router.delete("/api/config/:key", requireAuth, requireAdmin, async (req, res) =>
 // ── Feature Flags ──────────────────────────────────────────────────────────────
 
 // GET /api/config/flags — list all feature flags
-router.get("/api/config/flags", requireAuth, requireAdmin, async (req, res) => {
+router.get("/config/flags", requireAuth, requireAdmin, async (req, res) => {
   try {
     const rows = await db
       .select()
@@ -129,7 +129,7 @@ router.get("/api/config/flags", requireAuth, requireAdmin, async (req, res) => {
 });
 
 // POST /api/config/flags — create or update a feature flag (upsert by name)
-router.post("/api/config/flags", requireAuth, requireAdmin, async (req, res) => {
+router.post("/config/flags", requireAuth, requireAdmin, async (req, res) => {
   try {
     const body = req.body as {
       name: string;
@@ -190,7 +190,7 @@ router.post("/api/config/flags", requireAuth, requireAdmin, async (req, res) => 
 });
 
 // DELETE /api/config/flags/:name — delete a feature flag
-router.delete("/api/config/flags/:name", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/config/flags/:name", requireAuth, requireAdmin, async (req, res) => {
   try {
     const name = String(req.params.name);
     await db.delete(featureFlagsTable).where(eq(featureFlagsTable.name, name));

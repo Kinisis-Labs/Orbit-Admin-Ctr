@@ -44,7 +44,7 @@ async function getActiveUsers(): Promise<SessionUser[]> {
 }
 
 // ── GET /api/users — list all known users (from active sessions) ──────────────
-router.get("/api/users", requireAuth, requireAdmin, async (req, res) => {
+router.get("/users", requireAuth, requireAdmin, async (req, res) => {
   try {
     const users = await getActiveUsers();
     const summary = users.map((u) => ({
@@ -64,7 +64,7 @@ router.get("/api/users", requireAuth, requireAdmin, async (req, res) => {
 });
 
 // ── GET /api/users/:userId — full security context for one user ───────────────
-router.get("/api/users/:userId", requireAuth, requireAdmin, async (req, res) => {
+router.get("/users/:userId", requireAuth, requireAdmin, async (req, res) => {
   try {
     const userId = String(req.params.userId);
     const now = new Date();
@@ -168,7 +168,7 @@ router.get("/api/users/:userId", requireAuth, requireAdmin, async (req, res) => 
 });
 
 // ── GET /api/users/:userId/roles — assigned roles ─────────────────────────────
-router.get("/api/users/:userId/roles", requireAuth, requireAdmin, async (req, res) => {
+router.get("/users/:userId/roles", requireAuth, requireAdmin, async (req, res) => {
   try {
     const userId = String(req.params.userId);
     const rows = await db

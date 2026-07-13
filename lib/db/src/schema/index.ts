@@ -24,3 +24,4 @@ export * from "./globalConfig";
 export * from "./nocSnapshots";
 export * from "./nocIncidents";
 export * from "./securityEvents";
+export * from "./alertContacts";

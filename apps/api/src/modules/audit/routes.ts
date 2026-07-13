@@ -8,7 +8,7 @@ const router = Router();
 
 // GET /api/audit
 // Query params: category, action, actorId, outcome, entityType, from, to, limit, offset, search
-router.get("/api/audit", requireAuth, requireAdmin, async (req, res) => {
+router.get("/audit", requireAuth, requireAdmin, async (req, res) => {
   try {
     const {
       category,
@@ -75,7 +75,7 @@ router.get("/api/audit", requireAuth, requireAdmin, async (req, res) => {
 });
 
 // GET /api/audit/:id
-router.get("/api/audit/:id", requireAuth, requireAdmin, async (req, res) => {
+router.get("/audit/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const [row] = await db
       .select()

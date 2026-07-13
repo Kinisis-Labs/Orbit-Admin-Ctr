@@ -17,6 +17,7 @@ import nocIncidentsRouter from "../modules/noc/incidents/routes.js";
 import nocUxRouter from "../modules/noc/ux/routes.js";
 import nocApiDepsRouter from "../modules/noc/api-dependencies/routes.js";
 import crmTestersRouter from "../modules/crm/testers/routes.js";
+import alertContactsRouter from "../modules/alert-contacts/routes.js";
 
 const router: IRouter = Router();
 
@@ -37,9 +38,6 @@ router.use("/noc", nocIncidentsRouter);
 router.use("/noc", nocUxRouter);
 router.use("/noc", nocApiDepsRouter);
 router.use(crmTestersRouter);
-
-router.use("/admin", requireAuth, requireAdmin, (_req, res) => {
-  res.status(501).json({ message: "Admin modules coming in Phase C–H" });
-});
+router.use(alertContactsRouter);
 
 export default router;

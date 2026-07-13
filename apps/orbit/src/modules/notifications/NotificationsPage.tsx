@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, Plus, Trash2, Loader2, X, Megaphone } from "lucide-react";
+import { Bell, Plus, Trash2, Loader2, X, Megaphone, Phone, Mail, FlaskConical, Pencil } from "lucide-react";
 import {
   useAdminNotifications,
   useCreateNotification,
@@ -8,6 +8,15 @@ import {
   type NotificationType,
   type CreateNotificationInput,
 } from "../../services/notifications";
+import {
+  useAlertContacts,
+  useCreateContact,
+  useUpdateContact,
+  useDeleteContact,
+  useTestContact,
+  type AlertContactRow,
+  type UpsertContactInput,
+} from "../../services/alertContacts";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -217,12 +226,210 @@ function NotificationRowItem({ n, onDelete }: { n: NotificationRow; onDelete: (i
   );
 }
 
+// ── Alert Contact Drawer ──────────────────────────────────────────────────────
+
+const SEVERITIES = ["info", "warning", "critical"] as const;
+const EMPTY_CONTACT: UpsertContactInput = { name: "", email: "", phone: "", smsEnabled: false, emailEnabled: false, minSeverity: "warning" };
+
+function ContactDrawer({ existing, onClose }: { existing?: AlertContactRow; onClose: () => void }) {
+  const [form, setForm] = useState<UpsertContactInput>(
+    existing
+      ? { name: existing.name, email: existing.email ?? "", phone: existing.phone ?? "", smsEnabled: existing.smsEnabled, emailEnabled: existing.emailEnabled, minSeverity: existing.minSeverity }
+      : EMPTY_CONTACT,
+  );
+  const create = useCreateContact();
+  const update = useUpdateContact();
+  const set = <K extends keyof UpsertContactInput>(k: K, v: UpsertContactInput[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const isPending = create.isPending || update.isPending;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (existing) {
+      await update.mutateAsync({ id: existing.id, ...form });
+    } else {
+      await create.mutateAsync(form);
+    }
+    onClose();
+  }
+
+  const fieldCls = "w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-[var(--orbit-primary)]";
+  const labelCls = "block text-xs font-medium mb-1";
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full max-w-md h-full flex flex-col overflow-hidden" style={card}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--orbit-border)" }}>
+          <h2 className="text-sm font-semibold" style={{ color: "var(--orbit-text-primary)" }}>
+            {existing ? "Edit Alert Contact" : "New Alert Contact"}
+          </h2>
+          <button onClick={onClose} className="rounded p-1 hover:bg-[var(--orbit-border)]" style={{ color: "var(--orbit-text-muted)" }}>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div>
+            <label className={labelCls} style={{ color: "var(--orbit-text-muted)" }}>Name *</label>
+            <input type="text" placeholder="e.g. On-Call Engineer" value={form.name} onChange={(e) => set("name", e.target.value)} required className={fieldCls} style={inputStyle} />
+          </div>
+          <div>
+            <label className={labelCls} style={{ color: "var(--orbit-text-muted)" }}>Email</label>
+            <input type="email" placeholder="alerts@example.com" value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} className={fieldCls} style={inputStyle} />
+          </div>
+          <div>
+            <label className={labelCls} style={{ color: "var(--orbit-text-muted)" }}>Phone (E.164 format)</label>
+            <input type="tel" placeholder="+15551234567" value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} className={fieldCls} style={inputStyle} />
+          </div>
+          <div>
+            <label className={labelCls} style={{ color: "var(--orbit-text-muted)" }}>Minimum Severity</label>
+            <select value={form.minSeverity} onChange={(e) => set("minSeverity", e.target.value)} className={fieldCls} style={inputStyle}>
+              {SEVERITIES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className={labelCls} style={{ color: "var(--orbit-text-muted)" }}>Channels</label>
+            <label className="flex items-center gap-3 text-sm cursor-pointer" style={{ color: "var(--orbit-text-secondary)" }}>
+              <input type="checkbox" checked={form.smsEnabled} onChange={(e) => set("smsEnabled", e.target.checked)} className="rounded" />
+              <Phone className="h-3.5 w-3.5" /> Send SMS (requires phone)
+            </label>
+            <label className="flex items-center gap-3 text-sm cursor-pointer" style={{ color: "var(--orbit-text-secondary)" }}>
+              <input type="checkbox" checked={form.emailEnabled} onChange={(e) => set("emailEnabled", e.target.checked)} className="rounded" />
+              <Mail className="h-3.5 w-3.5" /> Send Email (requires email)
+            </label>
+          </div>
+        </form>
+        <div className="flex gap-2 px-5 py-4" style={{ borderTop: "1px solid var(--orbit-border)" }}>
+          <button onClick={onClose} className="flex-1 rounded-lg py-2 text-sm" style={{ background: "var(--orbit-border)", color: "var(--orbit-text-primary)" }}>Cancel</button>
+          <button
+            onClick={(e) => { void handleSubmit(e as unknown as React.FormEvent); }}
+            disabled={isPending || !form.name.trim() || (!form.email && !form.phone)}
+            className="flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium disabled:opacity-50"
+            style={{ background: "var(--orbit-primary)", color: "#fff" }}
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {existing ? "Save" : "Add Contact"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Alert Contacts Tab ────────────────────────────────────────────────────────
+
+function AlertContactsTab() {
+  const [drawer, setDrawer] = useState<AlertContactRow | true | null>(null);
+  const { data: contacts, isLoading, error } = useAlertContacts();
+  const deleteContact = useDeleteContact();
+  const testContact = useTestContact();
+  const [testResult, setTestResult] = useState<Record<string, { sms: boolean; email: boolean } | "pending">>({});
+
+  async function handleTest(id: string) {
+    setTestResult((r) => ({ ...r, [id]: "pending" }));
+    try {
+      const result = await testContact.mutateAsync(id);
+      setTestResult((r) => ({ ...r, [id]: result }));
+    } catch {
+      setTestResult((r) => ({ ...r, [id]: { sms: false, email: false } }));
+    }
+  }
+
+  const SEV_COLOR: Record<string, string> = { info: "#93C5FD", warning: "#FCD34D", critical: "#FCA5A5" };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm" style={{ color: "var(--orbit-text-muted)" }}>
+          Contacts receive NOC alerts via SMS and/or email when health degrades.
+        </p>
+        <button
+          onClick={() => setDrawer(true)}
+          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium"
+          style={{ background: "var(--orbit-primary)", color: "#fff" }}
+        >
+          <Plus className="h-4 w-4" /> Add Contact
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 py-12" style={{ color: "var(--orbit-text-muted)" }}>
+          <Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm">Loading…</span>
+        </div>
+      ) : error ? (
+        <div className="rounded-xl p-4 text-sm" style={{ color: "var(--orbit-danger)", border: "1px solid var(--orbit-danger)", background: "var(--orbit-bg-card)" }}>
+          {error.message}
+        </div>
+      ) : !contacts?.length ? (
+        <div className="rounded-xl p-12 text-center" style={card}>
+          <Phone className="mx-auto h-10 w-10 mb-3 opacity-20" style={{ color: "var(--orbit-text-muted)" }} />
+          <p className="text-sm" style={{ color: "var(--orbit-text-muted)" }}>No alert contacts yet. Add one to receive NOC alerts.</p>
+        </div>
+      ) : (
+        <div className="rounded-xl overflow-hidden" style={card}>
+          {contacts.map((c, i) => {
+            const tr = testResult[c.id];
+            return (
+              <div key={c.id} className="flex items-center gap-4 px-4 py-3" style={{ borderBottom: i < contacts.length - 1 ? "1px solid var(--orbit-border)" : undefined }}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: "var(--orbit-text-primary)" }}>{c.name}</p>
+                  <div className="flex items-center gap-3 mt-0.5">
+                    {c.email && <span className="flex items-center gap-1 text-xs" style={{ color: "var(--orbit-text-muted)" }}><Mail className="h-3 w-3" />{c.email}</span>}
+                    {c.phone && <span className="flex items-center gap-1 text-xs" style={{ color: "var(--orbit-text-muted)" }}><Phone className="h-3 w-3" />{c.phone}</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {c.smsEnabled && <span className="text-[10px] rounded-full px-2 py-0.5 font-medium" style={{ background: "#6EE7B71a", color: "#6EE7B7" }}>SMS</span>}
+                  {c.emailEnabled && <span className="text-[10px] rounded-full px-2 py-0.5 font-medium" style={{ background: "#93C5FD1a", color: "#93C5FD" }}>Email</span>}
+                  <span className="text-[10px] rounded-full px-2 py-0.5 font-medium" style={{ background: `${SEV_COLOR[c.minSeverity] ?? "#FCD34D"}1a`, color: SEV_COLOR[c.minSeverity] ?? "#FCD34D" }}>
+                    ≥{c.minSeverity}
+                  </span>
+                </div>
+                {tr && tr !== "pending" && (
+                  <span className="text-[10px]" style={{ color: (tr.sms || tr.email) ? "#6EE7B7" : "#FCA5A5" }}>
+                    {tr.sms || tr.email ? "✓ sent" : "✗ failed"}
+                  </span>
+                )}
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => void handleTest(c.id)} disabled={tr === "pending"} className="rounded p-1.5 hover:bg-[var(--orbit-border)]/40 transition-colors disabled:opacity-50" style={{ color: "var(--orbit-text-muted)" }} title="Send test alert">
+                    {tr === "pending" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FlaskConical className="h-3.5 w-3.5" />}
+                  </button>
+                  <button onClick={() => setDrawer(c)} className="rounded p-1.5 hover:bg-[var(--orbit-border)]/40 transition-colors" style={{ color: "var(--orbit-text-muted)" }} title="Edit">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button onClick={() => deleteContact.mutate(c.id)} className="rounded p-1.5 hover:bg-red-500/10 transition-colors" style={{ color: "var(--orbit-text-muted)" }} title="Delete">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {drawer && (
+        <ContactDrawer
+          existing={drawer === true ? undefined : drawer}
+          onClose={() => setDrawer(null)}
+        />
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
+type Tab = "notifications" | "contacts";
+
 export function NotificationsPage() {
+  const [tab, setTab] = useState<Tab>("notifications");
   const [composing, setComposing] = useState(false);
   const { data, isLoading, error } = useAdminNotifications();
   const deleteNotif = useDeleteNotification();
+
+  const tabCls = (t: Tab) =>
+    `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${tab === t ? "text-white" : ""}`;
+  const tabStyle = (t: Tab): React.CSSProperties =>
+    tab === t ? { background: "var(--orbit-primary)" } : { color: "var(--orbit-text-muted)", background: "transparent" };
 
   return (
     <div className="space-y-5">
@@ -231,51 +438,70 @@ export function NotificationsPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--orbit-text-primary)" }}>Notifications</h1>
           <p className="text-sm mt-1" style={{ color: "var(--orbit-text-muted)" }}>
-            {data ? `${data.length} notification${data.length === 1 ? "" : "s"}` : "Loading…"}
+            {tab === "notifications"
+              ? (data ? `${data.length} notification${data.length === 1 ? "" : "s"}` : "Loading…")
+              : "SMS & email alert contacts for NOC health events"}
           </p>
         </div>
-        <button
-          onClick={() => setComposing(true)}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium"
-          style={{ background: "var(--orbit-primary)", color: "#fff" }}
-        >
-          <Plus className="h-4 w-4" /> Send Notification
+        {tab === "notifications" && (
+          <button
+            onClick={() => setComposing(true)}
+            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium"
+            style={{ background: "var(--orbit-primary)", color: "#fff" }}
+          >
+            <Plus className="h-4 w-4" /> Send Notification
+          </button>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 rounded-xl p-1" style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)", width: "fit-content" }}>
+        <button className={tabCls("notifications")} style={tabStyle("notifications")} onClick={() => setTab("notifications")}>
+          <span className="flex items-center gap-2"><Bell className="h-4 w-4" /> Notifications</span>
+        </button>
+        <button className={tabCls("contacts")} style={tabStyle("contacts")} onClick={() => setTab("contacts")}>
+          <span className="flex items-center gap-2"><Phone className="h-4 w-4" /> Alert Contacts</span>
         </button>
       </div>
 
-      {/* Table */}
-      {isLoading ? (
-        <div className="flex items-center gap-2 py-12" style={{ color: "var(--orbit-text-muted)" }}>
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="text-sm">Loading…</span>
-        </div>
-      ) : error ? (
-        <div className="rounded-xl p-4 text-sm" style={{ color: "var(--orbit-danger)", border: "1px solid var(--orbit-danger)", background: "var(--orbit-bg-card)" }}>
-          {error.message}
-        </div>
-      ) : !data?.length ? (
-        <div className="rounded-xl p-12 text-center" style={card}>
-          <Bell className="mx-auto h-10 w-10 mb-3 opacity-20" style={{ color: "var(--orbit-text-muted)" }} />
-          <p className="text-sm" style={{ color: "var(--orbit-text-muted)" }}>No notifications yet. Send one to get started.</p>
-        </div>
-      ) : (
-        <div className="rounded-xl overflow-hidden" style={card}>
-          <table className="w-full text-xs">
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--orbit-border)", background: "var(--orbit-bg-page)" }}>
-                {["Type", "Message", "Audience", "Sent", "Status", ""].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left font-semibold uppercase tracking-wider" style={{ color: "var(--orbit-text-muted)" }}>{h}</th>
+      {/* Notifications Tab */}
+      {tab === "notifications" && (
+        isLoading ? (
+          <div className="flex items-center gap-2 py-12" style={{ color: "var(--orbit-text-muted)" }}>
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm">Loading…</span>
+          </div>
+        ) : error ? (
+          <div className="rounded-xl p-4 text-sm" style={{ color: "var(--orbit-danger)", border: "1px solid var(--orbit-danger)", background: "var(--orbit-bg-card)" }}>
+            {error.message}
+          </div>
+        ) : !data?.length ? (
+          <div className="rounded-xl p-12 text-center" style={card}>
+            <Bell className="mx-auto h-10 w-10 mb-3 opacity-20" style={{ color: "var(--orbit-text-muted)" }} />
+            <p className="text-sm" style={{ color: "var(--orbit-text-muted)" }}>No notifications yet. Send one to get started.</p>
+          </div>
+        ) : (
+          <div className="rounded-xl overflow-hidden" style={card}>
+            <table className="w-full text-xs">
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--orbit-border)", background: "var(--orbit-bg-page)" }}>
+                  {["Type", "Message", "Audience", "Sent", "Status", ""].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left font-semibold uppercase tracking-wider" style={{ color: "var(--orbit-text-muted)" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((n) => (
+                  <NotificationRowItem key={n.id} n={n} onDelete={(id) => deleteNotif.mutate(id)} />
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((n) => (
-                <NotificationRowItem key={n.id} n={n} onDelete={(id) => deleteNotif.mutate(id)} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+        )
       )}
+
+      {/* Alert Contacts Tab */}
+      {tab === "contacts" && <AlertContactsTab />}
 
       {composing && <ComposeDrawer onClose={() => setComposing(false)} />}
     </div>
