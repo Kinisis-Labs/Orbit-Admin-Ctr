@@ -1,10 +1,9 @@
 /**
- * NOC Alert Dispatch — SMS via Twilio, Email via SMTP/SendGrid.
+ * NOC Alert Dispatch — SMS via Azure Communication Services, Email via SMTP.
  *
  * Required env vars:
- *   SMS:   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
+ *   SMS:   ACS_CONNECTION_STRING, ACS_FROM_NUMBER
  *   Email: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
- *          (or SENDGRID_API_KEY + SMTP_FROM for SendGrid)
  */
 
 import { logger } from "./logger.js";
@@ -22,43 +21,33 @@ export interface AlertPayload {
   url?: string;
 }
 
-// ── SMS via Twilio ─────────────────────────────────────────────────────────────
+// ── SMS via Azure Communication Services ──────────────────────────────────────
 
-function isTwilioConfigured(): boolean {
-  return !!(
-    process.env.TWILIO_ACCOUNT_SID &&
-    process.env.TWILIO_AUTH_TOKEN &&
-    process.env.TWILIO_FROM_NUMBER
-  );
+function isAcsConfigured(): boolean {
+  return !!(process.env.ACS_CONNECTION_STRING && process.env.ACS_FROM_NUMBER);
 }
 
 async function sendSms(to: string, message: string): Promise<boolean> {
-  if (!isTwilioConfigured()) {
-    logger.warn("Twilio not configured — skipping SMS");
+  if (!isAcsConfigured()) {
+    logger.warn("ACS not configured — skipping SMS");
     return false;
   }
   try {
-    const sid = process.env.TWILIO_ACCOUNT_SID!;
-    const token = process.env.TWILIO_AUTH_TOKEN!;
-    const from = process.env.TWILIO_FROM_NUMBER!;
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;
-    const body = new URLSearchParams({ To: to, From: from, Body: message });
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString("base64")}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body,
+    const { SmsClient } = await import("@azure/communication-sms");
+    const client = new SmsClient(process.env.ACS_CONNECTION_STRING!);
+    const results = await client.send({
+      from: process.env.ACS_FROM_NUMBER!,
+      to: [to],
+      message,
     });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      logger.warn({ status: res.status, body: txt.slice(0, 200) }, "Twilio SMS failed");
+    const result = results[0];
+    if (!result.successful) {
+      logger.warn({ errorMessage: result.errorMessage }, "ACS SMS failed");
       return false;
     }
     return true;
   } catch (err) {
-    logger.warn({ err }, "Twilio SMS threw");
+    logger.warn({ err }, "ACS SMS threw");
     return false;
   }
 }
