@@ -42,6 +42,7 @@ async function sendSms(to: string, message: string): Promise<boolean> {
       message,
     });
     const result = results[0];
+    logger.info({ to: normalizedTo, successful: result.successful, httpStatusCode: result.httpStatusCode, errorMessage: result.errorMessage }, "ACS SMS result");
     if (!result.successful) {
       logger.warn({ errorMessage: result.errorMessage }, "ACS SMS failed");
       return false;
