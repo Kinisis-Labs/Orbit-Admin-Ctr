@@ -14,8 +14,8 @@
 
   /* Backgrounds */
   --orbit-bg-page:       #0B1120;
-  --orbit-bg-card:       #111827;
-  --orbit-bg-card-hover: #1F2937;
+  --orbit-bg-card:       #162033;
+  --orbit-bg-card-hover: #1E2D45;
   --orbit-topbar-bg:     #0F1929;
   --orbit-sidebar-bg:    #0D1424;
 
@@ -25,8 +25,8 @@
   --orbit-text-muted:     #6B7280;
 
   /* Borders */
-  --orbit-border:        #1F2937;
-  --orbit-border-subtle: #374151;
+  --orbit-border:        #1E2D45;
+  --orbit-border-subtle: #2A3F5C;
 
   /* Status */
   --orbit-success: #10B981;
@@ -52,9 +52,9 @@
   /* shadcn/ui compatible tokens (dark theme) */
   --background:         222 47% 8%;
   --foreground:         214 32% 91%;
-  --card:               222 47% 11%;
+  --card:               220 50% 15%;
   --card-foreground:    214 32% 91%;
-  --popover:            222 47% 11%;
+  --popover:            220 50% 15%;
   --popover-foreground: 214 32% 91%;
   --primary:            263 70% 58%;
   --primary-foreground: 0 0% 100%;
@@ -66,8 +66,8 @@
   --accent-foreground:  214 32% 91%;
   --destructive:        0 63% 59%;
   --destructive-foreground: 0 0% 100%;
-  --border:             217 33% 17%;
-  --input:              217 33% 17%;
+  --border:             217 40% 20%;
+  --input:              217 40% 20%;
   --ring:               263 70% 58%;
 
   --sidebar:            222 47% 8%;
