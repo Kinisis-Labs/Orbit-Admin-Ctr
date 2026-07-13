@@ -278,12 +278,19 @@ function ContactDrawer({ existing, onClose }: { existing?: AlertContactRow; onCl
   }
   const isPending = create.isPending || update.isPending;
 
+  function normalizePhone(raw: string): string {
+    const digits = raw.replace(/\D/g, "");
+    if (!digits) return "";
+    return digits.startsWith("1") && digits.length === 11 ? `+${digits}` : digits.length === 10 ? `+1${digits}` : `+${digits}`;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const payload = { ...form, phone: form.phone ? normalizePhone(form.phone) : form.phone };
     if (existing) {
-      await update.mutateAsync({ id: existing.id, ...form });
+      await update.mutateAsync({ id: existing.id, ...payload });
     } else {
-      await create.mutateAsync(form);
+      await create.mutateAsync(payload);
     }
     onClose();
   }
@@ -313,8 +320,8 @@ function ContactDrawer({ existing, onClose }: { existing?: AlertContactRow; onCl
             <input type="email" placeholder="alerts@example.com" value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} className={fieldCls} style={inputStyle} />
           </div>
           <div>
-            <label className={labelCls} style={{ color: "var(--orbit-text-muted)" }}>Phone (E.164 format)</label>
-            <input type="tel" placeholder="+15551234567" value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} className={fieldCls} style={inputStyle} />
+            <label className={labelCls} style={{ color: "var(--orbit-text-muted)" }}>Phone</label>
+            <input type="tel" placeholder="5551234567 or +15551234567" value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} className={fieldCls} style={inputStyle} />
           </div>
           <div>
             <label className={labelCls} style={{ color: "var(--orbit-text-muted)" }}>Alert Severities</label>

@@ -35,9 +35,10 @@ async function sendSms(to: string, message: string): Promise<boolean> {
   try {
     const { SmsClient } = await import("@azure/communication-sms");
     const client = new SmsClient(process.env.ACS_CONNECTION_STRING!);
+    const normalizedTo = to.startsWith("+") ? to : `+${to}`;
     const results = await client.send({
       from: process.env.ACS_FROM_NUMBER!,
-      to: [to],
+      to: [normalizedTo],
       message,
     });
     const result = results[0];
