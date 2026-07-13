@@ -162,7 +162,7 @@ export async function dispatchTestAlert(contactId: string): Promise<{ sms: boole
 
   if (!contact) throw new Error("Contact not found");
 
-  logger.info({ contactId, smsEnabled: contact.smsEnabled, phone: !!contact.phone, emailEnabled: contact.emailEnabled, email: !!contact.email, acsConfigured: isAcsConfigured() }, "dispatchTestAlert contact check");
+  logger.info({ contactId, smsEnabled: contact.smsEnabled, phone: contact.phone, emailEnabled: contact.emailEnabled, email: !!contact.email, acsConfigured: isAcsConfigured() }, "dispatchTestAlert contact check");
 
   const alert: AlertPayload = {
     title: "Test Alert from Orbit NOC",
