@@ -258,7 +258,11 @@ async function queryAppInsightsGroup(
       const baseUrl = `https://management.azure.com${armResourceId}/providers/microsoft.insights/metrics`;
       const url = `${baseUrl}?api-version=2023-10-01&metricnames=${encodeURIComponent(metricName)}&timespan=PT6H&aggregation=${aggregation}&interval=PT6H`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        console.warn(`[NOC] AppInsights metrics call failed ${res.status} for ${displayName}/${metricName}: ${txt.slice(0, 200)}`);
+        return null;
+      }
       type R = { value?: Array<{ timeseries?: Array<{ data?: Array<Record<string, number | undefined>> }> }> };
       const data = (await res.json()) as R;
       const points = data.value?.[0]?.timeseries?.[0]?.data ?? [];
