@@ -312,7 +312,7 @@ export function SecurityDashboard() {
     resolve({ id, note });
   }
 
-  const [tab, setTab] = useState<TabKey>("active");
+  const [tab, setTab] = useState<TabKey>("all");
   const [sevFilter, setSevFilter] = useState<string>("all");
   const [srcFilter, setSrcFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortKey>("time-desc");
