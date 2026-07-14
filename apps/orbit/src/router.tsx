@@ -21,6 +21,7 @@ const AIDashboard = lazy(() => import("./modules/noc/AIDashboard").then((m) => (
 const IncidentDashboard = lazy(() => import("./modules/noc/IncidentDashboard").then((m) => ({ default: m.IncidentDashboard })));
 const UXDashboard = lazy(() => import("./modules/noc/UXDashboard").then((m) => ({ default: m.UXDashboard })));
 const ApiDependenciesDashboard = lazy(() => import("./modules/noc/ApiDependenciesDashboard").then((m) => ({ default: m.ApiDependenciesDashboard })));
+const WorkflowsDashboard = lazy(() => import("./modules/noc/WorkflowsDashboard").then((m) => ({ default: m.WorkflowsDashboard })));
 const TesterManagementPage = lazy(() => import("./modules/crm/TesterManagementPage").then((m) => ({ default: m.TesterManagementPage })));
 
 function Lazy({ children }: { children: React.ReactNode }) {
@@ -120,6 +121,10 @@ export const router = createBrowserRouter([
           {
             path: "api-dependencies",
             element: <Lazy><ApiDependenciesDashboard /></Lazy>,
+          },
+          {
+            path: "workflows",
+            element: <Lazy><WorkflowsDashboard /></Lazy>,
           },
         ],
       },

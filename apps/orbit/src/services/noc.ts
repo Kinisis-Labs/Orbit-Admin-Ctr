@@ -447,3 +447,57 @@ export function useUXSnapshot(refetchIntervalMs = 120_000) {
   });
 }
 
+// ── Workflows NOC ──────────────────────────────────────────────────────────────
+
+export interface WorkflowRun {
+  id: number;
+  name: string;
+  workflow: string;
+  branch: string;
+  status: string;
+  conclusion: string | null;
+  durationMs: number | null;
+  triggeredBy: string;
+  startedAt: string;
+  completedAt: string | null;
+  url: string;
+  repo: string;
+}
+
+export interface WorkflowSummary {
+  workflow: string;
+  repo: string;
+  totalRuns: number;
+  successCount: number;
+  failureCount: number;
+  successRate: number | null;
+  avgDurationMs: number | null;
+  lastRunAt: string | null;
+  lastConclusion: string | null;
+  health: "healthy" | "degraded" | "critical" | "unknown";
+}
+
+export interface WorkflowSnapshot {
+  recentRuns: WorkflowRun[];
+  summaries: WorkflowSummary[];
+  totalRuns24h: number;
+  failedRuns24h: number;
+  inProgressRuns: number;
+  githubConfigured: boolean;
+  capturedAt: string;
+}
+
+async function fetchWorkflows(): Promise<WorkflowSnapshot> {
+  const res = await fetch("/api/noc/workflows", { credentials: "same-origin" });
+  if (!res.ok) throw new Error(`Workflows fetch failed: ${res.status}`);
+  return res.json() as Promise<WorkflowSnapshot>;
+}
+
+export function useWorkflowSnapshot(refetchIntervalMs = 120_000) {
+  return useQuery<WorkflowSnapshot>({
+    queryKey: ["noc-workflows"],
+    queryFn: fetchWorkflows,
+    refetchInterval: refetchIntervalMs,
+    retry: 1,
+  });
+}

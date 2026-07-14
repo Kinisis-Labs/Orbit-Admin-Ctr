@@ -16,6 +16,7 @@ import nocDiagRouter from "../modules/noc/diag/routes.js";
 import nocIncidentsRouter from "../modules/noc/incidents/routes.js";
 import nocUxRouter from "../modules/noc/ux/routes.js";
 import nocApiDepsRouter from "../modules/noc/api-dependencies/routes.js";
+import nocWorkflowsRouter from "../modules/noc/workflows/routes.js";
 import crmTestersRouter from "../modules/crm/testers/routes.js";
 import alertContactsRouter from "../modules/alert-contacts/routes.js";
 
@@ -37,6 +38,7 @@ router.use("/noc", nocDiagRouter);
 router.use("/noc", nocIncidentsRouter);
 router.use("/noc", nocUxRouter);
 router.use("/noc", nocApiDepsRouter);
+router.use("/noc", nocWorkflowsRouter);
 router.use(crmTestersRouter);
 router.use(alertContactsRouter);
 
