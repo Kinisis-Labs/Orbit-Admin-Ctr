@@ -44,7 +44,7 @@ jobs:
 
       - run: pnpm --filter @workspace/orbit-app run build
         env:
-          VITE_APPINSIGHTS_CONNECTION_STRING: ${{ secrets.VITE_APPINSIGHTS_CONNECTION_STRING }}
+          VITE_APPINSIGHTS_CONNECTION_STRING: ${{ secrets.VITE_APPLICATIONINSIGHTS_CONNECTION_STRING }}
 
       - name: Login to Azure
         uses: azure/login@v2
