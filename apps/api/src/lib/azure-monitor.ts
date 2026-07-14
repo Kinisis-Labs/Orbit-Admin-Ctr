@@ -260,7 +260,7 @@ async function queryAppInsightsGroup(
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
-        console.warn(`[NOC] AppInsights metrics call failed ${res.status} for ${displayName}/${metricName}: ${txt.slice(0, 200)}`);
+        logger.warn({ displayName, metricName, status: res.status, body: txt.slice(0, 200) }, "AppInsights metrics call failed");
         return null;
       }
       type R = { value?: Array<{ timeseries?: Array<{ data?: Array<Record<string, number | undefined>> }> }> };
