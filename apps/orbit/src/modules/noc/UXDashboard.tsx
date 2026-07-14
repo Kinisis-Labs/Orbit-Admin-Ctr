@@ -305,7 +305,7 @@ export function UXDashboard() {
             <div className="space-y-4">
               <Section title="Synthetic Transaction Results" icon={FlaskConical}>
                 {data.syntheticResults.length === 0 ? (
-                  <EmptyRow msg="No availability tests configured in App Insights." />
+                  <EmptyRow msg="No results yet — availability test runs every 5 minutes. Check back shortly." />
                 ) : (
                   <div className="space-y-1">
                     {data.syntheticResults.map((s, i) => (
