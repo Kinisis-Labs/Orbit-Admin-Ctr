@@ -98,7 +98,7 @@ async function getAppInsightsTelemetry(
       extractLast("requests/failed", "count"),
       extractLast("requests/count", "count"),
       extractLast("exceptions/count", "count"),
-      extractLast("sessions/count", "unique"),
+      extractLast("sessions/count", "count"),
     ]);
 
     return {
@@ -116,10 +116,20 @@ async function getAppInsightsTelemetry(
 }
 
 function deriveStatus(telemetry: AppTelemetry): "healthy" | "degraded" | "unhealthy" | "unknown" {
-  if (telemetry.availability === null && telemetry.avgResponseMs === null) return "unknown";
+  const hasAnyData =
+    telemetry.availability !== null ||
+    telemetry.avgResponseMs !== null ||
+    telemetry.totalRequests !== null ||
+    telemetry.exceptions !== null;
+  if (!hasAnyData) return "unknown";
   if (telemetry.availability !== null && telemetry.availability < 95) return "unhealthy";
   if (telemetry.availability !== null && telemetry.availability < 99) return "degraded";
   if (telemetry.avgResponseMs !== null && telemetry.avgResponseMs > 5000) return "degraded";
+  if (telemetry.failedRequests !== null && telemetry.failedRequests > 0 && telemetry.totalRequests !== null && telemetry.totalRequests > 0) {
+    const errorRate = telemetry.failedRequests / telemetry.totalRequests;
+    if (errorRate > 0.05) return "unhealthy";
+    if (errorRate > 0.01) return "degraded";
+  }
   return "healthy";
 }
 
