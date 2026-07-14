@@ -151,6 +151,7 @@ export function WorkflowsDashboard() {
   const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useWorkflowSnapshot();
   const [tab, setTab] = useState<"runs" | "summaries">("summaries");
   const [conclusionFilter, setConclusionFilter] = useState<string>("all");
+  const [healthFilter, setHealthFilter] = useState<string>("all");
 
   const lastUpdated = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
@@ -161,6 +162,14 @@ export function WorkflowsDashboard() {
     if (conclusionFilter === "in_progress") return r.status === "in_progress" || r.status === "queued";
     return r.conclusion === conclusionFilter;
   });
+
+  const filteredSummaries = (data?.summaries ?? [])
+    .filter((s) => healthFilter === "all" || s.health === healthFilter)
+    .sort((a, b) => {
+      const aT = a.lastRunAt ? new Date(a.lastRunAt).getTime() : 0;
+      const bT = b.lastRunAt ? new Date(b.lastRunAt).getTime() : 0;
+      return bT - aT;
+    });
 
   const successRate = data && data.totalRuns24h > 0
     ? Math.round(((data.totalRuns24h - data.failedRuns24h) / data.totalRuns24h) * 100)
@@ -254,8 +263,22 @@ export function WorkflowsDashboard() {
                 </button>
               ))}
 
-              {tab === "runs" && (
-                <div className="ml-auto flex items-center gap-2 pb-2">
+              <div className="ml-auto flex items-center gap-2 pb-2">
+                {tab === "summaries" && (
+                  <select
+                    value={healthFilter}
+                    onChange={(e) => setHealthFilter(e.target.value)}
+                    className="text-xs rounded px-2 py-1"
+                    style={{ background: "var(--orbit-bg-page)", border: "1px solid var(--orbit-border)", color: "var(--orbit-text-secondary)" }}
+                  >
+                    <option value="all">All Health</option>
+                    <option value="healthy">Healthy</option>
+                    <option value="degraded">Degraded</option>
+                    <option value="critical">Critical</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                )}
+                {tab === "runs" && (
                   <select
                     value={conclusionFilter}
                     onChange={(e) => setConclusionFilter(e.target.value)}
@@ -268,8 +291,8 @@ export function WorkflowsDashboard() {
                     <option value="cancelled">Cancelled</option>
                     <option value="in_progress">In Progress</option>
                   </select>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {tab === "summaries" ? (
@@ -284,15 +307,15 @@ export function WorkflowsDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.summaries.length === 0 ? (
+                    {filteredSummaries.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-4 py-10 text-sm text-center"
                           style={{ color: "var(--orbit-text-muted)" }}>
-                          {data.githubConfigured ? "No workflow runs in the last 24h." : "Configure GitHub to see workflow data."}
+                          {data.githubConfigured ? (healthFilter !== "all" ? "No workflows match the current filter." : "No workflow runs in the last 24h.") : "Configure GitHub to see workflow data."}
                         </td>
                       </tr>
                     ) : (
-                      data.summaries.map((s) => <SummaryRow key={`${s.repo}::${s.workflow}`} s={s} />)
+                      filteredSummaries.map((s) => <SummaryRow key={`${s.repo}::${s.workflow}`} s={s} />)
                     )}
                   </tbody>
                 </table>
