@@ -79,7 +79,7 @@ function KpiTile({ label, value, sub, color }: { label: string; value: string | 
 function SummaryRow({ s }: { s: WorkflowSummary }) {
   return (
     <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-      <td className="px-4 py-3">
+      <td className="px-4 py-1.5">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
             style={{ color: healthColor(s.health), background: healthBg(s.health) }}>
@@ -87,25 +87,25 @@ function SummaryRow({ s }: { s: WorkflowSummary }) {
           </span>
         </div>
       </td>
-      <td className="px-4 py-3">
-        <p className="text-sm font-medium" style={{ color: "var(--orbit-text-primary)" }}>{s.workflow}</p>
+      <td className="px-4 py-1.5">
+        <p className="text-xs font-medium" style={{ color: "var(--orbit-text-primary)" }}>{s.workflow}</p>
         <p className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>{s.repo}</p>
       </td>
-      <td className="px-4 py-3 text-sm tabular-nums text-center" style={{ color: "var(--orbit-text-secondary)" }}>
+      <td className="px-4 py-1.5 text-xs tabular-nums text-center" style={{ color: "var(--orbit-text-secondary)" }}>
         {s.totalRuns}
       </td>
-      <td className="px-4 py-3 text-sm tabular-nums text-center"
+      <td className="px-4 py-1.5 text-xs tabular-nums text-center"
         style={{ color: s.failureCount > 0 ? "#ef4444" : "var(--orbit-text-muted)" }}>
         {s.failureCount > 0 ? `${s.failureCount} ✗` : "0"}
       </td>
-      <td className="px-4 py-3 text-sm tabular-nums text-center"
+      <td className="px-4 py-1.5 text-xs tabular-nums text-center"
         style={{ color: s.successRate !== null && s.successRate < 80 ? "#f59e0b" : "#22c55e" }}>
         {s.successRate !== null ? `${s.successRate}%` : "—"}
       </td>
-      <td className="px-4 py-3 text-sm tabular-nums text-center" style={{ color: "var(--orbit-text-muted)" }}>
+      <td className="px-4 py-1.5 text-xs tabular-nums text-center" style={{ color: "var(--orbit-text-muted)" }}>
         {fmtDuration(s.avgDurationMs)}
       </td>
-      <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: "var(--orbit-text-muted)" }}>
+      <td className="px-4 py-1.5 text-xs whitespace-nowrap" style={{ color: "var(--orbit-text-muted)" }}>
         {s.lastRunAt ? fmtRelative(s.lastRunAt) : "—"}
       </td>
     </tr>
@@ -115,26 +115,26 @@ function SummaryRow({ s }: { s: WorkflowSummary }) {
 function RunRow({ run }: { run: WorkflowRun }) {
   return (
     <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
-      <td className="px-4 py-2.5">
+      <td className="px-4 py-1">
         <ConclusionIcon conclusion={run.conclusion} status={run.status} />
       </td>
-      <td className="px-4 py-2.5">
-        <p className="text-sm font-medium truncate max-w-xs" style={{ color: "var(--orbit-text-primary)" }}>{run.name}</p>
+      <td className="px-4 py-1">
+        <p className="text-xs font-medium truncate max-w-xs" style={{ color: "var(--orbit-text-primary)" }}>{run.name}</p>
         <p className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>{run.workflow}</p>
       </td>
-      <td className="px-4 py-2.5 text-xs" style={{ color: "var(--orbit-text-muted)" }}>
+      <td className="px-4 py-1 text-xs" style={{ color: "var(--orbit-text-muted)" }}>
         <span className="flex items-center gap-1">
           <GitBranch className="h-3 w-3" />{run.branch}
         </span>
       </td>
-      <td className="px-4 py-2.5 text-xs" style={{ color: "var(--orbit-text-muted)" }}>{run.repo}</td>
-      <td className="px-4 py-2.5 text-xs tabular-nums" style={{ color: "var(--orbit-text-muted)" }}>
+      <td className="px-4 py-1 text-xs" style={{ color: "var(--orbit-text-muted)" }}>{run.repo}</td>
+      <td className="px-4 py-1 text-xs tabular-nums" style={{ color: "var(--orbit-text-muted)" }}>
         {fmtDuration(run.durationMs)}
       </td>
-      <td className="px-4 py-2.5 text-xs whitespace-nowrap" style={{ color: "var(--orbit-text-muted)" }}>
+      <td className="px-4 py-1 text-xs whitespace-nowrap" style={{ color: "var(--orbit-text-muted)" }}>
         {fmtRelative(run.startedAt)}
       </td>
-      <td className="px-4 py-2.5">
+      <td className="px-4 py-1">
         <a href={run.url} target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-xs"
           style={{ color: "var(--orbit-accent)" }}>
@@ -296,7 +296,7 @@ export function WorkflowsDashboard() {
             </div>
 
             {tab === "summaries" ? (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: "60vh" }}>
                 <table className="w-full">
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>
@@ -321,7 +321,7 @@ export function WorkflowsDashboard() {
                 </table>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: "60vh" }}>
                 <table className="w-full">
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--orbit-border)" }}>

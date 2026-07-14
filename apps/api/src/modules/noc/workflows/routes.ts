@@ -85,8 +85,8 @@ function deriveHealth(summary: Omit<WorkflowSummary, "health">): WorkflowSummary
 }
 
 async function fetchWorkflowRuns(org: string, repo: string): Promise<WorkflowRun[]> {
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const data = await ghFetch(`/repos/${org}/${repo}/actions/runs?per_page=50&created=>=${since}`) as {
+  const since = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+  const data = await ghFetch(`/repos/${org}/${repo}/actions/runs?per_page=100&created=>=${since}`) as {
     workflow_runs?: Array<{
       id: number;
       name: string;
