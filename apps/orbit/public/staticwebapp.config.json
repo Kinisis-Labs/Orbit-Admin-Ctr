@@ -1,1 +1,1 @@
-{"navigationFallback":{"rewrite":"/index.html","exclude":["/api/*","/_frameworks/*","/*.{css,js,png,jpg,svg,ico,woff,woff2}"]}}
+{"navigationFallback":{"rewrite":"/index.html","exclude":["/api/*","/_frameworks/*","/manifest.webmanifest","/service-worker.js","/offline.html","/*.{css,js,png,jpg,svg,ico,woff,woff2}"]}}

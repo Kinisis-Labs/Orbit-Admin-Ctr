@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "Orbit Admin Center",
+  "short_name": "Orbit",
+  "description": "Kinisis Labs Orbit administration center",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b1120",
+  "theme_color": "#0b1120",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
