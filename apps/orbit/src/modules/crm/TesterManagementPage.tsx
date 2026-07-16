@@ -249,10 +249,10 @@ export function TesterManagementPage() {
           <Users2 className="h-6 w-6" style={{ color: "#22d3ee" }} />
           <div>
             <h1 className="text-xl font-bold" style={{ color: "var(--orbit-text-primary)" }}>
-              GrailBabe Tester Accounts
+              GrailBabe Friends & Family Accounts
             </h1>
             <p className="text-sm" style={{ color: "var(--orbit-text-muted)" }}>
-              Manage accounts with master-tier bypass for feature testing
+              Manage accounts with master-tier bypass
             </p>
           </div>
         </div>
@@ -281,7 +281,7 @@ export function TesterManagementPage() {
       {/* Add tester form */}
       <div className="rounded-xl p-5 space-y-3" style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}>
         <h2 className="text-sm font-semibold uppercase tracking-widest" style={{ color: "#22d3ee" }}>
-          Add Tester Account
+          Add Account
         </h2>
         <p className="text-xs" style={{ color: "var(--orbit-text-muted)" }}>
           Search by name or email. Select a user to provision them with master tier + Empire org.
@@ -323,7 +323,7 @@ export function TesterManagementPage() {
       <div className="rounded-xl overflow-hidden" style={{ background: "var(--orbit-bg-card)", border: "1px solid var(--orbit-border)" }}>
         <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid var(--orbit-border)" }}>
           <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold uppercase tracking-widest" style={{ color: "#22d3ee" }}>Active Testers</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-widest" style={{ color: "#22d3ee" }}>Active Accounts</h2>
             <span className="text-xs tabular-nums px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(34,211,238,0.12)", color: "#22d3ee" }}>{data?.count ?? 0}</span>
           </div>
           {selected.size > 0 && (
