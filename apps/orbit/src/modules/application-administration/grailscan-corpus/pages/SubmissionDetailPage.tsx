@@ -4,6 +4,7 @@ import { Camera, ChevronLeft, FileImage, Plus, UploadCloud } from "lucide-react"
 import { usePermission } from "../../../../hooks/usePermission";
 import {
   uploadCorpusImage,
+  useCancelGroup,
   useCompleteGroup,
   useCompleteSubmission,
   useCreateGroup,
@@ -25,8 +26,10 @@ interface UploadItem {
 function GroupWorkspace({ group, submissionId }: { group: CaptureGroup; submissionId: string }) {
   const canUpload = usePermission("grailscan.corpus.upload");
   const query = useGroup(group.id);
+  const cancel = useCancelGroup(submissionId);
   const complete = useCompleteGroup(submissionId);
   const [items, setItems] = useState<UploadItem[]>([]);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [side, setSide] = useState<ImageSide>("front");
   const mutable = ["draft", "uploading"].includes(group.status);
   const addFiles = (files: FileList | null) => {
@@ -41,6 +44,22 @@ function GroupWorkspace({ group, submissionId }: { group: CaptureGroup; submissi
         status: "ready" as const,
       })),
     ]);
+  };
+  const selectableItems = items.filter((item) => item.status !== "completed");
+  const selectedUploadItems = items.filter(
+    (item) => selectedItemIds.has(item.id) && ["ready", "failed"].includes(item.status),
+  );
+  const toggleItemSelection = (itemId: string, checked: boolean) => {
+    setSelectedItemIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(itemId);
+      else next.delete(itemId);
+      return next;
+    });
+  };
+  const selectAllItems = () => setSelectedItemIds(new Set(selectableItems.map((item) => item.id)));
+  const uploadSelectedItems = async () => {
+    for (const item of selectedUploadItems) await uploadItem(item);
   };
   const uploadItem = async (item: UploadItem) => {
     setItems((current) =>
@@ -63,6 +82,11 @@ function GroupWorkspace({ group, submissionId }: { group: CaptureGroup; submissi
           value.id === item.id ? { ...value, progress: 100, status: "completed" } : value,
         ),
       );
+      setSelectedItemIds((current) => {
+        const next = new Set(current);
+        next.delete(item.id);
+        return next;
+      });
       await query.refetch();
     } catch (error) {
       setItems((current) =>
@@ -159,12 +183,54 @@ function GroupWorkspace({ group, submissionId }: { group: CaptureGroup; submissi
                   />
                 </label>
               </div>
+              {items.length > 0 && (
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--orbit-border)] bg-[var(--orbit-bg-page)] p-2.5">
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={
+                        selectableItems.length > 0 &&
+                        selectedItemIds.size === selectableItems.length
+                      }
+                      onChange={(event) =>
+                        event.target.checked ? selectAllItems() : setSelectedItemIds(new Set())
+                      }
+                    />
+                    Select all pending ({selectedItemIds.size}/{selectableItems.length})
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedItemIds(new Set())}
+                      disabled={selectedItemIds.size === 0}
+                      className="rounded-md border border-[var(--orbit-border)] px-2.5 py-1.5 text-xs disabled:opacity-50"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void uploadSelectedItems()}
+                      disabled={selectedUploadItems.length === 0}
+                      className="rounded-md bg-[var(--orbit-primary)] px-2.5 py-1.5 text-xs text-white disabled:opacity-50"
+                    >
+                      Upload selected ({selectedUploadItems.length})
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="mt-3 space-y-2">
                 {items.map((item) => (
                   <div
                     key={item.id}
                     className="flex items-center gap-3 rounded-lg bg-[var(--orbit-bg-page)] p-2.5"
                   >
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${item.file.name}`}
+                      checked={selectedItemIds.has(item.id)}
+                      disabled={item.status === "completed" || item.status === "uploading"}
+                      onChange={(event) => toggleItemSelection(item.id, event.target.checked)}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex justify-between gap-2 text-xs">
                         <span className="truncate">
@@ -197,7 +263,23 @@ function GroupWorkspace({ group, submissionId }: { group: CaptureGroup; submissi
                   </div>
                 ))}
               </div>
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4 flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={cancel.isPending || complete.isPending}
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        "Cancel this capture group? It will not be submitted for review.",
+                      )
+                    ) {
+                      cancel.mutate(group.id);
+                    }
+                  }}
+                  className="rounded-lg border border-red-400/50 px-3 py-2 text-sm font-medium text-red-300 disabled:opacity-40"
+                >
+                  {cancel.isPending ? "Cancelling…" : "Cancel group"}
+                </button>
                 <button
                   type="button"
                   disabled={
@@ -211,9 +293,9 @@ function GroupWorkspace({ group, submissionId }: { group: CaptureGroup; submissi
                   {complete.isPending ? "Completing…" : "Complete capture group"}
                 </button>
               </div>
-              {complete.error && (
+              {(cancel.error || complete.error) && (
                 <div className="mt-3">
-                  <ErrorState error={complete.error} />
+                  <ErrorState error={cancel.error ?? complete.error} />
                 </div>
               )}
             </div>

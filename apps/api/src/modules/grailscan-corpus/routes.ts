@@ -44,6 +44,12 @@ const ROUTES: readonly AllowedRoute[] = [
     mutation: true,
   },
   {
+    method: "DELETE",
+    pattern: /^\/groups\/[0-9a-f-]{36}$/i,
+    required: "grailscan.corpus.upload",
+    mutation: true,
+  },
+  {
     method: "POST",
     pattern: /^\/groups\/[0-9a-f-]{36}\/complete$/i,
     required: "grailscan.corpus.upload",

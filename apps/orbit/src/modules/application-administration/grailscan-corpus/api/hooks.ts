@@ -108,6 +108,22 @@ export function useCreateGroup(submissionId: string) {
   });
 }
 
+export function useCancelGroup(submissionId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: string) =>
+      corpusApi(`/groups/${groupId}`, envelope("group", CaptureGroupSchema), {
+        method: "DELETE",
+        headers: { "idempotency-key": createIdempotencyKey("group-cancel") },
+        body: JSON.stringify({}),
+      }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ["grailscan-corpus", "submission", submissionId],
+      }),
+  });
+}
+
 export async function uploadCorpusImage(input: {
   groupId: string;
   side: ImageSide;
