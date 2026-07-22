@@ -9,6 +9,10 @@ export const ORBIT_CORPUS_PERMISSIONS = [
   "grailscan.corpus.view_health",
   "grailscan.corpus.view_storage",
   "grailscan.corpus.purge",
+  "grailscan.corpus.reference.view",
+  "grailscan.corpus.reference.manage",
+  "grailscan.corpus.reference.publish",
+  "grailscan.corpus.reference.retry",
   "grailscan.corpus.admin",
 ] as const;
 
@@ -23,7 +27,11 @@ export type GrailBabeCorpusPermission =
   | "grailscan.corpus.audit"
   | "grailscan.corpus.admin"
   | "grailscan.corpus.certificate.read"
-  | "grailscan.corpus.purge";
+  | "grailscan.corpus.purge"
+  | "grailscan.corpus.reference.read"
+  | "grailscan.corpus.reference.manage"
+  | "grailscan.corpus.reference.publish"
+  | "grailscan.corpus.reference.retry";
 
 const MAPPING: Record<OrbitCorpusPermission, readonly GrailBabeCorpusPermission[]> = {
   "grailscan.corpus.view": ["grailscan.corpus.read"],
@@ -36,6 +44,10 @@ const MAPPING: Record<OrbitCorpusPermission, readonly GrailBabeCorpusPermission[
   "grailscan.corpus.view_health": ["grailscan.corpus.audit"],
   "grailscan.corpus.view_storage": ["grailscan.corpus.audit"],
   "grailscan.corpus.purge": ["grailscan.corpus.purge"],
+  "grailscan.corpus.reference.view": ["grailscan.corpus.reference.read"],
+  "grailscan.corpus.reference.manage": ["grailscan.corpus.reference.manage"],
+  "grailscan.corpus.reference.publish": ["grailscan.corpus.reference.publish"],
+  "grailscan.corpus.reference.retry": ["grailscan.corpus.reference.retry"],
   "grailscan.corpus.admin": [
     "grailscan.corpus.read",
     "grailscan.corpus.upload",
@@ -47,6 +59,10 @@ const MAPPING: Record<OrbitCorpusPermission, readonly GrailBabeCorpusPermission[
     "grailscan.corpus.admin",
     "grailscan.corpus.certificate.read",
     "grailscan.corpus.purge",
+    "grailscan.corpus.reference.read",
+    "grailscan.corpus.reference.manage",
+    "grailscan.corpus.reference.publish",
+    "grailscan.corpus.reference.retry",
   ],
 };
 

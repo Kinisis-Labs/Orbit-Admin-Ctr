@@ -13,7 +13,12 @@ export function CorpusPermissionBoundary({ children }: { children: ReactNode }) 
       </div>
     );
   }
-  if (!user.isAdmin && !permissions.data?.permissions.includes("grailscan.corpus.view")) {
+  if (
+    !user.isAdmin &&
+    !permissions.data?.permissions.some((permission) =>
+      ["grailscan.corpus.view", "grailscan.corpus.reference.view"].includes(permission),
+    )
+  ) {
     return <Navigate to="/" replace />;
   }
   return children;

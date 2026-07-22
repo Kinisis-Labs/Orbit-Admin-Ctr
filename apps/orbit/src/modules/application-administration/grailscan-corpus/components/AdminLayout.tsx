@@ -9,6 +9,7 @@ import {
   HardDrive,
   ScrollText,
   FlaskConical,
+  BookOpen,
 } from "lucide-react";
 
 const tabs = [
@@ -19,6 +20,7 @@ const tabs = [
   ["versions", "Corpus Versions", Database],
   ["coverage", "Coverage", ChartNoAxesCombined],
   ["regression", "Regression", FlaskConical],
+  ["reference-datasets", "Reference Datasets", BookOpen],
   ["health", "Health", Activity],
   ["storage", "Storage", HardDrive],
   ["audit", "Audit", ScrollText],

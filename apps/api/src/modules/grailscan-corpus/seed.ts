@@ -13,6 +13,10 @@ const LABELS: Record<(typeof ORBIT_CORPUS_PERMISSIONS)[number], string> = {
   "grailscan.corpus.view_health": "View Golden Corpus Health",
   "grailscan.corpus.view_storage": "View Golden Corpus Storage",
   "grailscan.corpus.purge": "Manage Golden Corpus Purges",
+  "grailscan.corpus.reference.view": "View Reference Datasets",
+  "grailscan.corpus.reference.manage": "Manage Reference Dataset Sync",
+  "grailscan.corpus.reference.publish": "Publish Reference Dataset Versions",
+  "grailscan.corpus.reference.retry": "Retry Reference Dataset Failures",
   "grailscan.corpus.admin": "Administer Golden Corpus",
 };
 

@@ -37,10 +37,12 @@ export async function requestGrailBabeCorpus(input: {
   actor: SessionUser;
   backendPermissions: readonly GrailBabeCorpusPermission[];
   idempotencyKey?: string;
+  internalPrefix?: string;
 }): Promise<CorpusProxyResponse> {
   const config = readGrailScanCorpusProxyConfig();
   const method = input.method.toUpperCase();
-  const path = `${INTERNAL_PREFIX}${input.path === "/" ? "" : input.path}`;
+  const internalPrefix = input.internalPrefix ?? INTERNAL_PREFIX;
+  const path = `${internalPrefix}${input.path === "/" ? "" : input.path}`;
   const query = canonicalizeCorpusQuery(input.rawQuery);
   const bodyBytes =
     method === "GET" || method === "HEAD"
