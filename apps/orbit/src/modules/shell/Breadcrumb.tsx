@@ -5,6 +5,17 @@ const ROUTE_LABELS: Record<string, string> = {
   "/": "Dashboard",
   "/admin": "Administration",
   "/admin/applications": "Applications",
+  "/admin/applications/grailscan-corpus": "GrailScan Corpus Admin",
+  "/admin/applications/grailscan-corpus/overview": "Overview",
+  "/admin/applications/grailscan-corpus/submissions": "Submissions",
+  "/admin/applications/grailscan-corpus/review": "Review Queue",
+  "/admin/applications/grailscan-corpus/approved": "Approved Pool",
+  "/admin/applications/grailscan-corpus/versions": "Corpus Versions",
+  "/admin/applications/grailscan-corpus/coverage": "Coverage",
+  "/admin/applications/grailscan-corpus/regression": "Regression",
+  "/admin/applications/grailscan-corpus/health": "Health",
+  "/admin/applications/grailscan-corpus/storage": "Storage",
+  "/admin/applications/grailscan-corpus/audit": "Audit",
   "/admin/users": "Users",
   "/admin/roles": "Roles",
   "/admin/permissions": "Permissions",
@@ -31,7 +42,8 @@ function buildCrumbs(pathname: string): Crumb[] {
   let path = "";
   for (const part of parts) {
     path += `/${part}`;
-    const label = ROUTE_LABELS[path] ?? part.charAt(0).toUpperCase() + part.slice(1).replace(/-/g, " ");
+    const label =
+      ROUTE_LABELS[path] ?? part.charAt(0).toUpperCase() + part.slice(1).replace(/-/g, " ");
     crumbs.push({ label, to: path });
   }
 
@@ -54,7 +66,9 @@ export function Breadcrumb() {
     >
       {crumbs.map((crumb, i) => (
         <div key={crumb.to} className="flex items-center gap-1">
-          {i > 0 && <ChevronRight className="w-3 h-3" style={{ color: "var(--orbit-border-subtle)" }} />}
+          {i > 0 && (
+            <ChevronRight className="w-3 h-3" style={{ color: "var(--orbit-border-subtle)" }} />
+          )}
           {i === crumbs.length - 1 ? (
             <span style={{ color: "var(--orbit-text-secondary)" }}>{crumb.label}</span>
           ) : (

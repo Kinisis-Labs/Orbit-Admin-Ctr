@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import React, { lazy, Suspense } from "react";
 import { EnterpriseLayout } from "./layouts/EnterpriseLayout";
 import { SignedOutPage } from "./modules/auth/SignedOutPage";
@@ -23,6 +23,19 @@ const UXDashboard = lazy(() => import("./modules/noc/UXDashboard").then((m) => (
 const ApiDependenciesDashboard = lazy(() => import("./modules/noc/ApiDependenciesDashboard").then((m) => ({ default: m.ApiDependenciesDashboard })));
 const WorkflowsDashboard = lazy(() => import("./modules/noc/WorkflowsDashboard").then((m) => ({ default: m.WorkflowsDashboard })));
 const TesterManagementPage = lazy(() => import("./modules/crm/TesterManagementPage").then((m) => ({ default: m.TesterManagementPage })));
+const CorpusPermissionBoundary = lazy(() => import("./modules/application-administration/grailscan-corpus/components/PermissionBoundary").then((m) => ({ default: m.CorpusPermissionBoundary })));
+const GrailScanCorpusAdminLayout = lazy(() => import("./modules/application-administration/grailscan-corpus/components/AdminLayout").then((m) => ({ default: m.GrailScanCorpusAdminLayout })));
+const CorpusOverviewPage = lazy(() => import("./modules/application-administration/grailscan-corpus/pages/OverviewPage").then((m) => ({ default: m.CorpusOverviewPage })));
+const CorpusSubmissionsPage = lazy(() => import("./modules/application-administration/grailscan-corpus/pages/SubmissionsPage").then((m) => ({ default: m.CorpusSubmissionsPage })));
+const CorpusReviewPage = lazy(() => import("./modules/application-administration/grailscan-corpus/pages/ReviewPage").then((m) => ({ default: m.CorpusReviewPage })));
+const CorpusApprovedPoolPage = lazy(() => import("./modules/application-administration/grailscan-corpus/pages/ApprovedPoolPage").then((m) => ({ default: m.CorpusApprovedPoolPage })));
+const CorpusVersionsPage = lazy(() => import("./modules/application-administration/grailscan-corpus/pages/VersionsPage").then((m) => ({ default: m.CorpusVersionsPage })));
+const CorpusCoveragePage = lazy(() => import("./modules/application-administration/grailscan-corpus/pages/CoveragePage").then((m) => ({ default: m.CorpusCoveragePage })));
+const CorpusRegressionPage = lazy(() => import("./modules/application-administration/grailscan-corpus/pages/RegressionPage").then((m) => ({ default: m.CorpusRegressionPage })));
+const CorpusHealthPage = lazy(() => import("./modules/application-administration/grailscan-corpus/pages/HealthPage").then((m) => ({ default: m.CorpusHealthPage })));
+const CorpusStoragePage = lazy(() => import("./modules/application-administration/grailscan-corpus/pages/StoragePage").then((m) => ({ default: m.CorpusStoragePage })));
+const CorpusAuditPage = lazy(() => import("./modules/application-administration/grailscan-corpus/pages/AuditPage").then((m) => ({ default: m.CorpusAuditPage })));
+const CorpusSubmissionDetailPage = lazy(() => import("./modules/application-administration/grailscan-corpus/pages/SubmissionDetailPage").then((m) => ({ default: m.CorpusSubmissionDetailPage })));
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
@@ -44,6 +57,24 @@ export const router = createBrowserRouter([
       {
         path: "admin",
         children: [
+          {
+            path: "applications/grailscan-corpus",
+            element: <Lazy><CorpusPermissionBoundary><GrailScanCorpusAdminLayout /></CorpusPermissionBoundary></Lazy>,
+            children: [
+              { index: true, element: <Navigate to="overview" replace /> },
+              { path: "overview", element: <CorpusOverviewPage /> },
+              { path: "submissions", element: <CorpusSubmissionsPage /> },
+              { path: "submissions/:submissionId", element: <CorpusSubmissionDetailPage /> },
+              { path: "review", element: <CorpusReviewPage /> },
+              { path: "approved", element: <CorpusApprovedPoolPage /> },
+              { path: "versions", element: <CorpusVersionsPage /> },
+              { path: "coverage", element: <CorpusCoveragePage /> },
+              { path: "regression", element: <CorpusRegressionPage /> },
+              { path: "health", element: <CorpusHealthPage /> },
+              { path: "storage", element: <CorpusStoragePage /> },
+              { path: "audit", element: <CorpusAuditPage /> },
+            ],
+          },
           {
             path: "applications",
             element: <Lazy><ApplicationsPage /></Lazy>,

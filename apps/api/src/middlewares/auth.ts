@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 import { isEntraConfigured } from "../lib/entra.js";
+import { resolveEffectivePermissions } from "../services/effectivePermissions.js";
 
 export const requireAuth: RequestHandler = (req, res, next) => {
   if (!isEntraConfigured()) return next();
@@ -25,14 +26,22 @@ export const requireEngineerOrAdmin: RequestHandler = (req, res, next) => {
  * Falls back to pass-through in mock/dev mode (Entra not configured).
  */
 export function requirePermission(permission: string): RequestHandler {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     if (!isEntraConfigured()) return next();
     if (!req.session.user) {
       res.status(401).json({ error: "unauthorized" });
       return;
     }
-    const perms: string[] = (req.session.user as unknown as { permissions?: string[] }).permissions ?? [];
-    if (req.session.user.isAdmin || perms.includes(permission)) return next();
-    res.status(403).json({ error: "forbidden", requiredPermission: permission });
+    try {
+      const permissions = await resolveEffectivePermissions(
+        req.session.user.id,
+        req.session.user.isAdmin,
+      );
+      if (permissions.includes(permission)) return next();
+      res.status(403).json({ error: "forbidden", requiredPermission: permission });
+    } catch (error) {
+      req.log.error({ err: error }, "Permission evaluation failed");
+      res.status(500).json({ error: "permission_evaluation_failed" });
+    }
   };
 }

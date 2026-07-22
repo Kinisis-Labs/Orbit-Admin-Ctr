@@ -22,9 +22,11 @@ import {
   DollarSign,
   Headphones,
   Users2,
+  DatabaseZap,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
+import { useMyPermissions } from "../../services/rbac";
 
 interface NavItem {
   label: string;
@@ -32,6 +34,7 @@ interface NavItem {
   icon: React.ElementType;
   section?: string;
   adminOnly?: boolean;
+  permission?: string;
 }
 
 const SECTION_COLORS: Record<string, string> = {
@@ -41,6 +44,7 @@ const SECTION_COLORS: Record<string, string> = {
   "Service Management": "#fb923c",   // orange
   "Customer Management": "#22d3ee",  // cyan
   "Governance Management": "#f472b6",  // pink
+  "Application Administration": "#22d3ee",
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -57,6 +61,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Constellation ITSM", to: "/service", icon: Headphones, section: "Service Management", adminOnly: true },
   { label: "Quasar CRM", to: "/crm", icon: Users2, section: "Customer Management", adminOnly: true },
   { label: "Nexus Governance", to: "/governance/nexus", icon: Shield, section: "Governance Management", adminOnly: true },
+  { label: "GrailScan Corpus Admin", to: "/admin/applications/grailscan-corpus", icon: DatabaseZap, section: "Application Administration", permission: "grailscan.corpus.view" },
   { label: "App Registration", to: "/admin/applications", icon: AppWindow, section: "Administration", adminOnly: true },
   { label: "Users", to: "/admin/users", icon: Users, section: "Administration", adminOnly: true },
   { label: "Roles", to: "/admin/roles", icon: Shield, section: "Administration", adminOnly: true },
@@ -76,11 +81,16 @@ export function Sidebar() {
     "Service Management": true,
     "Customer Management": true,
     "Governance Management": true,
+    "Application Administration": true,
   });
   const location = useLocation();
   const { user } = useAuth();
+  const { data: permissionData } = useMyPermissions();
+  const permissions = new Set(permissionData?.permissions ?? []);
 
-  const visibleItems = NAV_ITEMS.filter((n) => !n.adminOnly || user.isAdmin);
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => (!item.adminOnly || user.isAdmin) && (!item.permission || user.isAdmin || permissions.has(item.permission)),
+  );
   const sections = Array.from(new Set(visibleItems.map((n) => n.section ?? ""))).filter(Boolean);
   const topItems = visibleItems.filter((n) => !n.section);
 

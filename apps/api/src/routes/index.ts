@@ -19,6 +19,7 @@ import nocApiDepsRouter from "../modules/noc/api-dependencies/routes.js";
 import nocWorkflowsRouter from "../modules/noc/workflows/routes.js";
 import crmTestersRouter from "../modules/crm/testers/routes.js";
 import alertContactsRouter from "../modules/alert-contacts/routes.js";
+import grailScanCorpusRouter from "../modules/grailscan-corpus/routes.js";
 
 const router: IRouter = Router();
 
@@ -41,5 +42,6 @@ router.use("/noc", nocApiDepsRouter);
 router.use("/noc", nocWorkflowsRouter);
 router.use(crmTestersRouter);
 router.use(alertContactsRouter);
+router.use("/grailscan-corpus", grailScanCorpusRouter);
 
 export default router;
