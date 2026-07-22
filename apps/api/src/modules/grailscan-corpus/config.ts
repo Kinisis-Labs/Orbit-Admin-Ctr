@@ -6,7 +6,8 @@ export interface GrailScanCorpusProxyConfig {
 }
 
 export function readGrailScanCorpusProxyConfig(): GrailScanCorpusProxyConfig {
-  const baseUrl = process.env.GRAILBABE_INTERNAL_BASE_URL?.trim();
+  const baseUrl =
+    process.env.GRAILBABE_INTERNAL_BASE_URL?.trim() ?? process.env.GRAILBABE_API_URL?.trim();
   const internalToken = process.env.GRAILBABE_INTERNAL_API_TOKEN?.trim();
   const signingSecret = process.env.ORBIT_ACTOR_SIGNING_SECRET?.trim();
   if (!baseUrl || !internalToken || !signingSecret) {
@@ -21,7 +22,9 @@ export function readGrailScanCorpusProxyConfig(): GrailScanCorpusProxyConfig {
   ) {
     throw new Error("grailscan_corpus_proxy_requires_https");
   }
-  const timeout = Number(process.env.GRAILBABE_INTERNAL_TIMEOUT_MS ?? 15_000);
+  const timeout = Number(
+    process.env.GRAILBABE_INTERNAL_TIMEOUT_MS ?? process.env.GB_INTERNAL_TIMEOUT ?? 15_000,
+  );
   return {
     baseUrl: baseUrl.replace(/\/$/, ""),
     internalToken,
