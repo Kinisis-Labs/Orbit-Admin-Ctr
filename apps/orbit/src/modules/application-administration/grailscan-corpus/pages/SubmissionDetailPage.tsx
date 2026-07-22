@@ -330,9 +330,7 @@ export function CorpusSubmissionDetailPage() {
       <Panel className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">
-              Submission {query.data.submission.id.slice(0, 8)}
-            </h2>
+            <h2 className="text-lg font-semibold">{query.data.submission.displayName}</h2>
             <p className="mt-1 text-sm text-[var(--orbit-text-secondary)]">
               {query.data.submission.sourceType} ·{" "}
               {query.data.submission.sourceOrgNameSnapshot ?? "Internal provenance"}

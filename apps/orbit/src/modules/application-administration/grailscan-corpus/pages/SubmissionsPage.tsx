@@ -13,6 +13,7 @@ export function CorpusSubmissionsPage() {
   const create = useCreateSubmission();
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(searchParams.get("create") === "1");
+  const [displayName, setDisplayName] = useState("");
   const [sourceType, setSourceType] = useState("founder_capture");
   const [sourceOrgNameSnapshot, setSourceOrgNameSnapshot] = useState("");
   const [notes, setNotes] = useState("");
@@ -68,6 +69,7 @@ export function CorpusSubmissionsPage() {
               event.preventDefault();
               create.mutate(
                 {
+                  displayName,
                   sourceType,
                   sourceOrgNameSnapshot: sourceOrgNameSnapshot || undefined,
                   notes: notes || undefined,
@@ -79,6 +81,20 @@ export function CorpusSubmissionsPage() {
               );
             }}
           >
+            <div>
+              <label htmlFor="submission-name" className="mb-1 block text-xs font-medium">
+                Submission name
+              </label>
+              <input
+                id="submission-name"
+                required
+                maxLength={200}
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                placeholder="e.g. 2026 National Show - Modern TCG"
+                className="h-9 w-full rounded-lg border border-[var(--orbit-border)] bg-[var(--orbit-bg-page)] px-3 text-sm"
+              />
+            </div>
             <div>
               <label htmlFor="source-type" className="mb-1 block text-xs font-medium">
                 Source type
@@ -161,10 +177,10 @@ export function CorpusSubmissionsPage() {
                 >
                   <td className="px-4 py-3">
                     <Link
-                      className="font-mono text-xs text-cyan-300 hover:underline"
+                      className="text-sm font-medium text-cyan-300 hover:underline"
                       to={`${submission.id}`}
                     >
-                      {submission.id}
+                      {submission.displayName}
                     </Link>
                   </td>
                   <td className="px-4 py-3">{submission.sourceType}</td>

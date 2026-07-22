@@ -77,6 +77,7 @@ export function validateCorpusProxyBody(method: string, path: string, value: unk
   const body = objectBody(value);
   if (method === "POST" && path === "/submissions") {
     assertAllowedKeys(body, [
+      "displayName",
       "sourceType",
       "sourceOrgId",
       "sourceOrgNameSnapshot",
@@ -85,6 +86,7 @@ export function validateCorpusProxyBody(method: string, path: string, value: unk
       "clientContext",
     ]);
     return {
+      displayName: requiredString(body.displayName, 200),
       sourceType: requiredString(body.sourceType, 64),
       sourceOrgId: optionalString(body.sourceOrgId, 200),
       sourceOrgNameSnapshot: optionalString(body.sourceOrgNameSnapshot, 200),

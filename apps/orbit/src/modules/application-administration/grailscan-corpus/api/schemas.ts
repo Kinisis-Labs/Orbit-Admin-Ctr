@@ -26,6 +26,7 @@ export const ImageSideSchema = z.enum(["front", "back", "angle", "slab_label", "
 
 export const SubmissionSchema = z.object({
   id: z.string().uuid(),
+  displayName: z.string(),
   sourceType: z.string(),
   sourceOrgId: z.string().nullable(),
   sourceOrgNameSnapshot: z.string().nullable(),

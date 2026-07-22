@@ -81,6 +81,7 @@ export function useCreateSubmission() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: {
+      displayName: string;
       sourceType: string;
       sourceOrgId?: string;
       sourceOrgNameSnapshot?: string;
