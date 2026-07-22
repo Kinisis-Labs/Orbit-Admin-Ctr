@@ -1,0 +1,24 @@
+{
+  "name": "@workspace/golden-corpus-job",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node24 --banner:js=\"import { createRequire as createNodeRequire } from 'node:module'; const require = createNodeRequire(import.meta.url);\" --outfile=dist/index.mjs",
+    "start": "node --enable-source-maps dist/index.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx/esm --test tests/**/*.test.ts"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.13.0",
+    "@azure/storage-blob": "^12.29.0",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/pg": "^8.20.0",
+    "esbuild": "0.27.3",
+    "tsx": "catalog:",
+    "typescript": "~5.9.3"
+  }
+}
