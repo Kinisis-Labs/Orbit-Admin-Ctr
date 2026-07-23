@@ -141,6 +141,11 @@ const ReferenceDatasetsPage = lazy(() =>
     (m) => ({ default: m.ReferenceDatasetsPage }),
   ),
 );
+const CategoryManagementPage = lazy(() =>
+  import("./modules/application-administration/grailscan-corpus/pages/CategoryManagementPage").then(
+    (m) => ({ default: m.CategoryManagementPage }),
+  ),
+);
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
@@ -186,6 +191,7 @@ export const router = createBrowserRouter([
               { path: "coverage", element: <CorpusCoveragePage /> },
               { path: "regression", element: <CorpusRegressionPage /> },
               { path: "reference-datasets", element: <ReferenceDatasetsPage /> },
+              { path: "categories", element: <CategoryManagementPage /> },
               { path: "health", element: <CorpusHealthPage /> },
               { path: "storage", element: <CorpusStoragePage /> },
               { path: "audit", element: <CorpusAuditPage /> },

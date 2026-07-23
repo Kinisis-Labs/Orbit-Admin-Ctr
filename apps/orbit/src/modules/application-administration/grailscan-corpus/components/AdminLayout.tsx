@@ -11,16 +11,18 @@ import {
   FlaskConical,
   BookOpen,
 } from "lucide-react";
+import { datasetAdminConfiguration } from "../configuration";
 
 const tabs = [
   ["overview", "Overview", Database],
-  ["submissions", "Submissions", Upload],
+  ["submissions", "User Submissions", Upload],
   ["review", "Review Queue", ClipboardCheck],
-  ["approved", "Approved Pool", Layers],
-  ["versions", "Corpus Versions", Database],
+  ["approved", "Approved Evidence", Layers],
+  ["versions", "Dataset Versions", Database],
   ["coverage", "Coverage", ChartNoAxesCombined],
   ["regression", "Regression", FlaskConical],
-  ["reference-datasets", "Reference Datasets", BookOpen],
+  ["reference-datasets", "Provider Datasets", BookOpen],
+  ["categories", "Category Management", Layers],
   ["health", "Health", Activity],
   ["storage", "Storage", HardDrive],
   ["audit", "Audit", ScrollText],
@@ -34,15 +36,20 @@ export function GrailScanCorpusAdminLayout() {
           Application Administration
         </p>
         <h1 className="mt-1 text-2xl font-semibold text-[var(--orbit-text-primary)]">
-          GrailScan Golden Corpus Administration
+          GrailScan Dataset Administration
         </h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--orbit-text-secondary)]">
-          Secure operational control plane for submissions, human verification, corpus releases, and
-          recorded evidence.
+          Secure operational control plane for reference datasets, user-captured evidence, human
+          verification, dataset publication, regression management, and machine learning readiness.
         </p>
+        {datasetAdminConfiguration.developerMode && (
+          <p className="mt-2 text-xs font-medium text-amber-300">
+            Development mode: incomplete modules remain visible.
+          </p>
+        )}
       </header>
       <nav
-        aria-label="Golden Corpus sections"
+        aria-label="Dataset Administration sections"
         className="flex gap-1 overflow-x-auto border-b border-[var(--orbit-border)] pb-px"
       >
         {tabs.map(([path, label, Icon]) => (
